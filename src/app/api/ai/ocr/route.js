@@ -15,7 +15,7 @@ export async function POST(req) {
     const { mimeType, data } = parseDataUrl(imageBase64);
 
     const genAI = getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const prompt = `Ushbu rasmda inglizcha so'zlar ro'yxati va ularning o'zbekcha tarjimasi yoki izohi bor (masalan lug'at sahifasi). Rasmdagi har bir inglizcha so'zni va unga mos o'zbekcha tarjima(lar)ini aniqla.
 
