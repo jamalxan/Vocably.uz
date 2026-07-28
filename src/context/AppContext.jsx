@@ -9,7 +9,6 @@ export function AppProvider({ children }) {
   const [loadingApp, setLoadingApp] = useState(true);
   const [categories, setCategories] = useState([]);
   const [activeCatIndex, setActiveCatIndex] = useState(0);
-  const [chatMessages, setChatMessages] = useState([]);
 
   const [token, setToken] = useState('');
   const [username, setUsername] = useState('');
@@ -39,7 +38,6 @@ export function AppProvider({ children }) {
         if (!res.ok) throw new Error();
         const data = await res.json();
         setCategories(data.categories || []);
-        setChatMessages(data.chatHistory || []);
       } catch {
         logout();
       } finally {
@@ -48,6 +46,18 @@ export function AppProvider({ children }) {
     },
     [logout]
   );
+
+  // Fon rejimida faqat kategoriyalarni qayta yuklaydi (masalan AI chat orqali so'z qo'shilgandan keyin).
+  const refreshCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/words', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const data = await res.json();
+      setCategories(data.categories || []);
+    } catch {
+      // jimgina e'tiborsiz qoldiramiz
+    }
+  }, [token]);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
@@ -139,13 +149,12 @@ export function AppProvider({ children }) {
     activeCatIndex,
     setActiveCatIndex,
     activeCategory,
-    chatMessages,
-    setChatMessages,
     token,
     username,
     phone,
     displayName,
     fetchUserData,
+    refreshCategories,
     syncData,
     logout,
     handleAddCategory,

@@ -1,0 +1,80 @@
+'use client';
+import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Sparkles, Copy, Check, Pencil } from 'lucide-react';
+import PendingAddWordsCard from './PendingAddWordsCard';
+
+export default function ChatMessage({ msg, index, categories, sessionId, onResolvedAdd, onEdit }) {
+  const [copied, setCopied] = useState(false);
+  const isUser = msg.role === 'user';
+  const text = msg.parts?.[0]?.text || '';
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <div className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+      {!isUser && (
+        <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <Sparkles size={13} />
+        </div>
+      )}
+      <div className={`max-w-[85%] sm:max-w-[80%] group ${isUser ? 'items-end' : 'items-start'} flex flex-col`}>
+        {msg.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={msg.imageUrl}
+            alt="Yuklangan rasm"
+            className="max-w-[220px] rounded-xl border border-slate-200 mb-1.5"
+          />
+        )}
+        <div
+          className={`rounded-2xl px-4 py-2.5 text-sm ${
+            isUser
+              ? 'bg-indigo-600 text-white rounded-br-none'
+              : 'bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200'
+          }`}
+        >
+          {isUser ? (
+            <span className="whitespace-pre-wrap">{text}</span>
+          ) : (
+            <div className="prose prose-sm max-w-none prose-p:my-1.5 prose-pre:bg-slate-800 prose-pre:text-slate-100">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{text || ' '}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+
+        {!isUser && text && (
+          <button
+            onClick={handleCopy}
+            className="mt-1 flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            {copied ? <Check size={11} /> : <Copy size={11} />} {copied ? 'Nusxalandi' : 'Nusxalash'}
+          </button>
+        )}
+        {isUser && onEdit && (
+          <button
+            onClick={() => onEdit(text)}
+            className="mt-1 flex items-center gap-1 text-[10px] text-indigo-200 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Pencil size={11} /> Tahrirlash
+          </button>
+        )}
+
+        {msg.pendingAction && (
+          <PendingAddWordsCard
+            pendingAction={msg.pendingAction}
+            categories={categories}
+            sessionId={sessionId}
+            onResolved={(data) => onResolvedAdd(index, data)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

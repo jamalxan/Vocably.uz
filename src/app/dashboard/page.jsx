@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { ImageIcon, Trash2, Menu, Loader2 } from 'lucide-react';
+import { Trash2, Menu, Loader2 } from 'lucide-react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import Sidebar from '@/components/Sidebar';
 import FlashcardMode from '@/components/FlashcardMode';
@@ -12,62 +12,13 @@ import AiChat from '@/components/AiChat';
 function DashboardContent() {
   const [view, setView] = useState('cards');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [ocrLoading, setOcrLoading] = useState(false);
 
-  const {
-    loadingApp,
-    categories,
-    setCategories,
-    activeCatIndex,
-    activeCategory,
-    token,
-    syncData,
-    handleDeleteCategory,
-  } = useApp();
+  const { loadingApp, activeCatIndex, activeCategory, handleDeleteCategory } = useApp();
 
   // Mobil ekranda bo'lim almashtirilganda drawer'ni yopamiz
   useEffect(() => {
     setSidebarOpen(false);
   }, [view]);
-
-  const handleOcrUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setOcrLoading(true);
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const res = await fetch('/api/ai/ocr', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ imageBase64: reader.result }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Xatolik');
-
-        if (data.words && data.words.length > 0) {
-          const updated = categories.map((c, i) =>
-            i === activeCatIndex ? { ...c, words: [...c.words, ...data.words] } : c
-          );
-          setCategories(updated);
-          syncData(updated);
-          alert(`${data.words.length} ta so'z "${activeCategory.name}" kategoriyasiga qo'shildi!`);
-        } else {
-          alert("Rasmdan so'z topilmadi. Aniqroq rasm bilan urinib ko'ring.");
-        }
-      } catch (err) {
-        alert('Xatolik yuz berdi: ' + err.message);
-      } finally {
-        setOcrLoading(false);
-        e.target.value = '';
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   if (loadingApp) {
     return (
@@ -100,12 +51,6 @@ function DashboardContent() {
           </div>
 
           <div className="flex gap-2 sm:gap-3 flex-shrink-0">
-            <label className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-100 rounded-lg text-xs font-semibold cursor-pointer transition-colors whitespace-nowrap">
-              <ImageIcon size={14} />
-              <span className="hidden sm:inline">{ocrLoading ? 'AI tahlil qilmoqda...' : 'AI import (rasmdan)'}</span>
-              <span className="sm:hidden">{ocrLoading ? '...' : 'AI import'}</span>
-              <input type="file" accept="image/*" className="hidden" onChange={handleOcrUpload} disabled={ocrLoading} />
-            </label>
             <button
               onClick={() => handleDeleteCategory(activeCatIndex)}
               className="p-2 border border-red-100 hover:bg-red-50 text-red-500 rounded-lg transition-colors flex-shrink-0"
