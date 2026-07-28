@@ -1,0 +1,45 @@
+import { connectToDatabase } from '@/lib/db';
+import { User, OtpSession } from '@/lib/models';
+import { normalizePhone } from '@/lib/phone';
+import { generateSessionToken } from '@/lib/otp';
+import { getTelegramDeepLink, getBotUsername } from '@/lib/telegram';
+import { NextResponse } from 'next/server';
+
+export async function POST(req) {
+  try {
+    await connectToDatabase();
+    const { phone: rawPhone } = await req.json();
+
+    const phone = normalizePhone(rawPhone);
+    if (!phone) {
+      return NextResponse.json({ error: "Telefon raqam noto'g'ri" }, { status: 400 });
+    }
+    if (!getBotUsername()) {
+      return NextResponse.json({ error: 'Server sozlanmagan (TELEGRAM_BOT_USERNAME yo\'q)' }, { status: 500 });
+    }
+
+    const user = await User.findOne({ phone });
+    if (!user) {
+      return NextResponse.json({ error: 'Bu raqam bilan hisob topilmadi' }, { status: 404 });
+    }
+
+    await OtpSession.deleteMany({ phone, purpose: 'reset' });
+
+    const sessionToken = generateSessionToken();
+    await OtpSession.create({
+      sessionToken,
+      purpose: 'reset',
+      phone,
+      userId: user._id,
+      status: 'awaiting_telegram',
+    });
+
+    return NextResponse.json({
+      sessionToken,
+      telegramLink: getTelegramDeepLink(sessionToken),
+      botUsername: getBotUsername(),
+    });
+  } catch (err) {
+    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+  }
+}
