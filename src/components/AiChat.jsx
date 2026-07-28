@@ -12,6 +12,13 @@ const RECOGNITION_LANGS = [
 ];
 const SILENCE_MS = 1500;
 
+const ASSISTANT_MODES = [
+  { key: 'writing', label: '✍️ Writing', text: 'Writing mashqini boshlaylik' },
+  { key: 'reading', label: '📖 Reading', text: 'Reading mashqini boshlaylik' },
+  { key: 'speaking', label: '🗣️ Speaking', text: 'Speaking mashqini boshlaylik' },
+  { key: 'listening', label: '🎧 Listening', text: 'Listening mashqini boshlaylik' },
+];
+
 const PENDING_MARK_START = '\n[[PENDING_ADD_WORDS]]';
 const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]';
 
@@ -420,6 +427,19 @@ export default function AiChat() {
               {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
             </button>
           )}
+        </div>
+
+        <div className="flex gap-1.5 px-3 sm:px-4 py-2 border-b border-slate-100 overflow-x-auto flex-shrink-0">
+          {ASSISTANT_MODES.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => handleSend(m.text)}
+              disabled={chatLoading}
+              className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 border border-slate-100 transition-colors whitespace-nowrap disabled:opacity-40"
+            >
+              {m.label}
+            </button>
+          ))}
         </div>
 
         <div

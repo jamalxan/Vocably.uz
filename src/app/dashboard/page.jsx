@@ -6,6 +6,9 @@ import Sidebar from '@/components/Sidebar';
 import FlashcardMode from '@/components/FlashcardMode';
 import WritingTest from '@/components/WritingTest';
 import MatchGame from '@/components/MatchGame';
+import TestMode from '@/components/TestMode';
+import ListeningMode from '@/components/ListeningMode';
+import SpacedRepetition from '@/components/SpacedRepetition';
 import WordTable from '@/components/WordTable';
 import AiChat from '@/components/AiChat';
 
@@ -70,6 +73,15 @@ function DashboardContent() {
           </div>
           <div className={view === 'match' ? '' : 'hidden'}>
             <MatchGame />
+          </div>
+          <div className={view === 'test' ? '' : 'hidden'}>
+            <TestMode />
+          </div>
+          <div className={view === 'listening' ? '' : 'hidden'}>
+            <ListeningMode />
+          </div>
+          <div className={view === 'review' ? '' : 'hidden'}>
+            <SpacedRepetition />
           </div>
           <div className={view === 'table' ? '' : 'hidden'}>
             <WordTable />

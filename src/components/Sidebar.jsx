@@ -1,12 +1,27 @@
 'use client';
 import { useState } from 'react';
-import { BookOpen, Edit3, Grid, Layers, Sparkles, Plus, X, LogOut } from 'lucide-react';
+import {
+  BookOpen,
+  Edit3,
+  Grid,
+  Layers,
+  Sparkles,
+  Plus,
+  X,
+  LogOut,
+  RotateCw,
+  ListChecks,
+  Headphones,
+} from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 const navItems = [
   { key: 'cards', label: 'Kartochka', icon: Layers },
   { key: 'write', label: 'Yozish testi', icon: Edit3 },
   { key: 'match', label: 'Juftlikni topish', icon: Grid },
+  { key: 'test', label: 'Test', icon: ListChecks },
+  { key: 'listening', label: 'Tinglab yozish', icon: Headphones },
+  { key: 'review', label: 'Bugungi takrorlash', icon: RotateCw },
   { key: 'table', label: 'Jadval', icon: BookOpen },
   { key: 'ai', label: 'AI Chat', icon: Sparkles },
 ];

@@ -19,6 +19,8 @@ export async function GET(req) {
       categories: user.categories,
       chatHistory: user.chatHistory || [],
       chatSessions: user.chatSessions || [],
+      reviewStreak: user.reviewStreak || 0,
+      lastReviewDate: user.lastReviewDate || null,
     });
   } catch (err) {
     return NextResponse.json({ error: err.message || "Server xatoligi" }, { status: 500 });

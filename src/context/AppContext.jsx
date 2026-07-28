@@ -9,6 +9,7 @@ export function AppProvider({ children }) {
   const [loadingApp, setLoadingApp] = useState(true);
   const [categories, setCategories] = useState([]);
   const [activeCatIndex, setActiveCatIndex] = useState(0);
+  const [reviewStreak, setReviewStreak] = useState(0);
 
   const [token, setToken] = useState('');
   const [username, setUsername] = useState('');
@@ -38,6 +39,7 @@ export function AppProvider({ children }) {
         if (!res.ok) throw new Error();
         const data = await res.json();
         setCategories(data.categories || []);
+        setReviewStreak(data.reviewStreak || 0);
       } catch {
         logout();
       } finally {
@@ -54,10 +56,47 @@ export function AppProvider({ children }) {
       if (!res.ok) return;
       const data = await res.json();
       setCategories(data.categories || []);
+      setReviewStreak(data.reviewStreak || 0);
     } catch {
       // jimgina e'tiborsiz qoldiramiz
     }
   }, [token]);
+
+  // Bitta so'zning takrorlash statistikasini yangilaydi (Bugungi takrorlash, Test, Tinglab yozish rejimlari uchun).
+  const reviewWord = useCallback(
+    async (categoryId, wordId, correct) => {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c._id !== categoryId
+            ? c
+            : {
+                ...c,
+                words: c.words.map((w) => {
+                  if (w._id !== wordId) return w;
+                  const REVIEW_INTERVAL_DAYS = [0, 1, 3, 7, 14, 30];
+                  const level = correct ? Math.min(5, (w.stats?.level || 0) + 1) : 0;
+                  const nextReview = correct
+                    ? new Date(Date.now() + REVIEW_INTERVAL_DAYS[level] * 86400000).toISOString()
+                    : new Date(Date.now() + 10 * 60000).toISOString();
+                  return { ...w, stats: { ...w.stats, level, lastReviewed: new Date().toISOString(), nextReview } };
+                }),
+              }
+        )
+      );
+      try {
+        const res = await fetch('/api/words/review', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ categoryId, wordId, correct }),
+        });
+        const data = await res.json();
+        if (res.ok) setReviewStreak(data.reviewStreak || 0);
+      } catch (err) {
+        console.error('Statistikani saqlashda xatolik', err);
+      }
+    },
+    [token]
+  );
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
@@ -202,6 +241,8 @@ export function AppProvider({ children }) {
     handleAddWord,
     deleteWords,
     restoreWords,
+    reviewStreak,
+    reviewWord,
     writeResetNonce,
     triggerWriteReset,
     matchGameNonce,

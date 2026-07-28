@@ -57,6 +57,9 @@ const UserSchema = new mongoose.Schema({
   // Eski, uzluksiz chat tarixi — endi ishlatilmaydi, faqat orqaga moslik uchun saqlanadi.
   chatHistory: [ChatMessageSchema],
   chatSessions: [ChatSessionSchema],
+  // Aqlli takrorlash uchun kunlik faollik ketma-ketligi (streak).
+  reviewStreak: { type: Number, default: 0 },
+  lastReviewDate: { type: String, default: null }, // 'YYYY-MM-DD'
   createdAt: { type: Date, default: Date.now },
 });
 
