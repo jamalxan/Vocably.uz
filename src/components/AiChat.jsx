@@ -1,9 +1,16 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, Loader2, Paperclip, X, PanelLeftOpen, Send } from 'lucide-react';
+import { Sparkles, Loader2, Paperclip, X, PanelLeftOpen, Send, Mic, Radio, Volume2, VolumeX } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ChatSessionsPanel from './chat/ChatSessionsPanel';
 import ChatMessage from './chat/ChatMessage';
+
+const RECOGNITION_LANGS = [
+  { code: 'en-US', label: 'EN' },
+  { code: 'uz-UZ', label: "UZ" },
+  { code: 'ru-RU', label: 'RU' },
+];
+const SILENCE_MS = 1500;
 
 const PENDING_MARK_START = '\n[[PENDING_ADD_WORDS]]';
 const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]';
@@ -35,10 +42,38 @@ export default function AiChat() {
   const [chatLoading, setChatLoading] = useState(false);
   const [attachedImage, setAttachedImage] = useState(null);
 
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [recognitionLang, setRecognitionLang] = useState('en-US');
+  const [micListening, setMicListening] = useState(false);
+  const [liveMode, setLiveMode] = useState(false);
+  const [liveListening, setLiveListening] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [ttsRate, setTtsRate] = useState(1);
+  const [speaking, setSpeaking] = useState(false);
+
   const chatEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const stickToBottomRef = useRef(true);
   const fileInputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const liveModeRef = useRef(false);
+  const silenceTimerRef = useRef(null);
+  const handleSendRef = useRef(null);
+
+  useEffect(() => {
+    setVoiceSupported(typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition));
+  }, []);
+
+  useEffect(() => {
+    liveModeRef.current = liveMode;
+  }, [liveMode]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+    };
+  }, []);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -168,8 +203,107 @@ export default function AiChat() {
     refreshCategories();
   };
 
-  const handleSend = async () => {
-    const text = chatInput.trim();
+  const speak = useCallback(
+    (text) =>
+      new Promise((resolve) => {
+        if (!ttsEnabled || !text || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+          resolve();
+          return;
+        }
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'en-US';
+        utter.rate = ttsRate;
+        utter.onend = () => {
+          setSpeaking(false);
+          resolve();
+        };
+        utter.onerror = () => {
+          setSpeaking(false);
+          resolve();
+        };
+        setSpeaking(true);
+        window.speechSynthesis.speak(utter);
+      }),
+    [ttsEnabled, ttsRate]
+  );
+
+  const startLiveListening = useCallback(() => {
+    const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SR || !liveModeRef.current) return;
+
+    const recognition = new SR();
+    recognition.lang = recognitionLang;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    let finalText = '';
+
+    recognition.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+      }
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        const text = finalText.trim();
+        finalText = '';
+        recognition.stop();
+        if (text) handleSendRef.current?.(text);
+      }, SILENCE_MS);
+    };
+    recognition.onerror = () => setLiveListening(false);
+    recognition.onend = () => setLiveListening(false);
+
+    recognitionRef.current = recognition;
+    setLiveListening(true);
+    recognition.start();
+  }, [recognitionLang]);
+
+  const stopLiveMode = () => {
+    liveModeRef.current = false;
+    setLiveMode(false);
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    recognitionRef.current?.stop();
+    if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+    setLiveListening(false);
+    setSpeaking(false);
+  };
+
+  const toggleLiveMode = () => {
+    if (liveMode) {
+      stopLiveMode();
+    } else {
+      setLiveMode(true);
+      liveModeRef.current = true;
+      startLiveListening();
+    }
+  };
+
+  const toggleMic = () => {
+    if (micListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SR) return;
+
+    const recognition = new SR();
+    recognition.lang = recognitionLang;
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.onresult = (e) => {
+      let text = '';
+      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      setChatInput(text);
+    };
+    recognition.onend = () => setMicListening(false);
+    recognition.onerror = () => setMicListening(false);
+    recognitionRef.current = recognition;
+    setMicListening(true);
+    recognition.start();
+  };
+
+  const handleSend = async (overrideText) => {
+    const text = (overrideText ?? chatInput).trim();
     if ((!text && !attachedImage) || chatLoading) return;
 
     const userMsg = { role: 'user', parts: [{ text: text || '(rasm yuborildi)' }], imageUrl: attachedImage || null };
@@ -227,6 +361,11 @@ export default function AiChat() {
       });
 
       loadSessions();
+
+      if (liveModeRef.current) {
+        await speak(visibleText);
+        if (liveModeRef.current) startLiveListening();
+      }
     } catch (err) {
       setMessages((prev) => {
         const updated = [...prev];
@@ -237,6 +376,10 @@ export default function AiChat() {
       setChatLoading(false);
     }
   };
+
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  });
 
   const isEmpty = messages.length === 0 && !sessionLoading;
   const lastMsg = messages[messages.length - 1];
@@ -267,7 +410,16 @@ export default function AiChat() {
           <span className="font-semibold text-indigo-600 flex items-center gap-1.5">
             <Sparkles size={14} /> Ingliz tili AI yordamchisi
           </span>
-          <span className="hidden sm:inline ml-auto">Til, tarjima va lug'atga so'z qo'shish</span>
+          <span className="hidden sm:inline">Til, tarjima va lug'atga so'z qo'shish</span>
+          {voiceSupported && (
+            <button
+              onClick={() => setTtsEnabled((v) => !v)}
+              className="ml-auto p-1.5 hover:bg-white/60 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors flex-shrink-0"
+              title={ttsEnabled ? 'AI ovozini o\'chirish' : 'AI ovozini yoqish'}
+            >
+              {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+            </button>
+          )}
         </div>
 
         <div
@@ -316,6 +468,64 @@ export default function AiChat() {
         </div>
 
         <div className="p-3 sm:p-4 border-t border-slate-100">
+          {voiceSupported ? (
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+                {RECOGNITION_LANGS.map((l) => (
+                  <button
+                    key={l.code}
+                    onClick={() => setRecognitionLang(l.code)}
+                    className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${
+                      recognitionLang === l.code ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={toggleLiveMode}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors ${
+                  liveMode
+                    ? 'bg-red-50 border-red-200 text-red-600'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'
+                }`}
+                title="Uzluksiz ovozli suhbat"
+              >
+                <span className="relative flex h-2 w-2">
+                  {liveMode && (liveListening || speaking) && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  )}
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${liveMode ? 'bg-red-500' : 'bg-slate-300'}`} />
+                </span>
+                <Radio size={12} /> Live rejim
+              </button>
+
+              {liveMode && (
+                <span className="text-[10px] text-slate-400">
+                  {speaking ? 'AI gapirmoqda...' : liveListening ? 'Tinglanmoqda...' : 'Kutilmoqda...'}
+                </span>
+              )}
+
+              <div className="flex items-center gap-1 ml-auto text-[10px] text-slate-400">
+                <span>Tezlik</span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1.5"
+                  step="0.1"
+                  value={ttsRate}
+                  onChange={(e) => setTtsRate(parseFloat(e.target.value))}
+                  className="w-16 accent-indigo-500"
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="text-[10px] text-slate-400 mb-2">
+              Brauzeringiz ovozli kiritish/chiqishni to'liq qo'llab-quvvatlamaydi — matn rejimida davom eting.
+            </p>
+          )}
           {attachedImage && (
             <div className="relative inline-block mb-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -343,6 +553,20 @@ export default function AiChat() {
             >
               <Paperclip size={18} />
             </button>
+            {voiceSupported && (
+              <button
+                onClick={toggleMic}
+                disabled={liveMode}
+                className={`p-2.5 rounded-xl transition-colors flex-shrink-0 disabled:opacity-30 ${
+                  micListening
+                    ? 'text-red-500 bg-red-50 animate-pulse'
+                    : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
+                }`}
+                title="Ovozli kiritish"
+              >
+                <Mic size={18} />
+              </button>
+            )}
             <input
               type="text"
               placeholder="Xabaringizni yozing yoki rasm joylashtiring (Ctrl+V)..."
