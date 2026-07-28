@@ -1,20 +1,87 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Volume2, Trash2, Search } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
+import ConfirmModal from './ConfirmModal';
+import UndoToast from './UndoToast';
+
+const UNDO_MS = 5000;
 
 export default function WordTable() {
-  const { activeCategory, handleAddWord, handleDeleteWord } = useApp();
+  const { activeCategory, handleAddWord, deleteWords, restoreWords } = useApp();
   const [newWord, setNewWord] = useState('');
   const [newSyns, setNewSyns] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [confirmState, setConfirmState] = useState(null); // { ids, words }
+  const [undoState, setUndoState] = useState(null); // { categoryId, words }
+  const undoTimerRef = useRef(null);
+
+  const words = activeCategory.words || [];
+  const filtered = words
+    .map((w, idx) => ({ ...w, idx }))
+    .filter(
+      (w) =>
+        w.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        w.syns.some((s) => s.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+  // Kategoriya almashganda tanlovni tozalaymiz.
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [activeCategory._id]);
+
+  useEffect(() => () => clearTimeout(undoTimerRef.current), []);
 
   const onAddWord = () => {
     handleAddWord(newWord, newSyns);
     setNewWord('');
     setNewSyns('');
   };
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const toggleSelectAll = () => {
+    const visibleIds = filtered.map((w) => w._id).filter(Boolean);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+    setSelectedIds(allSelected ? [] : visibleIds);
+  };
+
+  const requestDeleteSelected = () => {
+    const targets = words.filter((w) => selectedIds.includes(w._id));
+    setConfirmState({ ids: selectedIds, words: targets });
+  };
+
+  const requestDeleteSingle = (word) => {
+    setConfirmState({ ids: [word._id], words: [word] });
+  };
+
+  const confirmDelete = async () => {
+    const { ids, words: deletedWords } = confirmState;
+    const categoryId = activeCategory._id;
+    setConfirmState(null);
+    setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
+
+    clearTimeout(undoTimerRef.current);
+    await deleteWords(ids);
+
+    setUndoState({ categoryId, words: deletedWords });
+    undoTimerRef.current = setTimeout(() => setUndoState(null), UNDO_MS);
+  };
+
+  const handleUndo = async () => {
+    clearTimeout(undoTimerRef.current);
+    if (undoState) {
+      await restoreWords(undoState.categoryId, undoState.words);
+    }
+    setUndoState(null);
+  };
+
+  const allVisibleSelected =
+    filtered.length > 0 && filtered.every((w) => w._id && selectedIds.includes(w._id));
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -66,11 +133,39 @@ export default function WordTable() {
         />
       </div>
 
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm">
+          <span className="font-semibold text-indigo-700">{selectedIds.length} ta so'z tanlandi</span>
+          <div className="flex gap-2">
+            <button
+              onClick={requestDeleteSelected}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors"
+            >
+              O'chirish
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold transition-colors"
+            >
+              Bekor qilish
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[480px]">
+          <table className="w-full text-left border-collapse min-w-[520px]">
             <thead>
               <tr className="bg-slate-50 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                <th className="py-3 px-4 sm:px-6 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAll}
+                    className="w-3.5 h-3.5 accent-indigo-600 cursor-pointer"
+                  />
+                </th>
                 <th className="py-3 px-4 sm:px-6 w-12">#</th>
                 <th className="py-3 px-4 sm:px-6">So'z</th>
                 <th className="py-3 px-4 sm:px-6">Sinonimlar / tarjimalar</th>
@@ -78,39 +173,42 @@ export default function WordTable() {
               </tr>
             </thead>
             <tbody>
-              {(activeCategory.words || [])
-                .map((w, idx) => ({ ...w, idx }))
-                .filter(
-                  (w) =>
-                    w.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    w.syns.some((s) => s.toLowerCase().includes(searchTerm.toLowerCase()))
-                )
-                .map((w) => (
-                  <tr key={w.idx} className="border-b border-slate-50 hover:bg-slate-50/50 text-sm">
-                    <td className="py-3.5 px-4 sm:px-6 text-slate-400 font-mono text-xs">{w.idx + 1}</td>
-                    <td className="py-3.5 px-4 sm:px-6 font-semibold text-slate-800">{w.word}</td>
-                    <td className="py-3.5 px-4 sm:px-6 text-slate-500">{w.syns.join(', ')}</td>
-                    <td className="py-3.5 px-4 sm:px-6 flex gap-2">
-                      <button
-                        onClick={() => speakText(w.word)}
-                        className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded transition-colors"
-                        title="Eshitish"
-                      >
-                        <Volume2 size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteWord(w.idx)}
-                        className="p-1.5 bg-red-50 hover:bg-red-100 text-red-500 rounded transition-colors"
-                        title="O'chirish"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              {(activeCategory.words || []).length === 0 && (
+              {filtered.map((w) => (
+                <tr key={w._id || w.idx} className="border-b border-slate-50 hover:bg-slate-50/50 text-sm">
+                  <td className="py-3.5 px-4 sm:px-6">
+                    <input
+                      type="checkbox"
+                      checked={w._id ? selectedIds.includes(w._id) : false}
+                      onChange={() => w._id && toggleSelect(w._id)}
+                      disabled={!w._id}
+                      className="w-3.5 h-3.5 accent-indigo-600 cursor-pointer"
+                    />
+                  </td>
+                  <td className="py-3.5 px-4 sm:px-6 text-slate-400 font-mono text-xs">{w.idx + 1}</td>
+                  <td className="py-3.5 px-4 sm:px-6 font-semibold text-slate-800">{w.word}</td>
+                  <td className="py-3.5 px-4 sm:px-6 text-slate-500">{w.syns.join(', ')}</td>
+                  <td className="py-3.5 px-4 sm:px-6 flex gap-2">
+                    <button
+                      onClick={() => speakText(w.word)}
+                      className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded transition-colors"
+                      title="Eshitish"
+                    >
+                      <Volume2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => requestDeleteSingle(w)}
+                      disabled={!w._id}
+                      className="p-1.5 bg-red-50 hover:bg-red-100 text-red-500 rounded transition-colors disabled:opacity-40"
+                      title="O'chirish"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-10 text-center text-sm text-slate-400">
+                  <td colSpan={5} className="py-10 text-center text-sm text-slate-400">
                     Bu kategoriyada hali so'z yo'q.
                   </td>
                 </tr>
@@ -119,6 +217,21 @@ export default function WordTable() {
           </table>
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!confirmState}
+        title="So'zlarni o'chirish"
+        message={`${confirmState?.ids.length || 0} ta so'z o'chiriladi. Davom etasizmi?`}
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmState(null)}
+      />
+
+      {undoState && (
+        <UndoToast
+          message={`${undoState.words.length} ta so'z o'chirildi`}
+          onUndo={handleUndo}
+        />
+      )}
     </div>
   );
 }

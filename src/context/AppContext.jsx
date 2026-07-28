@@ -108,14 +108,22 @@ export function AppProvider({ children }) {
 
   const handleDeleteCategory = useCallback(
     (idx) => {
+      const cat = categories[idx];
+      if (!cat) return;
       if (categories.length <= 1) return alert('Kamida bitta kategoriya qolishi kerak');
-      if (!confirm(`"${categories[idx].name}" kategoriyasini o'chirmoqchimisiz?`)) return;
+      if (!confirm(`"${cat.name}" kategoriyasini o'chirmoqchimisiz? Ichida ${cat.words.length} ta so'z bor.`)) return;
+
       const updated = categories.filter((_, i) => i !== idx);
       setCategories(updated);
       setActiveCatIndex(0);
-      syncData(updated);
+
+      fetch('/api/categories', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ categoryId: cat._id }),
+      }).catch((err) => console.error("Kategoriyani o'chirishda xatolik", err));
     },
-    [categories, syncData]
+    [categories, token]
   );
 
   const handleAddWord = useCallback(
@@ -131,15 +139,47 @@ export function AppProvider({ children }) {
     [categories, activeCatIndex, syncData]
   );
 
-  const handleDeleteWord = useCallback(
-    (wordIdx) => {
-      const updated = categories.map((c, i) =>
-        i === activeCatIndex ? { ...c, words: c.words.filter((_, wi) => wi !== wordIdx) } : c
+  // Bir yoki bir nechta so'zni barqaror _id bo'yicha o'chiradi (granular endpoint — butun massivni
+  // almashtirish o'rniga, boshqa joyda parallel yozilgan o'zgarishlarni yo'qotib qo'ymaslik uchun).
+  const deleteWords = useCallback(
+    async (wordIds) => {
+      const cat = categories[activeCatIndex];
+      if (!cat?._id || !wordIds || wordIds.length === 0) return;
+
+      setCategories((prev) =>
+        prev.map((c, i) =>
+          i === activeCatIndex ? { ...c, words: c.words.filter((w) => !wordIds.includes(w._id)) } : c
+        )
       );
-      setCategories(updated);
-      syncData(updated);
+
+      try {
+        await fetch('/api/words', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ categoryId: cat._id, wordIds }),
+        });
+      } catch (err) {
+        console.error("So'zlarni o'chirishda xatolik", err);
+      }
     },
-    [categories, activeCatIndex, syncData]
+    [categories, activeCatIndex, token]
+  );
+
+  // "Bekor qilish" toast bosilganda o'chirilgan so'zlarni qayta tiklaydi.
+  const restoreWords = useCallback(
+    async (categoryId, words) => {
+      if (!categoryId || !words || words.length === 0) return;
+      try {
+        await fetch('/api/words/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ categoryId, words: words.map((w) => ({ word: w.word, syns: w.syns })) }),
+        });
+      } finally {
+        await refreshCategories();
+      }
+    },
+    [token, refreshCategories]
   );
 
   const value = {
@@ -160,7 +200,8 @@ export function AppProvider({ children }) {
     handleAddCategory,
     handleDeleteCategory,
     handleAddWord,
-    handleDeleteWord,
+    deleteWords,
+    restoreWords,
     writeResetNonce,
     triggerWriteReset,
     matchGameNonce,
