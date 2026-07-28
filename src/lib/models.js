@@ -1,20 +1,26 @@
 import mongoose from 'mongoose';
 
-const WordSchema = new mongoose.Schema(
+const WordStatsSchema = new mongoose.Schema(
   {
-    word: { type: String, required: true, trim: true },
-    syns: [{ type: String, trim: true }],
+    correct: { type: Number, default: 0 },
+    wrong: { type: Number, default: 0 },
+    lastReviewed: { type: Date, default: null },
+    level: { type: Number, default: 0, min: 0, max: 5 },
+    nextReview: { type: Date, default: Date.now },
   },
   { _id: false }
 );
 
-const CategorySchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    words: [WordSchema],
-  },
-  { _id: false }
-);
+const WordSchema = new mongoose.Schema({
+  word: { type: String, required: true, trim: true },
+  syns: [{ type: String, trim: true }],
+  stats: { type: WordStatsSchema, default: () => ({}) },
+});
+
+const CategorySchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  words: [WordSchema],
+});
 
 const ChatMessageSchema = new mongoose.Schema(
   {
@@ -25,13 +31,32 @@ const ChatMessageSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const ChatSessionMessageSchema = new mongoose.Schema(
+  {
+    role: { type: String, enum: ['user', 'model'], required: true },
+    parts: [{ text: { type: String, required: true } }],
+    imageUrl: { type: String, default: null },
+    timestamp: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const ChatSessionSchema = new mongoose.Schema({
+  title: { type: String, trim: true, default: 'Yangi suhbat' },
+  messages: [ChatSessionMessageSchema],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
 const UserSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true, trim: true, index: true },
   name: { type: String, trim: true, default: '' },
   password: { type: String, required: true },
   telegramChatId: { type: Number, default: null },
   categories: [CategorySchema],
+  // Eski, uzluksiz chat tarixi — endi ishlatilmaydi, faqat orqaga moslik uchun saqlanadi.
   chatHistory: [ChatMessageSchema],
+  chatSessions: [ChatSessionSchema],
   createdAt: { type: Date, default: Date.now },
 });
 
