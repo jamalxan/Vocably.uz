@@ -1,8 +1,7 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, Loader2, Paperclip, X, PanelLeftOpen, Send, Mic, Radio, Volume2, VolumeX } from 'lucide-react';
+import { Sparkles, Loader2, Paperclip, X, Send, Mic, Radio, Volume2, VolumeX } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import ChatSessionsPanel from './chat/ChatSessionsPanel';
 import ChatMessage from './chat/ChatMessage';
 
 const RECOGNITION_LANGS = [
@@ -39,11 +38,17 @@ function extractPendingAction(fullText) {
 }
 
 export default function AiChat() {
-  const { token, categories, refreshCategories } = useApp();
+  // Suhbatlar ro'yxati sidebar'da — bu yerda faqat joriy suhbat xabarlari boshqariladi.
+  const {
+    token,
+    categories,
+    refreshCategories,
+    currentSessionId,
+    setCurrentSessionId,
+    sessionOpenNonce,
+    loadChatSessions,
+  } = useApp();
 
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [sessions, setSessions] = useState([]);
-  const [currentSessionId, setCurrentSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [sessionLoading, setSessionLoading] = useState(false);
 
@@ -95,20 +100,6 @@ export default function AiChat() {
     };
   }, []);
 
-  const loadSessions = useCallback(async () => {
-    try {
-      const res = await fetch('/api/ai/sessions', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (res.ok) setSessions(data.sessions || []);
-    } catch {
-      // jimgina e'tiborsiz qoldiramiz — sessiyalar paneli bo'sh ko'rinadi
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token) loadSessions();
-  }, [token, loadSessions]);
-
   const scrollToBottom = () => {
     if (stickToBottomRef.current && chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -124,58 +115,36 @@ export default function AiChat() {
     stickToBottomRef.current = distanceFromBottom < 80;
   };
 
-  const openSession = async (id) => {
-    setPanelOpen(false);
-    setSessionLoading(true);
-    try {
-      const res = await fetch(`/api/ai/sessions/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (res.ok) {
-        setCurrentSessionId(id);
-        setMessages(data.session.messages || []);
-      }
-    } catch {
-      // suhbatni ochib bo'lmadi
-    } finally {
-      setSessionLoading(false);
-    }
-  };
-
-  const startNewSession = () => {
-    setPanelOpen(false);
-    setCurrentSessionId(null);
-    setMessages([]);
-  };
-
-  const renameSession = async (id, title) => {
-    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
-    try {
-      await fetch(`/api/ai/sessions/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title }),
-      });
-    } catch {
-      loadSessions();
-    }
-  };
-
-  const deleteSession = async (id) => {
-    if (!confirm("Bu suhbatni o'chirmoqchimisiz?")) return;
-    setSessions((prev) => prev.filter((s) => s.id !== id));
-    if (currentSessionId === id) {
-      setCurrentSessionId(null);
+  // Sidebar'dan suhbat tanlanganda (yoki "Yangi suhbat" bosilganda) nonce oshadi va
+  // shu suhbat xabarlari yuklanadi.
+  useEffect(() => {
+    if (sessionOpenNonce === 0) return;
+    if (!currentSessionId) {
       setMessages([]);
+      return;
     }
-    try {
-      await fetch(`/api/ai/sessions/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    } catch {
-      loadSessions();
-    }
-  };
+
+    let cancelled = false;
+    setSessionLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(`/api/ai/sessions/${currentSessionId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!cancelled && res.ok) setMessages(data.session.messages || []);
+      } catch {
+        // suhbatni ochib bo'lmadi
+      } finally {
+        if (!cancelled) setSessionLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionOpenNonce]);
 
   const readFileAsDataUrl = (file) =>
     new Promise((resolve) => {
@@ -380,7 +349,8 @@ export default function AiChat() {
         return updated;
       });
 
-      loadSessions();
+      // Sidebar'dagi ro'yxat yangilansin (sarlavha/tartib o'zgargan bo'lishi mumkin).
+      loadChatSessions();
 
       if (liveModeRef.current) {
         await speak(visibleText);
@@ -421,26 +391,8 @@ export default function AiChat() {
 
   return (
     <div className="relative flex h-[calc(100vh-11rem)] sm:h-[calc(100vh-13rem)] lg:h-[calc(100vh-14rem)] bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-      <ChatSessionsPanel
-        open={panelOpen}
-        onClose={() => setPanelOpen(false)}
-        sessions={sessions}
-        currentSessionId={currentSessionId}
-        onSelectSession={openSession}
-        onNewSession={startNewSession}
-        onRenameSession={renameSession}
-        onDeleteSession={deleteSession}
-      />
-
       <div className="flex-1 flex flex-col min-w-0">
         <div className="p-3 sm:p-4 bg-gradient-to-r from-indigo-50 to-slate-50 border-b border-slate-100 flex items-center gap-2 text-xs text-slate-500">
-          <button
-            onClick={() => setPanelOpen((v) => !v)}
-            className="p-1.5 -ml-1 hover:bg-white/60 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"
-            title="Suhbatlar tarixi"
-          >
-            <PanelLeftOpen size={16} className={`transition-transform ${panelOpen ? 'rotate-180' : ''}`} />
-          </button>
           <span className="font-semibold text-indigo-600 flex items-center gap-1.5">
             <Sparkles size={14} /> Ingliz tili AI yordamchisi
           </span>

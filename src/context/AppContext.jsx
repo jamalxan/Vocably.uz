@@ -98,6 +98,89 @@ export function AppProvider({ children }) {
     [token]
   );
 
+  // ---- AI chat sessiyalari ----
+  // Ro'yxat sidebar'da, xabarlar esa chat ekranida ko'rsatiladi — shuning uchun holat
+  // shu yerda, umumiy kontekstda turadi.
+  const [chatSessions, setChatSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  // Foydalanuvchi sidebar'dan sessiya tanlaganda oshadi. AiChat shu nonce'ga qarab
+  // xabarlarni qayta yuklaydi — currentSessionId ning o'zi javob oqimi paytida ham
+  // o'zgaradi (yangi sessiya yaratilganda), unda esa qayta yuklash kerak emas.
+  const [sessionOpenNonce, setSessionOpenNonce] = useState(0);
+
+  const loadChatSessions = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/ai/sessions', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (res.ok) setChatSessions(data.sessions || []);
+    } catch {
+      // jimgina e'tiborsiz qoldiramiz — ro'yxat bo'sh ko'rinadi
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (token) loadChatSessions();
+  }, [token, loadChatSessions]);
+
+  const openChatSession = useCallback((id) => {
+    setCurrentSessionId(id);
+    setSessionOpenNonce((n) => n + 1);
+  }, []);
+
+  const startNewChatSession = useCallback(() => {
+    setCurrentSessionId(null);
+    setSessionOpenNonce((n) => n + 1);
+  }, []);
+
+  const renameChatSession = useCallback(
+    async (id, title) => {
+      const clean = (title || '').trim();
+      if (!clean) return;
+      setChatSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: clean } : s)));
+      try {
+        await fetch(`/api/ai/sessions/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ title: clean }),
+        });
+      } catch {
+        loadChatSessions();
+      }
+    },
+    [token, loadChatSessions]
+  );
+
+  const deleteChatSession = useCallback(
+    async (id) => {
+      setChatSessions((prev) => prev.filter((s) => s.id !== id));
+      // Faol suhbat o'chirilsa yangi bo'sh suhbatga o'tamiz.
+      if (currentSessionId === id) startNewChatSession();
+      try {
+        await fetch(`/api/ai/sessions/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        loadChatSessions();
+      }
+    },
+    [token, currentSessionId, startNewChatSession, loadChatSessions]
+  );
+
+  const deleteAllChatSessions = useCallback(async () => {
+    setChatSessions([]);
+    startNewChatSession();
+    try {
+      await fetch('/api/ai/sessions', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      loadChatSessions();
+    }
+  }, [token, startNewChatSession, loadChatSessions]);
+
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('username');
@@ -247,6 +330,16 @@ export function AppProvider({ children }) {
     triggerWriteReset,
     matchGameNonce,
     triggerMatchReshuffle,
+    chatSessions,
+    currentSessionId,
+    setCurrentSessionId,
+    sessionOpenNonce,
+    loadChatSessions,
+    openChatSession,
+    startNewChatSession,
+    renameChatSession,
+    deleteChatSession,
+    deleteAllChatSessions,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

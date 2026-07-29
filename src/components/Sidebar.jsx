@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   BookOpen,
   Edit3,
@@ -12,8 +12,12 @@ import {
   RotateCw,
   ListChecks,
   Headphones,
+  ChevronRight,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import SidebarChatSessions from './chat/SidebarChatSessions';
+
+const CHAT_ACCORDION_KEY = 'vocably.chatAccordionOpen';
 
 const navItems = [
   { key: 'cards', label: 'Kartochka', icon: Layers },
@@ -40,6 +44,19 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
 
   const [newCatName, setNewCatName] = useState('');
   const [showAddCat, setShowAddCat] = useState(false);
+  // Suhbatlar ro'yxati default yopiq; ochiq/yopiq holati localStorage'da eslab qolinadi.
+  const [chatOpen, setChatOpen] = useState(false);
+
+  useEffect(() => {
+    setChatOpen(localStorage.getItem(CHAT_ACCORDION_KEY) === '1');
+  }, []);
+
+  const toggleChatAccordion = () => {
+    setChatOpen((prev) => {
+      localStorage.setItem(CHAT_ACCORDION_KEY, prev ? '0' : '1');
+      return !prev;
+    });
+  };
 
   const onAddCategory = (e) => {
     e?.preventDefault();
@@ -140,23 +157,46 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
           </div>
 
           <nav className="space-y-1">
-            {navItems.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setView(key);
-                  triggerWriteReset();
-                  if (key === 'match') triggerMatchReshuffle();
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm transition-colors ${
-                  view === key
-                    ? 'bg-indigo-600 text-white font-medium shadow-md shadow-indigo-900/40'
-                    : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Icon size={16} /> {label}
-              </button>
-            ))}
+            {navItems.map(({ key, label, icon: Icon }) => {
+              const isAi = key === 'ai';
+              return (
+                <div key={key}>
+                  <button
+                    onClick={() => {
+                      setView(key);
+                      triggerWriteReset();
+                      if (key === 'match') triggerMatchReshuffle();
+                      // "AI Chat" bosilganda chat ekrani ochiladi VA suhbatlar ro'yxati yig'iladi/ochiladi.
+                      if (isAi) toggleChatAccordion();
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm transition-colors ${
+                      view === key
+                        ? 'bg-indigo-600 text-white font-medium shadow-md shadow-indigo-900/40'
+                        : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Icon size={16} />
+                    <span className="flex-1 text-left">{label}</span>
+                    {isAi && (
+                      <ChevronRight
+                        size={14}
+                        className={`transition-transform ${chatOpen ? 'rotate-90' : ''}`}
+                      />
+                    )}
+                  </button>
+
+                  {isAi && (
+                    <SidebarChatSessions
+                      expanded={chatOpen}
+                      onOpenChat={() => {
+                        setView('ai');
+                        setSidebarOpen(false);
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </nav>
         </div>
 

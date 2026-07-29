@@ -27,6 +27,24 @@ export async function GET(req) {
   }
 }
 
+// Barcha suhbatlarni o'chirish (foydalanuvchi interfeysida ikki bosqichli tasdiq bilan himoyalangan).
+export async function DELETE(req) {
+  try {
+    await connectToDatabase();
+    const userId = getUserIdFromRequest(req);
+    if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    const result = await User.updateOne({ _id: userId }, { $set: { chatSessions: [] } });
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+  }
+}
+
 export async function POST(req) {
   try {
     await connectToDatabase();
