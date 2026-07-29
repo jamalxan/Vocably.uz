@@ -86,11 +86,14 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg flex items-center justify-center text-white font-bold text-lg font-display shadow-lg shadow-indigo-900/40">
-                S
+                V
               </div>
-              <h1 className="text-lg font-bold text-white tracking-wide font-display">
-                Sinonimlar <span className="text-indigo-400">AI</span>
-              </h1>
+              <div className="min-w-0">
+                <h1 className="text-lg font-bold text-white tracking-wide font-display leading-tight">
+                  Voc<span className="text-indigo-400">ably</span>
+                </h1>
+                <p className="text-[10px] text-slate-500 leading-tight">Ingliz tili yordamchisi</p>
+              </div>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}

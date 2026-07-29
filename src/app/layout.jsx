@@ -16,7 +16,7 @@ const body = Inter({
 });
 
 export const metadata = {
-  title: "Sinonimlar AI — Ingliz tili lug'ati",
+  title: "Vocably — Ingliz tili yordamchisi",
   description: "Ingliz tilini o'rganish uchun AI yordamchili shaxsiy lug'at platformasi",
 };
 

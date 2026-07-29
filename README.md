@@ -1,4 +1,4 @@
-# Sinonimlar AI — Ingliz tili lug'ati platformasi
+# Vocably — Ingliz tili yordamchisi
 
 Next.js (App Router) + MongoDB + Google Gemini AI asosidagi shaxsiy lug'at platformasi.
 Kirish/ro'yxatdan o'tish **telefon raqam** orqali, raqam esa **Telegram bot** orqali tasdiqlanadi.
@@ -74,7 +74,7 @@ Natijani `JWT_SECRET` sifatida ishlating.
 ## 5-qadam: Telegram bot yaratish (bepul)
 
 1. Telegram'da [@BotFather](https://t.me/BotFather) botiga o'ting.
-2. `/newbot` buyrug'ini yuboring, botga nom va username bering (username `Bot` bilan tugashi kerak, masalan `SinonimlarAIBot`).
+2. `/newbot` buyrug'ini yuboring, botga nom va username bering (username `Bot` bilan tugashi kerak, masalan `VocablyBot`).
 3. BotFather sizga bot **token**ini beradi (masalan `123456:AAExxxxxxxxxxxxxxxxxxxxxxxxxxxxx`) — buni `TELEGRAM_BOT_TOKEN` sifatida saqlang.
 4. Bot username'ini (`@` belgisisiz) `TELEGRAM_BOT_USERNAME` sifatida saqlang.
 5. `TELEGRAM_WEBHOOK_SECRET` va `ADMIN_SETUP_SECRET` uchun tasodifiy qiymatlar generatsiya qiling:
@@ -92,7 +92,7 @@ Natijani `JWT_SECRET` sifatida ishlating.
 ```bash
 git init
 git add .
-git commit -m "Sinonimlar AI"
+git commit -m "Vocably"
 ```
 
 GitHub'da yangi bo'sh repository yarating, so'ng:

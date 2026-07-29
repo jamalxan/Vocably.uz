@@ -5,7 +5,7 @@ import { getGeminiClient, parseDataUrl } from '@/lib/gemini';
 import { buildGeminiHistory } from '@/lib/chatRoles';
 import { NextResponse } from 'next/server';
 
-const SYSTEM_INSTRUCTION = `Siz "Sinonimlar AI" ilovasidagi yordamchi botsiz. Sizning vazifangiz FAQAT ingliz tilini o'rganayotgan o'zbek foydalanuvchilarga yordam berish:
+const SYSTEM_INSTRUCTION = `Siz Vocably — ingliz tili o'rganish platformasidagi yordamchisiz. Sizning vazifangiz FAQAT ingliz tilini o'rganayotgan o'zbek foydalanuvchilarga yordam berish:
 - ingliz tili grammatikasi, qoidalari va mashqlari bo'yicha tushuntirish berish;
 - inglizcha so'z yoki iboralarni o'zbek tiliga (yoki aksincha) tarjima qilish;
 - sinonimlar, antonimlar va so'z qo'llanilishi bo'yicha misollar keltirish;

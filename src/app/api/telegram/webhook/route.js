@@ -38,7 +38,7 @@ export async function POST(req) {
       if (!sessionToken) {
         await sendMessage(
           chatId,
-          "Assalomu alaykum! 👋\n\nBu bot <b>Sinonimlar AI</b> platformasida ro'yxatdan o'tish va parolni tiklash uchun telefon raqamingizni tasdiqlaydi.\n\nIltimos, saytdagi tegishli tugma orqali qayta o'ting."
+          "Assalomu alaykum! 👋\n\nBu bot <b>Vocably</b> platformasida ro'yxatdan o'tish va parolni tiklash uchun telefon raqamingizni tasdiqlaydi.\n\nIltimos, saytdagi tegishli tugma orqali qayta o'ting."
         );
         return NextResponse.json({ ok: true });
       }

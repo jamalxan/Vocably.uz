@@ -233,9 +233,9 @@ export default function AuthPage() {
             <BookOpen size={26} />
           </div>
           <h1 className="font-display text-2xl font-extrabold text-white tracking-tight">
-            Sinonimlar <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">AI</span>
+            Voc<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">ably</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Shaxsiy ingliz tili lug'ati platformasi</p>
+          <p className="text-xs text-slate-400 mt-1">Ingliz tili yordamchisi</p>
         </div>
 
         {/* Karta */}
