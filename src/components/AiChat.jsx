@@ -106,9 +106,19 @@ export default function AiChat() {
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
+
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
-    el.style.overflowY = el.scrollHeight > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
+
+    // Dashboard barcha bo'limlarni bir vaqtda render qiladi va ko'rinmaydiganini `hidden`
+    // (display:none) qilib qo'yadi. Bunday elementda scrollHeight = 0 bo'ladi — o'shanda
+    // balandlikni hisoblamaymiz, aks holda textarea 0px bo'lib qolib matn kesilib ketadi.
+    if (!el.scrollHeight) return;
+
+    // box-sizing: border-box, scrollHeight esa ramkani hisobga olmaydi — qo'shib qo'yamiz.
+    const border = el.offsetHeight - el.clientHeight;
+    const needed = el.scrollHeight + border;
+    el.style.height = `${Math.min(needed, MAX_TEXTAREA_HEIGHT)}px`;
+    el.style.overflowY = needed > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
   }, [chatInput]);
 
   useEffect(() => {
