@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { normalizeRole } from '@/lib/chatRoles';
 import { NextResponse } from 'next/server';
 
 export async function GET(req, { params }) {
@@ -19,12 +20,16 @@ export async function GET(req, { params }) {
       session: {
         id: String(session._id),
         title: session.title,
-        messages: session.messages.map((m) => ({
-          role: m.role,
-          parts: m.parts,
-          imageUrl: m.imageUrl || null,
-          timestamp: m.timestamp,
-        })),
+        // Eski yozuvlarda roli 'function'/'assistant' bo'lishi mumkin — normallashtiramiz,
+        // tanib bo'lmaganini esa ko'rsatmaymiz.
+        messages: session.messages
+          .map((m) => ({
+            role: normalizeRole(m.role),
+            parts: m.parts,
+            imageUrl: m.imageUrl || null,
+            timestamp: m.timestamp,
+          }))
+          .filter((m) => !!m.role),
       },
     });
   } catch (err) {

@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getGeminiClient, parseDataUrl } from '@/lib/gemini';
+import { buildGeminiHistory } from '@/lib/chatRoles';
 import { NextResponse } from 'next/server';
 
 const SYSTEM_INSTRUCTION = `Siz "Sinonimlar AI" ilovasidagi yordamchi botsiz. Sizning vazifangiz FAQAT ingliz tilini o'rganayotgan o'zbek foydalanuvchilarga yordam berish:
@@ -69,6 +70,19 @@ const TOOLS = [
 ];
 
 const MAX_FUNCTION_ITERATIONS = 5;
+
+// Gemini xatoliklarini foydalanuvchi tushunadigan matnga aylantiradi. Bepul tarifda
+// gemini-3.6-flash uchun daqiqasiga atigi 5 ta so'rov ruxsat etilgan — 429 tez-tez uchraydi.
+function friendlyError(err) {
+  const msg = err?.message || 'Nomalum xatolik';
+  if (err?.status === 429 || /quota|rate limit|429/i.test(msg)) {
+    return "So'rovlar chegarasi to'lib qoldi (Gemini bepul tarifida daqiqasiga 5 ta so'rov). Bir daqiqadan keyin qayta urinib ko'ring.";
+  }
+  if (err?.status === 503 || /overloaded|unavailable/i.test(msg)) {
+    return 'AI xizmati hozir band. Bir necha soniyadan keyin qayta urinib ko\'ring.';
+  }
+  return `Xatolik: ${msg}`;
+}
 const PENDING_MARK_START = '\n[[PENDING_ADD_WORDS]]';
 const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]\n';
 
@@ -93,13 +107,9 @@ export async function POST(req) {
     }
     const isNewConversation = session.messages.length === 0;
 
-    // Tarixni qayta tuzishda rasmlarni qayta yubormaymiz (og'irligi katta) — o'rniga matnli belgi qoldiramiz.
-    const history = session.messages.map((m) => ({
-      role: m.role,
-      parts: m.imageUrl
-        ? [{ text: `${m.parts[0]?.text || ''} [rasm yuborilgan edi]`.trim() }]
-        : m.parts.map((p) => ({ text: p.text })),
-    }));
+    // Eski sessiyalarda roli 'function'/'assistant' bo'lgan buzuq yozuvlar bo'lishi mumkin —
+    // buildGeminiHistory ularni normallashtiradi yoki tashlab ketadi.
+    const history = buildGeminiHistory(session.messages);
 
     const userParts = [];
     if (message && message.trim()) userParts.push({ text: message });
@@ -122,7 +132,12 @@ export async function POST(req) {
       systemInstruction: SYSTEM_INSTRUCTION,
       tools: TOOLS,
     });
-    const chat = model.startChat({ history });
+
+    // MUHIM: SDK ning `startChat`/`sendMessage` oqimidan foydalanmaymiz — u functionResponse
+    // qismlariga avtomatik `role: "function"` qo'yadi, Gemini 3.x esa bu rolni rad etadi
+    // ("[400] Role 'function' is not supported"). Shuning uchun `contents` ni o'zimiz boshqaramiz
+    // va funksiya natijasini `role: "user"` bilan qaytaramiz.
+    const contents = [...history, { role: 'user', parts: userParts }];
 
     const encoder = new TextEncoder();
 
@@ -132,12 +147,19 @@ export async function POST(req) {
         let pendingAction = null;
 
         try {
-          let currentParts = userParts;
-
           for (let i = 0; i < MAX_FUNCTION_ITERATIONS; i++) {
-            const result = await chat.sendMessageStream(currentParts);
+            const result = await model.generateContentStream({ contents });
+
+            // Modelning shu navbatdagi qismlarini XOM chunk'lardan yig'amiz. SDK ning yig'ma
+            // javobi (`result.response`) `thoughtSignature` maydonini tashlab yuboradi, Gemini 3.x
+            // esa functionCall qismini qaytarganda uni talab qiladi
+            // ("Function call is missing a thought_signature").
+            const modelParts = [];
 
             for await (const chunk of result.stream) {
+              for (const part of chunk.candidates?.[0]?.content?.parts || []) {
+                if (part.text || part.functionCall || part.thoughtSignature) modelParts.push(part);
+              }
               const t = chunk.text();
               if (t) {
                 assistantText += t;
@@ -148,6 +170,10 @@ export async function POST(req) {
             const finalResp = await result.response;
             const calls = finalResp.functionCalls() || [];
             if (calls.length === 0) break;
+
+            // Funksiya chaqiruvli navbatni tarixga qo'shamiz — aks holda keyingi so'rovda
+            // functionResponse nimaga javob ekani yo'qoladi.
+            if (modelParts.length > 0) contents.push({ role: 'model', parts: modelParts });
 
             const responseParts = [];
             let shouldStop = false;
@@ -192,21 +218,29 @@ export async function POST(req) {
             }
 
             if (shouldStop) break;
-            currentParts = responseParts;
+            // Gemini 3.x: funksiya natijasi 'user' roli bilan yuboriladi, 'function' emas.
+            contents.push({ role: 'user', parts: responseParts });
           }
 
           if (pendingAction) {
             controller.enqueue(encoder.encode(`${PENDING_MARK_START}${JSON.stringify(pendingAction)}${PENDING_MARK_END}`));
           }
 
-          session.messages.push({ role: 'model', parts: [{ text: assistantText }] });
+          // Model faqat funksiya chaqirib, matn yozmagan bo'lishi mumkin — bo'sh `text` sxemadagi
+          // `required` ni buzadi, shuning uchun o'rniga qisqa o'rinbosar matn saqlaymiz.
+          const storedText = assistantText.trim()
+            ? assistantText
+            : pendingAction
+              ? "So'zlarni qo'shishni tasdiqlashingizni kutmoqdaman."
+              : '(javob bo\'sh)';
+          session.messages.push({ role: 'model', parts: [{ text: storedText }] });
           session.updatedAt = new Date();
           if (isNewConversation && message && message.trim()) {
             session.title = message.trim().slice(0, 40);
           }
           await user.save();
         } catch (err) {
-          controller.enqueue(encoder.encode(`\n⚠️ Xatolik: ${err.message}`));
+          controller.enqueue(encoder.encode(`\n⚠️ ${friendlyError(err)}`));
         } finally {
           controller.close();
         }

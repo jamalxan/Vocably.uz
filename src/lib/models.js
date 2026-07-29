@@ -1,4 +1,14 @@
 import mongoose from 'mongoose';
+import { normalizeRole } from './chatRoles';
+
+// Rolni yozishdan oldin normallashtiramiz: 'function'/'tool' -> 'user', 'assistant' -> 'model'.
+// Shu tufayli bazaga Gemini qabul qilmaydigan rol tushib qolmaydi.
+const roleField = {
+  type: String,
+  enum: ['user', 'model'],
+  required: true,
+  set: (v) => normalizeRole(v) || v,
+};
 
 const WordStatsSchema = new mongoose.Schema(
   {
@@ -24,7 +34,7 @@ const CategorySchema = new mongoose.Schema({
 
 const ChatMessageSchema = new mongoose.Schema(
   {
-    role: { type: String, enum: ['user', 'model'], required: true },
+    role: roleField,
     parts: [{ text: { type: String, required: true } }],
     timestamp: { type: Date, default: Date.now },
   },
@@ -33,7 +43,7 @@ const ChatMessageSchema = new mongoose.Schema(
 
 const ChatSessionMessageSchema = new mongoose.Schema(
   {
-    role: { type: String, enum: ['user', 'model'], required: true },
+    role: roleField,
     parts: [{ text: { type: String, required: true } }],
     imageUrl: { type: String, default: null },
     timestamp: { type: Date, default: Date.now },
