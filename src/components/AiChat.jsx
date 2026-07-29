@@ -11,6 +11,8 @@ const RECOGNITION_LANGS = [
   { code: 'ru-RU', label: 'RU' },
 ];
 const SILENCE_MS = 1500;
+// Textarea 1 qatordan boshlanadi va ~6 qatorgacha o'sadi, keyin ichida scroll paydo bo'ladi.
+const MAX_TEXTAREA_HEIGHT = 142;
 
 const ASSISTANT_MODES = [
   { key: 'writing', label: '✍️ Writing', text: 'Writing mashqini boshlaylik' },
@@ -62,6 +64,7 @@ export default function AiChat() {
   const scrollContainerRef = useRef(null);
   const stickToBottomRef = useRef(true);
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
   const liveModeRef = useRef(false);
   const silenceTimerRef = useRef(null);
@@ -74,6 +77,16 @@ export default function AiChat() {
   useEffect(() => {
     liveModeRef.current = liveMode;
   }, [liveMode]);
+
+  // Matn o'zgarganda textarea balandligini moslaymiz; xabar yuborilib input tozalangach
+  // balandlik o'z-o'zidan 1 qatorga qaytadi.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+    el.style.overflowY = el.scrollHeight > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
+  }, [chatInput]);
 
   useEffect(() => {
     return () => {
@@ -388,6 +401,20 @@ export default function AiChat() {
     handleSendRef.current = handleSend;
   });
 
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    handleSend();
+  };
+
+  // Enter — yuborish, Shift+Enter — yangi qator.
+  // IME (koreys/xitoy/yapon klaviaturasi) kompozitsiyasi paytida Enter xabarni yubormasligi kerak.
+  const handleTextareaKeyDown = (e) => {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    handleSend();
+  };
+
   const isEmpty = messages.length === 0 && !sessionLoading;
   const lastMsg = messages[messages.length - 1];
   const isTyping = chatLoading && lastMsg?.role === 'model' && !lastMsg.parts[0].text;
@@ -558,7 +585,7 @@ export default function AiChat() {
               </button>
             </div>
           )}
-          <div className="flex gap-2 items-end">
+          <form onSubmit={handleFormSubmit} className="flex gap-2 items-end">
             <input
               type="file"
               accept="image/*"
@@ -567,6 +594,7 @@ export default function AiChat() {
               onChange={handleFileInputChange}
             />
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors flex-shrink-0"
               title="Rasm biriktirish"
@@ -575,6 +603,7 @@ export default function AiChat() {
             </button>
             {voiceSupported && (
               <button
+                type="button"
                 onClick={toggleMic}
                 disabled={liveMode}
                 className={`p-2.5 rounded-xl transition-colors flex-shrink-0 disabled:opacity-30 ${
@@ -587,25 +616,24 @@ export default function AiChat() {
                 <Mic size={18} />
               </button>
             )}
-            <input
-              type="text"
-              placeholder="Xabaringizni yozing yoki rasm joylashtiring (Ctrl+V)..."
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              placeholder="Xabaringizni yozing... (Shift+Enter — yangi qator)"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onPaste={handlePaste}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSend();
-              }}
-              className="flex-1 min-w-0 px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500"
+              onKeyDown={handleTextareaKeyDown}
+              className="flex-1 min-w-0 px-4 py-2.5 border border-slate-200 rounded-xl text-sm leading-5 outline-none focus:border-indigo-500 resize-none"
             />
             <button
-              onClick={handleSend}
+              type="submit"
               disabled={chatLoading || (!chatInput.trim() && !attachedImage)}
               className="px-4 sm:px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
             >
               <Send size={16} />
             </button>
-          </div>
+          </form>
         </div>
       </div>
     </div>
