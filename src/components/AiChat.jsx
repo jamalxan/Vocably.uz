@@ -4,11 +4,15 @@ import { Sparkles, Loader2, Paperclip, X, Send, Mic, Radio, Volume2, VolumeX } f
 import { useApp } from '@/context/AppContext';
 import ChatMessage from './chat/ChatMessage';
 
+// Bu til FAQAT mikrofon (SpeechRecognition) uchun — matn yozishga ta'sir qilmaydi,
+// shuning uchun tanlagich faqat mikrofon yoki Live rejim yoqilganda ko'rsatiladi.
 const RECOGNITION_LANGS = [
-  { code: 'en-US', label: 'EN' },
-  { code: 'uz-UZ', label: "UZ" },
-  { code: 'ru-RU', label: 'RU' },
+  { code: 'en-US', label: 'EN', name: 'Ingliz tili' },
+  { code: 'uz-UZ', label: 'UZ', name: "O'zbek tili" },
+  { code: 'ru-RU', label: 'RU', name: 'Rus tili' },
 ];
+const DEFAULT_RECOGNITION_LANG = 'en-US';
+const RECOGNITION_LANG_KEY = 'vocably.recognitionLang';
 const SILENCE_MS = 1500;
 // Textarea 1 qatordan boshlanadi va ~6 qatorgacha o'sadi, keyin ichida scroll paydo bo'ladi.
 const MAX_TEXTAREA_HEIGHT = 142;
@@ -57,7 +61,8 @@ export default function AiChat() {
   const [attachedImage, setAttachedImage] = useState(null);
 
   const [voiceSupported, setVoiceSupported] = useState(false);
-  const [recognitionLang, setRecognitionLang] = useState('en-US');
+  const [recognitionLang, setRecognitionLang] = useState(DEFAULT_RECOGNITION_LANG);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [micListening, setMicListening] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
   const [liveListening, setLiveListening] = useState(false);
@@ -70,6 +75,7 @@ export default function AiChat() {
   const stickToBottomRef = useRef(true);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const langMenuRef = useRef(null);
   const recognitionRef = useRef(null);
   const liveModeRef = useRef(false);
   const silenceTimerRef = useRef(null);
@@ -77,7 +83,19 @@ export default function AiChat() {
 
   useEffect(() => {
     setVoiceSupported(typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition));
+    const saved = localStorage.getItem(RECOGNITION_LANG_KEY);
+    if (saved && RECOGNITION_LANGS.some((l) => l.code === saved)) setRecognitionLang(saved);
   }, []);
+
+  // Til tanlagichi tashqariga bosilganda yopilsin.
+  useEffect(() => {
+    if (!langMenuOpen) return;
+    const onDocClick = (e) => {
+      if (!langMenuRef.current?.contains(e.target)) setLangMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [langMenuOpen]);
 
   useEffect(() => {
     liveModeRef.current = liveMode;
@@ -265,6 +283,18 @@ export default function AiChat() {
       liveModeRef.current = true;
       startLiveListening();
     }
+  };
+
+  const activeLang =
+    RECOGNITION_LANGS.find((l) => l.code === recognitionLang) || RECOGNITION_LANGS[0];
+
+  // Tanlangan til localStorage'da saqlanadi, keyingi safar eslab qolinadi.
+  const changeRecognitionLang = (code) => {
+    setRecognitionLang(code);
+    localStorage.setItem(RECOGNITION_LANG_KEY, code);
+    setLangMenuOpen(false);
+    // Tinglash davom etayotgan bo'lsa to'xtatamiz — yangi til keyingi ishga tushishda qo'llanadi.
+    if (micListening || liveListening) recognitionRef.current?.stop();
   };
 
   const toggleMic = () => {
@@ -469,20 +499,6 @@ export default function AiChat() {
         <div className="p-3 sm:p-4 border-t border-slate-100">
           {voiceSupported ? (
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
-                {RECOGNITION_LANGS.map((l) => (
-                  <button
-                    key={l.code}
-                    onClick={() => setRecognitionLang(l.code)}
-                    className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${
-                      recognitionLang === l.code ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-
               <button
                 onClick={toggleLiveMode}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors ${
@@ -554,19 +570,56 @@ export default function AiChat() {
               <Paperclip size={18} />
             </button>
             {voiceSupported && (
-              <button
-                type="button"
-                onClick={toggleMic}
-                disabled={liveMode}
-                className={`p-2.5 rounded-xl transition-colors flex-shrink-0 disabled:opacity-30 ${
-                  micListening
-                    ? 'text-red-500 bg-red-50 animate-pulse'
-                    : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
-                }`}
-                title="Ovozli kiritish"
-              >
-                <Mic size={18} />
-              </button>
+              <div ref={langMenuRef} className="relative flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={toggleMic}
+                  disabled={liveMode}
+                  className={`p-2.5 rounded-xl transition-colors disabled:opacity-30 ${
+                    micListening
+                      ? 'text-red-500 bg-red-50 animate-pulse'
+                      : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
+                  }`}
+                  title="Ovozli kiritish"
+                >
+                  <Mic size={18} />
+                </button>
+
+                {/* Nutq tili faqat mikrofon yoki Live rejim yoqilganda ko'rinadi */}
+                {(micListening || liveMode) && (
+                  <button
+                    type="button"
+                    onClick={() => setLangMenuOpen((v) => !v)}
+                    className="absolute -top-1 -right-1 px-1 py-px rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] font-bold leading-tight shadow"
+                    title="Mikrofon tili"
+                  >
+                    {activeLang.label}
+                  </button>
+                )}
+
+                {langMenuOpen && (
+                  <div className="absolute bottom-full mb-2 left-0 z-30 w-40 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                    <p className="px-3 py-1.5 text-[9px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50">
+                      Mikrofon tili
+                    </p>
+                    {RECOGNITION_LANGS.map((l) => (
+                      <button
+                        key={l.code}
+                        type="button"
+                        onClick={() => changeRecognitionLang(l.code)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                          recognitionLang === l.code
+                            ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                            : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="w-6 font-bold">{l.label}</span>
+                        <span className="text-[11px] text-slate-400">{l.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             <textarea
               ref={textareaRef}
