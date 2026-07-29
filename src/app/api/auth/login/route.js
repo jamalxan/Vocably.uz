@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { normalizePhone } from '@/lib/phone';
+import { serverError } from '@/lib/apiError';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
@@ -32,6 +33,6 @@ export async function POST(req) {
 
     return NextResponse.json({ token, name: user.name, phone: user.phone });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'auth/login');
   }
 }

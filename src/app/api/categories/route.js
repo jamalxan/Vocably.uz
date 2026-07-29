@@ -1,13 +1,15 @@
 import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const { name } = await req.json();
     if (!name || !name.trim()) {
@@ -23,15 +25,16 @@ export async function POST(req) {
 
     return NextResponse.json({ success: true, category: created });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'categories');
   }
 }
 
 export async function PATCH(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const { categoryId, name } = await req.json();
     if (!categoryId || !name || !name.trim()) {
@@ -49,15 +52,16 @@ export async function PATCH(req) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'categories');
   }
 }
 
 export async function DELETE(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const { categoryId } = await req.json();
     if (!categoryId) {
@@ -79,6 +83,6 @@ export async function DELETE(req) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'categories');
   }
 }

@@ -1,5 +1,6 @@
 import { connectToDatabase } from '@/lib/db';
 import { OtpSession } from '@/lib/models';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -17,6 +18,6 @@ export async function GET(req) {
 
     return NextResponse.json({ status: session.status });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'auth/session-status');
   }
 }

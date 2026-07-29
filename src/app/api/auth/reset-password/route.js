@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { User, OtpSession } from '@/lib/models';
 import bcrypt from 'bcryptjs';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
@@ -26,6 +27,6 @@ export async function POST(req) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'auth/reset-password');
   }
 }

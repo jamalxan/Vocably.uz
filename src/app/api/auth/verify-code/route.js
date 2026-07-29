@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { User, OtpSession } from '@/lib/models';
 import jwt from 'jsonwebtoken';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
@@ -76,6 +77,6 @@ export async function POST(req) {
 
     return NextResponse.json({ error: 'Noma\'lum so\'rov turi' }, { status: 400 });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'auth/verify-code');
   }
 }

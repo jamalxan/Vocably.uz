@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 // SM-2'ning soddalashtirilgan varianti: level (0-5) bo'yicha keyingi ko'rib chiqish oralig'i.
@@ -14,9 +15,10 @@ function todayStr() {
 
 export async function PATCH(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const { categoryId, wordId, correct } = await req.json();
     if (!categoryId || !wordId || typeof correct !== 'boolean') {
@@ -61,6 +63,6 @@ export async function PATCH(req) {
       reviewStreak: user.reviewStreak,
     });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'words/review');
   }
 }

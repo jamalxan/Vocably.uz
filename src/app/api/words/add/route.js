@@ -1,13 +1,15 @@
 import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const { categoryId, words } = await req.json();
     if (!categoryId || !Array.isArray(words) || words.length === 0) {
@@ -37,6 +39,6 @@ export async function POST(req) {
 
     return NextResponse.json({ success: true, added: cleanWords.length });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'words/add');
   }
 }

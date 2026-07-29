@@ -1,4 +1,5 @@
 import { setWebhook } from '@/lib/telegram';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 // Bir martalik sozlash: Telegram'ga "har bir yangilanishni shu manzilga yubor" deb aytadi.
@@ -18,6 +19,6 @@ export async function GET(req) {
 
     return NextResponse.json({ success: true, webhookUrl, result });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'telegram/setup');
   }
 }

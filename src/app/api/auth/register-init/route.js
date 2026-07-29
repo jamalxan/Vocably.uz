@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { User, OtpSession } from '@/lib/models';
 import { normalizePhone } from '@/lib/phone';
+import { serverError } from '@/lib/apiError';
 import { generateSessionToken } from '@/lib/otp';
 import { getTelegramDeepLink, getBotUsername } from '@/lib/telegram';
 import bcrypt from 'bcryptjs';
@@ -48,6 +49,6 @@ export async function POST(req) {
       botUsername: getBotUsername(),
     });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'auth/register-init');
   }
 }

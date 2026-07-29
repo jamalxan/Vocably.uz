@@ -3,6 +3,7 @@ import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getGeminiClient, parseDataUrl } from '@/lib/gemini';
 import { buildGeminiHistory } from '@/lib/chatRoles';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 const SYSTEM_INSTRUCTION = `Siz Vocably — ingliz tili o'rganish platformasidagi yordamchisiz. Sizning vazifangiz FAQAT ingliz tilini o'rganayotgan o'zbek foydalanuvchilarga yordam berish:
@@ -88,9 +89,10 @@ const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]\n';
 
 export async function POST(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const { sessionId, message, imageBase64 } = await req.json();
     if ((!message || !message.trim()) && !imageBase64) {
@@ -254,6 +256,6 @@ export async function POST(req) {
       },
     });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'ai/chat');
   }
 }

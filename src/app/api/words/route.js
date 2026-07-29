@@ -2,13 +2,15 @@ import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { migrateChatHistoryIfNeeded } from '@/lib/chatMigration';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Sessiya muddati tugagan, qayta kiring" }, { status: 401 });
+
+    await connectToDatabase();
 
     const user = await User.findById(userId).select('-password');
     if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
@@ -23,15 +25,16 @@ export async function GET(req) {
       lastReviewDate: user.lastReviewDate || null,
     });
   } catch (err) {
-    return NextResponse.json({ error: err.message || "Server xatoligi" }, { status: 500 });
+    return serverError(err, 'words');
   }
 }
 
 export async function POST(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const { categories } = await req.json();
     if (!Array.isArray(categories)) {
@@ -41,15 +44,16 @@ export async function POST(req) {
     await User.findByIdAndUpdate(userId, { categories });
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: err.message || "Server xatoligi" }, { status: 500 });
+    return serverError(err, 'words');
   }
 }
 
 export async function DELETE(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const { categoryId, wordIds } = await req.json();
     if (!categoryId || !Array.isArray(wordIds) || wordIds.length === 0) {
@@ -67,6 +71,6 @@ export async function DELETE(req) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: err.message || "Server xatoligi" }, { status: 500 });
+    return serverError(err, 'words');
   }
 }

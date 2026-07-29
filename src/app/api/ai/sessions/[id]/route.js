@@ -2,13 +2,15 @@ import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { normalizeRole } from '@/lib/chatRoles';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 export async function GET(req, { params }) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const user = await User.findById(userId).select('chatSessions');
     if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
@@ -33,15 +35,16 @@ export async function GET(req, { params }) {
       },
     });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'ai/sessions/[id]');
   }
 }
 
 export async function PATCH(req, { params }) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const { title } = await req.json();
     if (!title || !title.trim()) {
@@ -56,15 +59,16 @@ export async function PATCH(req, { params }) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'ai/sessions/[id]');
   }
 }
 
 export async function DELETE(req, { params }) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const user = await User.findById(userId);
     if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
@@ -77,6 +81,6 @@ export async function DELETE(req, { params }) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'ai/sessions/[id]');
   }
 }

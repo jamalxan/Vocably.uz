@@ -1,13 +1,15 @@
 import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const user = await User.findById(userId).select('chatSessions');
     if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
@@ -23,16 +25,17 @@ export async function GET(req) {
 
     return NextResponse.json({ sessions });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'ai/sessions');
   }
 }
 
 // Barcha suhbatlarni o'chirish (foydalanuvchi interfeysida ikki bosqichli tasdiq bilan himoyalangan).
 export async function DELETE(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const result = await User.updateOne({ _id: userId }, { $set: { chatSessions: [] } });
     if (result.matchedCount === 0) {
@@ -41,15 +44,16 @@ export async function DELETE(req) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'ai/sessions');
   }
 }
 
 export async function POST(req) {
   try {
-    await connectToDatabase();
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+
+    await connectToDatabase();
 
     const user = await User.findById(userId);
     if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
@@ -62,6 +66,6 @@ export async function POST(req) {
       session: { id: String(created._id), title: created.title, updatedAt: created.updatedAt, messageCount: 0 },
     });
   } catch (err) {
-    return NextResponse.json({ error: err.message || 'Server xatoligi' }, { status: 500 });
+    return serverError(err, 'ai/sessions');
   }
 }
