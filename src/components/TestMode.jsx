@@ -88,7 +88,9 @@ export default function TestMode() {
           })}
         </div>
         {selected && (
+          // autoFocus — javob tanlangach Enter darrov keyingi savolga o'tkazadi
           <button
+            autoFocus
             onClick={nextQuestion}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >

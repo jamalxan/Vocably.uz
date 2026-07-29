@@ -34,7 +34,8 @@ export default function WordTable() {
 
   useEffect(() => () => clearTimeout(undoTimerRef.current), []);
 
-  const onAddWord = () => {
+  const onAddWord = (e) => {
+    e?.preventDefault();
     handleAddWord(newWord, newSyns);
     setNewWord('');
     setNewSyns('');
@@ -85,7 +86,10 @@ export default function WordTable() {
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      <div className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-end">
+      <form
+        onSubmit={onAddWord}
+        className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-end"
+      >
         <div className="flex-1 w-full">
           <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Yangi so'z</label>
           <input
@@ -93,9 +97,6 @@ export default function WordTable() {
             placeholder="Masalan: Start"
             value={newWord}
             onChange={(e) => setNewWord(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') onAddWord();
-            }}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500"
           />
         </div>
@@ -108,30 +109,28 @@ export default function WordTable() {
             placeholder="Masalan: begin, commence, launch"
             value={newSyns}
             onChange={(e) => setNewSyns(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') onAddWord();
-            }}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500"
           />
         </div>
         <button
-          onClick={onAddWord}
+          type="submit"
           className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-sm transition-colors whitespace-nowrap"
         >
           Qo'shish
         </button>
-      </div>
+      </form>
 
-      <div className="relative">
+      {/* Qidiruv jonli filtrlaydi — Enter bosilganda sahifa yangilanib ketmasligi kerak. */}
+      <form onSubmit={(e) => e.preventDefault()} className="relative">
         <Search className="absolute left-3 top-3 text-slate-400" size={16} />
         <input
-          type="text"
+          type="search"
           placeholder="So'z yoki tarjimalar bo'yicha qidirish..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm outline-none focus:border-indigo-500"
         />
-      </div>
+      </form>
 
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm">

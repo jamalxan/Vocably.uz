@@ -41,7 +41,9 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
   const [newCatName, setNewCatName] = useState('');
   const [showAddCat, setShowAddCat] = useState(false);
 
-  const onAddCategory = () => {
+  const onAddCategory = (e) => {
+    e?.preventDefault();
+    if (!newCatName.trim()) return;
     handleAddCategory(newCatName);
     setNewCatName('');
     setShowAddCat(false);
@@ -105,7 +107,7 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                 <Plus size={13} /> Yangi kategoriya
               </button>
             ) : (
-              <div className="flex gap-2 mt-2">
+              <form onSubmit={onAddCategory} className="flex gap-2 mt-2">
                 <input
                   type="text"
                   autoFocus
@@ -113,18 +115,18 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') onAddCategory();
                     if (e.key === 'Escape') setShowAddCat(false);
                   }}
-                  className="flex-1 px-2.5 py-1.5 bg-slate-800/50 border border-slate-700 rounded text-xs outline-none focus:border-indigo-500"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 bg-slate-800/50 border border-slate-700 rounded text-xs outline-none focus:border-indigo-500"
                 />
                 <button
-                  onClick={onAddCategory}
+                  type="submit"
                   className="p-1.5 bg-indigo-600 hover:bg-indigo-700 rounded text-white transition-colors"
                 >
                   <Plus size={14} />
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowAddCat(false);
                     setNewCatName('');
@@ -133,7 +135,7 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                 >
                   <X size={14} />
                 </button>
-              </div>
+              </form>
             )}
           </div>
 

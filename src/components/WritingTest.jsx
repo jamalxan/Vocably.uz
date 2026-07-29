@@ -20,7 +20,8 @@ export default function WritingTest() {
     setWriteActive(false);
   }, [activeCatIndex, writeResetNonce]);
 
-  const startWriteTest = () => {
+  const startWriteTest = (e) => {
+    e?.preventDefault();
     const words = activeCategory.words || [];
     if (words.length === 0) return alert("Avval so'z qo'shing");
 
@@ -53,6 +54,13 @@ export default function WritingTest() {
     setWriteChecked(true);
   };
 
+  // Enter (yoki tugma) bir xil ishlaydi: avval tekshiradi, keyin keyingi so'zga o'tadi.
+  const handleAnswerSubmit = (e) => {
+    e.preventDefault();
+    if (!writeChecked) checkWriteAnswer();
+    else nextWriteQuestion();
+  };
+
   const nextWriteQuestion = () => {
     if (writeCurIdx + 1 < writeWords.length) {
       const nextIdx = writeCurIdx + 1;
@@ -68,7 +76,10 @@ export default function WritingTest() {
   return (
     <div className="flex flex-col items-center">
       {!writeActive ? (
-        <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
+        <form
+          onSubmit={startWriteTest}
+          className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm"
+        >
           <h3 className="font-bold text-slate-800 mb-4 font-display">So'zlarni yozib sinash oraliqlari</h3>
           <div className="space-y-3 mb-6">
             <div className="flex items-center gap-4">
@@ -93,14 +104,17 @@ export default function WritingTest() {
             </div>
           </div>
           <button
-            onClick={startWriteTest}
+            type="submit"
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
           >
             Testni boshlash
           </button>
-        </div>
+        </form>
       ) : (
-        <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
+        <form
+          onSubmit={handleAnswerSubmit}
+          className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm"
+        >
           <div className="flex justify-between items-center text-xs text-slate-400 mb-4">
             <span>
               {writeCurIdx + 1} / {writeWords.length}
@@ -113,6 +127,7 @@ export default function WritingTest() {
               {writeWords[writeCurIdx]?.word}
             </span>
             <button
+              type="button"
               onClick={() => speakText(writeWords[writeCurIdx]?.word)}
               className="p-1.5 bg-indigo-50 hover:bg-indigo-100 rounded text-indigo-600 transition-colors flex-shrink-0"
             >
@@ -155,20 +170,21 @@ export default function WritingTest() {
 
           {!writeChecked ? (
             <button
-              onClick={checkWriteAnswer}
+              type="submit"
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
             >
               Tekshirish
             </button>
           ) : (
             <button
-              onClick={nextWriteQuestion}
+              type="submit"
+              autoFocus
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
             >
               Keyingi savol →
             </button>
           )}
-        </div>
+        </form>
       )}
     </div>
   );

@@ -60,9 +60,16 @@ export default function ListeningMode() {
   }
   if (!current) return null;
 
+  // Enter (yoki tugma) bir xil ishlaydi: avval tekshiradi, keyin keyingi so'zga o'tadi.
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!checked) check();
+    else next();
+  };
+
   return (
     <div className="flex flex-col items-center">
-      <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-slate-400 mb-4">
           <span>
             {idx + 1} / {queue.length}
@@ -72,6 +79,7 @@ export default function ListeningMode() {
 
         <div className="flex flex-col items-center mb-6">
           <button
+            type="button"
             onClick={() => speakText(current.word)}
             className="w-16 h-16 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center transition-colors"
             title="Qayta eshitish"
@@ -86,9 +94,6 @@ export default function ListeningMode() {
           disabled={checked}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !checked) check();
-          }}
           placeholder="Eshitgan so'zingizni yozing..."
           className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none mb-4 ${
             checked
@@ -107,20 +112,21 @@ export default function ListeningMode() {
 
         {!checked ? (
           <button
-            onClick={check}
+            type="submit"
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
             Tekshirish
           </button>
         ) : (
           <button
-            onClick={next}
+            type="submit"
+            autoFocus
             className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
             Keyingi →
           </button>
         )}
-      </div>
+      </form>
     </div>
   );
 }
