@@ -45,7 +45,10 @@ const ChatSessionMessageSchema = new mongoose.Schema(
   {
     role: roleField,
     parts: [{ text: { type: String, required: true } }],
+    // Eski yozuvlarda bitta rasm shu maydonda saqlangan (orqaga moslik uchun qoldirilgan).
     imageUrl: { type: String, default: null },
+    // Yangi yozuvlar bir nechta rasmni (10 tagacha) shu yerda saqlaydi.
+    imageUrls: [{ type: String }],
     timestamp: { type: Date, default: Date.now },
   },
   { _id: false }

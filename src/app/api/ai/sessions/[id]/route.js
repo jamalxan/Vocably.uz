@@ -29,6 +29,7 @@ export async function GET(req, { params }) {
             role: normalizeRole(m.role),
             parts: m.parts,
             imageUrl: m.imageUrl || null,
+            imageUrls: m.imageUrls || [],
             timestamp: m.timestamp,
           }))
           .filter((m) => !!m.role),

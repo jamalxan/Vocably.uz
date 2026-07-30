@@ -13,6 +13,9 @@ import {
   ListChecks,
   Headphones,
   ChevronRight,
+  Pencil,
+  Trash2,
+  Check,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import SidebarChatSessions from './chat/SidebarChatSessions';
@@ -38,12 +41,17 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
     displayName,
     logout,
     handleAddCategory,
+    handleRenameCategory,
+    handleDeleteCategory,
     triggerWriteReset,
     triggerMatchReshuffle,
   } = useApp();
 
   const [newCatName, setNewCatName] = useState('');
   const [showAddCat, setShowAddCat] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [editingIdx, setEditingIdx] = useState(null);
+  const [editingName, setEditingName] = useState('');
   // Suhbatlar ro'yxati default yopiq; ochiq/yopiq holati localStorage'da eslab qolinadi.
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -64,6 +72,19 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
     handleAddCategory(newCatName);
     setNewCatName('');
     setShowAddCat(false);
+  };
+
+  const startEditCategory = (idx) => {
+    setEditingIdx(idx);
+    setEditingName(categories[idx]?.name || '');
+  };
+
+  const saveEditCategory = (e) => {
+    e?.preventDefault();
+    if (editingIdx === null) return;
+    handleRenameCategory(editingIdx, editingName);
+    setEditingIdx(null);
+    setEditingName('');
   };
 
   return (
@@ -118,6 +139,66 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                 </option>
               ))}
             </select>
+
+            <button
+              onClick={() => setManageOpen((v) => !v)}
+              className="mt-2 w-full flex items-center justify-between px-2.5 py-1.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <span>Kategoriyalarni boshqarish</span>
+              <ChevronRight size={12} className={`transition-transform ${manageOpen ? 'rotate-90' : ''}`} />
+            </button>
+
+            {manageOpen && (
+              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                {categories.map((c, i) =>
+                  editingIdx === i ? (
+                    <form key={i} onSubmit={saveEditCategory} className="flex gap-1.5">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setEditingIdx(null);
+                        }}
+                        className="flex-1 min-w-0 px-2 py-1 bg-slate-800 border border-indigo-500 rounded text-xs text-slate-100 outline-none"
+                      />
+                      <button type="submit" className="p-1 bg-indigo-600 hover:bg-indigo-700 rounded text-white transition-colors">
+                        <Check size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingIdx(null)}
+                        className="p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-400 transition-colors"
+                      >
+                        <X size={12} />
+                      </button>
+                    </form>
+                  ) : (
+                    <div
+                      key={i}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800/70 group"
+                    >
+                      <span className="flex-1 min-w-0 truncate text-xs text-slate-300">{c.name}</span>
+                      <button
+                        onClick={() => startEditCategory(i)}
+                        title="Tahrirlash"
+                        className="p-1 text-slate-500 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCategory(i)}
+                        title="O'chirish"
+                        className="p-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
 
             {!showAddCat ? (
               <button

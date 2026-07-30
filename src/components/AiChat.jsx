@@ -12,6 +12,7 @@ const RECOGNITION_LANGS = [
   { code: 'ru-RU', label: 'RU', name: 'Rus tili' },
 ];
 const DEFAULT_RECOGNITION_LANG = 'en-US';
+const MAX_ATTACHED_IMAGES = 10;
 const RECOGNITION_LANG_KEY = 'vocably.recognitionLang';
 const SILENCE_MS = 1500;
 // Textarea 1 qatordan boshlanadi va ~6 qatorgacha o'sadi, keyin ichida scroll paydo bo'ladi.
@@ -58,7 +59,7 @@ export default function AiChat() {
 
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [attachedImage, setAttachedImage] = useState(null);
+  const [attachedImages, setAttachedImages] = useState([]);
 
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [recognitionLang, setRecognitionLang] = useState(DEFAULT_RECOGNITION_LANG);
@@ -181,30 +182,37 @@ export default function AiChat() {
       reader.readAsDataURL(file);
     });
 
-  const attachImageFile = async (file) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    const dataUrl = await readFileAsDataUrl(file);
-    setAttachedImage(dataUrl);
+  // Bir nechta faylni qo'shadi, lekin umumiy soni MAX_ATTACHED_IMAGES dan oshmaydi.
+  const attachImageFiles = async (files) => {
+    const imageFiles = Array.from(files || []).filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    const dataUrls = await Promise.all(imageFiles.map(readFileAsDataUrl));
+    setAttachedImages((prev) => {
+      const remaining = MAX_ATTACHED_IMAGES - prev.length;
+      if (remaining <= 0) return prev;
+      return [...prev, ...dataUrls.slice(0, remaining)];
+    });
+  };
+
+  const removeAttachedImage = (idx) => {
+    setAttachedImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleFileInputChange = (e) => {
-    const file = e.target.files[0];
-    if (file) attachImageFile(file);
+    attachImageFiles(e.target.files);
     e.target.value = '';
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file) attachImageFile(file);
+    attachImageFiles(e.dataTransfer.files);
   };
 
   const handlePaste = (e) => {
-    const item = Array.from(e.clipboardData?.items || []).find((it) => it.type.startsWith('image/'));
-    if (item) {
-      const file = item.getAsFile();
-      if (file) attachImageFile(file);
-    }
+    const items = Array.from(e.clipboardData?.items || []).filter((it) => it.type.startsWith('image/'));
+    const files = items.map((it) => it.getAsFile()).filter(Boolean);
+    if (files.length > 0) attachImageFiles(files);
   };
 
   const handleEditMessage = (text) => {
@@ -333,15 +341,19 @@ export default function AiChat() {
 
   const handleSend = async (overrideText) => {
     const text = (overrideText ?? chatInput).trim();
-    if ((!text && !attachedImage) || chatLoading) return;
+    if ((!text && attachedImages.length === 0) || chatLoading) return;
 
-    const userMsg = { role: 'user', parts: [{ text: text || '(rasm yuborildi)' }], imageUrl: attachedImage || null };
+    const userMsg = {
+      role: 'user',
+      parts: [{ text: text || '(rasm yuborildi)' }],
+      imageUrls: attachedImages,
+    };
     const modelPlaceholder = { role: 'model', parts: [{ text: '' }], _streaming: true };
 
     setMessages((prev) => [...prev, userMsg, modelPlaceholder]);
     setChatInput('');
-    const imageToSend = attachedImage;
-    setAttachedImage(null);
+    const imagesToSend = attachedImages;
+    setAttachedImages([]);
     setChatLoading(true);
     stickToBottomRef.current = true;
 
@@ -349,7 +361,7 @@ export default function AiChat() {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ sessionId: currentSessionId, message: text, imageBase64: imageToSend }),
+        body: JSON.stringify({ sessionId: currentSessionId, message: text, imagesBase64: imagesToSend }),
       });
 
       if (!res.ok || !res.body) {
@@ -551,22 +563,30 @@ export default function AiChat() {
               Brauzeringiz ovozli kiritish/chiqishni to'liq qo'llab-quvvatlamaydi — matn rejimida davom eting.
             </p>
           )}
-          {attachedImage && (
-            <div className="relative inline-block mb-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={attachedImage} alt="Yuklanadigan rasm" className="h-16 rounded-lg border border-slate-200" />
-              <button
-                onClick={() => setAttachedImage(null)}
-                className="absolute -top-1.5 -right-1.5 bg-slate-800 text-white rounded-full p-0.5"
-              >
-                <X size={11} />
-              </button>
+          {attachedImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {attachedImages.map((img, i) => (
+                <div key={i} className="relative inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img} alt="Yuklanadigan rasm" className="h-16 rounded-lg border border-slate-200" />
+                  <button
+                    onClick={() => removeAttachedImage(i)}
+                    className="absolute -top-1.5 -right-1.5 bg-slate-800 text-white rounded-full p-0.5"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+              <span className="self-center text-[10px] text-slate-400">
+                {attachedImages.length}/{MAX_ATTACHED_IMAGES}
+              </span>
             </div>
           )}
           <form onSubmit={handleFormSubmit} className="flex gap-2 items-end">
             <input
               type="file"
               accept="image/*"
+              multiple
               ref={fileInputRef}
               className="hidden"
               onChange={handleFileInputChange}
@@ -574,8 +594,9 @@ export default function AiChat() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors flex-shrink-0"
-              title="Rasm biriktirish"
+              disabled={attachedImages.length >= MAX_ATTACHED_IMAGES}
+              className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors flex-shrink-0 disabled:opacity-30"
+              title={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
             >
               <Paperclip size={18} />
             </button>
@@ -643,7 +664,7 @@ export default function AiChat() {
             />
             <button
               type="submit"
-              disabled={chatLoading || (!chatInput.trim() && !attachedImage)}
+              disabled={chatLoading || (!chatInput.trim() && attachedImages.length === 0)}
               className="px-4 sm:px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
             >
               <Send size={16} />

@@ -16,12 +16,19 @@ function buildQuestion(words) {
 }
 
 export default function TestMode() {
-  const { activeCategory, activeCatIndex, reviewWord } = useApp();
-  const words = activeCategory.words || [];
+  const { activeCategory, activeCatIndex, reviewWord, writeResetNonce } = useApp();
 
+  const [range, setRange] = useState({ from: 1, to: 10 });
+  const [active, setActive] = useState(false);
+  const [words, setWords] = useState([]);
   const [question, setQuestion] = useState(null);
   const [selected, setSelected] = useState(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
+
+  // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda oraliq tanlashga qaytamiz.
+  useEffect(() => {
+    setActive(false);
+  }, [activeCatIndex, writeResetNonce]);
 
   const nextQuestion = useCallback(() => {
     if (words.length < 4) {
@@ -33,11 +40,22 @@ export default function TestMode() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words]);
 
-  useEffect(() => {
-    nextQuestion();
+  const startTest = (e) => {
+    e?.preventDefault();
+    const all = activeCategory.words || [];
+    if (all.length === 0) return alert("Avval so'z qo'shing");
+
+    const sliceFrom = Math.max(1, range.from) - 1;
+    const sliceTo = Math.min(all.length, range.to);
+    const selectedWords = all.slice(sliceFrom, sliceTo);
+    if (selectedWords.length < 4) return alert("Test uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+
+    setWords(selectedWords);
+    setQuestion(buildQuestion(selectedWords));
+    setSelected(null);
     setScore({ correct: 0, total: 0 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCatIndex]);
+    setActive(true);
+  };
 
   const choose = (option) => {
     if (selected) return;
@@ -49,9 +67,47 @@ export default function TestMode() {
     }
   };
 
-  if (words.length < 4) {
-    return <p className="text-sm text-slate-400 text-center">Test uchun kamida 4 ta so'z kerak.</p>;
+  if (!active) {
+    return (
+      <div className="flex flex-col items-center">
+        <form
+          onSubmit={startTest}
+          className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm"
+        >
+          <h3 className="font-bold text-slate-800 mb-4 font-display">Test oraliqlari</h3>
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-semibold text-slate-400 w-12">Dan:</span>
+              <input
+                type="number"
+                min={1}
+                value={range.from}
+                onChange={(e) => setRange({ ...range, from: parseInt(e.target.value) || 1 })}
+                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-semibold text-slate-400 w-12">Gacha:</span>
+              <input
+                type="number"
+                min={1}
+                value={range.to}
+                onChange={(e) => setRange({ ...range, to: parseInt(e.target.value) || 1 })}
+                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
+          >
+            Boshlash
+          </button>
+        </form>
+      </div>
+    );
   }
+
   if (!question) return null;
 
   return (
@@ -62,6 +118,9 @@ export default function TestMode() {
           <span>
             To'g'ri: {score.correct}/{score.total}
           </span>
+          <button onClick={() => setActive(false)} className="text-indigo-500 hover:text-indigo-700 font-semibold">
+            Oraliqni o'zgartirish
+          </button>
         </div>
         <p className="text-xl font-bold text-slate-800 font-display mb-6 text-center break-words">
           {question.target.word}

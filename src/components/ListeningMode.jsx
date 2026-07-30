@@ -5,23 +5,21 @@ import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
 
 export default function ListeningMode() {
-  const { activeCategory, activeCatIndex, reviewWord } = useApp();
-  const words = activeCategory.words || [];
+  const { activeCategory, activeCatIndex, reviewWord, writeResetNonce } = useApp();
 
+  const [range, setRange] = useState({ from: 1, to: 10 });
+  const [active, setActive] = useState(false);
+  const [words, setWords] = useState([]);
   const [queue, setQueue] = useState([]);
   const [idx, setIdx] = useState(0);
   const [input, setInput] = useState('');
   const [checked, setChecked] = useState(false);
   const [score, setScore] = useState(0);
 
+  // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda oraliq tanlashga qaytamiz.
   useEffect(() => {
-    setQueue([...words].sort(() => Math.random() - 0.5));
-    setIdx(0);
-    setInput('');
-    setChecked(false);
-    setScore(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCatIndex]);
+    setActive(false);
+  }, [activeCatIndex, writeResetNonce]);
 
   const current = queue[idx];
 
@@ -29,6 +27,25 @@ export default function ListeningMode() {
     if (current) speakText(current.word);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
+
+  const startListening = (e) => {
+    e?.preventDefault();
+    const all = activeCategory.words || [];
+    if (all.length === 0) return alert("Avval so'z qo'shing");
+
+    const sliceFrom = Math.max(1, range.from) - 1;
+    const sliceTo = Math.min(all.length, range.to);
+    const selected = all.slice(sliceFrom, sliceTo);
+    if (selected.length === 0) return alert("Oraliq noto'g'ri");
+
+    setWords(selected);
+    setQueue([...selected].sort(() => Math.random() - 0.5));
+    setIdx(0);
+    setInput('');
+    setChecked(false);
+    setScore(0);
+    setActive(true);
+  };
 
   const isCorrect = !!current && input.trim().toLowerCase() === current.word.toLowerCase();
 
@@ -55,17 +72,55 @@ export default function ListeningMode() {
     }
   };
 
-  if (words.length === 0) {
-    return <p className="text-sm text-slate-400 text-center">Bu kategoriyada so'zlar yo'q.</p>;
-  }
-  if (!current) return null;
-
   // Enter (yoki tugma) bir xil ishlaydi: avval tekshiradi, keyin keyingi so'zga o'tadi.
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!checked) check();
     else next();
   };
+
+  if (!active) {
+    return (
+      <div className="flex flex-col items-center">
+        <form
+          onSubmit={startListening}
+          className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm"
+        >
+          <h3 className="font-bold text-slate-800 mb-4 font-display">Tinglab yozish oraliqlari</h3>
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-semibold text-slate-400 w-12">Dan:</span>
+              <input
+                type="number"
+                min={1}
+                value={range.from}
+                onChange={(e) => setRange({ ...range, from: parseInt(e.target.value) || 1 })}
+                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-semibold text-slate-400 w-12">Gacha:</span>
+              <input
+                type="number"
+                min={1}
+                value={range.to}
+                onChange={(e) => setRange({ ...range, to: parseInt(e.target.value) || 1 })}
+                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
+          >
+            Boshlash
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  if (!current) return null;
 
   return (
     <div className="flex flex-col items-center">
@@ -75,6 +130,9 @@ export default function ListeningMode() {
             {idx + 1} / {queue.length}
           </span>
           <span>To'g'ri: {score}</span>
+          <button type="button" onClick={() => setActive(false)} className="text-indigo-500 hover:text-indigo-700 font-semibold">
+            Oraliqni o'zgartirish
+          </button>
         </div>
 
         <div className="flex flex-col items-center mb-6">

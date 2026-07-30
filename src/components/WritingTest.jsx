@@ -1,8 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Volume2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
+import { normalizeForCompare } from '@/lib/textCompare';
 
 export default function WritingTest() {
   const { activeCategory, activeCatIndex, writeResetNonce } = useApp();
@@ -14,6 +15,7 @@ export default function WritingTest() {
   const [userAnswers, setUserAnswers] = useState([]);
   const [writeScore, setWriteScore] = useState(0);
   const [writeChecked, setWriteChecked] = useState(false);
+  const answerInputRefs = useRef([]);
 
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda testni to'xtatamiz (avvalgi xatti-harakat).
   useEffect(() => {
@@ -41,11 +43,11 @@ export default function WritingTest() {
 
   const checkWriteAnswer = () => {
     const current = writeWords[writeCurIdx];
-    const correctSyns = current.syns.map((s) => s.toLowerCase());
+    const correctSyns = current.syns.map(normalizeForCompare);
     let isAllCorrect = userAnswers.length === correctSyns.length;
 
     userAnswers.forEach((ans) => {
-      if (!correctSyns.includes(ans.trim().toLowerCase())) {
+      if (!correctSyns.includes(normalizeForCompare(ans))) {
         isAllCorrect = false;
       }
     });
@@ -59,6 +61,18 @@ export default function WritingTest() {
     e.preventDefault();
     if (!writeChecked) checkWriteAnswer();
     else nextWriteQuestion();
+  };
+
+  // Bir nechta sinonim inputi bo'lganda Enter navbatdagi bo'sh qatorga o'tkazadi;
+  // faqat oxirgi qatorda Enter bosilsa javob tekshiriladi/keyingi savolga o'tiladi.
+  const handleAnswerInputKeyDown = (e, idx) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (idx < userAnswers.length - 1) {
+      answerInputRefs.current[idx + 1]?.focus();
+    } else {
+      handleAnswerSubmit(e);
+    }
   };
 
   const nextWriteQuestion = () => {
@@ -141,6 +155,7 @@ export default function WritingTest() {
                 <span className="text-xs font-semibold text-slate-400 w-6">{idx + 1}</span>
                 <input
                   type="text"
+                  ref={(el) => (answerInputRefs.current[idx] = el)}
                   disabled={writeChecked}
                   placeholder="Sinonim..."
                   value={ans}
@@ -149,6 +164,7 @@ export default function WritingTest() {
                     temp[idx] = e.target.value;
                     setUserAnswers(temp);
                   }}
+                  onKeyDown={(e) => handleAnswerInputKeyDown(e, idx)}
                   className={`flex-1 px-3 py-2 border rounded-lg text-sm outline-none ${
                     writeChecked
                       ? writeWords[writeCurIdx].syns.map((s) => s.toLowerCase()).includes(ans.trim().toLowerCase())

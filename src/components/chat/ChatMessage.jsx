@@ -25,13 +25,18 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
         </div>
       )}
       <div className={`max-w-[85%] sm:max-w-[80%] group ${isUser ? 'items-end' : 'items-start'} flex flex-col`}>
-        {msg.imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={msg.imageUrl}
-            alt="Yuklangan rasm"
-            className="max-w-[220px] rounded-xl border border-slate-200 mb-1.5"
-          />
+        {(msg.imageUrls?.length > 0 || msg.imageUrl) && (
+          <div className="flex flex-wrap gap-1.5 mb-1.5">
+            {(msg.imageUrls?.length > 0 ? msg.imageUrls : [msg.imageUrl]).map((url, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={url}
+                alt="Yuklangan rasm"
+                className="max-w-[220px] rounded-xl border border-slate-200"
+              />
+            ))}
+          </div>
         )}
         <div
           className={`rounded-2xl px-4 py-2.5 text-sm ${

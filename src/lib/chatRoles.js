@@ -39,10 +39,32 @@ export function buildGeminiHistory(messages = []) {
 
     // Tarixni qayta tuzishda rasmlarni qayta yubormaymiz (og'irligi katta) — matnli belgi qoldiramiz.
     const rawText = (m.parts || []).map((p) => p?.text || '').join('').trim();
-    const text = m.imageUrl ? `${rawText} [rasm yuborilgan edi]`.trim() : rawText;
+    const imageCount = (m.imageUrls?.length || 0) + (m.imageUrl ? 1 : 0);
+    const text = imageCount > 0 ? `${rawText} [${imageCount} ta rasm yuborilgan edi]`.trim() : rawText;
     if (!text) continue;
 
     history.push({ role, parts: [{ text }] });
+  }
+
+  while (history.length > 0 && history[0].role !== 'user') history.shift();
+  return history;
+}
+
+// Xuddi shu tarixni Groq/OpenRouter (OpenAI bilan mos /chat/completions) formatiga quradi:
+// rol nomlari boshqacha ('model' -> 'assistant') va content matn (obyekt emas).
+export function buildOpenAiHistory(messages = []) {
+  const history = [];
+
+  for (const m of messages) {
+    const role = normalizeRole(m?.role);
+    if (!role) continue;
+
+    const rawText = (m.parts || []).map((p) => p?.text || '').join('').trim();
+    const imageCount = (m.imageUrls?.length || 0) + (m.imageUrl ? 1 : 0);
+    const text = imageCount > 0 ? `${rawText} [${imageCount} ta rasm yuborilgan edi]`.trim() : rawText;
+    if (!text) continue;
+
+    history.push({ role: role === 'model' ? 'assistant' : 'user', content: text });
   }
 
   while (history.length > 0 && history[0].role !== 'user') history.shift();

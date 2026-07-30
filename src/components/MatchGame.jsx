@@ -4,34 +4,55 @@ import { useApp } from '@/context/AppContext';
 
 export default function MatchGame() {
   const { activeCategory, activeCatIndex, categories, matchGameNonce } = useApp();
+
+  const [range, setRange] = useState({ from: 1, to: 10 });
+  const [active, setActive] = useState(false);
+  const [rangeWords, setRangeWords] = useState([]);
   const [matchPairs, setMatchPairs] = useState([]);
   const [selectedCards, setSelectedCards] = useState([]);
   const [matchedIds, setMatchedIds] = useState([]);
 
-  const initMatchGame = useCallback(() => {
-    const words = activeCategory.words || [];
-    if (words.length < 4) {
-      setMatchPairs([]);
-      return;
-    }
-    const count = Math.min(6, words.length);
-    const chosen = [...words].sort(() => Math.random() - 0.5).slice(0, count);
-    const cardList = [];
-    chosen.forEach((w, i) => {
-      cardList.push({ id: `w-${i}`, text: w.word, type: 'word', matchId: i });
-      cardList.push({ id: `s-${i}`, text: w.syns[0], type: 'syn', matchId: i });
-    });
-    setMatchPairs(cardList.sort(() => Math.random() - 0.5));
-    setSelectedCards([]);
-    setMatchedIds([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCatIndex, categories]);
-
-  // "Juftlikni topish" nav tugmasi bosilganda (Sidebar orqali) qayta aralashtiramiz.
+  // "Juftlikni topish" nav tugmasi bosilganda (Sidebar orqali) oraliq tanlashga qaytamiz.
   useEffect(() => {
-    if (matchGameNonce > 0) initMatchGame();
+    setActive(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchGameNonce]);
+  }, [matchGameNonce, activeCatIndex]);
+
+  const initMatchGame = useCallback(
+    (words) => {
+      if (words.length < 4) {
+        setMatchPairs([]);
+        return;
+      }
+      const count = Math.min(6, words.length);
+      const chosen = [...words].sort(() => Math.random() - 0.5).slice(0, count);
+      const cardList = [];
+      chosen.forEach((w, i) => {
+        cardList.push({ id: `w-${i}`, text: w.word, type: 'word', matchId: i });
+        cardList.push({ id: `s-${i}`, text: w.syns[0], type: 'syn', matchId: i });
+      });
+      setMatchPairs(cardList.sort(() => Math.random() - 0.5));
+      setSelectedCards([]);
+      setMatchedIds([]);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [categories]
+  );
+
+  const startMatchGame = (e) => {
+    e?.preventDefault();
+    const all = activeCategory.words || [];
+    if (all.length === 0) return alert("Avval so'z qo'shing");
+
+    const sliceFrom = Math.max(1, range.from) - 1;
+    const sliceTo = Math.min(all.length, range.to);
+    const selected = all.slice(sliceFrom, sliceTo);
+    if (selected.length < 4) return alert("Bu o'yin uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+
+    setRangeWords(selected);
+    initMatchGame(selected);
+    setActive(true);
+  };
 
   const handleMatchCardClick = (card) => {
     if (selectedCards.length === 2 || matchedIds.includes(card.matchId)) return;
@@ -49,12 +70,59 @@ export default function MatchGame() {
     }
   };
 
+  if (!active) {
+    return (
+      <div className="flex flex-col items-center">
+        <form
+          onSubmit={startMatchGame}
+          className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm"
+        >
+          <h3 className="font-bold text-slate-800 mb-4 font-display">Juftlikni topish oraliqlari</h3>
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-semibold text-slate-400 w-12">Dan:</span>
+              <input
+                type="number"
+                min={1}
+                value={range.from}
+                onChange={(e) => setRange({ ...range, from: parseInt(e.target.value) || 1 })}
+                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-semibold text-slate-400 w-12">Gacha:</span>
+              <input
+                type="number"
+                min={1}
+                value={range.to}
+                onChange={(e) => setRange({ ...range, to: parseInt(e.target.value) || 1 })}
+                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
+          >
+            Boshlash
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center">
-      {activeCategory.words?.length < 4 ? (
+      {matchPairs.length === 0 ? (
         <p className="text-sm text-slate-400">Bu o'yin uchun kamida 4 ta so'z kerak.</p>
       ) : (
         <>
+          <div className="flex justify-between items-center text-xs text-slate-400 w-full max-w-md mb-2.5">
+            <span />
+            <button onClick={() => setActive(false)} className="text-indigo-500 hover:text-indigo-700 font-semibold">
+              Oraliqni o'zgartirish
+            </button>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 w-full max-w-md">
             {matchPairs.map((card) => {
               const isSelected = selectedCards.some((c) => c.id === card.id);
@@ -81,7 +149,7 @@ export default function MatchGame() {
             <div className="mt-6 text-center">
               <p className="text-green-600 font-bold text-sm mb-2">Barcha juftliklar topildi!</p>
               <button
-                onClick={initMatchGame}
+                onClick={() => initMatchGame(rangeWords)}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
               >
                 Yana o'ynash

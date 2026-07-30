@@ -228,6 +228,24 @@ export function AppProvider({ children }) {
     [categories, syncData]
   );
 
+  const handleRenameCategory = useCallback(
+    (idx, name) => {
+      const clean = (name || '').trim();
+      const cat = categories[idx];
+      if (!clean || !cat) return;
+
+      const updated = categories.map((c, i) => (i === idx ? { ...c, name: clean } : c));
+      setCategories(updated);
+
+      fetch('/api/categories', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ categoryId: cat._id, name: clean }),
+      }).catch((err) => console.error("Kategoriyani tahrirlashda xatolik", err));
+    },
+    [categories, token]
+  );
+
   const handleDeleteCategory = useCallback(
     (idx) => {
       const cat = categories[idx];
@@ -320,6 +338,7 @@ export function AppProvider({ children }) {
     syncData,
     logout,
     handleAddCategory,
+    handleRenameCategory,
     handleDeleteCategory,
     handleAddWord,
     deleteWords,
