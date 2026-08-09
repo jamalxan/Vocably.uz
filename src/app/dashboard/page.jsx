@@ -7,6 +7,7 @@ import FlashcardMode from '@/components/FlashcardMode';
 import WritingTest from '@/components/WritingTest';
 import MatchGame from '@/components/MatchGame';
 import TestMode from '@/components/TestMode';
+import SpeedQuiz from '@/components/SpeedQuiz';
 import ListeningMode from '@/components/ListeningMode';
 import SpacedRepetition from '@/components/SpacedRepetition';
 import WordTable from '@/components/WordTable';
@@ -76,6 +77,9 @@ function DashboardContent() {
           </div>
           <div className={view === 'test' ? '' : 'hidden'}>
             <TestMode />
+          </div>
+          <div className={view === 'speed' ? '' : 'hidden'}>
+            <SpeedQuiz />
           </div>
           <div className={view === 'listening' ? '' : 'hidden'}>
             <ListeningMode />

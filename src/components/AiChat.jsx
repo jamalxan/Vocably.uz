@@ -391,6 +391,12 @@ export default function AiChat() {
       }
 
       const { visibleText, pendingAction } = extractPendingAction(fullText);
+
+      // AI shu javob davomida yangi kategoriya yaratgan bo'lishi mumkin (create_category darhol
+      // saqlanadi) — tasdiqlash kartasi ko'rsatilishidan oldin kategoriyalar ro'yxatini yangilab
+      // olamiz, aks holda yangi kategoriya hali eskirgan ro'yxatda yo'q bo'lib, tanlab bo'lmay qoladi.
+      if (pendingAction) await refreshCategories();
+
       setMessages((prev) => {
         const updated = [...prev];
         updated[updated.length - 1] = {

@@ -52,8 +52,10 @@ export function toOpenAiTools() {
 }
 
 // Bitta funksiya-chaqiruvni bajaradi. `user` mongoose hujjatiga to'g'ridan-to'g'ri o'zgartirish
-// kiritadi (chaqiruvchi keyin user.save() qilishi kerak).
-export function runToolCall(name, args, user) {
+// kiritadi (chaqiruvchi keyin user.save() qilishi kerak). `ctx.createdCategoryIds` beriladigan
+// bo'lsa, shu chaqiruv paytida yaratilgan kategoriya ID'lari shu massivga qo'shiladi — provayder
+// fallback muvaffaqiyatsiz bo'lganda chaqiruvchi ularni bekor qila olishi (rollback) uchun kerak.
+export function runToolCall(name, args, user, ctx = {}) {
   if (name === 'list_categories') {
     const categories = user.categories.map((c) => ({
       id: String(c._id),
@@ -66,8 +68,20 @@ export function runToolCall(name, args, user) {
   if (name === 'create_category') {
     const catName = (args?.name || '').trim();
     if (!catName) return { result: { error: "Nomi bo'sh" } };
+
+    // Xuddi shu nomli kategoriya allaqachon bor bo'lsa, qayta yaratmasdan o'shani qaytaramiz —
+    // aks holda model bir necha marta chaqirsa yoki provayder qayta urinsa, bir xil nomli
+    // takroriy (duplicate) kategoriyalar hosil bo'lib qoladi.
+    const existing = user.categories.find(
+      (c) => c.name.trim().toLowerCase() === catName.toLowerCase()
+    );
+    if (existing) {
+      return { result: { id: String(existing._id), name: existing.name } };
+    }
+
     user.categories.push({ name: catName, words: [] });
     const created = user.categories[user.categories.length - 1];
+    ctx.createdCategoryIds?.push(String(created._id));
     return { result: { id: String(created._id), name: created.name } };
   }
 

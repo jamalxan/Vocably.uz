@@ -72,7 +72,7 @@ const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]\n';
 
 // Gemini SDK orqali bir "navbat"ni funksiya-chaqiruv sikli bilan bajaradi va oqim davomida
 // matnni to'g'ridan-to'g'ri controller'ga yuboradi.
-async function runGeminiProviderTurn({ history, userParts, controller, encoder, user, state }) {
+async function runGeminiProviderTurn({ history, userParts, controller, encoder, user, state, createdCategoryIds }) {
   const genAI = getGeminiClient();
   const model = genAI.getGenerativeModel({
     model: 'gemini-3.6-flash',
@@ -87,6 +87,11 @@ async function runGeminiProviderTurn({ history, userParts, controller, encoder, 
   const contents = [...history, { role: 'user', parts: userParts }];
   let assistantText = '';
   let pendingAction = null;
+  // Shu navbat davomida create_category chaqirilgan bo'lsa, ID'sini shu yerda saqlaymiz —
+  // agar keyinroq add_words boshqa/yaroqsiz categoryId bilan chaqirilsa (model ba'zan bitta
+  // javobda ikkalasini ham chaqirib, add_words'ga hali ma'lum bo'lmagan ID beradi), shu bilan
+  // to'g'irlaymiz.
+  let justCreatedCategoryId = null;
 
   for (let i = 0; i < MAX_FUNCTION_ITERATIONS; i++) {
     const result = await model.generateContentStream({ contents });
@@ -121,7 +126,16 @@ async function runGeminiProviderTurn({ history, userParts, controller, encoder, 
     let shouldStop = false;
 
     for (const call of calls) {
-      const { result: toolResult, pendingAction: pa, shouldStop: stop } = runToolCall(call.name, call.args, user);
+      const knownCategoryIds = new Set(user.categories.map((c) => String(c._id)));
+      const args =
+        call.name === 'add_words' && justCreatedCategoryId && !knownCategoryIds.has(call.args?.categoryId)
+          ? { ...call.args, categoryId: justCreatedCategoryId }
+          : call.args;
+
+      const { result: toolResult, pendingAction: pa, shouldStop: stop } = runToolCall(call.name, args, user, {
+        createdCategoryIds,
+      });
+      if (call.name === 'create_category' && toolResult?.id) justCreatedCategoryId = toolResult.id;
       if (pa) pendingAction = pa;
       if (stop) shouldStop = true;
       responseParts.push({ functionResponse: { name: call.name, response: toolResult } });
@@ -136,11 +150,14 @@ async function runGeminiProviderTurn({ history, userParts, controller, encoder, 
 }
 
 // Groq/OpenRouter (OpenAI bilan mos) uchun bir "navbat"ni funksiya-chaqiruv sikli bilan bajaradi.
-async function runOpenAiProviderTurn({ provider, history, currentMessage, controller, encoder, user, state }) {
+async function runOpenAiProviderTurn({ provider, history, currentMessage, controller, encoder, user, state, createdCategoryIds }) {
   const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }, ...history, currentMessage];
   const tools = toOpenAiTools();
   let assistantText = '';
   let pendingAction = null;
+  // Gemini navbatidagi bilan bir xil maqsad — bitta javobda create_category + add_words
+  // birga chaqirilganda categoryId'ni haqiqiy yaratilgan kategoriyaga to'g'irlab qo'yamiz.
+  let justCreatedCategoryId = null;
 
   for (let i = 0; i < MAX_FUNCTION_ITERATIONS; i++) {
     const { text, toolCalls } = await streamOpenAiCompatible({
@@ -182,7 +199,16 @@ async function runOpenAiProviderTurn({ provider, history, currentMessage, contro
       } catch {
         // model noto'g'ri JSON qaytarsa — bo'sh argument bilan davom etamiz
       }
-      const { result: toolResult, pendingAction: pa, shouldStop: stop } = runToolCall(tc.name, args, user);
+
+      const knownCategoryIds = new Set(user.categories.map((c) => String(c._id)));
+      if (tc.name === 'add_words' && justCreatedCategoryId && !knownCategoryIds.has(args?.categoryId)) {
+        args = { ...args, categoryId: justCreatedCategoryId };
+      }
+
+      const { result: toolResult, pendingAction: pa, shouldStop: stop } = runToolCall(tc.name, args, user, {
+        createdCategoryIds,
+      });
+      if (tc.name === 'create_category' && toolResult?.id) justCreatedCategoryId = toolResult.id;
       if (pa) pendingAction = pa;
       if (stop) shouldStop = true;
       messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
@@ -266,6 +292,12 @@ export async function POST(req) {
         let lastErr = null;
 
         for (const provider of chain) {
+          // Shu urinish davomida yaratilgan kategoriyalarni kuzatamiz — urinish muvaffaqiyatsiz
+          // bo'lib keyingi provayderga o'tilsa, ular bekor qilinadi (pastda). Aks holda `user`
+          // hujjati urinishlar orasida umumiy bo'lgani uchun, muvaffaqiyatsiz urinishda yaratilgan
+          // kategoriya keyingi provayderning o'z (mustaqil) urinishiga "chiqib qolib", oxir-oqibat
+          // bir xil nomli ikkita kategoriya saqlanib qolishi mumkin edi.
+          const attemptCreatedCategoryIds = [];
           try {
             if (provider.key !== 'gemini' && !provider.apiKey) {
               throw Object.assign(new Error('API kalit sozlanmagan'), { status: 401 });
@@ -280,6 +312,7 @@ export async function POST(req) {
                     encoder,
                     user,
                     state,
+                    createdCategoryIds: attemptCreatedCategoryIds,
                   })
                 : await runOpenAiProviderTurn({
                     provider,
@@ -289,6 +322,7 @@ export async function POST(req) {
                     encoder,
                     user,
                     state,
+                    createdCategoryIds: attemptCreatedCategoryIds,
                   });
 
             finalText = outcome.assistantText;
@@ -297,6 +331,7 @@ export async function POST(req) {
             break;
           } catch (err) {
             lastErr = err;
+            for (const catId of attemptCreatedCategoryIds) user.categories.pull(catId);
             // Hech narsa oqimga chiqarilmagan bo'lsa (masalan 429 birinchi so'rovda) — keyingi
             // provayderga o'tamiz. Aks holda foydalanuvchiga allaqachon matn ko'rsatilgan,
             // uni almashtirib bo'lmaydi — shu bilan to'xtaymiz.

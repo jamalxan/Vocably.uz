@@ -4,9 +4,11 @@ import { Volume2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
 import { normalizeForCompare } from '@/lib/textCompare';
+import RangeSetupForm from './shared/RangeSetupForm';
+import SessionCompleteCard from './shared/SessionCompleteCard';
 
 export default function WritingTest() {
-  const { activeCategory, activeCatIndex, writeResetNonce } = useApp();
+  const { activeCategory, activeCatIndex, reviewWord, writeResetNonce } = useApp();
 
   const [writeRange, setWriteRange] = useState({ from: 1, to: 10 });
   const [writeActive, setWriteActive] = useState(false);
@@ -15,6 +17,7 @@ export default function WritingTest() {
   const [userAnswers, setUserAnswers] = useState([]);
   const [writeScore, setWriteScore] = useState(0);
   const [writeChecked, setWriteChecked] = useState(false);
+  const [writeFinished, setWriteFinished] = useState(false);
   const answerInputRefs = useRef([]);
 
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda testni to'xtatamiz (avvalgi xatti-harakat).
@@ -54,6 +57,9 @@ export default function WritingTest() {
 
     if (isAllCorrect) setWriteScore((prev) => prev + 1);
     setWriteChecked(true);
+    if (current._id && activeCategory._id) {
+      reviewWord(activeCategory._id, current._id, isAllCorrect);
+    }
   };
 
   // Enter (yoki tugma) bir xil ishlaydi: avval tekshiradi, keyin keyingi so'zga o'tadi.
@@ -82,48 +88,43 @@ export default function WritingTest() {
       setWriteChecked(false);
       setUserAnswers(Array(writeWords[nextIdx]?.syns.length || 1).fill(''));
     } else {
-      alert(`Test yakunlandi! Natijangiz: ${writeScore}/${writeWords.length}`);
-      setWriteActive(false);
+      setWriteFinished(true);
     }
+  };
+
+  const restartWriteRound = () => {
+    const shuffled = [...writeWords].sort(() => Math.random() - 0.5);
+    setWriteWords(shuffled);
+    setWriteCurIdx(0);
+    setWriteScore(0);
+    setWriteChecked(false);
+    setUserAnswers(Array(shuffled[0]?.syns.length || 1).fill(''));
+    setWriteFinished(false);
+  };
+
+  const closeWriteFinished = () => {
+    setWriteFinished(false);
+    setWriteActive(false);
   };
 
   return (
     <div className="flex flex-col items-center">
+      <SessionCompleteCard
+        open={writeFinished}
+        title="Yozish testi tugadi!"
+        score={writeScore}
+        total={writeWords.length}
+        onRestart={restartWriteRound}
+        onClose={closeWriteFinished}
+      />
       {!writeActive ? (
-        <form
+        <RangeSetupForm
+          title="So'zlarni yozib sinash oraliqlari"
+          range={writeRange}
+          onRangeChange={setWriteRange}
           onSubmit={startWriteTest}
-          className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm"
-        >
-          <h3 className="font-bold text-slate-800 mb-4 font-display">So'zlarni yozib sinash oraliqlari</h3>
-          <div className="space-y-3 mb-6">
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-semibold text-slate-400 w-12">Dan:</span>
-              <input
-                type="number"
-                min={1}
-                value={writeRange.from}
-                onChange={(e) => setWriteRange({ ...writeRange, from: parseInt(e.target.value) || 1 })}
-                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-semibold text-slate-400 w-12">Gacha:</span>
-              <input
-                type="number"
-                min={1}
-                value={writeRange.to}
-                onChange={(e) => setWriteRange({ ...writeRange, to: parseInt(e.target.value) || 1 })}
-                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
-          >
-            Testni boshlash
-          </button>
-        </form>
+          buttonLabel="Testni boshlash"
+        />
       ) : (
         <form
           onSubmit={handleAnswerSubmit}

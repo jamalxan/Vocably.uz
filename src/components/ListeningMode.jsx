@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { Volume2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
+import RangeSetupForm from './shared/RangeSetupForm';
+import SessionCompleteCard from './shared/SessionCompleteCard';
 
 export default function ListeningMode() {
   const { activeCategory, activeCatIndex, reviewWord, writeResetNonce } = useApp();
@@ -15,6 +17,7 @@ export default function ListeningMode() {
   const [input, setInput] = useState('');
   const [checked, setChecked] = useState(false);
   const [score, setScore] = useState(0);
+  const [finished, setFinished] = useState(false);
 
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda oraliq tanlashga qaytamiz.
   useEffect(() => {
@@ -63,13 +66,22 @@ export default function ListeningMode() {
       setInput('');
       setChecked(false);
     } else {
-      alert(`Tugadi! Natija: ${score}/${queue.length}`);
-      setIdx(0);
-      setInput('');
-      setChecked(false);
-      setScore(0);
-      setQueue([...words].sort(() => Math.random() - 0.5));
+      setFinished(true);
     }
+  };
+
+  const restartRound = () => {
+    setFinished(false);
+    setIdx(0);
+    setInput('');
+    setChecked(false);
+    setScore(0);
+    setQueue([...words].sort(() => Math.random() - 0.5));
+  };
+
+  const closeFinished = () => {
+    setFinished(false);
+    setActive(false);
   };
 
   // Enter (yoki tugma) bir xil ishlaydi: avval tekshiradi, keyin keyingi so'zga o'tadi.
@@ -81,42 +93,12 @@ export default function ListeningMode() {
 
   if (!active) {
     return (
-      <div className="flex flex-col items-center">
-        <form
-          onSubmit={startListening}
-          className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm"
-        >
-          <h3 className="font-bold text-slate-800 mb-4 font-display">Tinglab yozish oraliqlari</h3>
-          <div className="space-y-3 mb-6">
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-semibold text-slate-400 w-12">Dan:</span>
-              <input
-                type="number"
-                min={1}
-                value={range.from}
-                onChange={(e) => setRange({ ...range, from: parseInt(e.target.value) || 1 })}
-                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-semibold text-slate-400 w-12">Gacha:</span>
-              <input
-                type="number"
-                min={1}
-                value={range.to}
-                onChange={(e) => setRange({ ...range, to: parseInt(e.target.value) || 1 })}
-                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
-          >
-            Boshlash
-          </button>
-        </form>
-      </div>
+      <RangeSetupForm
+        title="Tinglab yozish oraliqlari"
+        range={range}
+        onRangeChange={setRange}
+        onSubmit={startListening}
+      />
     );
   }
 
@@ -124,6 +106,14 @@ export default function ListeningMode() {
 
   return (
     <div className="flex flex-col items-center">
+      <SessionCompleteCard
+        open={finished}
+        title="Tinglab yozish tugadi!"
+        score={score}
+        total={queue.length}
+        onRestart={restartRound}
+        onClose={closeFinished}
+      />
       <form onSubmit={handleSubmit} className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-slate-400 mb-4">
           <span>

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
+import RangeSetupForm from './shared/RangeSetupForm';
 
 function buildQuestion(words) {
   const idx = Math.floor(Math.random() * words.length);
@@ -68,44 +69,7 @@ export default function TestMode() {
   };
 
   if (!active) {
-    return (
-      <div className="flex flex-col items-center">
-        <form
-          onSubmit={startTest}
-          className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm"
-        >
-          <h3 className="font-bold text-slate-800 mb-4 font-display">Test oraliqlari</h3>
-          <div className="space-y-3 mb-6">
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-semibold text-slate-400 w-12">Dan:</span>
-              <input
-                type="number"
-                min={1}
-                value={range.from}
-                onChange={(e) => setRange({ ...range, from: parseInt(e.target.value) || 1 })}
-                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-semibold text-slate-400 w-12">Gacha:</span>
-              <input
-                type="number"
-                min={1}
-                value={range.to}
-                onChange={(e) => setRange({ ...range, to: parseInt(e.target.value) || 1 })}
-                className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
-          >
-            Boshlash
-          </button>
-        </form>
-      </div>
-    );
+    return <RangeSetupForm title="Test oraliqlari" range={range} onRangeChange={setRange} onSubmit={startTest} />;
   }
 
   if (!question) return null;
