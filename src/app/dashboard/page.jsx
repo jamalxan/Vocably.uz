@@ -50,7 +50,12 @@ function DashboardContent() {
               <h2 className="text-lg sm:text-xl font-bold text-slate-800 font-display truncate">
                 {activeCategory.name || "Kategoriya yo'q"}
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">Jami so'zlar: {activeCategory.words?.length || 0} ta</p>
+              {/* A5 (docs/AUDIT_FINDINGS.md): "Bugungi takrorlash" barcha kategoriyalar bo'yicha
+                  ishlaydi, shuning uchun bitta kategoriyaga tegishli so'z sonini shu yerda
+                  ko'rsatish SpacedRepetition'dagi "navbatda" soni bilan ziddiyatli ko'rinardi. */}
+              {view !== 'review' && (
+                <p className="text-xs text-slate-400 mt-0.5">Jami so'zlar: {activeCategory.words?.length || 0} ta</p>
+              )}
             </div>
           </div>
 

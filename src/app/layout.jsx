@@ -20,10 +20,13 @@ export const metadata = {
   description: "Ingliz tilini o'rganish uchun AI yordamchili shaxsiy lug'at platformasi",
 };
 
+// A1 (docs/AUDIT_FINDINGS.md): maximumScale bloklangan bo'lsa pinch-zoom butunlay ishlamay
+// qoladi — WCAG 1.4.4 buzilishi. Mobil inputlarda avtomatik zoom oldini olish
+// globals.css'dagi 16px font-size qoidasi bilan hal qilinadi, zoomni bloklash bilan emas.
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }) {

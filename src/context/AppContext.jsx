@@ -1,6 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import ConfirmModal from '@/components/ConfirmModal';
 
 const AppContext = createContext(null);
 
@@ -246,25 +247,42 @@ export function AppProvider({ children }) {
     [categories, token]
   );
 
+  // A4 (docs/AUDIT_FINDINGS.md): ilgari native `confirm()` ishlatilardi — WordTable va chat
+  // sessiyalarini o'chirishda allaqachon ishlatilayotgan uslubiy ConfirmModal bilan bir xillikka
+  // keltirildi. Tasdiqlash kutilayotgan kategoriya indeksi shu yerda saqlanadi, modal esa
+  // pastda, AppProvider ichida render qilinadi — shunda Sidebar va Dashboard sarlavhasidagi
+  // ikkala chaqiruvchi ham bitta umumiy modaldan foydalanadi.
+  const [categoryDeleteIdx, setCategoryDeleteIdx] = useState(null);
+  const categoryPendingDelete = categoryDeleteIdx !== null ? categories[categoryDeleteIdx] : null;
+
   const handleDeleteCategory = useCallback(
     (idx) => {
       const cat = categories[idx];
       if (!cat) return;
       if (categories.length <= 1) return alert('Kamida bitta kategoriya qolishi kerak');
-      if (!confirm(`"${cat.name}" kategoriyasini o'chirmoqchimisiz? Ichida ${cat.words.length} ta so'z bor.`)) return;
-
-      const updated = categories.filter((_, i) => i !== idx);
-      setCategories(updated);
-      setActiveCatIndex(0);
-
-      fetch('/api/categories', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ categoryId: cat._id }),
-      }).catch((err) => console.error("Kategoriyani o'chirishda xatolik", err));
+      setCategoryDeleteIdx(idx);
     },
-    [categories, token]
+    [categories]
   );
+
+  const cancelDeleteCategory = useCallback(() => setCategoryDeleteIdx(null), []);
+
+  const confirmDeleteCategory = useCallback(() => {
+    const idx = categoryDeleteIdx;
+    const cat = categories[idx];
+    setCategoryDeleteIdx(null);
+    if (!cat) return;
+
+    const updated = categories.filter((_, i) => i !== idx);
+    setCategories(updated);
+    setActiveCatIndex(0);
+
+    fetch('/api/categories', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ categoryId: cat._id }),
+    }).catch((err) => console.error("Kategoriyani o'chirishda xatolik", err));
+  }, [categories, categoryDeleteIdx, token]);
 
   const handleAddWord = useCallback(
     (word, synsStr) => {
@@ -361,7 +379,22 @@ export function AppProvider({ children }) {
     deleteAllChatSessions,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+      <ConfirmModal
+        open={!!categoryPendingDelete}
+        title="Kategoriyani o'chirish"
+        message={
+          categoryPendingDelete
+            ? `"${categoryPendingDelete.name}" kategoriyasi va undagi ${categoryPendingDelete.words.length} ta so'z butunlay o'chiriladi. Bu amalni qaytarib bo'lmaydi.`
+            : ''
+        }
+        onConfirm={confirmDeleteCategory}
+        onCancel={cancelDeleteCategory}
+      />
+    </AppContext.Provider>
+  );
 }
 
 export function useApp() {
