@@ -4,6 +4,8 @@ import {
   nextReviewState,
   ratingFromOutcome,
   migrateLegacyCard,
+  needsLegacyMigration,
+  cardFromStats,
   levelFromIntervalDays,
   localDateWithCutoff,
   computeStreakUpdate,
@@ -145,6 +147,37 @@ describe('migrateLegacyCard', () => {
     expect(result.state).toBe('review');
     expect(result.intervalDays).toBe(7); // LEGACY_LEVEL_INTERVAL_DAYS[3]
     expect(result.lapses).toBe(1);
+  });
+});
+
+describe('needsLegacyMigration / cardFromStats', () => {
+  it('flags a legacy word with progress but untouched engine fields', () => {
+    expect(needsLegacyMigration({ level: 2, correct: 2, wrong: 0 })).toBe(true);
+  });
+
+  it('does not flag a genuinely brand-new word', () => {
+    expect(needsLegacyMigration({ level: 0, correct: 0, wrong: 0 })).toBe(false);
+  });
+
+  it('does not re-flag a word already using the new engine fields', () => {
+    expect(needsLegacyMigration({ level: 2, correct: 2, wrong: 0, srsState: 'review', reps: 3, intervalDays: 7 })).toBe(
+      false
+    );
+  });
+
+  it('cardFromStats migrates legacy data transparently', () => {
+    const card = cardFromStats({ level: 3, correct: 3, wrong: 1 });
+    expect(card.state).toBe('review');
+    expect(card.intervalDays).toBe(7);
+  });
+
+  it('cardFromStats reads new-engine data directly when present', () => {
+    const card = cardFromStats({ srsState: 'review', ease: 2.8, intervalDays: 15, learningStep: 0, lapses: 1, reps: 4 });
+    expect(card).toEqual({ state: 'review', ease: 2.8, intervalDays: 15, learningStep: 0, lapses: 1, reps: 4 });
+  });
+
+  it('cardFromStats returns a fresh new card for an untouched word', () => {
+    expect(cardFromStats({})).toEqual(newCard());
   });
 });
 

@@ -2,39 +2,8 @@ import { connectToDatabase } from '@/lib/db';
 import { User, ReviewEvent } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
-import {
-  newCard,
-  nextReviewState,
-  ratingFromOutcome,
-  migrateLegacyCard,
-  levelFromIntervalDays,
-  computeStreakUpdate,
-} from '@/lib/srs';
+import { nextReviewState, ratingFromOutcome, cardFromStats, levelFromIntervalDays, computeStreakUpdate } from '@/lib/srs';
 import { NextResponse } from 'next/server';
-
-// So'z hali yangi SRS enjini orqali o'tmaganini aniqlaydi: yangi maydonlar (reps/intervalDays/
-// srsState) hali "tegilmagan" (default holatda) bo'lsa-yu, eski flat-lookup maydonlarida
-// (level/correct/wrong) haqiqiy progress ko'rinsa — bu FAZA 2'dan oldingi so'z, bir martalik
-// ko'chirish kerak. Ikkalasi ham bo'sh bo'lsa — haqiqatan ham yangi so'z, "new" holatida qoladi.
-function needsLegacyMigration(stats) {
-  const untouchedByEngine =
-    (stats.reps || 0) === 0 && (stats.intervalDays || 0) === 0 && (stats.srsState || 'new') === 'new';
-  const hasLegacyActivity = (stats.level || 0) > 0 || (stats.correct || 0) > 0 || (stats.wrong || 0) > 0;
-  return untouchedByEngine && hasLegacyActivity;
-}
-
-function cardFromStats(stats) {
-  if (needsLegacyMigration(stats)) return migrateLegacyCard(stats);
-  if (!stats.srsState) return newCard();
-  return {
-    state: stats.srsState,
-    ease: stats.ease ?? 2.5,
-    intervalDays: stats.intervalDays ?? 0,
-    learningStep: stats.learningStep ?? 0,
-    lapses: stats.lapses ?? 0,
-    reps: stats.reps ?? 0,
-  };
-}
 
 export async function PATCH(req) {
   try {
@@ -88,6 +57,7 @@ export async function PATCH(req) {
     );
     user.reviewStreak = streak;
     user.lastReviewDate = lastReviewDate;
+    user.longestReviewStreak = Math.max(user.longestReviewStreak || 0, streak);
 
     await user.save();
 

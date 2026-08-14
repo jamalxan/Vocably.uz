@@ -1,28 +1,43 @@
 'use client';
-import { useState, useMemo } from 'react';
-import { Volume2, Flame, Trophy, CalendarCheck } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Volume2, Flame, Trophy, CalendarCheck, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
 
 export default function SpacedRepetition() {
-  const { categories, reviewWord, reviewStreak } = useApp();
+  const { categories, reviewWord, reviewStreak, practiceWordIds, clearPracticeQueue } = useApp();
   const [showAnswer, setShowAnswer] = useState(false);
   // A5/A13 (docs/AUDIT_FINDINGS.md): "Navbatda: N" bilan sarlavhadagi "Jami so'zlar" ziddiyatli
   // ko'rinardi. reviewedCount + qolgan dueWords.length'dan "X / Total" sessiya progressi
   // hisoblanadi — FlashcardMode/ListeningMode'dagi progress bilan bir xil uslub.
   const [reviewedCount, setReviewedCount] = useState(0);
 
+  // Dashboard'dagi "Qiynalayotgan so'zlar" → "Shularni mashq qilish" shu ro'yxatni to'ldiradi.
+  // Bo'lsa, oddiy due-navbat o'rniga faqat shu so'zlar ko'rsatiladi (due muddatidan qat'iy nazar).
+  const practiceSet = practiceWordIds ? new Set(practiceWordIds) : null;
+
   const dueWords = useMemo(() => {
     const now = Date.now();
     const list = [];
     categories.forEach((c) => {
       (c.words || []).forEach((w) => {
+        if (practiceSet) {
+          if (practiceSet.has(w._id)) list.push({ categoryId: c._id, categoryName: c.name, word: w });
+          return;
+        }
         const next = w.stats?.nextReview ? new Date(w.stats.nextReview).getTime() : 0;
         if (next <= now) list.push({ categoryId: c._id, categoryName: c.name, word: w });
       });
     });
     return list;
-  }, [categories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories, practiceWordIds]);
+
+  // Maxsus mashq ro'yxati tugagach, avtomatik oddiy due-navbatga qaytamiz.
+  useEffect(() => {
+    if (practiceSet && dueWords.length === 0 && reviewedCount > 0) clearPracticeQueue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dueWords.length]);
 
   const masteredCount = useMemo(
     () => categories.reduce((sum, c) => sum + (c.words || []).filter((w) => (w.stats?.level || 0) >= 5).length, 0),
@@ -51,6 +66,18 @@ export default function SpacedRepetition() {
 
   return (
     <div className="flex flex-col items-center">
+      {practiceSet && (
+        <div className="w-full max-w-md flex items-center justify-between gap-3 bg-amber-50 border border-amber-100 text-amber-800 text-xs rounded-lg px-3 py-2 mb-4">
+          <span>Maxsus mashq: qiynalayotgan so'zlar ({dueWords.length} qoldi)</span>
+          <button
+            onClick={clearPracticeQueue}
+            className="flex items-center gap-1 font-semibold hover:text-amber-900 flex-shrink-0"
+          >
+            <X size={12} /> Chiqish
+          </button>
+        </div>
+      )}
+
       <div className="w-full max-w-md grid grid-cols-3 gap-2 mb-6 text-center">
         <div className="bg-white border border-slate-100 rounded-xl py-3 shadow-sm">
           <CalendarCheck className="mx-auto text-indigo-500 mb-1" size={16} />

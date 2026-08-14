@@ -180,6 +180,45 @@ export function migrateLegacyCard(legacy: { level?: number; correct?: number; wr
   };
 }
 
+export interface LegacyStats {
+  level?: number;
+  correct?: number;
+  wrong?: number;
+  srsState?: SrsState;
+  ease?: number;
+  intervalDays?: number;
+  learningStep?: number;
+  lapses?: number;
+  reps?: number;
+}
+
+/**
+ * So'z hali yangi SRS enjini orqali o'tmaganini aniqlaydi: yangi maydonlar (reps/intervalDays/
+ * srsState) hali "tegilmagan" (default holatda) bo'lsa-yu, eski flat-lookup maydonlarida
+ * (level/correct/wrong) haqiqiy progress ko'rinsa — bu FAZA 2'dan oldingi so'z, bir martalik
+ * ko'chirish kerak. Ikkalasi ham bo'sh bo'lsa — haqiqatan ham yangi so'z, "new" holatida qoladi.
+ */
+export function needsLegacyMigration(stats: LegacyStats): boolean {
+  const untouchedByEngine =
+    (stats.reps || 0) === 0 && (stats.intervalDays || 0) === 0 && (stats.srsState || 'new') === 'new';
+  const hasLegacyActivity = (stats.level || 0) > 0 || (stats.correct || 0) > 0 || (stats.wrong || 0) > 0;
+  return untouchedByEngine && hasLegacyActivity;
+}
+
+/** Saqlangan `WordStats`dan joriy `SrsCard`ni tiklaydi — kerak bo'lsa eski ma'lumotni ko'chiradi. */
+export function cardFromStats(stats: LegacyStats): SrsCard {
+  if (needsLegacyMigration(stats)) return migrateLegacyCard(stats);
+  if (!stats.srsState) return newCard();
+  return {
+    state: stats.srsState,
+    ease: stats.ease ?? 2.5,
+    intervalDays: stats.intervalDays ?? 0,
+    learningStep: stats.learningStep ?? 0,
+    lapses: stats.lapses ?? 0,
+    reps: stats.reps ?? 0,
+  };
+}
+
 /** Dashboard/UI'dagi eski 0-5 "level" ko'rsatkichi bilan moslik uchun — spec §5.2 mastery bosqichlariga mos. */
 export function levelFromIntervalDays(intervalDays: number): number {
   if (intervalDays >= 21) return 5;

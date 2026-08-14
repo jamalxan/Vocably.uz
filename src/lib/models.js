@@ -82,10 +82,14 @@ const UserSchema = new mongoose.Schema({
   chatSessions: [ChatSessionSchema],
   // Aqlli takrorlash uchun kunlik faollik ketma-ketligi (streak).
   reviewStreak: { type: Number, default: 0 },
+  longestReviewStreak: { type: Number, default: 0 },
   lastReviewDate: { type: String, default: null }, // 'YYYY-MM-DD', foydalanuvchi timezone'i + 04:00 chegarasi bo'yicha
   // Streak/"bugun" hisob-kitobi shu bo'yicha (B10 — ilgari UTC bo'yicha hisoblanardi).
   // To'liq Settings sahifasi hali yo'q, shuning uchun hozircha faqat shu bitta maydon.
   timezone: { type: String, default: 'Asia/Tashkent' },
+  // Dashboard'dagi kunlik maqsad halqasi uchun (spec §5.2 "daily_goal_reviews"). To'liq Settings
+  // sahifasi hali yo'q, shuning uchun hozircha o'zgartirib bo'lmaydigan default qiymat.
+  dailyGoal: { type: Number, default: 20 },
   createdAt: { type: Date, default: Date.now },
 });
 

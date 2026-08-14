@@ -4,6 +4,7 @@ import {
   BookOpen,
   Edit3,
   Grid,
+  Home,
   Layers,
   Sparkles,
   Plus,
@@ -24,6 +25,7 @@ import SidebarChatSessions from './chat/SidebarChatSessions';
 const CHAT_ACCORDION_KEY = 'vocably.chatAccordionOpen';
 
 const navItems = [
+  { key: 'home', label: 'Bosh sahifa', icon: Home },
   { key: 'cards', label: 'Kartochka', icon: Layers },
   { key: 'write', label: 'Yozish testi', icon: Edit3 },
   { key: 'match', label: 'Juftlikni topish', icon: Grid },

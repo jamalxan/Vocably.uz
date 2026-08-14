@@ -108,6 +108,15 @@ export function AppProvider({ children }) {
     [token]
   );
 
+  // Dashboard'dagi "Qiynalayotgan so'zlar" ro'yxatidan "Shularni mashq qilish" bosilganda
+  // shu so'zlar ID ro'yxati shu yerga yoziladi. SpacedRepetition buni ko'rsa, oddiy due
+  // navbati o'rniga faqat shu so'zlarni (due muddatidan qat'iy nazar) ko'rsatadi.
+  const [practiceWordIds, setPracticeWordIds] = useState(null);
+  const startPracticeQueue = useCallback((wordIds) => {
+    setPracticeWordIds(wordIds && wordIds.length ? wordIds : null);
+  }, []);
+  const clearPracticeQueue = useCallback(() => setPracticeWordIds(null), []);
+
   // ---- AI chat sessiyalari ----
   // Ro'yxat sidebar'da, xabarlar esa chat ekranida ko'rsatiladi — shuning uchun holat
   // shu yerda, umumiy kontekstda turadi.
@@ -372,6 +381,9 @@ export function AppProvider({ children }) {
     restoreWords,
     reviewStreak,
     reviewWord,
+    practiceWordIds,
+    startPracticeQueue,
+    clearPracticeQueue,
     writeResetNonce,
     triggerWriteReset,
     matchGameNonce,
