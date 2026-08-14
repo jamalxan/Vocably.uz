@@ -1,9 +1,45 @@
 import { connectToDatabase } from '@/lib/db';
-import { OtpSession } from '@/lib/models';
+import { OtpSession, User } from '@/lib/models';
 import { phonesMatch } from '@/lib/phone';
 import { generateCode } from '@/lib/otp';
 import { sendMessage, requestContactKeyboard, removeKeyboard } from '@/lib/telegram';
 import { NextResponse } from 'next/server';
+
+// Bitta Telegram chat ID'ni "admin" deb belgilaymiz — kodga yozib qo'yish o'rniga env
+// o'zgaruvchisidan o'qiladi, shunda shaxsiy ID repozitoriyga tushmaydi. /users buyrug'i
+// shu chatdan kelsa, foydalanuvchilar soni va ro'yxatini (email yo'q — ilovada login
+// telefon orqali, User modelida email maydoni umuman yo'q) qisqacha qaytaradi.
+async function handleAdminCommand(chatId, text) {
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!adminChatId || String(chatId) !== String(adminChatId)) return false;
+  if (text !== '/users' && text !== '/stats') return false;
+
+  const users = await User.find({}).select('name phone createdAt').sort({ createdAt: -1 }).lean();
+  const total = users.length;
+
+  if (text === '/stats') {
+    await sendMessage(chatId, `📊 Jami foydalanuvchilar: <b>${total}</b>`);
+    return true;
+  }
+
+  // Ilovada email maydoni yo'q (login faqat telefon orqali) — shuning uchun ism + telefon
+  // ko'rsatiladi. Telegram xabari 4096 belgi bilan cheklangan, shuning uchun 40 tadan bo'lib
+  // yuboriladi.
+  const header = `📊 Jami foydalanuvchilar: <b>${total}</b>\n<i>(Eslatma: ilovada email maydoni yo'q, faqat telefon orqali ro'yxatdan o'tiladi)</i>\n`;
+  await sendMessage(chatId, header);
+
+  const PAGE_SIZE = 40;
+  for (let i = 0; i < users.length; i += PAGE_SIZE) {
+    const page = users.slice(i, i + PAGE_SIZE);
+    const lines = page.map((u, idx) => {
+      const num = i + idx + 1;
+      const date = u.createdAt ? new Date(u.createdAt).toISOString().slice(0, 10) : '—';
+      return `${num}. ${u.name || '(ismsiz)'} — ${u.phone} — ${date}`;
+    });
+    await sendMessage(chatId, lines.join('\n'));
+  }
+  return true;
+}
 
 // Telegram bizga har bir yangilanishni shu manzilga POST qiladi.
 // Oqim:
@@ -29,6 +65,10 @@ export async function POST(req) {
 
     const chatId = message.chat.id;
     const text = (message.text || '').trim();
+
+    if (await handleAdminCommand(chatId, text)) {
+      return NextResponse.json({ ok: true });
+    }
 
     // --- /start <sessionToken> ---
     if (text.startsWith('/start')) {
