@@ -64,23 +64,23 @@ export function AppProvider({ children }) {
   }, [token]);
 
   // Bitta so'zning takrorlash statistikasini yangilaydi (Bugungi takrorlash, Test, Tinglab yozish rejimlari uchun).
+  // Haqiqiy hisob-kitob (src/lib/srs.ts, ease-asosidagi interval) faqat serverda amalga oshadi —
+  // bu yerda faqat so'zni "hozir due emas" qilib ko'rsatadigan taxminiy optimistic yangilanish
+  // bor, keyin server javobi kelganda haqiqiy stats bilan almashtiriladi. Ilgari bu yerda alohida,
+  // eski flat-lookup algoritmi takrorlanardi — ikkalasi orasidagi farq vaqt o'tishi bilan
+  // ko'payib, "Navbatda" ro'yxati serverdagi haqiqiy holatdan chetlashardi.
   const reviewWord = useCallback(
-    async (categoryId, wordId, correct) => {
+    async (categoryId, wordId, correct, extra = {}) => {
+      const optimisticNextReview = new Date(Date.now() + (correct ? 60_000 : 10 * 60_000)).toISOString();
       setCategories((prev) =>
         prev.map((c) =>
           c._id !== categoryId
             ? c
             : {
                 ...c,
-                words: c.words.map((w) => {
-                  if (w._id !== wordId) return w;
-                  const REVIEW_INTERVAL_DAYS = [0, 1, 3, 7, 14, 30];
-                  const level = correct ? Math.min(5, (w.stats?.level || 0) + 1) : 0;
-                  const nextReview = correct
-                    ? new Date(Date.now() + REVIEW_INTERVAL_DAYS[level] * 86400000).toISOString()
-                    : new Date(Date.now() + 10 * 60000).toISOString();
-                  return { ...w, stats: { ...w.stats, level, lastReviewed: new Date().toISOString(), nextReview } };
-                }),
+                words: c.words.map((w) =>
+                  w._id !== wordId ? w : { ...w, stats: { ...w.stats, nextReview: optimisticNextReview } }
+                ),
               }
         )
       );
@@ -88,10 +88,19 @@ export function AppProvider({ children }) {
         const res = await fetch('/api/words/review', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ categoryId, wordId, correct }),
+          body: JSON.stringify({ categoryId, wordId, correct, ...extra }),
         });
         const data = await res.json();
-        if (res.ok) setReviewStreak(data.reviewStreak || 0);
+        if (res.ok) {
+          setReviewStreak(data.reviewStreak || 0);
+          setCategories((prev) =>
+            prev.map((c) =>
+              c._id !== categoryId
+                ? c
+                : { ...c, words: c.words.map((w) => (w._id !== wordId ? w : { ...w, stats: data.stats })) }
+            )
+          );
+        }
       } catch (err) {
         console.error('Statistikani saqlashda xatolik', err);
       }

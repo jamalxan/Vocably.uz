@@ -15,8 +15,18 @@ const WordStatsSchema = new mongoose.Schema(
     correct: { type: Number, default: 0 },
     wrong: { type: Number, default: 0 },
     lastReviewed: { type: Date, default: null },
+    // Eski flat-lookup darajasi (0-5) — hozir yangi SRS maydonlaridan derived, faqat orqaga
+    // moslik uchun saqlanadi (masalan "O'zlashtirilgan" hisoblagichi shu bo'yicha filtrlaydi).
     level: { type: Number, default: 0, min: 0, max: 5 },
     nextReview: { type: Date, default: Date.now },
+    // --- src/lib/srs.ts SRS enjini uchun (docs/AUDIT_FINDINGS.md ijro. xulosasi §3) ---
+    srsState: { type: String, enum: ['new', 'learning', 'review', 'relearning'], default: 'new' },
+    ease: { type: Number, default: 2.5 },
+    intervalDays: { type: Number, default: 0 },
+    learningStep: { type: Number, default: 0 },
+    lapses: { type: Number, default: 0 },
+    reps: { type: Number, default: 0 },
+    isLeech: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -72,7 +82,10 @@ const UserSchema = new mongoose.Schema({
   chatSessions: [ChatSessionSchema],
   // Aqlli takrorlash uchun kunlik faollik ketma-ketligi (streak).
   reviewStreak: { type: Number, default: 0 },
-  lastReviewDate: { type: String, default: null }, // 'YYYY-MM-DD'
+  lastReviewDate: { type: String, default: null }, // 'YYYY-MM-DD', foydalanuvchi timezone'i + 04:00 chegarasi bo'yicha
+  // Streak/"bugun" hisob-kitobi shu bo'yicha (B10 — ilgari UTC bo'yicha hisoblanardi).
+  // To'liq Settings sahifasi hali yo'q, shuning uchun hozircha faqat shu bitta maydon.
+  timezone: { type: String, default: 'Asia/Tashkent' },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -99,3 +112,26 @@ const OtpSessionSchema = new mongoose.Schema({
 });
 
 export const OtpSession = mongoose.models.OtpSession || mongoose.model('OtpSession', OtpSessionSchema);
+
+// So'zlar User hujjati ichida embedded bo'lgani uchun (alohida Word/UserWordState jadvali
+// yo'q), har bir javobning to'liq audit yozuvi alohida, yengil, faqat-qo'shiladigan (append-only)
+// to'plamda saqlanadi — spec §6.1'dagi review_events'ning Mongo'ga moslashtirilgan varianti.
+// Kelgusi FAZA 3 statistika/dashboard endpointlari shu yerdan o'qiydi, User hujjatini emas.
+const ReviewEventSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  categoryId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  wordId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  mode: { type: String, default: 'spaced' }, // flashcard | typing | quiz | matching | listening | spaced | ...
+  rating: { type: Number, min: 1, max: 4, required: true },
+  isCorrect: { type: Boolean, required: true },
+  prevState: { type: String },
+  newState: { type: String },
+  prevIntervalDays: { type: Number },
+  newIntervalDays: { type: Number },
+  prevEase: { type: Number },
+  newEase: { type: Number },
+  reviewedAt: { type: Date, default: Date.now },
+});
+ReviewEventSchema.index({ userId: 1, reviewedAt: -1 });
+
+export const ReviewEvent = mongoose.models.ReviewEvent || mongoose.model('ReviewEvent', ReviewEventSchema);

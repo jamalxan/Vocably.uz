@@ -1,32 +1,55 @@
 import { connectToDatabase } from '@/lib/db';
-import { User } from '@/lib/models';
+import { User, ReviewEvent } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
+import {
+  newCard,
+  nextReviewState,
+  ratingFromOutcome,
+  migrateLegacyCard,
+  levelFromIntervalDays,
+  computeStreakUpdate,
+} from '@/lib/srs';
 import { NextResponse } from 'next/server';
 
-// SM-2'ning soddalashtirilgan varianti: level (0-5) bo'yicha keyingi ko'rib chiqish oralig'i.
-const REVIEW_INTERVAL_DAYS = [0, 1, 3, 7, 14, 30];
-const DAY_MS = 24 * 60 * 60 * 1000;
-const WRONG_RETRY_MS = 10 * 60 * 1000;
+// So'z hali yangi SRS enjini orqali o'tmaganini aniqlaydi: yangi maydonlar (reps/intervalDays/
+// srsState) hali "tegilmagan" (default holatda) bo'lsa-yu, eski flat-lookup maydonlarida
+// (level/correct/wrong) haqiqiy progress ko'rinsa — bu FAZA 2'dan oldingi so'z, bir martalik
+// ko'chirish kerak. Ikkalasi ham bo'sh bo'lsa — haqiqatan ham yangi so'z, "new" holatida qoladi.
+function needsLegacyMigration(stats) {
+  const untouchedByEngine =
+    (stats.reps || 0) === 0 && (stats.intervalDays || 0) === 0 && (stats.srsState || 'new') === 'new';
+  const hasLegacyActivity = (stats.level || 0) > 0 || (stats.correct || 0) > 0 || (stats.wrong || 0) > 0;
+  return untouchedByEngine && hasLegacyActivity;
+}
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+function cardFromStats(stats) {
+  if (needsLegacyMigration(stats)) return migrateLegacyCard(stats);
+  if (!stats.srsState) return newCard();
+  return {
+    state: stats.srsState,
+    ease: stats.ease ?? 2.5,
+    intervalDays: stats.intervalDays ?? 0,
+    learningStep: stats.learningStep ?? 0,
+    lapses: stats.lapses ?? 0,
+    reps: stats.reps ?? 0,
+  };
 }
 
 export async function PATCH(req) {
   try {
     const userId = getUserIdFromRequest(req);
-    if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
+    if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();
 
-    const { categoryId, wordId, correct } = await req.json();
+    const { categoryId, wordId, correct, rating: ratingInput, mode, responseMs } = await req.json();
     if (!categoryId || !wordId || typeof correct !== 'boolean') {
       return NextResponse.json({ error: "Noto'g'ri format" }, { status: 400 });
     }
 
     const user = await User.findById(userId);
-    if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
+    if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
 
     const category = user.categories.id(categoryId);
     if (!category) return NextResponse.json({ error: 'Kategoriya topilmadi' }, { status: 404 });
@@ -37,25 +60,60 @@ export async function PATCH(req) {
     if (!word.stats) word.stats = {};
     const now = new Date();
 
-    if (correct) {
-      word.stats.level = Math.min(5, (word.stats.level || 0) + 1);
-      word.stats.correct = (word.stats.correct || 0) + 1;
-      word.stats.nextReview = new Date(now.getTime() + REVIEW_INTERVAL_DAYS[word.stats.level] * DAY_MS);
-    } else {
-      word.stats.level = 0;
-      word.stats.wrong = (word.stats.wrong || 0) + 1;
-      word.stats.nextReview = new Date(now.getTime() + WRONG_RETRY_MS);
-    }
+    // Rating (1-4) hozircha faqat ba'zi rejimlardan keladi — qolganlari hali eski
+    // to'g'ri/xato tugmalarini ishlatadi (FAZA 5'da 4 tugmali baholashga o'tiladi).
+    const rating = [1, 2, 3, 4].includes(ratingInput) ? ratingInput : ratingFromOutcome(correct, responseMs);
+
+    const prevCard = cardFromStats(word.stats);
+    const result = nextReviewState(prevCard, rating, now);
+
+    word.stats.srsState = result.state;
+    word.stats.ease = result.ease;
+    word.stats.intervalDays = result.intervalDays;
+    word.stats.learningStep = result.learningStep;
+    word.stats.lapses = result.lapses;
+    word.stats.reps = result.reps;
+    word.stats.isLeech = result.isLeech;
+    word.stats.nextReview = result.dueAt;
+    word.stats.level = levelFromIntervalDays(result.intervalDays);
+    word.stats.correct = (word.stats.correct || 0) + (correct ? 1 : 0);
+    word.stats.wrong = (word.stats.wrong || 0) + (correct ? 0 : 1);
     word.stats.lastReviewed = now;
 
-    const today = todayStr();
-    if (user.lastReviewDate !== today) {
-      const yesterday = new Date(now.getTime() - DAY_MS).toISOString().slice(0, 10);
-      user.reviewStreak = user.lastReviewDate === yesterday ? (user.reviewStreak || 0) + 1 : 1;
-      user.lastReviewDate = today;
-    }
+    const { streak, lastReviewDate } = computeStreakUpdate(
+      now,
+      user.timezone || 'Asia/Tashkent',
+      user.reviewStreak || 0,
+      user.lastReviewDate
+    );
+    user.reviewStreak = streak;
+    user.lastReviewDate = lastReviewDate;
 
     await user.save();
+
+    try {
+      // Serverless funksiya javob qaytargandan keyin to'xtatilishi mumkin, shuning uchun
+      // bu yozuv ham javobdan oldin kutiladi — lekin xato bo'lsa faqat log qilinadi, chunki
+      // asosiy so'z holati (yuqorida) allaqachon saqlangan va foydalanuvchi javobini
+      // bloklamasligi kerak.
+      await ReviewEvent.create({
+        userId: user._id,
+        categoryId,
+        wordId,
+        mode: mode || 'spaced',
+        rating,
+        isCorrect: correct,
+        prevState: prevCard.state,
+        newState: result.state,
+        prevIntervalDays: prevCard.intervalDays,
+        newIntervalDays: result.intervalDays,
+        prevEase: prevCard.ease,
+        newEase: result.ease,
+        reviewedAt: now,
+      });
+    } catch (err) {
+      console.error('ReviewEvent yozishda xatolik', err);
+    }
 
     return NextResponse.json({
       success: true,
