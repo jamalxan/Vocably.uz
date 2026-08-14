@@ -7,6 +7,10 @@ import { speakText } from '@/lib/speech';
 export default function SpacedRepetition() {
   const { categories, reviewWord, reviewStreak } = useApp();
   const [showAnswer, setShowAnswer] = useState(false);
+  // A5/A13 (docs/AUDIT_FINDINGS.md): "Navbatda: N" bilan sarlavhadagi "Jami so'zlar" ziddiyatli
+  // ko'rinardi. reviewedCount + qolgan dueWords.length'dan "X / Total" sessiya progressi
+  // hisoblanadi — FlashcardMode/ListeningMode'dagi progress bilan bir xil uslub.
+  const [reviewedCount, setReviewedCount] = useState(0);
 
   const dueWords = useMemo(() => {
     const now = Date.now();
@@ -41,6 +45,7 @@ export default function SpacedRepetition() {
   const answer = (correct) => {
     if (!current) return;
     reviewWord(current.categoryId, current.word._id, correct);
+    setReviewedCount((n) => n + 1);
     setShowAnswer(false);
   };
 
@@ -73,7 +78,9 @@ export default function SpacedRepetition() {
         <div className="w-full max-w-md">
           <div className="flex justify-between items-center text-xs text-slate-400 mb-2">
             <span>{current.categoryName}</span>
-            <span>Navbatda: {dueWords.length}</span>
+            <span>
+              {reviewedCount + 1} / {reviewedCount + dueWords.length}
+            </span>
           </div>
 
           <div
@@ -98,7 +105,7 @@ export default function SpacedRepetition() {
                 {current.word.syns.join(', ')}
               </p>
             ) : (
-              <p className="text-xs text-slate-300 mt-6 uppercase tracking-wider font-semibold">Ko'rish uchun bosing</p>
+              <p className="text-xs text-slate-500 mt-6 font-semibold">Ko'rish uchun bosing</p>
             )}
           </div>
 

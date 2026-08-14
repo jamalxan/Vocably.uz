@@ -99,22 +99,22 @@ No `/study/*`, `/review`, `/words`, `/words/:id`, `/categories`, `/stats`, `/ai`
 ```
 | ID  | Muammo                                          | Joyi                                    | Tur          | Jiddiylik | Faza | Holat  |
 |-----|--------------------------------------------------|------------------------------------------|--------------|-----------|------|--------|
-| A1  | maximum-scale=1 bloklaydi pinch-zoom              | src/app/layout.jsx:23-27                 | a11y         | Yuqori    | 1    | Ochiq  |
+| A1  | maximum-scale=1 bloklaydi pinch-zoom              | src/app/layout.jsx:23-27                 | a11y         | Yuqori    | 1    | Bajarildi |
 | A2  | Kategoriya boshqaruvi 3 elementga bo'lingan       | src/components/Sidebar.jsx:131-240       | ux           | Yuqori    | 4    | Ochiq  |
 | A3  | Dropdown matni kesiladi, tooltip yo'q             | src/components/Sidebar.jsx:136-140       | ux           | O'rta     | 4    | Ochiq  |
-| A4  | Xavfli o'chirish tugmasi, ishonchsiz tasdiq        | dashboard/page.jsx:56-63, AppContext.jsx | ux/xavf      | Yuqori    | 4    | Ochiq  |
-| A5  | "Jami" va "Navbatda" ziddiyatli ko'rsatiladi       | dashboard/page.jsx:52, SpacedRepetition.jsx:76 | ux     | Yuqori    | 1,3  | Ochiq  |
+| A4  | Xavfli o'chirish tugmasi, ishonchsiz tasdiq        | dashboard/page.jsx:56-63, AppContext.jsx | ux/xavf      | Yuqori    | 4    | Bajarildi |
+| A5  | "Jami" va "Navbatda" ziddiyatli ko'rsatiladi       | dashboard/page.jsx:52, SpacedRepetition.jsx:76 | ux     | Yuqori    | 1,3  | Bajarildi (1-faza qismi; to'liq API-darajadagi yechim 3-fazada) |
 | A6  | Statistik kartalar kontekstsiz                    | SpacedRepetition.jsx:49-65               | ux           | O'rta     | 3    | Ochiq  |
 | A7  | 1440px'da bo'sh joy                                | dashboard/page.jsx:67                    | layout       | O'rta     | 3    | Ochiq  |
 | A8  | Flashcard vizual muvozanatsiz                      | FlashcardMode.jsx:100                    | dizayn       | Yuqori    | 5    | Ochiq  |
 | A9  | Sidebar guruhlanmagan (9 element)                  | Sidebar.jsx:25-34                        | IA           | O'rta     | 4    | Ochiq  |
-| A10 | Past kontrastli uppercase matn (2 joyda)           | FlashcardMode.jsx:121, SpacedRepetition.jsx:101 | a11y  | O'rta     | 1,5  | Ochiq  |
-| A11 | Login/ilova brendi mos emas (3 sirt)               | page.jsx:220, Sidebar.jsx:102, dashboard | dizayn       | O'rta     | 1    | Ochiq  |
+| A10 | Past kontrastli uppercase matn (2 joyda)           | FlashcardMode.jsx:121, SpacedRepetition.jsx:101 | a11y  | O'rta     | 1,5  | Bajarildi |
+| A11 | Login/ilova brendi mos emas (3 sirt)               | page.jsx:220, Sidebar.jsx:102, dashboard | dizayn       | O'rta     | 1    | Ochiq (to'liq token tizimi kerak — 3-fazaga ko'chirildi) |
 | A12 | Klaviatura shortcut'lari yo'q                      | barcha study rejimlari                   | ux           | O'rta     | 5    | Ochiq  |
-| A13 | Progress indikatori ba'zi rejimlarda yo'q          | TestMode.jsx, MatchGame.jsx, SpacedRepetition.jsx | ux  | Yuqori    | 5    | Ochiq  |
+| A13 | Progress indikatori ba'zi rejimlarda yo'q          | TestMode.jsx, MatchGame.jsx, SpacedRepetition.jsx | ux  | Yuqori    | 5    | Bajarildi (MatchGame, SpacedRepetition); TestMode — sessiya uzunligi belgilanmagani uchun qasddan o'zgartirilmadi, savol raqami+aniqlik allaqachon ko'rsatiladi |
 | A14 | Kategoriya qidiruvi yo'q (so'z qidiruvi bor)       | Sidebar.jsx                              | ux           | O'rta     | 4    | Ochiq  |
 | A15 | Bo'sh/xato holatlar aralash-quralash                | 6 ta study rejimi, AppContext.jsx        | ux           | O'rta     | 9    | Ochiq  |
-| B1  | Login "Gemini asosida" degan matn noto'g'ri        | page.jsx:478                             | ux           | Past      | 1    | Ochiq  |
+| B1  | Login "Gemini asosida" degan matn noto'g'ri        | page.jsx:478                             | ux           | Past      | 1    | Bajarildi |
 | B2  | JWT localStorage'da (XSS xavfi)                    | page.jsx, AppContext.jsx, AiChat.jsx     | xavfsizlik   | Yuqori    | -    | Ochiq (foydalanuvchidan qaror kerak) |
 | B3  | To'liq massiv almashtirish — poyga holati (race)    | words/route.js, AppContext.jsx           | bug          | Yuqori    | 4    | Ochiq  |
 | B4  | POST /api/categories o'lik kod                     | api/categories/route.js                  | texnik qarz  | Past      | 4    | Ochiq  |
@@ -156,3 +156,9 @@ The spec explicitly says "taxmin qilma, so'ra" (don't guess, ask). Restating its
 - **TypeScript**: introduce it. New files (starting with `src/lib/srs.ts` when FAZA 4 arrives) are written in TS; existing `.jsx`/`.js` files migrate gradually, not all at once. `tsconfig.json` uses `allowJs: true` / `checkJs: false` so the phase-end `type-check` step is meaningful without forcing an immediate full-repo conversion.
 - **Dark mode default**: system-preference-based (`prefers-color-scheme`), user-overridable from Settings once that page exists. Both palettes in spec §3.2 get built out fully, not just one.
 - Product questions 1–5 (own-word-only vs. shared word banks, monetization, current user count, AI budget) remain **open** — not blocking for FAZA 1's small fixes, but need answers before FAZA 3 (dashboard), FAZA 6 (AI cost controls), or FAZA 7 (admin panel) start.
+
+## 9. FAZA 1 report-back
+
+**Status: FAZA 1 complete** on `feat/phase-1-critical-fixes`. Fixed: A1, A4, A5 (presentation-only, per §8's decision), A10, A13 (SpacedRepetition + MatchGame), B1. TestMode's A13 was deliberately left as-is — it's open-ended by design (no fixed session length), so an "X/Total" bar isn't meaningful there yet; it already shows question number + running accuracy.
+
+Also closed spec §0 rule 8's own gap (noted in §0 above): `next lint` had never been run in this repo (no ESLint config existed, `eslint`/`eslint-config-next` weren't installed). Added `.eslintrc.json` (`next/core-web-vitals`) and pinned `eslint@^8` + `eslint-config-next@14.2.5` to match the installed Next 14.2 (the newest `eslint-config-next` pulls in ESLint 9 flat-config, which is incompatible with Next 14's `next lint`). Turned off `react/no-unescaped-entities` — Uzbek Latin text uses `'` constantly (`o'zbek`, `bo'lim`, ...) and the rule would otherwise force-escape apostrophes across nearly every JSX string in the app for no real benefit. `npm run build && npm run lint && npm run type-check` all pass clean.

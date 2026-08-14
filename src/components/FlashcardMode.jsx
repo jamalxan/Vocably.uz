@@ -84,7 +84,7 @@ export default function FlashcardMode() {
                 {words[cardIndex]?.syns.join(', ')}
               </p>
             ) : (
-              <p className="text-xs text-slate-300 mt-6 uppercase tracking-wider font-semibold">
+              <p className="text-xs text-slate-500 mt-6 font-semibold">
                 Ko'rish uchun bosing
               </p>
             )}

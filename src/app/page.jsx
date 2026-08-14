@@ -475,7 +475,7 @@ export default function AuthPage() {
         </div>
 
         <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 mt-6">
-          <Sparkles size={12} /> Gemini AI asosida ishlaydi
+          <Sparkles size={12} /> Sun'iy intellekt asosida ishlaydi
         </p>
       </div>
     </div>

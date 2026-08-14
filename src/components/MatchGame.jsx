@@ -89,7 +89,10 @@ export default function MatchGame() {
       ) : (
         <>
           <div className="flex justify-between items-center text-xs text-slate-400 w-full max-w-md mb-2.5">
-            <span />
+            {/* A13 (docs/AUDIT_FINDINGS.md): ilgari bu joyda hech qanday progress ko'rsatilmasdi. */}
+            <span>
+              {matchedIds.length} / {matchPairs.length / 2} juftlik
+            </span>
             <button onClick={() => setActive(false)} className="text-indigo-500 hover:text-indigo-700 font-semibold">
               Oraliqni o'zgartirish
             </button>
