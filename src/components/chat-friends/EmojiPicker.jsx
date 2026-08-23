@@ -14,12 +14,15 @@ import { Search, Clock } from 'lucide-react';
 // placeholder) qo'lda o'zbekchaga tarjima qilingan (pastdagi CATEGORY_META).
 const LOCALE = 'en';
 
+// DIQQAT: kalitlar emojibase'ning haqiqiy (en) kategoriya matnlariga aynan mos
+// bo'lishi shart — faqat birinchi so'z bosh harf bilan ("Smileys & emotion", "Emotion"
+// EMAS). Bu brauzerda amalda tekshirilgan qiymatlar, taxmin qilingan Title Case emas.
 const CATEGORY_META = {
-  'Smileys & Emotion': { uz: 'Smaylik', icon: '😀' },
-  'People & Body': { uz: 'Odamlar', icon: '🧑' },
-  'Animals & Nature': { uz: 'Tabiat', icon: '🐶' },
-  'Food & Drink': { uz: 'Ovqat', icon: '🍔' },
-  'Travel & Places': { uz: 'Sayohat', icon: '✈️' },
+  'Smileys & emotion': { uz: 'Smaylik', icon: '😀' },
+  'People & body': { uz: 'Odamlar', icon: '🧑' },
+  'Animals & nature': { uz: 'Tabiat', icon: '🐶' },
+  'Food & drink': { uz: 'Ovqat', icon: '🍔' },
+  'Travel & places': { uz: 'Sayohat', icon: '✈️' },
   Activities: { uz: 'Faoliyat', icon: '⚽' },
   Objects: { uz: 'Predmetlar', icon: '💡' },
   Symbols: { uz: 'Belgilar', icon: '❤️' },
