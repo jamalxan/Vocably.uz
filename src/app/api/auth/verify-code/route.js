@@ -2,7 +2,25 @@ import { connectToDatabase } from '@/lib/db';
 import { User, OtpSession } from '@/lib/models';
 import jwt from 'jsonwebtoken';
 import { serverError } from '@/lib/apiError';
+import { sendMessage } from '@/lib/telegram';
+import { formatPhoneDisplay } from '@/lib/phone';
 import { NextResponse } from 'next/server';
+
+// Yangi ro'yxatdan o'tgan foydalanuvchi haqida admin'ga Telegram orqali xabar.
+// Xato bo'lsa faqat log qilinadi — bildirishnoma muvaffaqiyatsiz bo'lishi
+// ro'yxatdan o'tishning o'zini bloklamasligi kerak.
+async function notifyAdminNewUser(user) {
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!adminChatId) return;
+  try {
+    await sendMessage(
+      adminChatId,
+      `🆕 <b>Yangi foydalanuvchi qo'shildi</b>\n\n👤 Ism: <b>${user.name || '(ismsiz)'}</b>\n📱 Telefon: <b>${formatPhoneDisplay(user.phone)}</b>`
+    );
+  } catch (err) {
+    console.error('[telegram] yangi user bildirishnomasi yuborilmadi', err?.message || err);
+  }
+}
 
 export async function POST(req) {
   try {
@@ -64,6 +82,7 @@ export async function POST(req) {
       });
 
       await OtpSession.deleteOne({ _id: session._id });
+      await notifyAdminNewUser(newUser);
 
       const token = jwt.sign({ userId: newUser._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
       return NextResponse.json({ done: true, token, name: newUser.name, phone: newUser.phone });

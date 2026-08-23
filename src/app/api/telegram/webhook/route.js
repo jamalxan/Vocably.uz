@@ -1,9 +1,98 @@
 import { connectToDatabase } from '@/lib/db';
-import { OtpSession, User, Conversation, Message } from '@/lib/models';
-import { phonesMatch } from '@/lib/phone';
+import { OtpSession, User, Conversation, Message, AdminAuditLog } from '@/lib/models';
+import { phonesMatch, normalizePhone, formatPhoneDisplay } from '@/lib/phone';
 import { generateCode } from '@/lib/otp';
 import { sendMessage, requestContactKeyboard, removeKeyboard } from '@/lib/telegram';
 import { NextResponse } from 'next/server';
+
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+
+// Telegramdan boshqarilgan o'zgarishlar ham web admin panel bilan bir xil audit
+// jurnaliga yoziladi. Actor sifatida shu chatga bog'langan admin User topiladi
+// (telegramChatId — OTP orqali allaqachon bog'langan); topilmasa jimgina o'tkazib
+// yuboriladi, chunki AdminAuditLog'ning actorId maydoni majburiy.
+async function logTelegramAction(chatId, action, targetType, targetId, diff) {
+  try {
+    const actor = await User.findOne({ telegramChatId: Number(chatId), role: 'admin' }).select('_id');
+    if (!actor) return;
+    await AdminAuditLog.create({
+      actorId: actor._id,
+      action,
+      targetType: targetType || null,
+      targetId: targetId ? String(targetId) : null,
+      diff: diff || null,
+      ip: null,
+      userAgent: 'telegram-bot',
+    });
+  } catch (err) {
+    console.error('[audit-log] telegram amali yozilmadi', err);
+  }
+}
+
+const ADMIN_MENU =
+  `🛠 <b>Admin buyruqlari</b>\n\n` +
+  `/statistika — to'liq statistika va Do'stlar userlari ro'yxati\n` +
+  `/users — barcha foydalanuvchilar ro'yxati\n\n` +
+  `<b>Boshqaruv (Do'stlar bo'limi):</b>\n` +
+  `/admin grant &lt;telefon&gt; &lt;username&gt; — ruxsat berish\n` +
+  `/admin revoke &lt;telefon&gt; — ruxsatni olib tashlash\n` +
+  `/admin ban &lt;telefon&gt; — chatdan bloklash\n` +
+  `/admin unban &lt;telefon&gt; — blokdan chiqarish\n\n` +
+  `Masalan: <code>/admin grant +998901234567 nodira</code>`;
+
+// Telefon bo'yicha topib, {chatAccess/chatBanned/username} maydonlaridan birini
+// o'zgartiradigan umumiy funksiya — 4 ta boshqaruv buyrug'i shu orqali ishlaydi.
+async function handleAdminMutation(chatId, action, phoneRaw, extra) {
+  const phone = normalizePhone(phoneRaw);
+  if (!phone) {
+    await sendMessage(chatId, "❌ Telefon raqam noto'g'ri formatda.");
+    return;
+  }
+  const user = await User.findOne({ phone });
+  if (!user) {
+    await sendMessage(chatId, `❌ ${formatPhoneDisplay(phone)} raqamli foydalanuvchi topilmadi.`);
+    return;
+  }
+
+  const diff = {};
+  if (action === 'grant') {
+    const uname = (extra || '').trim().toLowerCase();
+    if (!USERNAME_RE.test(uname)) {
+      await sendMessage(chatId, "❌ Username 3-20 belgi, faqat kichik lotin harflari/raqam/pastki chiziq bo'lishi kerak.\nMasalan: <code>/admin grant +998901234567 nodira</code>");
+      return;
+    }
+    const clash = await User.findOne({ username: uname, _id: { $ne: user._id } }).select('_id');
+    if (clash) {
+      await sendMessage(chatId, `❌ "${uname}" username'i band.`);
+      return;
+    }
+    diff.chatAccess = { from: user.chatAccess, to: true };
+    diff.username = { from: user.username, to: uname };
+    user.chatAccess = true;
+    user.username = uname;
+  } else if (action === 'revoke') {
+    diff.chatAccess = { from: user.chatAccess, to: false };
+    user.chatAccess = false;
+  } else if (action === 'ban') {
+    diff.chatBanned = { from: user.chatBanned, to: true };
+    user.chatBanned = true;
+  } else if (action === 'unban') {
+    diff.chatBanned = { from: user.chatBanned, to: false };
+    user.chatBanned = false;
+  }
+
+  await user.save();
+  await logTelegramAction(chatId, `chat.user.update`, 'User', user._id, diff);
+
+  const label = `${user.name || '(ismsiz)'} (${formatPhoneDisplay(user.phone)}${user.username ? ` · @${user.username}` : ''})`;
+  const RESULT_TEXT = {
+    grant: `✅ ${label} — Do'stlar ruxsati berildi.`,
+    revoke: `✅ ${label} — Do'stlar ruxsati olib tashlandi.`,
+    ban: `✅ ${label} — chatdan bloklandi.`,
+    unban: `✅ ${label} — blokdan chiqarildi.`,
+  };
+  await sendMessage(chatId, RESULT_TEXT[action]);
+}
 
 // Bitta Telegram chat ID'ni "admin" deb belgilaymiz — kodga yozib qo'yish o'rniga env
 // o'zgaruvchisidan o'qiladi, shunda shaxsiy ID repozitoriyga tushmaydi. /users buyrug'i
@@ -12,12 +101,34 @@ import { NextResponse } from 'next/server';
 async function handleAdminCommand(chatId, text) {
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
   if (!adminChatId || String(chatId) !== String(adminChatId)) return false;
-  if (!['/users', '/stats', '/admin'].includes(text)) return false;
 
-  if (text === '/admin') {
+  // /admin — faqat boshqaruv (Do'stlar ruxsati/ban) uchun, statistikasiz.
+  if (text === '/admin' || text.startsWith('/admin ')) {
+    const parts = text.split(/\s+/).slice(1); // ['grant', '+998...', 'username'] va h.k.
+    const [action, phone, extra] = parts;
+
+    if (!action) {
+      await sendMessage(chatId, ADMIN_MENU);
+      return true;
+    }
+    if (!['grant', 'revoke', 'ban', 'unban'].includes(action)) {
+      await sendMessage(chatId, "❌ Noma'lum buyruq.\n\n" + ADMIN_MENU);
+      return true;
+    }
+    if (!phone || (action === 'grant' && !extra)) {
+      await sendMessage(chatId, `❌ Format: <code>/admin ${action} &lt;telefon&gt;${action === 'grant' ? ' &lt;username&gt;' : ''}</code>`);
+      return true;
+    }
+    await handleAdminMutation(chatId, action, phone, extra);
+    return true;
+  }
+
+  if (text === '/statistika') {
     await sendAdminOverview(chatId);
     return true;
   }
+
+  if (!['/users', '/stats'].includes(text)) return false;
 
   const users = await User.find({}).select('name phone createdAt').sort({ createdAt: -1 }).lean();
   const total = users.length;
@@ -46,7 +157,7 @@ async function handleAdminCommand(chatId, text) {
   return true;
 }
 
-// /admin — to'liq holat: umumiy foydalanuvchi sonidan tashqari Do'stlar (chat) bo'limi
+// /statistika — to'liq holat: umumiy foydalanuvchi sonidan tashqari Do'stlar (chat) bo'limi
 // bo'yicha to'liq statistika + ruxsat berilgan userlar ro'yxati ismlari bilan. Telegram
 // xabari 4096 belgi bilan cheklangan, shuning uchun ro'yxat sahifalab yuboriladi (mavjud
 // /users patterniga mos).
