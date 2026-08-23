@@ -1,5 +1,6 @@
 import { User, RateLimitHit, AdminAuditLog } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { connectToDatabase } from '@/lib/db';
 
 // "Oxirgi faol bo'lgan" vaqtni har so'rovda emas, shu oraliqdan kamida bir marta yozadi —
 // Do'stlar bo'limi faol foydalanilganda ham har chat-so'rovida yozuv bo'lmasligi uchun.
@@ -11,6 +12,12 @@ const LAST_ACTIVE_THROTTLE_MS = 2 * 60 * 1000;
 export async function requireChatUser(req) {
   const userId = getUserIdFromRequest(req);
   if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
+
+  // Bu yerda o'zi ulanadi — chaqiruvchi route'lar odatda bundan keyin ham
+  // connectToDatabase() chaqiradi (bepul, keshlangan), lekin BUNDAN OLDIN chaqirilmasa
+  // (bir nechta route'da shunday edi) sovuq konteynerda "buffering timed out" xatosi
+  // berardi, chunki mongoose.connect() hali umuman boshlanmagan bo'lardi.
+  await connectToDatabase();
 
   const user = await User.findById(userId)
     .select('username chatAccess chatBanned role name phone lastActiveAt')
@@ -35,6 +42,8 @@ export async function requireAdminUser(req) {
   const userId = getUserIdFromRequest(req);
   if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
 
+  await connectToDatabase();
+
   const user = await User.findById(userId).select('username role name phone').lean();
   if (!user) return { error: 'Foydalanuvchi topilmadi', status: 404 };
   if (user.role !== 'admin') return { error: 'Ruxsat berilmagan', status: 403 };
@@ -46,6 +55,7 @@ export async function requireAdminUser(req) {
 // (userId, action) juftligi uchun `limit` martadan ko'p urinishga yo'l qo'ymaydi.
 // RateLimitHit hujjati TTL indeks orqali 60s'dan keyin o'zi o'chadi (src/lib/models.js).
 export async function checkRateLimit(userId, action, limit) {
+  await connectToDatabase();
   const key = `${userId}:${action}`;
   const doc = await RateLimitHit.findOneAndUpdate(
     { key },
@@ -59,6 +69,7 @@ export async function checkRateLimit(userId, action, limit) {
 // Xato bo'lsa faqat log qilinadi — audit yozuvi asosiy amalni bloklamasligi kerak.
 export async function writeAuditLog(req, actorId, action, targetType, targetId, diff) {
   try {
+    await connectToDatabase();
     await AdminAuditLog.create({
       actorId,
       action,
