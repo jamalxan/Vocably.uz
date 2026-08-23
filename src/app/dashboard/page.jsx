@@ -13,12 +13,13 @@ import SpacedRepetition from '@/components/SpacedRepetition';
 import WordTable from '@/components/WordTable';
 import AiChat from '@/components/AiChat';
 import DashboardHome from '@/components/dashboard/DashboardHome';
+import DoStlarPanel from '@/components/chat-friends/DoStlarPanel';
 
 function DashboardContent() {
   const [view, setView] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const { loadingApp, activeCatIndex, activeCategory, handleDeleteCategory } = useApp();
+  const { loadingApp, activeCatIndex, activeCategory, handleDeleteCategory, chatAccess } = useApp();
 
   // Mobil ekranda bo'lim almashtirilganda drawer'ni yopamiz
   useEffect(() => {
@@ -51,18 +52,18 @@ function DashboardContent() {
               {/* Bosh sahifa kategoriyalararo umumiy ko'rinish, shuning uchun sarlavhada
                   bitta kategoriya nomini emas, oddiy salomlashuvni ko'rsatamiz. */}
               <h2 className="text-lg sm:text-xl font-bold text-slate-800 font-display truncate">
-                {view === 'home' ? 'Bosh sahifa' : activeCategory.name || "Kategoriya yo'q"}
+                {view === 'home' ? 'Bosh sahifa' : view === 'friends' ? "Do'stlar" : activeCategory.name || "Kategoriya yo'q"}
               </h2>
               {/* A5 (docs/AUDIT_FINDINGS.md): "Bugungi takrorlash" barcha kategoriyalar bo'yicha
                   ishlaydi, shuning uchun bitta kategoriyaga tegishli so'z sonini shu yerda
                   ko'rsatish SpacedRepetition'dagi "navbatda" soni bilan ziddiyatli ko'rinardi. */}
-              {view !== 'review' && view !== 'home' && (
+              {view !== 'review' && view !== 'home' && view !== 'friends' && (
                 <p className="text-xs text-slate-400 mt-0.5">Jami so'zlar: {activeCategory.words?.length || 0} ta</p>
               )}
             </div>
           </div>
 
-          {view !== 'home' && (
+          {view !== 'home' && view !== 'friends' && (
             <div className="flex gap-2 sm:gap-3 flex-shrink-0">
               <button
                 onClick={() => handleDeleteCategory(activeCatIndex)}
@@ -75,7 +76,7 @@ function DashboardContent() {
           )}
         </header>
 
-        <div className={`p-4 sm:p-6 lg:p-8 w-full mx-auto flex-1 ${view === 'home' ? 'max-w-6xl' : 'max-w-4xl'}`}>
+        <div className={`p-4 sm:p-6 lg:p-8 w-full mx-auto flex-1 ${view === 'home' || view === 'friends' ? 'max-w-6xl' : 'max-w-4xl'}`}>
           <div className={view === 'home' ? '' : 'hidden'}>
             <DashboardHome setView={setView} setSidebarOpen={setSidebarOpen} />
           </div>
@@ -106,6 +107,11 @@ function DashboardContent() {
           <div className={view === 'ai' ? '' : 'hidden'}>
             <AiChat />
           </div>
+          {chatAccess && (
+            <div className={view === 'friends' ? '' : 'hidden'}>
+              <DoStlarPanel />
+            </div>
+          )}
         </div>
       </main>
     </div>

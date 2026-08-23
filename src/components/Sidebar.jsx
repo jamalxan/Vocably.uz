@@ -18,6 +18,8 @@ import {
   Pencil,
   Trash2,
   Check,
+  Users,
+  ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import SidebarChatSessions from './chat/SidebarChatSessions';
@@ -49,6 +51,8 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
     handleDeleteCategory,
     triggerWriteReset,
     triggerMatchReshuffle,
+    chatAccess,
+    chatRole,
   } = useApp();
 
   const [newCatName, setNewCatName] = useState('');
@@ -285,6 +289,35 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                 </div>
               );
             })}
+
+            {/* Do'stlar — yashirin bo'lim, faqat admin ruxsat bergan userlarga ko'rinadi
+                (chatAccess src/app/api/chat/me'dan keladi, server tomonda ham tekshiriladi). */}
+            {chatAccess && (
+              <button
+                onClick={() => {
+                  setView('friends');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm transition-colors ${
+                  view === 'friends'
+                    ? 'bg-indigo-600 text-white font-medium shadow-md shadow-indigo-900/40'
+                    : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Users size={16} />
+                <span className="flex-1 text-left">Do'stlar</span>
+              </button>
+            )}
+
+            {chatRole === 'admin' && (
+              <a
+                href="/admin"
+                className="w-full flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+              >
+                <ShieldCheck size={16} />
+                <span className="flex-1 text-left">Admin panel</span>
+              </a>
+            )}
           </nav>
         </div>
 

@@ -76,6 +76,13 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, trim: true, default: '' },
   password: { type: String, required: true },
   telegramChatId: { type: Number, default: null },
+  // --- Do'stlar (foydalanuvchilararo chat) uchun, docs/ (chat plani) ---
+  // `role` admin panelga kirishni, `chatAccess` esa Do'stlar bo'limining butunlay
+  // yashirin/ko'rinishini boshqaradi — ikkalasi ham faqat admin tomonidan o'zgartiriladi.
+  role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  username: { type: String, trim: true, default: null, unique: true, sparse: true, index: true },
+  chatAccess: { type: Boolean, default: false },
+  chatBanned: { type: Boolean, default: false },
   categories: [CategorySchema],
   // Eski, uzluksiz chat tarixi — endi ishlatilmaydi, faqat orqaga moslik uchun saqlanadi.
   chatHistory: [ChatMessageSchema],
@@ -139,3 +146,107 @@ const ReviewEventSchema = new mongoose.Schema({
 ReviewEventSchema.index({ userId: 1, reviewedAt: -1 });
 
 export const ReviewEvent = mongoose.models.ReviewEvent || mongoose.model('ReviewEvent', ReviewEventSchema);
+
+// ============================================================================
+// Do'stlar (foydalanuvchilararo 1:1 chat) — yangi top-level kolleksiyalar.
+// ReviewEvent'dagi kabi, User hujjati ichiga embed qilinmaydi: bu yerda
+// cross-user so'rovlar (admin nazorati, qidiruv) kerak bo'ladi, embedded
+// massivlar buni samarali qila olmaydi (docs/DB_SCHEMA.md'dagi izohga qarang).
+// ============================================================================
+
+// Ikki foydalanuvchi orasidagi bitta doimiy suhbat. `participantIds` doim
+// ObjectId qiymatlari bo'yicha saralangan holda saqlanadi — shu tufayli
+// (A,B) va (B,A) uchun bitta hujjatgina bo'lishini unique indeks kafolatlaydi.
+const ConversationSchema = new mongoose.Schema({
+  participantIds: {
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    required: true,
+    validate: (v) => Array.isArray(v) && v.length === 2,
+  },
+  lastMessageAt: { type: Date, default: Date.now },
+  lastMessagePreview: { type: String, default: '', trim: true },
+  createdAt: { type: Date, default: Date.now },
+});
+ConversationSchema.index({ participantIds: 1 }, { unique: true });
+
+export const Conversation = mongoose.models.Conversation || mongoose.model('Conversation', ConversationSchema);
+
+const MessageMediaSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true }, // S3/MinIO object key — hech qachon to'g'ridan-to'g'ri URL saqlanmaydi
+    mimeType: { type: String, required: true },
+    size: { type: Number, required: true },
+    width: { type: Number, default: null },
+    height: { type: Number, default: null },
+    durationSec: { type: Number, default: null },
+  },
+  { _id: false }
+);
+
+const MessageSchema = new mongoose.Schema({
+  conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
+  senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  type: { type: String, enum: ['text', 'image', 'video', 'voice', 'file', 'sticker'], required: true },
+  text: { type: String, trim: true, default: '' },
+  media: { type: MessageMediaSchema, default: null },
+  stickerId: { type: String, default: null }, // src/lib/stickers.js manifest'idagi statik id
+  readAt: { type: Date, default: null },
+  deletedForEveryone: { type: Boolean, default: false },
+  flagged: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+});
+MessageSchema.index({ conversationId: 1, createdAt: -1 });
+
+export const Message = mongoose.models.Message || mongoose.model('Message', MessageSchema);
+
+// Bir tomonlama bloklash — bloklovchi bloklanganning xabarini ko'rmaydi/qabul qilmaydi.
+const BlockSchema = new mongoose.Schema({
+  blockerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  blockedId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+BlockSchema.index({ blockerId: 1, blockedId: 1 }, { unique: true });
+
+export const Block = mongoose.models.Block || mongoose.model('Block', BlockSchema);
+
+// Foydalanuvchi shikoyati — admin panelning "Reports" navbatida ko'rib chiqiladi.
+const ReportSchema = new mongoose.Schema({
+  reporterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  targetType: { type: String, enum: ['user', 'message'], required: true },
+  targetId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  reason: { type: String, trim: true, required: true },
+  status: { type: String, enum: ['open', 'reviewed', 'actioned'], default: 'open' },
+  createdAt: { type: Date, default: Date.now },
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  reviewedAt: { type: Date, default: null },
+});
+ReportSchema.index({ status: 1, createdAt: -1 });
+
+export const Report = mongoose.models.Report || mongoose.model('Report', ReportSchema);
+
+// Har bir admin mutatsiyasi shu yerga yoziladi (docs/VOCABLY_REDESIGN_SPEC.md §9.1'dagi
+// admin_audit_log'ning to'g'ridan-to'g'ri Mongo ekvivalenti).
+const AdminAuditLogSchema = new mongoose.Schema({
+  actorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  action: { type: String, required: true },
+  targetType: { type: String, default: null },
+  targetId: { type: String, default: null },
+  diff: { type: mongoose.Schema.Types.Mixed, default: null },
+  ip: { type: String, default: null },
+  userAgent: { type: String, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+AdminAuditLogSchema.index({ createdAt: -1 });
+
+export const AdminAuditLog = mongoose.models.AdminAuditLog || mongoose.model('AdminAuditLog', AdminAuditLogSchema);
+
+// Infratuzilma qo'shmasdan (Redis'siz) oddiy sliding-window tezlik cheklash uchun:
+// bitta hujjat = bitta (userId, action) juftligining joriy oynadagi hisoblagichi.
+// TTL indeksi orqali oyna tugagach avtomatik o'chadi — src/lib/chatAuth.js'da ishlatiladi.
+const RateLimitHitSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true }, // `${userId}:${action}`
+  count: { type: Number, default: 0 },
+  windowStart: { type: Date, default: Date.now, expires: 60 }, // 60s oyna, TTL bilan avtomatik tozalanadi
+});
+
+export const RateLimitHit = mongoose.models.RateLimitHit || mongoose.model('RateLimitHit', RateLimitHitSchema);

@@ -1,5 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
-import { OtpSession, User } from '@/lib/models';
+import { OtpSession, User, Conversation, Message } from '@/lib/models';
 import { phonesMatch } from '@/lib/phone';
 import { generateCode } from '@/lib/otp';
 import { sendMessage, requestContactKeyboard, removeKeyboard } from '@/lib/telegram';
@@ -12,7 +12,12 @@ import { NextResponse } from 'next/server';
 async function handleAdminCommand(chatId, text) {
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
   if (!adminChatId || String(chatId) !== String(adminChatId)) return false;
-  if (text !== '/users' && text !== '/stats') return false;
+  if (!['/users', '/stats', '/admin'].includes(text)) return false;
+
+  if (text === '/admin') {
+    await sendAdminOverview(chatId);
+    return true;
+  }
 
   const users = await User.find({}).select('name phone createdAt').sort({ createdAt: -1 }).lean();
   const total = users.length;
@@ -39,6 +44,48 @@ async function handleAdminCommand(chatId, text) {
     await sendMessage(chatId, lines.join('\n'));
   }
   return true;
+}
+
+// /admin — to'liq holat: umumiy foydalanuvchi sonidan tashqari Do'stlar (chat) bo'limi
+// bo'yicha to'liq statistika + ruxsat berilgan userlar ro'yxati ismlari bilan. Telegram
+// xabari 4096 belgi bilan cheklangan, shuning uchun ro'yxat sahifalab yuboriladi (mavjud
+// /users patterniga mos).
+async function sendAdminOverview(chatId) {
+  const [totalUsers, chatUsers, adminCount, bannedCount, totalConversations, totalMessages] = await Promise.all([
+    User.countDocuments({}),
+    User.find({ chatAccess: true }).select('name phone username chatBanned createdAt').sort({ createdAt: -1 }).lean(),
+    User.countDocuments({ role: 'admin' }),
+    User.countDocuments({ chatAccess: true, chatBanned: true }),
+    Conversation.countDocuments({}),
+    Message.countDocuments({}),
+  ]);
+
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const newToday = await User.countDocuments({ createdAt: { $gte: dayAgo } });
+
+  const header =
+    `🛠 <b>Vocably — umumiy holat</b>\n\n` +
+    `👥 Jami foydalanuvchilar: <b>${totalUsers}</b> (so'nggi 24 soatda: +${newToday})\n` +
+    `💬 Do'stlar bo'limiga ruxsati bor: <b>${chatUsers.length}</b>\n` +
+    `🚫 Chatdan bloklangan: <b>${bannedCount}</b>\n` +
+    `👑 Adminlar: <b>${adminCount}</b>\n` +
+    `📨 Jami suhbatlar: <b>${totalConversations}</b>\n` +
+    `✉️ Jami xabarlar: <b>${totalMessages}</b>`;
+  await sendMessage(chatId, header);
+
+  if (chatUsers.length === 0) return;
+
+  const PAGE_SIZE = 40;
+  await sendMessage(chatId, "👤 <b>Do'stlar bo'limi userlari:</b>");
+  for (let i = 0; i < chatUsers.length; i += PAGE_SIZE) {
+    const page = chatUsers.slice(i, i + PAGE_SIZE);
+    const lines = page.map((u, idx) => {
+      const num = i + idx + 1;
+      const ban = u.chatBanned ? ' 🚫' : '';
+      return `${num}. ${u.name || '(ismsiz)'} — @${u.username || '—'} — ${u.phone}${ban}`;
+    });
+    await sendMessage(chatId, lines.join('\n'));
+  }
 }
 
 // Telegram bizga har bir yangilanishni shu manzilga POST qiladi.

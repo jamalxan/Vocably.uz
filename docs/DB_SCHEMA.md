@@ -137,6 +137,25 @@ Only two indexes are explicitly declared:
 
 No index on anything used for the spec's proposed due-date/streak queries (there's nothing to index yet since `nextReview` lives inside a deeply nested array — Mongo cannot efficiently index or query "words across all users where `stats.nextReview <= now`" the way the spec's flat `user_word_state` table could). This is a real scaling constraint worth calling out for FAZA 4 planning: as currently modeled, computing global due-counts, leech lists, or activity heatmaps requires loading each user's *entire* categories/words tree into the Node process and filtering in application code (see `SpacedRepetition.jsx`, `AppContext.jsx` — this is exactly what they already do, client-side, over the full `categories` payload from `GET /api/words`).
 
+## Do'stlar (foydalanuvchilararo chat) — yangi top-level kolleksiyalar
+
+Qo'shildi (2026-08-23), `docs/` chat plani asosida. `ReviewEvent`dagi kabi, `User`
+hujjatiga embed qilinmagan — cross-user so'rovlar (qidiruv, admin nazorati) kerak.
+
+- **`User`** ga qo'shilgan maydonlar: `role` (`user`/`admin`), `username` (unique, sparse — faqat
+  chat ruxsati berilganlarda bo'ladi), `chatAccess` (bool, Do'stlar bo'limi ko'rinishini boshqaradi),
+  `chatBanned` (bool).
+- **`Conversation`** — ikki foydalanuvchi orasidagi doimiy 1:1 suhbat. `participantIds` saralangan
+  juftlik, unique compound indeks (bir juftlik = bitta hujjat).
+- **`Message`** — `conversationId` + `createdAt` bo'yicha indekslangan. `type`:
+  text/image/video/voice/file/sticker. Media S3/MinIO obyekt kaliti sifatida saqlanadi (`media.key`),
+  hech qachon to'g'ridan-to'g'ri URL emas.
+- **`Block`**, **`Report`**, **`AdminAuditLog`** — bloklash, shikoyat va admin audit jurnali.
+- **`RateLimitHit`** — Redis'siz oddiy tezlik cheklash uchun, TTL indeks bilan avtomatik tozalanadi.
+
+To'liq kontekst: `docs/` ichidagi chat rejasi (session tarixida), `src/lib/chatAuth.js`,
+`src/app/api/chat/*`, `src/app/api/admin/*`.
+
 ## ER diagram (text form)
 
 ```

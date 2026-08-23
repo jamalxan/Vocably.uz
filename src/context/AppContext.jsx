@@ -16,6 +16,26 @@ export function AppProvider({ children }) {
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
 
+  // Do'stlar bo'limi — hidden feature, faqat admin ruxsat bergan userlarga ko'rinadi
+  // (src/app/api/chat/me). `chatUsername`/`chatRole` shu yerdan keladi, login uchun
+  // ishlatiladigan `phone`dan mustaqil.
+  const [chatAccess, setChatAccess] = useState(false);
+  const [chatUsername, setChatUsername] = useState(null);
+  const [chatRole, setChatRole] = useState('user');
+
+  const fetchChatAccess = useCallback(async (jwtToken) => {
+    try {
+      const res = await fetch('/api/chat/me', { headers: { Authorization: `Bearer ${jwtToken}` } });
+      if (!res.ok) return;
+      const data = await res.json();
+      setChatAccess(!!data.chatAccess);
+      setChatUsername(data.username || null);
+      setChatRole(data.role || 'user');
+    } catch {
+      // jimgina e'tiborsiz qoldiramiz — bo'lim shunchaki ko'rinmay qoladi
+    }
+  }, []);
+
   // "Yozish testi" har qanday nav bosilganda qayta boshlanadigan qilib sozlanadi (avvalgi xatti-harakat).
   const [writeResetNonce, setWriteResetNonce] = useState(0);
   // "Juftlikni topish" nav tugmasi bosilganda kartalar qayta aralashtiriladi (avvalgi xatti-harakat).
@@ -211,6 +231,7 @@ export function AppProvider({ children }) {
       setUsername(savedUser || '');
       setPhone(savedPhone || '');
       fetchUserData(savedToken);
+      fetchChatAccess(savedToken);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
@@ -369,6 +390,9 @@ export function AppProvider({ children }) {
     username,
     phone,
     displayName,
+    chatAccess,
+    chatUsername,
+    chatRole,
     fetchUserData,
     refreshCategories,
     syncData,

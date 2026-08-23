@@ -1,0 +1,36 @@
+version: '3.8'
+
+# Vocably Do'stlar bo'limi uchun serverga joylashtiriladigan ikkita izolyatsiyalangan
+# xizmat: media saqlash (MinIO, S3-mos) va jonli xabar/onlayn holat (realtime-server).
+# Ikkalasi ham faqat 127.0.0.1'ga bog'lanadi — internetga faqat nginx orqali (TLS bilan)
+# chiqadi, xizmatlarning o'zi to'g'ridan-to'g'ri tashqariga ochilmaydi.
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: vocably-minio
+    restart: unless-stopped
+    command: server /data --address ":9000"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      MINIO_BROWSER: "off"
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - ./minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  realtime:
+    build: .
+    container_name: vocably-realtime
+    restart: unless-stopped
+    environment:
+      PORT: 4001
+      JWT_SECRET: ${JWT_SECRET}
+      REALTIME_SHARED_SECRET: ${REALTIME_SHARED_SECRET}
+    ports:
+      - "127.0.0.1:4001:4001"

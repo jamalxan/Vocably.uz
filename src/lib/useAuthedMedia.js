@@ -1,0 +1,35 @@
+'use client';
+import { useEffect, useState } from 'react';
+
+// <img src>/<video src> Authorization header yubora olmaydi, shuning uchun media
+// baytlarini fetch() bilan (Bearer token bilan) olib, blob URL yasaydi. Token hech
+// qachon URL'ga yozilmaydi (server loglari/brauzer tarixida qolmasligi uchun).
+export function useAuthedMediaUrl(mediaKey, token) {
+  const [url, setUrl] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!mediaKey || !token) return undefined;
+    let objectUrl = null;
+    let cancelled = false;
+
+    fetch(`/api/chat/media/${mediaKey}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      })
+      .catch(() => !cancelled && setError(true));
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [mediaKey, token]);
+
+  return { url, error };
+}
