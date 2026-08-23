@@ -1,5 +1,4 @@
 'use client';
-import { useEffect, useState } from 'react';
 import {
   BookOpen,
   Edit3,
@@ -13,15 +12,11 @@ import {
   ListChecks,
   Headphones,
   Zap,
-  ChevronRight,
   Users,
   ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import SidebarChatSessions from './chat/SidebarChatSessions';
 import CategorySwitcher from './CategorySwitcher';
-
-const CHAT_ACCORDION_KEY = 'vocably.chatAccordionOpen';
 
 const navItems = [
   { key: 'home', label: 'Bosh sahifa', icon: Home },
@@ -44,20 +39,6 @@ function navItemClass(active) {
 
 export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) {
   const { displayName, logout, triggerWriteReset, triggerMatchReshuffle, chatAccess, chatRole } = useApp();
-
-  // Suhbatlar ro'yxati default yopiq; ochiq/yopiq holati localStorage'da eslab qolinadi.
-  const [chatOpen, setChatOpen] = useState(false);
-
-  useEffect(() => {
-    setChatOpen(localStorage.getItem(CHAT_ACCORDION_KEY) === '1');
-  }, []);
-
-  const toggleChatAccordion = () => {
-    setChatOpen((prev) => {
-      localStorage.setItem(CHAT_ACCORDION_KEY, prev ? '0' : '1');
-      return !prev;
-    });
-  };
 
   return (
     <>
@@ -99,43 +80,21 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
           <CategorySwitcher />
 
           <nav className="space-y-1">
-            {navItems.map(({ key, label, icon: Icon }) => {
-              const isAi = key === 'ai';
-              const active = view === key;
-              return (
-                <div key={key}>
-                  <button
-                    onClick={() => {
-                      setView(key);
-                      triggerWriteReset();
-                      if (key === 'match') triggerMatchReshuffle();
-                      // "AI Chat" bosilganda chat ekrani ochiladi VA suhbatlar ro'yxati yig'iladi/ochiladi.
-                      if (isAi) toggleChatAccordion();
-                    }}
-                    className={navItemClass(active)}
-                  >
-                    <Icon size={16} />
-                    <span className="flex-1 text-left">{label}</span>
-                    {isAi && (
-                      <ChevronRight
-                        size={14}
-                        className={`transition-transform ${chatOpen ? 'rotate-90' : ''}`}
-                      />
-                    )}
-                  </button>
-
-                  {isAi && (
-                    <SidebarChatSessions
-                      expanded={chatOpen}
-                      onOpenChat={() => {
-                        setView('ai');
-                        setSidebarOpen(false);
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
+            {navItems.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => {
+                  setView(key);
+                  triggerWriteReset();
+                  if (key === 'match') triggerMatchReshuffle();
+                  setSidebarOpen(false);
+                }}
+                className={navItemClass(view === key)}
+              >
+                <Icon size={16} />
+                <span className="flex-1 text-left">{label}</span>
+              </button>
+            ))}
 
             {/* Do'stlar — yashirin bo'lim, faqat admin ruxsat bergan userlarga ko'rinadi
                 (chatAccess src/app/api/chat/me'dan keladi, server tomonda ham tekshiriladi). */}

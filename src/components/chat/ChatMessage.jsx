@@ -20,7 +20,7 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
   return (
     <div className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
-        <div className="w-7 h-7 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent to-primary text-on-accent flex items-center justify-center flex-shrink-0 mt-0.5 shadow-glow">
           <Sparkles size={13} />
         </div>
       )}
