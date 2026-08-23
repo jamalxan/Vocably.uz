@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { Check, X, Trash2 } from 'lucide-react';
+import { Check, X, Trash2, Pencil, ListChecks, Save } from 'lucide-react';
+import SparkleBurst from '../SparkleBurst';
 
 export default function PendingAddWordsCard({ pendingAction, categories, sessionId, onResolved }) {
   const initialCatId = categories.some((c) => c._id === pendingAction.categoryId)
@@ -10,12 +11,18 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
   const [words, setWords] = useState(
     (pendingAction.words || []).map((w) => ({
       word: w.word || '',
+      pronunciation: w.pronunciation || '',
       synsText: Array.isArray(w.syns) ? w.syns.join(', ') : '',
     }))
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [resolved, setResolved] = useState(false);
+  const [celebrating, setCelebrating] = useState(false);
+  // Tahrirlash/o'chirish tugmalari sukut bo'yicha yashirin — "Tanlash" bosilgandagina
+  // chiqadi, aks holda ro'yxat tinch, faqat o'qish uchun ko'rinadi.
+  const [selectMode, setSelectMode] = useState(false);
+  const [editingIdx, setEditingIdx] = useState(null);
 
   const updateWord = (idx, field, value) => {
     setWords((prev) => prev.map((w, i) => (i === idx ? { ...w, [field]: value } : w)));
@@ -33,6 +40,7 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
     const cleanWords = words
       .map((w) => ({
         word: w.word.trim(),
+        pronunciation: w.pronunciation.trim(),
         syns: w.synsText.split(',').map((s) => s.trim()).filter(Boolean),
       }))
       .filter((w) => w.word && w.syns.length > 0);
@@ -53,11 +61,14 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Xatolik');
 
-      setResolved(true);
-      onResolved(data);
+      // Muvaffaqiyat animatsiyasi biroz ko'rinib tursin, keyin kartani xabarga almashtiramiz.
+      setCelebrating(true);
+      setTimeout(() => {
+        setResolved(true);
+        onResolved(data);
+      }, 900);
     } catch (err) {
       setError(err.message);
-    } finally {
       setSubmitting(false);
     }
   };
@@ -65,33 +76,92 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
   if (resolved) return null;
 
   return (
-    <div className="mt-3 bg-surface border border-accent/15 rounded-xl p-3 sm:p-4 text-sm">
-      <p className="text-xs font-semibold text-muted uppercase mb-2">Qo'shiladigan so'zlar</p>
+    <div className="relative mt-3 bg-surface border border-accent/15 rounded-xl p-3 sm:p-4 text-sm overflow-visible">
+      {celebrating && <SparkleBurst />}
+
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-muted uppercase">Qo'shiladigan so'zlar</p>
+        <button
+          onClick={() => {
+            setSelectMode((v) => !v);
+            setEditingIdx(null);
+          }}
+          disabled={celebrating}
+          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+            selectMode ? 'bg-accent text-white' : 'text-accent hover:bg-accent-soft'
+          }`}
+        >
+          <ListChecks size={12} /> {selectMode ? 'Tayyor' : 'Tanlash'}
+        </button>
+      </div>
 
       <div className="space-y-2 mb-3">
-        {words.map((w, idx) => (
-          <div key={idx} className="flex gap-2 items-center">
-            <input
-              value={w.word}
-              onChange={(e) => updateWord(idx, 'word', e.target.value)}
-              className="w-28 sm:w-32 px-2 py-1.5 border border-border rounded-lg text-xs outline-none focus:border-accent"
-              placeholder="so'z"
-            />
-            <input
-              value={w.synsText}
-              onChange={(e) => updateWord(idx, 'synsText', e.target.value)}
-              className="flex-1 px-2 py-1.5 border border-border rounded-lg text-xs outline-none focus:border-accent"
-              placeholder="tarjimalar, vergul bilan"
-            />
-            <button
-              onClick={() => removeWord(idx)}
-              className="p-1.5 text-muted hover:text-accent hover:bg-accent-soft rounded transition-colors flex-shrink-0"
-              title="Ro'yxatdan olib tashlash"
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        ))}
+        {words.map((w, idx) =>
+          editingIdx === idx ? (
+            <div key={idx} className="border border-accent/30 rounded-lg p-2.5 space-y-1.5">
+              <input
+                value={w.word}
+                onChange={(e) => updateWord(idx, 'word', e.target.value)}
+                className="w-full px-2 py-1.5 border border-border rounded-lg text-xs outline-none focus:border-accent"
+                placeholder="Inglizcha so'z"
+              />
+              <input
+                value={w.pronunciation}
+                onChange={(e) => updateWord(idx, 'pronunciation', e.target.value)}
+                className="w-full px-2 py-1.5 border border-border rounded-lg text-xs outline-none focus:border-accent italic"
+                placeholder="Talaffuz (masalan /əˈraɪz/)"
+              />
+              <input
+                value={w.synsText}
+                onChange={(e) => updateWord(idx, 'synsText', e.target.value)}
+                className="w-full px-2 py-1.5 border border-border rounded-lg text-xs outline-none focus:border-accent"
+                placeholder="Tarjimalar, vergul bilan"
+              />
+              <button
+                onClick={() => setEditingIdx(null)}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold transition-colors"
+              >
+                <Save size={12} /> Saqlash
+              </button>
+            </div>
+          ) : (
+            <div key={idx} className="border border-border rounded-lg px-3 py-2.5">
+              <div className="flex items-baseline gap-2">
+                <p className="font-bold text-primary">{w.word || '—'}</p>
+                {w.pronunciation && <p className="text-xs text-muted italic">{w.pronunciation}</p>}
+                {selectMode && (
+                  <div className="ml-auto flex gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => setEditingIdx(idx)}
+                      title="Tahrirlash"
+                      className="p-1 text-muted hover:text-accent hover:bg-accent-soft rounded transition-colors"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      onClick={() => removeWord(idx)}
+                      title="Ro'yxatdan olib tashlash"
+                      className="p-1 text-muted hover:text-accent hover:bg-accent-soft rounded transition-colors"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="mt-1">
+                {w.synsText
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .map((syn, i) => (
+                    <p key={i} className="text-[13px] text-accent leading-snug">
+                      • {syn}
+                    </p>
+                  ))}
+              </div>
+            </div>
+          )
+        )}
         {words.length === 0 && <p className="text-xs text-muted">Ro'yxat bo'sh</p>}
       </div>
 
@@ -120,7 +190,7 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
           disabled={submitting}
           className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors"
         >
-          <Check size={13} /> {submitting ? 'Qo\'shilmoqda...' : "Qo'shish"}
+          <Check size={13} /> {submitting ? "Qo'shilmoqda..." : "Qo'shish"}
         </button>
         <button
           onClick={() => setResolved(true)}

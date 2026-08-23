@@ -78,6 +78,9 @@ export default function FlashcardMode() {
             <p className="text-2xl sm:text-3xl font-extrabold text-primary font-display text-center break-words">
               {words[cardIndex]?.word}
             </p>
+            {words[cardIndex]?.pronunciation && (
+              <p className="text-sm text-muted italic mt-1">{words[cardIndex].pronunciation}</p>
+            )}
 
             {showAnswer ? (
               <p className="text-lg sm:text-xl font-medium text-accent mt-6 text-center">

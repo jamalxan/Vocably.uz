@@ -34,6 +34,9 @@ const WordStatsSchema = new mongoose.Schema(
 const WordSchema = new mongoose.Schema({
   word: { type: String, required: true, trim: true },
   syns: [{ type: String, trim: true }],
+  // AI orqali qo'shilgan so'zlar uchun talaffuz transkripsiyasi (masalan "/əˈraɪz/") —
+  // ixtiyoriy, qo'lda qo'shilgan eski so'zlarda bo'sh qoladi.
+  pronunciation: { type: String, trim: true, default: '' },
   stats: { type: WordStatsSchema, default: () => ({}) },
 });
 
@@ -83,6 +86,9 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, trim: true, default: null, unique: true, sparse: true, index: true },
   chatAccess: { type: Boolean, default: false },
   chatBanned: { type: Boolean, default: false },
+  // Do'stlar bo'limida "oxirgi marta ko'rilgan" uchun — requireChatUser() har /api/chat/*
+  // so'rovida (throttled) yangilaydi, src/lib/chatAuth.js.
+  lastActiveAt: { type: Date, default: null },
   categories: [CategorySchema],
   // Eski, uzluksiz chat tarixi — endi ishlatilmaydi, faqat orqaga moslik uchun saqlanadi.
   chatHistory: [ChatMessageSchema],

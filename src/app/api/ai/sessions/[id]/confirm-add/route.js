@@ -26,6 +26,7 @@ export async function POST(req, { params }) {
       .filter((w) => w && typeof w.word === 'string' && w.word.trim())
       .map((w) => ({
         word: w.word.trim(),
+        pronunciation: typeof w.pronunciation === 'string' ? w.pronunciation.trim() : '',
         syns: Array.isArray(w.syns) ? w.syns.map((s) => String(s).trim()).filter(Boolean) : [],
       }))
       .filter((w) => w.syns.length > 0);

@@ -193,6 +193,9 @@ export default function SpacedRepetition({ active }) {
             <p className="text-2xl sm:text-3xl font-extrabold text-primary font-display text-center break-words">
               {current.word.word}
             </p>
+            {current.word.pronunciation && (
+              <p className="text-sm text-muted italic mt-1">{current.word.pronunciation}</p>
+            )}
             {showAnswer ? (
               <p className="text-lg sm:text-xl font-medium text-accent mt-6 text-center">
                 {current.word.syns.join(', ')}

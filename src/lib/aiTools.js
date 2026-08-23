@@ -19,10 +19,18 @@ const TOOL_DEFS = [
           items: {
             type: 'object',
             properties: {
-              word: { type: 'string' },
-              syns: { type: 'array', items: { type: 'string' } },
+              word: { type: 'string', description: 'Inglizcha so\'z' },
+              pronunciation: {
+                type: 'string',
+                description: 'Talaffuz transkripsiyasi, IPA formatida (masalan "/əˈraɪz/")',
+              },
+              syns: {
+                type: 'array',
+                items: { type: 'string' },
+                description: "So'zning o'zbekcha tarjima(lar)i — kamida bittasi shart",
+              },
             },
-            required: ['word', 'syns'],
+            required: ['word', 'pronunciation', 'syns'],
           },
         },
       },
@@ -88,7 +96,11 @@ export function runToolCall(name, args, user, ctx = {}) {
   if (name === 'add_words') {
     const pendingAction = {
       categoryId: args?.categoryId || '',
-      words: Array.isArray(args?.words) ? args.words : [],
+      words: (Array.isArray(args?.words) ? args.words : []).map((w) => ({
+        word: w?.word || '',
+        pronunciation: w?.pronunciation || '',
+        syns: Array.isArray(w?.syns) ? w.syns : [],
+      })),
     };
     return {
       result: { status: "Foydalanuvchi tasdig'i so'ralmoqda, hali qo'shilmadi" },

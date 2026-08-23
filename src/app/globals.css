@@ -69,3 +69,25 @@ body {
     font-size: 16px;
   }
 }
+
+/* Muvaffaqiyatli bajarilgan vazifa (masalan so'zlar qo'shildi) uchun zarracha portlashi —
+   src/components/SparkleBurst.jsx shu klassni ishlatadi. --tx/--ty/--delay har bir
+   zarracha uchun JS'dan inline style bilan beriladi (tasodifiy yo'nalish/kechikish). */
+@keyframes sparkle-burst {
+  0% {
+    transform: translate(0, 0) scale(0.4) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(1.1) rotate(180deg);
+    opacity: 0;
+  }
+}
+.sparkle-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  animation: sparkle-burst 850ms ease-out forwards;
+  animation-delay: var(--delay, 0ms);
+  pointer-events: none;
+}
