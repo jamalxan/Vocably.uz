@@ -1,11 +1,11 @@
 'use client';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, Loader2, Paperclip, X, Send, Mic, Radio, Volume2, VolumeX } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Sparkles, Loader2, Paperclip, X, Send, Mic } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ChatMessage from './chat/ChatMessage';
 
-// Bu til FAQAT mikrofon (SpeechRecognition) uchun — matn yozishga ta'sir qilmaydi,
-// shuning uchun tanlagich faqat mikrofon yoki Live rejim yoqilganda ko'rsatiladi.
+// Bu til FAQAT mikrofon (SpeechRecognition, ovozli kiritish) uchun — matn yozishga ta'sir
+// qilmaydi, tanlagich faqat mikrofon yoqilganda ko'rinadi.
 const RECOGNITION_LANGS = [
   { code: 'en-US', label: 'EN', name: 'Ingliz tili' },
   { code: 'uz-UZ', label: 'UZ', name: "O'zbek tili" },
@@ -14,16 +14,8 @@ const RECOGNITION_LANGS = [
 const DEFAULT_RECOGNITION_LANG = 'en-US';
 const MAX_ATTACHED_IMAGES = 10;
 const RECOGNITION_LANG_KEY = 'vocably.recognitionLang';
-const SILENCE_MS = 1500;
 // Textarea 1 qatordan boshlanadi va ~6 qatorgacha o'sadi, keyin ichida scroll paydo bo'ladi.
 const MAX_TEXTAREA_HEIGHT = 142;
-
-const ASSISTANT_MODES = [
-  { key: 'writing', label: '✍️ Writing', text: 'Writing mashqini boshlaylik' },
-  { key: 'reading', label: '📖 Reading', text: 'Reading mashqini boshlaylik' },
-  { key: 'speaking', label: '🗣️ Speaking', text: 'Speaking mashqini boshlaylik' },
-  { key: 'listening', label: '🎧 Listening', text: 'Listening mashqini boshlaylik' },
-];
 
 const PENDING_MARK_START = '\n[[PENDING_ADD_WORDS]]';
 const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]';
@@ -43,9 +35,11 @@ function extractPendingAction(fullText) {
 }
 
 export default function AiChat() {
-  // Suhbatlar ro'yxati sidebar'da — bu yerda faqat joriy suhbat xabarlari boshqariladi.
+  // Suhbatlar ro'yxati alohida panelda (AiChatSessionsPanel) — bu yerda faqat joriy
+  // suhbat xabarlari boshqariladi.
   const {
     token,
+    displayName,
     categories,
     refreshCategories,
     currentSessionId,
@@ -65,11 +59,6 @@ export default function AiChat() {
   const [recognitionLang, setRecognitionLang] = useState(DEFAULT_RECOGNITION_LANG);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [micListening, setMicListening] = useState(false);
-  const [liveMode, setLiveMode] = useState(false);
-  const [liveListening, setLiveListening] = useState(false);
-  const [ttsEnabled, setTtsEnabled] = useState(true);
-  const [ttsRate, setTtsRate] = useState(1);
-  const [speaking, setSpeaking] = useState(false);
 
   const chatEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -78,9 +67,6 @@ export default function AiChat() {
   const textareaRef = useRef(null);
   const langMenuRef = useRef(null);
   const recognitionRef = useRef(null);
-  const liveModeRef = useRef(false);
-  const silenceTimerRef = useRef(null);
-  const handleSendRef = useRef(null);
 
   useEffect(() => {
     setVoiceSupported(typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition));
@@ -97,10 +83,6 @@ export default function AiChat() {
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [langMenuOpen]);
-
-  useEffect(() => {
-    liveModeRef.current = liveMode;
-  }, [liveMode]);
 
   // Matn o'zgarganda textarea balandligini moslaymiz; xabar yuborilib input tozalangach
   // balandlik o'z-o'zidan 1 qatorga qaytadi.
@@ -123,10 +105,7 @@ export default function AiChat() {
   }, [chatInput]);
 
   useEffect(() => {
-    return () => {
-      recognitionRef.current?.stop();
-      if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
-    };
+    return () => recognitionRef.current?.stop();
   }, []);
 
   const scrollToBottom = () => {
@@ -228,93 +207,18 @@ export default function AiChat() {
     refreshCategories();
   };
 
-  const speak = useCallback(
-    (text) =>
-      new Promise((resolve) => {
-        if (!ttsEnabled || !text || typeof window === 'undefined' || !('speechSynthesis' in window)) {
-          resolve();
-          return;
-        }
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'en-US';
-        utter.rate = ttsRate;
-        utter.onend = () => {
-          setSpeaking(false);
-          resolve();
-        };
-        utter.onerror = () => {
-          setSpeaking(false);
-          resolve();
-        };
-        setSpeaking(true);
-        window.speechSynthesis.speak(utter);
-      }),
-    [ttsEnabled, ttsRate]
-  );
-
-  const startLiveListening = useCallback(() => {
-    const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
-    if (!SR || !liveModeRef.current) return;
-
-    const recognition = new SR();
-    recognition.lang = recognitionLang;
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    let finalText = '';
-
-    recognition.onresult = (e) => {
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-      }
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = setTimeout(() => {
-        const text = finalText.trim();
-        finalText = '';
-        recognition.stop();
-        if (text) handleSendRef.current?.(text);
-      }, SILENCE_MS);
-    };
-    recognition.onerror = () => setLiveListening(false);
-    recognition.onend = () => setLiveListening(false);
-
-    recognitionRef.current = recognition;
-    setLiveListening(true);
-    recognition.start();
-  }, [recognitionLang]);
-
-  const stopLiveMode = () => {
-    liveModeRef.current = false;
-    setLiveMode(false);
-    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-    recognitionRef.current?.stop();
-    if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
-    setLiveListening(false);
-    setSpeaking(false);
-  };
-
-  const toggleLiveMode = () => {
-    if (liveMode) {
-      stopLiveMode();
-    } else {
-      setLiveMode(true);
-      liveModeRef.current = true;
-      startLiveListening();
-    }
-  };
-
-  const activeLang =
-    RECOGNITION_LANGS.find((l) => l.code === recognitionLang) || RECOGNITION_LANGS[0];
+  const activeLang = RECOGNITION_LANGS.find((l) => l.code === recognitionLang) || RECOGNITION_LANGS[0];
 
   // Tanlangan til localStorage'da saqlanadi, keyingi safar eslab qolinadi.
   const changeRecognitionLang = (code) => {
     setRecognitionLang(code);
     localStorage.setItem(RECOGNITION_LANG_KEY, code);
     setLangMenuOpen(false);
-    // Tinglash davom etayotgan bo'lsa to'xtatamiz — yangi til keyingi ishga tushishda qo'llanadi.
-    if (micListening || liveListening) recognitionRef.current?.stop();
+    if (micListening) recognitionRef.current?.stop();
   };
 
+  // Ovozli kiritish: gapirilgan matn to'g'ridan-to'g'ri xabar maydoniga yoziladi —
+  // foydalanuvchi ko'rib, kerak bo'lsa tahrirlab, keyin oddiy tugma bilan yuboradi.
   const toggleMic = () => {
     if (micListening) {
       recognitionRef.current?.stop();
@@ -409,11 +313,6 @@ export default function AiChat() {
 
       // Sidebar'dagi ro'yxat yangilansin (sarlavha/tartib o'zgargan bo'lishi mumkin).
       loadChatSessions();
-
-      if (liveModeRef.current) {
-        await speak(visibleText);
-        if (liveModeRef.current) startLiveListening();
-      }
     } catch (err) {
       setMessages((prev) => {
         const updated = [...prev];
@@ -424,10 +323,6 @@ export default function AiChat() {
       setChatLoading(false);
     }
   };
-
-  useEffect(() => {
-    handleSendRef.current = handleSend;
-  });
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
@@ -446,37 +341,21 @@ export default function AiChat() {
   const isEmpty = messages.length === 0 && !sessionLoading;
   const lastMsg = messages[messages.length - 1];
   const isTyping = chatLoading && lastMsg?.role === 'model' && !lastMsg.parts[0].text;
+  const firstName = (displayName || '').trim().split(/\s+/)[0] || '';
 
   return (
     <div className="relative flex h-full overflow-hidden">
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="p-3 sm:p-4 bg-gradient-to-r from-accent-soft to-bg border-b border-border flex items-center gap-2 text-xs text-muted">
-          <span className="font-semibold text-accent flex items-center gap-1.5">
-            <Sparkles size={14} /> Ingliz tili AI yordamchisi
-          </span>
-          <span className="hidden sm:inline">Til, tarjima va lug'atga so'z qo'shish</span>
-          {voiceSupported && (
-            <button
-              onClick={() => setTtsEnabled((v) => !v)}
-              className="ml-auto p-1.5 hover:bg-surface/60 rounded-lg text-muted hover:text-accent transition-colors flex-shrink-0"
-              title={ttsEnabled ? 'AI ovozini o\'chirish' : 'AI ovozini yoqish'}
-            >
-              {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
-            </button>
-          )}
-        </div>
-
-        <div className="flex gap-1.5 px-3 sm:px-4 py-2 border-b border-border overflow-x-auto flex-shrink-0">
-          {ASSISTANT_MODES.map((m) => (
-            <button
-              key={m.key}
-              onClick={() => handleSend(m.text)}
-              disabled={chatLoading}
-              className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-bg hover:bg-accent-soft hover:text-accent text-muted border border-border transition-colors whitespace-nowrap disabled:opacity-40"
-            >
-              {m.label}
-            </button>
-          ))}
+        {/* Vocably AI — o'ziga xos brendlangan sarlavha (Gemini-uslubidagi generik
+            "yordamchi" yozuvi emas), ortiqcha boshqaruvlarsiz (mute/tezlik/live — pastga q.). */}
+        <div className="px-4 sm:px-6 py-3.5 border-b border-border flex items-center gap-3 bg-gradient-to-r from-primary via-primary to-primary-hover flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shadow-glow flex-shrink-0">
+            <Sparkles size={18} className="text-on-accent" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold font-display text-on-primary leading-tight">Vocably AI</p>
+            <p className="text-[11px] text-on-primary/55 leading-tight">Har doim yordamga tayyor</p>
+          </div>
         </div>
 
         <div
@@ -487,10 +366,17 @@ export default function AiChat() {
           className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4"
         >
           {isEmpty && (
-            <div className="text-center py-12 text-muted">
-              <Sparkles className="mx-auto mb-3 text-accent" size={32} />
-              <p className="text-sm">Assalomu alaykum! Ingliz tili yoki tarjima bo'yicha savolingiz bormi?</p>
-              <p className="text-[10px] text-muted mt-1">
+            <div className="text-center py-12">
+              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-accent to-primary flex items-center justify-center shadow-glow">
+                <Sparkles className="text-on-accent" size={24} />
+              </div>
+              <p className="text-base font-semibold text-primary font-display">
+                Assalomu alaykum{firstName ? `, ${firstName}` : ''}!
+              </p>
+              <p className="text-sm text-muted mt-1.5 max-w-sm mx-auto">
+                Men sizning Vocably yordamchingizman. Bugun sizga qanday yordam bera olaman?
+              </p>
+              <p className="text-[10px] text-muted/70 mt-2">
                 Masalan: "arise" so'zini bir nechta gapda ishlatib ko'rsat, yoki rasm yuboring
               </p>
             </div>
@@ -525,48 +411,9 @@ export default function AiChat() {
         </div>
 
         <div className="p-3 sm:p-4 border-t border-border">
-          {voiceSupported ? (
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <button
-                onClick={toggleLiveMode}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors ${
-                  liveMode
-                    ? 'bg-accent-soft border-accent/25 text-accent'
-                    : 'bg-surface border-border text-muted hover:border-accent/30'
-                }`}
-                title="Uzluksiz ovozli suhbat"
-              >
-                <span className="relative flex h-2 w-2">
-                  {liveMode && (liveListening || speaking) && (
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                  )}
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${liveMode ? 'bg-accent-soft0' : 'bg-muted/40'}`} />
-                </span>
-                <Radio size={12} /> Live rejim
-              </button>
-
-              {liveMode && (
-                <span className="text-[10px] text-muted">
-                  {speaking ? 'AI gapirmoqda...' : liveListening ? 'Tinglanmoqda...' : 'Kutilmoqda...'}
-                </span>
-              )}
-
-              <div className="flex items-center gap-1 ml-auto text-[10px] text-muted">
-                <span>Tezlik</span>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="1.5"
-                  step="0.1"
-                  value={ttsRate}
-                  onChange={(e) => setTtsRate(parseFloat(e.target.value))}
-                  className="w-16 accent-indigo-500"
-                />
-              </div>
-            </div>
-          ) : (
+          {!voiceSupported && (
             <p className="text-[10px] text-muted mb-2">
-              Brauzeringiz ovozli kiritish/chiqishni to'liq qo'llab-quvvatlamaydi — matn rejimida davom eting.
+              Brauzeringiz ovozli kiritishni qo'llab-quvvatlamaydi — matn rejimida davom eting.
             </p>
           )}
           {attachedImages.length > 0 && (
@@ -611,8 +458,7 @@ export default function AiChat() {
                 <button
                   type="button"
                   onClick={toggleMic}
-                  disabled={liveMode}
-                  className={`p-2.5 rounded-xl transition-colors disabled:opacity-30 ${
+                  className={`p-2.5 rounded-xl transition-colors ${
                     micListening
                       ? 'text-accent bg-accent-soft animate-pulse'
                       : 'text-muted hover:text-accent hover:bg-accent-soft'
@@ -622,8 +468,8 @@ export default function AiChat() {
                   <Mic size={18} />
                 </button>
 
-                {/* Nutq tili faqat mikrofon yoki Live rejim yoqilganda ko'rinadi */}
-                {(micListening || liveMode) && (
+                {/* Nutq tili faqat mikrofon yoqilganda ko'rinadi */}
+                {micListening && (
                   <button
                     type="button"
                     onClick={() => setLangMenuOpen((v) => !v)}

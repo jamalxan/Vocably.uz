@@ -70,18 +70,24 @@ function DashboardContent() {
               {/* Bosh sahifa kategoriyalararo umumiy ko'rinish, shuning uchun sarlavhada
                   bitta kategoriya nomini emas, oddiy salomlashuvni ko'rsatamiz. */}
               <h2 className="text-lg sm:text-xl font-bold text-primary font-display truncate">
-                {view === 'home' ? 'Bosh sahifa' : view === 'friends' ? "Do'stlar" : activeCategory.name || "Kategoriya yo'q"}
+                {view === 'home'
+                  ? 'Bosh sahifa'
+                  : view === 'friends'
+                    ? "Do'stlar"
+                    : view === 'ai'
+                      ? 'AI Chat'
+                      : activeCategory.name || "Kategoriya yo'q"}
               </h2>
               {/* A5 (docs/AUDIT_FINDINGS.md): "Bugungi takrorlash" barcha kategoriyalar bo'yicha
                   ishlaydi, shuning uchun bitta kategoriyaga tegishli so'z sonini shu yerda
                   ko'rsatish SpacedRepetition'dagi "navbatda" soni bilan ziddiyatli ko'rinardi. */}
-              {view !== 'review' && view !== 'home' && view !== 'friends' && (
+              {view !== 'review' && view !== 'home' && view !== 'friends' && view !== 'ai' && (
                 <p className="text-xs text-muted mt-0.5">Jami so'zlar: {activeCategory.words?.length || 0} ta</p>
               )}
             </div>
           </div>
 
-          {view !== 'home' && view !== 'friends' && (
+          {view !== 'home' && view !== 'friends' && view !== 'ai' && (
             <div className="flex gap-2 sm:gap-3 flex-shrink-0">
               <button
                 onClick={() => handleDeleteCategory(activeCatIndex)}
