@@ -7,8 +7,11 @@ import ConversationView from './ConversationView';
 function DoStlarShell() {
   const { activeConversation, selectConversation, closeConversation } = useChat();
 
+  // Ramka/karta yo'q — panel to'g'ridan-to'g'ri sahifaning o'zi (header ostida davom
+  // etadi), WhatsApp Web/Telegram Web uslubida. Ro'yxat va suhbat orasidagi yagona
+  // chegara — ConversationList'ning o'z border-r'i (pastda).
   return (
-    <div className="flex h-[calc(100vh-160px)] min-h-[420px] bg-surface rounded-2xl border border-border overflow-hidden">
+    <div className="flex h-full">
       <div className={`${activeConversation ? 'hidden lg:flex' : 'flex'} flex-col h-full w-full lg:w-auto`}>
         <ConversationList onSelect={selectConversation} selectedId={activeConversation?.id} />
       </div>

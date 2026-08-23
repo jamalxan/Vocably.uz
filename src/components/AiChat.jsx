@@ -448,7 +448,7 @@ export default function AiChat() {
   const isTyping = chatLoading && lastMsg?.role === 'model' && !lastMsg.parts[0].text;
 
   return (
-    <div className="relative flex h-[calc(100vh-11rem)] sm:h-[calc(100vh-13rem)] lg:h-[calc(100vh-14rem)] bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
+    <div className="relative flex h-full overflow-hidden">
       <div className="flex-1 flex flex-col min-w-0">
         <div className="p-3 sm:p-4 bg-gradient-to-r from-accent-soft to-bg border-b border-border flex items-center gap-2 text-xs text-muted">
           <span className="font-semibold text-accent flex items-center gap-1.5">

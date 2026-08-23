@@ -76,7 +76,22 @@ function DashboardContent() {
           )}
         </header>
 
-        <div className={`p-4 sm:p-6 lg:p-8 w-full mx-auto flex-1 ${view === 'home' || view === 'friends' ? 'max-w-6xl' : 'max-w-4xl'}`}>
+        {/* AI Chat va Do'stlar — to'liq balandlikdagi "ilova ichida ilova" ko'rinishidagi
+            panellar. Bular sahifa ichida alohida ramka/karta bo'lib ajralib turmasligi
+            uchun tashqi padding/max-width'siz, to'g'ridan-to'g'ri header ostida davom
+            etadi (WhatsApp Web/Telegram Web uslubi — panelning o'zi "sahifa"). */}
+        <div className={view === 'ai' || view === 'friends' ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
+          <div className={view === 'ai' ? 'flex-1 min-h-0' : 'hidden'}>
+            <AiChat />
+          </div>
+          {chatAccess && (
+            <div className={view === 'friends' ? 'flex-1 min-h-0' : 'hidden'}>
+              <DoStlarPanel />
+            </div>
+          )}
+        </div>
+
+        <div className={`p-4 sm:p-6 lg:p-8 w-full mx-auto flex-1 ${view === 'home' ? 'max-w-6xl' : 'max-w-4xl'} ${view === 'ai' || view === 'friends' ? 'hidden' : ''}`}>
           <div className={view === 'home' ? '' : 'hidden'}>
             <DashboardHome setView={setView} setSidebarOpen={setSidebarOpen} />
           </div>
@@ -104,14 +119,6 @@ function DashboardContent() {
           <div className={view === 'table' ? '' : 'hidden'}>
             <WordTable />
           </div>
-          <div className={view === 'ai' ? '' : 'hidden'}>
-            <AiChat />
-          </div>
-          {chatAccess && (
-            <div className={view === 'friends' ? '' : 'hidden'}>
-              <DoStlarPanel />
-            </div>
-          )}
         </div>
       </main>
     </div>
