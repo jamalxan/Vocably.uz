@@ -25,7 +25,9 @@ export async function GET(req) {
       username: q,
       chatAccess: true,
       chatBanned: { $ne: true },
-    }).select('username name');
+    })
+      .select('username name')
+      .lean();
 
     if (!found || String(found._id) === String(user._id)) {
       return NextResponse.json({ result: null });
@@ -36,7 +38,7 @@ export async function GET(req) {
         { blockerId: user._id, blockedId: found._id },
         { blockerId: found._id, blockedId: user._id },
       ],
-    });
+    }).lean();
     if (blocked) return NextResponse.json({ result: null });
 
     return NextResponse.json({ result: { id: found._id, username: found.username, name: found.name || '' } });

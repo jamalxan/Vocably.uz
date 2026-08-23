@@ -55,7 +55,7 @@ export async function POST(req, { params }) {
         { blockerId: user._id, blockedId: otherId },
         { blockerId: otherId, blockedId: user._id },
       ],
-    });
+    }).lean();
     if (blocked) return NextResponse.json({ error: "Xabar yuborib bo'lmadi" }, { status: 403 });
 
     if (!(await checkRateLimit(user._id, 'chat-send', 40))) {

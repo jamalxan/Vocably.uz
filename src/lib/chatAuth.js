@@ -8,9 +8,9 @@ export async function requireChatUser(req) {
   const userId = getUserIdFromRequest(req);
   if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
 
-  const user = await User.findById(userId).select(
-    'username chatAccess chatBanned role name phone'
-  );
+  const user = await User.findById(userId)
+    .select('username chatAccess chatBanned role name phone')
+    .lean();
   if (!user) return { error: 'Foydalanuvchi topilmadi', status: 404 };
   if (!user.chatAccess || user.chatBanned) {
     return { error: 'Bu bo\'lim uchun ruxsatingiz yo\'q', status: 403 };
@@ -24,7 +24,7 @@ export async function requireAdminUser(req) {
   const userId = getUserIdFromRequest(req);
   if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
 
-  const user = await User.findById(userId).select('username role name phone');
+  const user = await User.findById(userId).select('username role name phone').lean();
   if (!user) return { error: 'Foydalanuvchi topilmadi', status: 404 };
   if (user.role !== 'admin') return { error: 'Ruxsat berilmagan', status: 403 };
 

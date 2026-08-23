@@ -12,10 +12,11 @@ export async function GET(req, { params }) {
 
     await connectToDatabase();
 
-    const user = await User.findById(userId).select('chatSessions');
-    if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
-
-    const session = user.chatSessions.id(params.id);
+    // `chatSessions.$` — massivdan faqat SO'RALGAN sessiyani qaytaradi (foydalanuvchining
+    // boshqa suhbatlarini, ularning xabarlari/rasmlarini o'qimasdan) — bir nechta uzun
+    // suhbat + rasmli xabarlarga ega foydalanuvchida sezilarli farq qiladi.
+    const user = await User.findOne({ _id: userId, 'chatSessions._id': params.id }, { 'chatSessions.$': 1 }).lean();
+    const session = user?.chatSessions?.[0];
     if (!session) return NextResponse.json({ error: 'Suhbat topilmadi' }, { status: 404 });
 
     return NextResponse.json({

@@ -56,7 +56,7 @@ export async function POST(req) {
     const uname = (username || '').trim().toLowerCase();
     if (!uname) return NextResponse.json({ error: 'username kerak' }, { status: 400 });
 
-    const target = await User.findOne({ username: uname, chatAccess: true, chatBanned: { $ne: true } });
+    const target = await User.findOne({ username: uname, chatAccess: true, chatBanned: { $ne: true } }).lean();
     if (!target) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
     if (String(target._id) === String(user._id)) {
       return NextResponse.json({ error: "O'zingiz bilan suhbat ocholmaysiz" }, { status: 400 });
@@ -67,11 +67,11 @@ export async function POST(req) {
         { blockerId: user._id, blockedId: target._id },
         { blockerId: target._id, blockedId: user._id },
       ],
-    });
+    }).lean();
     if (blocked) return NextResponse.json({ error: 'Ushbu foydalanuvchi bilan suhbat mavjud emas' }, { status: 403 });
 
     const participantIds = sortedPair(user._id, target._id);
-    let convo = await Conversation.findOne({ participantIds });
+    let convo = await Conversation.findOne({ participantIds }).lean();
     if (!convo) {
       convo = await Conversation.create({ participantIds });
     }

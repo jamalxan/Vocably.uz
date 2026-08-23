@@ -15,12 +15,15 @@ export async function GET(req) {
     const user = await User.findById(userId).select('-password');
     if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
 
+    // `chatHistory`/`chatSessions` bu yerda hujjatning o'zida (migratsiya tekshiruvi/`.save()`
+    // uchun) o'qiladi, lekin frontend (AppContext.fetchUserData) javobdan faqat `categories`
+    // va `reviewStreak`ni ishlatadi — shuning uchun javobga qo'shilmaydi (AI suhbatlar
+    // `/api/ai/sessions` orqali alohida yuklanadi). Katta chatSessions (base64 rasmlar bilan)
+    // uchun bu har bir sahifa yuklanishidagi javob hajmini sezilarli kamaytiradi.
     await migrateChatHistoryIfNeeded(user);
 
     return NextResponse.json({
       categories: user.categories,
-      chatHistory: user.chatHistory || [],
-      chatSessions: user.chatSessions || [],
       reviewStreak: user.reviewStreak || 0,
       lastReviewDate: user.lastReviewDate || null,
     });

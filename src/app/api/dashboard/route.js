@@ -33,9 +33,11 @@ export async function GET(req) {
 
     await connectToDatabase();
 
-    const user = await User.findById(userId).select(
-      'categories reviewStreak longestReviewStreak lastReviewDate timezone dailyGoal'
-    );
+    // Faqat o'qish uchun (bu route hech qachon userni saqlamaydi) — .lean() hydratsiya
+    // xarajatini o'tkazib yuboradi, katta `categories` massivi uchun sezilarli farq qiladi.
+    const user = await User.findById(userId)
+      .select('categories reviewStreak longestReviewStreak lastReviewDate timezone dailyGoal')
+      .lean();
     if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
 
     const now = new Date();
