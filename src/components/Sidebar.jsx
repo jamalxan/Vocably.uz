@@ -18,8 +18,12 @@ import {
 import { useApp } from '@/context/AppContext';
 import CategorySwitcher from './CategorySwitcher';
 
+// Tartib: Bosh sahifa va AI Chat birinchi (eng ko'p ishlatiladigan kirish nuqtalari),
+// keyin Jadval (so'zlarni ko'rish/boshqarish), so'ng qolgan yodlash/mashq rejimlari.
 const navItems = [
   { key: 'home', label: 'Bosh sahifa', icon: Home },
+  { key: 'ai', label: 'AI Chat', icon: Sparkles },
+  { key: 'table', label: 'Jadval', icon: BookOpen },
   { key: 'cards', label: 'Kartochka', icon: Layers },
   { key: 'write', label: 'Yozish testi', icon: Edit3 },
   { key: 'match', label: 'Juftlikni topish', icon: Grid },
@@ -27,8 +31,6 @@ const navItems = [
   { key: 'speed', label: 'Tezkor o\'yin', icon: Zap },
   { key: 'listening', label: 'Tinglab yozish', icon: Headphones },
   { key: 'review', label: 'Bugungi takrorlash', icon: RotateCw },
-  { key: 'table', label: 'Jadval', icon: BookOpen },
-  { key: 'ai', label: 'AI Chat', icon: Sparkles },
 ];
 
 function navItemClass(active) {
