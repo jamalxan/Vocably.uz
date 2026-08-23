@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ScrollText } from 'lucide-react';
 
 export default function AuditLogTable({ token }) {
   const [logs, setLogs] = useState([]);
@@ -13,27 +13,36 @@ export default function AuditLogTable({ token }) {
       .finally(() => setLoading(false));
   }, [token]);
 
-  if (loading) return <Loader2 className="animate-spin text-slate-300" />;
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="animate-spin text-racing-500" size={22} />
+      </div>
+    );
+  }
 
   return (
-    <div className="border border-slate-100 rounded-xl divide-y divide-slate-50 max-h-[70vh] overflow-y-auto">
+    <div className="rounded-2xl border border-cherry-800/60 bg-gradient-to-b from-cherry-950/40 to-coffee-900/60 shadow-admin-card divide-y divide-cherry-900/60 overflow-hidden max-h-[75vh] overflow-y-auto">
       {logs.map((l) => (
-        <div key={l._id} className="px-3 py-2.5 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-medium text-slate-700">
-              @{l.actor?.username || '?'} — {l.action}
+        <div key={l._id} className="px-5 py-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium text-alabaster-100 flex items-center gap-2">
+              <ScrollText size={13} className="text-gold-400 flex-shrink-0" />
+              @{l.actor?.username || '?'} <span className="text-alabaster-600 font-normal">— {l.action}</span>
             </span>
-            <span className="text-[10px] text-slate-300">{new Date(l.createdAt).toLocaleString('uz-UZ')}</span>
+            <span className="text-[11px] text-alabaster-700 flex-shrink-0">{new Date(l.createdAt).toLocaleString('uz-UZ')}</span>
           </div>
           {l.targetType && (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-alabaster-600 mt-1 ml-5">
               {l.targetType}: <span className="font-mono">{l.targetId}</span>
             </p>
           )}
-          {l.diff && <pre className="text-[10px] text-slate-400 mt-1 overflow-x-auto">{JSON.stringify(l.diff)}</pre>}
+          {l.diff && (
+            <pre className="text-[10px] text-alabaster-700 mt-1.5 ml-5 overflow-x-auto">{JSON.stringify(l.diff)}</pre>
+          )}
         </div>
       ))}
-      {logs.length === 0 && <p className="text-center text-sm text-slate-400 py-8">Yozuv yo'q</p>}
+      {logs.length === 0 && <p className="text-center text-sm text-alabaster-600 py-10">Yozuv yo'q</p>}
     </div>
   );
 }

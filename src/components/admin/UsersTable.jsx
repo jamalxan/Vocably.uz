@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Loader2, ShieldCheck, ShieldOff, Ban, Check } from 'lucide-react';
+import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User as UserIcon } from 'lucide-react';
 
 export default function UsersTable({ token }) {
   const [users, setUsers] = useState([]);
@@ -54,98 +54,109 @@ export default function UsersTable({ token }) {
 
   return (
     <div>
-      <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div className="relative mb-5 max-w-sm">
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-alabaster-600" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Telefon, ism yoki username qidirish..."
-          className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+          className="w-full pl-10 pr-4 py-2.5 bg-cherry-950/50 border border-cherry-800/60 rounded-xl text-sm text-alabaster-100 placeholder:text-alabaster-700 outline-none focus:border-racing-600/70 focus:ring-2 focus:ring-racing-700/30 transition-all"
         />
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="animate-spin text-slate-300" />
+        <div className="flex justify-center py-16">
+          <Loader2 className="animate-spin text-racing-500" size={24} />
         </div>
       ) : (
-        <div className="overflow-x-auto border border-slate-100 rounded-xl">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-left text-slate-500 text-xs uppercase tracking-wide">
-                <th className="px-3 py-2.5">Ism / Telefon</th>
-                <th className="px-3 py-2.5">Ro'yxatdan o'tgan</th>
-                <th className="px-3 py-2.5">Username</th>
-                <th className="px-3 py-2.5">Do'stlar</th>
-                <th className="px-3 py-2.5">Rol</th>
-                <th className="px-3 py-2.5">Ban</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u._id} className="border-t border-slate-100">
-                  <td className="px-3 py-2.5">
-                    <p className="font-medium text-slate-800">{u.name || '—'}</p>
-                    <p className="text-xs text-slate-400">{u.phoneDisplay}</p>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-slate-500">
-                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString('uz-UZ') : '—'}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <input
-                      defaultValue={u.username || ''}
-                      placeholder="username"
-                      onChange={(e) => setUsernameDraft((d) => ({ ...d, [u._id]: e.target.value }))}
-                      className="w-32 px-2 py-1 border border-slate-200 rounded text-xs outline-none focus:border-indigo-400"
-                    />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {u.chatAccess ? (
-                      <button
-                        disabled={savingId === u._id}
-                        onClick={() => patchUser(u._id, { chatAccess: false })}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-xs hover:bg-emerald-100"
-                      >
-                        <ShieldCheck size={12} /> Yoqilgan
-                      </button>
-                    ) : (
-                      <button
-                        disabled={savingId === u._id}
-                        onClick={() => grantAccess(u)}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-500 rounded text-xs hover:bg-indigo-50 hover:text-indigo-600"
-                      >
-                        <ShieldOff size={12} /> Ruxsat berish
-                      </button>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <select
-                      value={u.role}
-                      disabled={savingId === u._id}
-                      onChange={(e) => patchUser(u._id, { role: e.target.value })}
-                      className="px-2 py-1 border border-slate-200 rounded text-xs outline-none"
-                    >
-                      <option value="user">user</option>
-                      <option value="admin">admin</option>
-                    </select>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <button
-                      disabled={savingId === u._id}
-                      onClick={() => patchUser(u._id, { chatBanned: !u.chatBanned })}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                        u.chatBanned ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                      }`}
-                    >
-                      {u.chatBanned ? <Ban size={12} /> : <Check size={12} />}
-                      {u.chatBanned ? 'Bloklangan' : 'Faol'}
-                    </button>
-                  </td>
+        <div className="rounded-2xl border border-cherry-800/60 bg-gradient-to-b from-cherry-950/40 to-coffee-900/60 shadow-admin-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] text-gold-400 uppercase tracking-[0.15em] border-b border-cherry-800/60">
+                  <th className="px-5 py-3.5 font-semibold">Foydalanuvchi</th>
+                  <th className="px-5 py-3.5 font-semibold">Ro'yxatdan o'tgan</th>
+                  <th className="px-5 py-3.5 font-semibold">Username</th>
+                  <th className="px-5 py-3.5 font-semibold">Do'stlar</th>
+                  <th className="px-5 py-3.5 font-semibold">Rol</th>
+                  <th className="px-5 py-3.5 font-semibold">Holat</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {users.length === 0 && <p className="text-center text-sm text-slate-400 py-8">Foydalanuvchi topilmadi</p>}
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u._id} className="border-t border-cherry-900/60 hover:bg-cherry-900/30 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-cherry-800/70 border border-cherry-700/50 flex items-center justify-center text-alabaster-300 flex-shrink-0">
+                          {u.role === 'admin' ? <Crown size={15} className="text-gold-400" /> : <UserIcon size={15} />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-alabaster-100 truncate">{u.name || '—'}</p>
+                          <p className="text-xs text-alabaster-600">{u.phoneDisplay}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-alabaster-500">
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString('uz-UZ') : '—'}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <input
+                        defaultValue={u.username || ''}
+                        placeholder="username"
+                        onChange={(e) => setUsernameDraft((d) => ({ ...d, [u._id]: e.target.value }))}
+                        className="w-32 px-2.5 py-1.5 bg-coffee-950/60 border border-cherry-800/60 rounded-lg text-xs text-alabaster-200 outline-none focus:border-racing-600/70 transition-colors"
+                      />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {u.chatAccess ? (
+                        <button
+                          disabled={savingId === u._id}
+                          onClick={() => patchUser(u._id, { chatAccess: false })}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gold-500/10 border border-gold-600/40 text-gold-400 rounded-lg text-xs font-medium hover:bg-gold-500/20 transition-colors disabled:opacity-50"
+                        >
+                          <ShieldCheck size={13} /> Yoqilgan
+                        </button>
+                      ) : (
+                        <button
+                          disabled={savingId === u._id}
+                          onClick={() => grantAccess(u)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cherry-900/60 border border-cherry-700/50 text-alabaster-500 rounded-lg text-xs font-medium hover:border-racing-600/60 hover:text-racing-400 transition-colors disabled:opacity-50"
+                        >
+                          <ShieldOff size={13} /> Ruxsat berish
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <select
+                        value={u.role}
+                        disabled={savingId === u._id}
+                        onChange={(e) => patchUser(u._id, { role: e.target.value })}
+                        className="px-2.5 py-1.5 bg-coffee-950/60 border border-cherry-800/60 rounded-lg text-xs text-alabaster-200 outline-none focus:border-racing-600/70 transition-colors"
+                      >
+                        <option value="user">user</option>
+                        <option value="admin">admin</option>
+                      </select>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <button
+                        disabled={savingId === u._id}
+                        onClick={() => patchUser(u._id, { chatBanned: !u.chatBanned })}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                          u.chatBanned
+                            ? 'bg-racing-900/40 border border-racing-700/50 text-racing-400 hover:bg-racing-900/60'
+                            : 'bg-cherry-900/60 border border-cherry-700/50 text-alabaster-500 hover:text-alabaster-200'
+                        }`}
+                      >
+                        {u.chatBanned ? <Ban size={13} /> : <CheckCircle2 size={13} />}
+                        {u.chatBanned ? 'Bloklangan' : 'Faol'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {users.length === 0 && <p className="text-center text-sm text-alabaster-600 py-10">Foydalanuvchi topilmadi</p>}
         </div>
       )}
     </div>
