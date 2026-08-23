@@ -2,8 +2,8 @@
 
 function DeltaBadge({ pct }) {
   if (pct === null || pct === undefined) return null;
-  // Pasayish qizil emas — foydalanuvchini ayblamaslik uchun (spec §5.2 Blok 3).
-  const color = pct >= 0 ? 'text-green-600' : 'text-slate-400';
+  // Pasayish jazolovchi rangda emas — foydalanuvchini ayblamaslik uchun (spec §5.2 Blok 3).
+  const color = pct >= 0 ? 'text-gold-400' : 'text-alabaster-600';
   const arrow = pct >= 0 ? '↑' : '↓';
   return (
     <span className={`text-xs font-semibold ${color}`}>
@@ -14,13 +14,13 @@ function DeltaBadge({ pct }) {
 
 function KpiCard({ label, value, sub, delta }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
-      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{label}</p>
+    <div className="bg-cherry-950/40 rounded-xl border border-cherry-800/60 p-4">
+      <p className="text-[11px] font-semibold text-alabaster-600 uppercase tracking-wider mb-1.5">{label}</p>
       <div className="flex items-baseline gap-2 flex-wrap">
-        <p className="text-2xl font-bold text-slate-800 font-mono tabular-nums leading-none">{value}</p>
+        <p className="text-2xl font-bold text-alabaster-50 font-mono tabular-nums leading-none">{value}</p>
         <DeltaBadge pct={delta} />
       </div>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-alabaster-600 mt-1">{sub}</p>}
     </div>
   );
 }

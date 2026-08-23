@@ -1,5 +1,5 @@
 import '@/app/globals.css';
-import { Plus_Jakarta_Sans, Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans, Inter, Playfair_Display } from 'next/font/google';
 
 const display = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -12,6 +12,15 @@ const body = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-body',
+  display: 'swap',
+});
+
+// Premium/hashamatli sarlavhalar uchun (Bosh sahifa salomlashuvi, Admin panel) —
+// butun ilova bo'ylab bir xil brend ovozi bo'lishi uchun shu yerda, global yuklanadi.
+const luxury = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-luxury',
   display: 'swap',
 });
 
@@ -31,8 +40,8 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="uz" className={`${display.variable} ${body.variable}`}>
-      <body className="bg-slate-50 text-slate-800 min-h-screen antialiased font-body">
+    <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable}`}>
+      <body className="bg-coffee-900 text-alabaster-200 min-h-screen antialiased font-body">
         {children}
       </body>
     </html>

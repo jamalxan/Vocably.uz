@@ -39,6 +39,14 @@ const navItems = [
   { key: 'ai', label: 'AI Chat', icon: Sparkles },
 ];
 
+function navItemClass(active) {
+  return `w-full flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-xl text-sm transition-all duration-200 relative ${
+    active
+      ? 'bg-gradient-to-r from-racing-700/90 to-racing-600/70 text-alabaster-50 font-medium shadow-admin-glow'
+      : 'hover:bg-cherry-800/50 text-alabaster-500 hover:text-alabaster-100'
+  }`;
+}
+
 export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) {
   const {
     categories,
@@ -101,45 +109,45 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-30 lg:hidden"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-30 lg:hidden"
         />
       )}
 
       {/* SIDEBAR */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-72 sm:w-64 bg-slate-900 text-slate-300 flex flex-col justify-between border-r border-slate-800 flex-shrink-0 transform transition-transform duration-300 ease-out ${
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-72 sm:w-64 bg-gradient-to-b from-cherry-950 via-coffee-900 to-coffee-950 text-alabaster-300 flex flex-col justify-between border-r border-cherry-800/60 flex-shrink-0 transform transition-transform duration-300 ease-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
         <div className="p-5 sm:p-6 overflow-y-auto">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg flex items-center justify-center text-white font-bold text-lg font-display shadow-lg shadow-indigo-900/40">
+              <div className="w-8 h-8 bg-gradient-to-br from-racing-500 to-racing-800 rounded-lg flex items-center justify-center text-alabaster-50 font-bold text-lg font-display shadow-admin-glow">
                 V
               </div>
               <div className="min-w-0">
-                <h1 className="text-lg font-bold text-white tracking-wide font-display leading-tight">
-                  Voc<span className="text-indigo-400">ably</span>
+                <h1 className="text-lg font-bold text-alabaster-50 tracking-wide font-display leading-tight">
+                  Voc<span className="text-racing-400">ably</span>
                 </h1>
-                <p className="text-[10px] text-slate-500 leading-tight">Ingliz tili yordamchisi</p>
+                <p className="text-[10px] text-alabaster-600 leading-tight">Ingliz tili yordamchisi</p>
               </div>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              className="lg:hidden p-1.5 text-alabaster-500 hover:text-alabaster-100 hover:bg-cherry-800/60 rounded-lg transition-colors"
             >
               <X size={18} />
             </button>
           </div>
 
           <div className="mb-6">
-            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-semibold text-gold-400 uppercase tracking-wider mb-2">
               Kategoriyalar
             </label>
             <select
               value={activeCatIndex}
               onChange={(e) => setActiveCatIndex(parseInt(e.target.value))}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 outline-none cursor-pointer focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-coffee-950/60 border border-cherry-800/60 rounded-lg text-sm text-alabaster-200 outline-none cursor-pointer focus:border-racing-600/70 transition-colors"
             >
               {categories.map((c, i) => (
                 <option key={i} value={i}>
@@ -150,7 +158,7 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
 
             <button
               onClick={() => setManageOpen((v) => !v)}
-              className="mt-2 w-full flex items-center justify-between px-2.5 py-1.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded text-xs text-slate-400 hover:text-slate-200 transition-colors"
+              className="mt-2 w-full flex items-center justify-between px-2.5 py-1.5 bg-cherry-900/40 hover:bg-cherry-800/60 border border-cherry-800/60 rounded text-xs text-alabaster-500 hover:text-alabaster-100 transition-colors"
             >
               <span>Kategoriyalarni boshqarish</span>
               <ChevronRight size={12} className={`transition-transform ${manageOpen ? 'rotate-90' : ''}`} />
@@ -169,15 +177,15 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                         onKeyDown={(e) => {
                           if (e.key === 'Escape') setEditingIdx(null);
                         }}
-                        className="flex-1 min-w-0 px-2 py-1 bg-slate-800 border border-indigo-500 rounded text-xs text-slate-100 outline-none"
+                        className="flex-1 min-w-0 px-2 py-1 bg-coffee-950/60 border border-racing-600/60 rounded text-xs text-alabaster-100 outline-none"
                       />
-                      <button type="submit" className="p-1 bg-indigo-600 hover:bg-indigo-700 rounded text-white transition-colors">
+                      <button type="submit" className="p-1 bg-racing-600 hover:bg-racing-700 rounded text-alabaster-50 transition-colors">
                         <Check size={12} />
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingIdx(null)}
-                        className="p-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-400 transition-colors"
+                        className="p-1 bg-cherry-900/60 hover:bg-cherry-800 rounded text-alabaster-500 transition-colors"
                       >
                         <X size={12} />
                       </button>
@@ -185,20 +193,20 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                   ) : (
                     <div
                       key={i}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800/70 group"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-cherry-900/40 group"
                     >
-                      <span className="flex-1 min-w-0 truncate text-xs text-slate-300">{c.name}</span>
+                      <span className="flex-1 min-w-0 truncate text-xs text-alabaster-400">{c.name}</span>
                       <button
                         onClick={() => startEditCategory(i)}
                         title="Tahrirlash"
-                        className="p-1 text-slate-500 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="p-1 text-alabaster-600 hover:text-racing-400 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Pencil size={12} />
                       </button>
                       <button
                         onClick={() => handleDeleteCategory(i)}
                         title="O'chirish"
-                        className="p-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="p-1 text-alabaster-600 hover:text-racing-500 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -211,7 +219,7 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
             {!showAddCat ? (
               <button
                 onClick={() => setShowAddCat(true)}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                className="mt-2 w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-cherry-900/40 hover:bg-cherry-800/60 border border-cherry-800/60 rounded text-xs text-alabaster-500 hover:text-alabaster-100 transition-colors"
               >
                 <Plus size={13} /> Yangi kategoriya
               </button>
@@ -226,11 +234,11 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') setShowAddCat(false);
                   }}
-                  className="flex-1 min-w-0 px-2.5 py-1.5 bg-slate-800/50 border border-slate-700 rounded text-xs outline-none focus:border-indigo-500"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 bg-coffee-950/50 border border-cherry-800/60 rounded text-xs text-alabaster-200 outline-none focus:border-racing-600/70"
                 />
                 <button
                   type="submit"
-                  className="p-1.5 bg-indigo-600 hover:bg-indigo-700 rounded text-white transition-colors"
+                  className="p-1.5 bg-racing-600 hover:bg-racing-700 rounded text-alabaster-50 transition-colors"
                 >
                   <Plus size={14} />
                 </button>
@@ -240,7 +248,7 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                     setShowAddCat(false);
                     setNewCatName('');
                   }}
-                  className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-400 transition-colors"
+                  className="p-1.5 bg-cherry-900/60 hover:bg-cherry-800 rounded text-alabaster-500 transition-colors"
                 >
                   <X size={14} />
                 </button>
@@ -251,6 +259,7 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
           <nav className="space-y-1">
             {navItems.map(({ key, label, icon: Icon }) => {
               const isAi = key === 'ai';
+              const active = view === key;
               return (
                 <div key={key}>
                   <button
@@ -261,12 +270,9 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                       // "AI Chat" bosilganda chat ekrani ochiladi VA suhbatlar ro'yxati yig'iladi/ochiladi.
                       if (isAi) toggleChatAccordion();
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm transition-colors ${
-                      view === key
-                        ? 'bg-indigo-600 text-white font-medium shadow-md shadow-indigo-900/40'
-                        : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
+                    className={navItemClass(active)}
                   >
+                    {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-gold-400" />}
                     <Icon size={16} />
                     <span className="flex-1 text-left">{label}</span>
                     {isAi && (
@@ -298,12 +304,9 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                   setView('friends');
                   setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm transition-colors ${
-                  view === 'friends'
-                    ? 'bg-indigo-600 text-white font-medium shadow-md shadow-indigo-900/40'
-                    : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
-                }`}
+                className={navItemClass(view === 'friends')}
               >
+                {view === 'friends' && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-gold-400" />}
                 <Users size={16} />
                 <span className="flex-1 text-left">Do'stlar</span>
               </button>
@@ -312,7 +315,7 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
             {chatRole === 'admin' && (
               <a
                 href="/admin"
-                className="w-full flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-xl text-sm text-gold-400 hover:bg-cherry-800/50 hover:text-gold-300 transition-colors"
               >
                 <ShieldCheck size={16} />
                 <span className="flex-1 text-left">Admin panel</span>
@@ -321,19 +324,19 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
           </nav>
         </div>
 
-        <div className="p-4 border-t border-slate-800 flex items-center justify-between">
+        <div className="p-4 border-t border-cherry-800/60 flex items-center justify-between">
           <div className="flex items-center gap-2.5 truncate pr-2">
-            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-xs font-bold flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-racing-500/15 border border-racing-600/30 text-racing-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
               {displayName?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="truncate">
-              <p className="text-[10px] text-slate-500">Profil</p>
-              <p className="text-sm font-semibold text-slate-300 truncate">{displayName}</p>
+              <p className="text-[10px] text-alabaster-600">Profil</p>
+              <p className="text-sm font-semibold text-alabaster-200 truncate">{displayName}</p>
             </div>
           </div>
           <button
             onClick={logout}
-            className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-red-400 transition-colors flex-shrink-0"
+            className="p-2 hover:bg-cherry-800/60 rounded text-alabaster-500 hover:text-racing-400 transition-colors flex-shrink-0"
             title="Chiqish"
           >
             <LogOut size={16} />

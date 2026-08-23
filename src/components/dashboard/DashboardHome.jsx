@@ -14,7 +14,7 @@ import CategoryProgress from './CategoryProgress';
 // Recharts (ActivityChart) faqat shu sahifa ochilganda yuklanadi (spec §11.3).
 const ActivityChart = dynamic(() => import('./ActivityChart'), {
   ssr: false,
-  loading: () => <div className="h-[268px] bg-white rounded-2xl border border-slate-100 animate-pulse" />,
+  loading: () => <div className="h-[268px] bg-cherry-950/40 rounded-2xl border border-cherry-800/60 animate-pulse" />,
 });
 
 // spec §5.4: dashboard bitta so'rov bilan ochiladi — barcha bloklar shu bitta javobdan o'qiydi.
@@ -61,7 +61,7 @@ export default function DashboardHome({ setView, setSidebarOpen }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="animate-spin text-indigo-500" size={28} />
+        <Loader2 className="animate-spin text-racing-500" size={28} />
       </div>
     );
   }
@@ -69,10 +69,10 @@ export default function DashboardHome({ setView, setSidebarOpen }) {
   if (error) {
     return (
       <div className="text-center py-24">
-        <p className="text-sm text-slate-500 mb-3">Statistikani yuklab bo'lmadi.</p>
+        <p className="text-sm text-alabaster-500 mb-3">Statistikani yuklab bo'lmadi.</p>
         <button
           onClick={load}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
+          className="px-4 py-2 bg-racing-600 hover:bg-racing-700 text-alabaster-50 rounded-lg text-sm font-semibold transition-colors"
         >
           Qayta urinish
         </button>
@@ -85,7 +85,7 @@ export default function DashboardHome({ setView, setSidebarOpen }) {
   return (
     <div className="space-y-5 max-w-none">
       <div>
-        <h2 className="text-lg sm:text-xl font-bold text-slate-800 font-display">
+        <h2 className="text-lg sm:text-xl font-bold text-alabaster-50 font-luxury">
           Xush kelibsiz, {displayName}
         </h2>
       </div>

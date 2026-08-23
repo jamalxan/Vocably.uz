@@ -1,24 +1,24 @@
 'use client';
 
 const SEGMENTS = [
-  { key: 'new', label: 'Yangi', color: 'bg-slate-300' },
-  { key: 'learning', label: "O'rganilmoqda", color: 'bg-indigo-300' },
-  { key: 'young', label: 'Mustahkam', color: 'bg-indigo-500' },
-  { key: 'mastered', label: "O'zlashtirilgan", color: 'bg-green-500' },
+  { key: 'new', label: 'Yangi', color: 'bg-alabaster-800' },
+  { key: 'learning', label: "O'rganilmoqda", color: 'bg-racing-900' },
+  { key: 'young', label: 'Mustahkam', color: 'bg-racing-600' },
+  { key: 'mastered', label: "O'zlashtirilgan", color: 'bg-gold-500' },
 ];
 
 export default function MasteryBreakdown({ mastery }) {
   const total = SEGMENTS.reduce((sum, s) => sum + (mastery[s.key] || 0), 0);
 
   return (
-    <div className="bg-white rounded-2xl shadow-premium border border-slate-100 p-5">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">O'zlashtirish darajasi</p>
+    <div className="bg-cherry-950/40 rounded-2xl shadow-admin-card border border-cherry-800/60 p-5">
+      <p className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-4">O'zlashtirish darajasi</p>
 
       {total === 0 ? (
-        <p className="text-sm text-slate-400 py-4">Hali so'z yo'q — Jadval bo'limidan qo'shing.</p>
+        <p className="text-sm text-alabaster-600 py-4">Hali so'z yo'q — Jadval bo'limidan qo'shing.</p>
       ) : (
         <>
-          <div className="flex h-3 rounded-full overflow-hidden mb-4">
+          <div className="flex h-3 rounded-full overflow-hidden mb-4 bg-coffee-950/60">
             {SEGMENTS.map((s) => {
               const count = mastery[s.key] || 0;
               if (!count) return null;
@@ -37,8 +37,8 @@ export default function MasteryBreakdown({ mastery }) {
             {SEGMENTS.map((s) => (
               <div key={s.key} className="flex items-center gap-2 px-1.5 py-1 -mx-1.5">
                 <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.color}`} />
-                <span className="text-xs text-slate-500 flex-1 min-w-0 truncate">{s.label}</span>
-                <span className="text-xs font-semibold text-slate-700 font-mono tabular-nums">{mastery[s.key] || 0}</span>
+                <span className="text-xs text-alabaster-500 flex-1 min-w-0 truncate">{s.label}</span>
+                <span className="text-xs font-semibold text-alabaster-200 font-mono tabular-nums">{mastery[s.key] || 0}</span>
               </div>
             ))}
           </div>
