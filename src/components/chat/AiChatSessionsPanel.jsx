@@ -1,17 +1,17 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, X, Sparkles } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowLeft, Sparkles } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ConfirmModal from '../ConfirmModal';
 import AllChatSessionsModal from './AllChatSessionsModal';
 
-// Sidebar (asosiy navigatsiya)dan ajratilgan, faqat AI Chat ko'rinishi ichida yashaydigan
-// mustaqil panel — ChatGPT-uslubidagi suhbatlar ro'yxati. Avval bu ro'yxat asosiy
-// navigatsiya sidebar'ining akkordionida edi (boshqa bo'limlar bilan bir joyda,
-// noqulay joylashuv); endi faqat AI Chat ochilganda ko'rinadi.
+// Sidebar (asosiy navigatsiya) o'rniga chiqadigan mustaqil panel — ChatGPT-uslubidagi
+// suhbatlar ro'yxati. Ikkalasi yonma-yon emas, bitta chap ustunda almashadi: AI Chat'ga
+// o'tilganda asosiy navigatsiya yashirinib, shu panel uning o'rnini bosadi; sarlavhadagi
+// strelka bosilsa, asosiy navigatsiya (Sidebar) qaytadi (onBack — dashboard/page.jsx).
 const VISIBLE_LIMIT = 20;
 
-export default function AiChatSessionsPanel({ open, onCloseMobile }) {
+export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBack }) {
   const { chatSessions, currentSessionId, openChatSession, startNewChatSession, renameChatSession, deleteChatSession } =
     useApp();
 
@@ -32,15 +32,15 @@ export default function AiChatSessionsPanel({ open, onCloseMobile }) {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [menuOpenId]);
 
-  if (!open) return null;
-
   const filtered = chatSessions.filter((s) => s.title.toLowerCase().includes(query.trim().toLowerCase()));
   const visible = filtered.slice(0, VISIBLE_LIMIT);
   const pendingDelete = chatSessions.find((s) => s.id === confirmDeleteId);
 
+  // Mobilda suhbat tanlanganda faqat drawer yopiladi (chat ko'rinsin) — asosiy
+  // navigatsiyaga qaytish emas, shuning uchun onBack emas, setSidebarOpen(false).
   const select = (id) => {
     openChatSession(id);
-    onCloseMobile?.();
+    setSidebarOpen(false);
   };
 
   const startRename = (session) => {
@@ -57,32 +57,37 @@ export default function AiChatSessionsPanel({ open, onCloseMobile }) {
 
   return (
     <>
-      {/* Mobilda panel ochiq bo'lganda orqa fon */}
-      <div
-        onClick={onCloseMobile}
-        className="fixed inset-0 bg-primary/40 backdrop-blur-sm z-30 lg:hidden"
-      />
+      {/* Mobilda drawer ochiq bo'lganda orqa fon (Sidebar bilan bir xil naqsh) */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-primary/40 backdrop-blur-sm z-30 lg:hidden"
+        />
+      )}
 
       <aside
         ref={listRef}
-        className="fixed lg:static inset-y-0 left-0 z-40 w-72 sm:w-64 h-full bg-primary text-on-primary flex flex-col flex-shrink-0 border-r border-on-primary/10"
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-72 sm:w-64 bg-primary text-on-primary flex flex-col flex-shrink-0 border-r border-on-primary/10 transform transition-transform duration-300 ease-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
       >
         <div className="p-3.5 border-b border-on-primary/10 flex items-center gap-2">
+          <button
+            onClick={onBack}
+            title="Asosiy menyuga qaytish"
+            className="p-1.5 -ml-1.5 text-on-primary/60 hover:text-on-primary hover:bg-primary-hover rounded-lg transition-colors flex-shrink-0"
+          >
+            <ArrowLeft size={16} />
+          </button>
           <Sparkles size={15} className="text-accent flex-shrink-0" />
           <h2 className="text-sm font-semibold flex-1">Suhbatlar</h2>
-          <button
-            onClick={onCloseMobile}
-            className="lg:hidden p-1 text-on-primary/50 hover:text-on-primary rounded transition-colors"
-          >
-            <X size={16} />
-          </button>
         </div>
 
         <div className="p-3 space-y-2 border-b border-on-primary/10">
           <button
             onClick={() => {
               startNewChatSession();
-              onCloseMobile?.();
+              setSidebarOpen(false);
             }}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-semibold transition-colors shadow-glow"
           >

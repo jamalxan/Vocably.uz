@@ -1,23 +1,8 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Sparkles,
-  Loader2,
-  Paperclip,
-  X,
-  Send,
-  Mic,
-  Radio,
-  Volume2,
-  VolumeX,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from 'lucide-react';
+import { Sparkles, Loader2, Paperclip, X, Send, Mic, Radio, Volume2, VolumeX } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ChatMessage from './chat/ChatMessage';
-import AiChatSessionsPanel from './chat/AiChatSessionsPanel';
-
-const SESSIONS_PANEL_KEY = 'vocably.aiChatSessionsPanelOpen';
 
 // Bu til FAQAT mikrofon (SpeechRecognition) uchun — matn yozishga ta'sir qilmaydi,
 // shuning uchun tanlagich faqat mikrofon yoki Live rejim yoqilganda ko'rsatiladi.
@@ -71,7 +56,6 @@ export default function AiChat() {
 
   const [messages, setMessages] = useState([]);
   const [sessionLoading, setSessionLoading] = useState(false);
-  const [sessionsPanelOpen, setSessionsPanelOpen] = useState(true);
 
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -103,26 +87,6 @@ export default function AiChat() {
     const saved = localStorage.getItem(RECOGNITION_LANG_KEY);
     if (saved && RECOGNITION_LANGS.some((l) => l.code === saved)) setRecognitionLang(saved);
   }, []);
-
-  // Suhbatlar paneli: eslab qolingan holat bo'lsa o'shani, bo'lmasa kichik ekranda
-  // yopiq (chatga ko'proq joy), kattada ochiq holatda boshlanadi.
-  useEffect(() => {
-    const saved = localStorage.getItem(SESSIONS_PANEL_KEY);
-    if (saved !== null) setSessionsPanelOpen(saved === '1');
-    else if (window.innerWidth < 1024) setSessionsPanelOpen(false);
-  }, []);
-
-  // Sarlavhadagi tugma orqali ochish/yopish — bu afzallik sifatida eslab qolinadi.
-  const toggleSessionsPanel = () => {
-    setSessionsPanelOpen((prev) => {
-      localStorage.setItem(SESSIONS_PANEL_KEY, prev ? '0' : '1');
-      return !prev;
-    });
-  };
-
-  // Mobilda orqa fon bosilganda yoki suhbat tanlanganda yopiladi — bu vaqtinchalik,
-  // eslab qolinmaydi (localStorage'ga yozilmaydi).
-  const closeSessionsPanelMobile = () => setSessionsPanelOpen(false);
 
   // Til tanlagichi tashqariga bosilganda yopilsin.
   useEffect(() => {
@@ -485,17 +449,8 @@ export default function AiChat() {
 
   return (
     <div className="relative flex h-full overflow-hidden">
-      <AiChatSessionsPanel open={sessionsPanelOpen} onCloseMobile={closeSessionsPanelMobile} />
-
       <div className="flex-1 flex flex-col min-w-0">
         <div className="p-3 sm:p-4 bg-gradient-to-r from-accent-soft to-bg border-b border-border flex items-center gap-2 text-xs text-muted">
-          <button
-            onClick={toggleSessionsPanel}
-            className="p-1.5 -ml-1 hover:bg-surface/60 rounded-lg text-muted hover:text-accent transition-colors flex-shrink-0"
-            title={sessionsPanelOpen ? "Suhbatlar panelini yopish" : "Suhbatlar panelini ochish"}
-          >
-            {sessionsPanelOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
-          </button>
           <span className="font-semibold text-accent flex items-center gap-1.5">
             <Sparkles size={14} /> Ingliz tili AI yordamchisi
           </span>

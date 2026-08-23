@@ -12,12 +12,17 @@ import ListeningMode from '@/components/ListeningMode';
 import SpacedRepetition from '@/components/SpacedRepetition';
 import WordTable from '@/components/WordTable';
 import AiChat from '@/components/AiChat';
+import AiChatSessionsPanel from '@/components/chat/AiChatSessionsPanel';
 import DashboardHome from '@/components/dashboard/DashboardHome';
 import DoStlarPanel from '@/components/chat-friends/DoStlarPanel';
 
 function DashboardContent() {
   const [view, setView] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // AI Chat'ga o'tilganda chap ustunda asosiy navigatsiya o'rniga suhbatlar ro'yxati
+  // ko'rsatiladi (ikkalasi yonma-yon emas — bitta ustun, ikkita holat orasida almashadi).
+  // Panelning o'zidagi strelka bosilganda asosiy navigatsiyaga qaytadi.
+  const [aiSessionsPanelOpen, setAiSessionsPanelOpen] = useState(false);
 
   const { loadingApp, activeCatIndex, activeCategory, handleDeleteCategory, chatAccess } = useApp();
 
@@ -25,6 +30,11 @@ function DashboardContent() {
   useEffect(() => {
     setSidebarOpen(false);
   }, [view]);
+
+  const handleSetView = (v) => {
+    setView(v);
+    if (v === 'ai') setAiSessionsPanelOpen(true);
+  };
 
   if (loadingApp) {
     return (
@@ -36,7 +46,15 @@ function DashboardContent() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
-      <Sidebar view={view} setView={setView} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      {aiSessionsPanelOpen && view === 'ai' ? (
+        <AiChatSessionsPanel
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          onBack={() => setAiSessionsPanelOpen(false)}
+        />
+      ) : (
+        <Sidebar view={view} setView={handleSetView} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      )}
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col h-full overflow-y-auto w-full min-w-0">
@@ -93,7 +111,7 @@ function DashboardContent() {
 
         <div className={`p-4 sm:p-6 lg:p-8 w-full mx-auto flex-1 ${view === 'home' ? 'max-w-6xl' : 'max-w-4xl'} ${view === 'ai' || view === 'friends' ? 'hidden' : ''}`}>
           <div className={view === 'home' ? '' : 'hidden'}>
-            <DashboardHome setView={setView} setSidebarOpen={setSidebarOpen} />
+            <DashboardHome setView={handleSetView} setSidebarOpen={setSidebarOpen} />
           </div>
           <div className={view === 'cards' ? '' : 'hidden'}>
             <FlashcardMode />
