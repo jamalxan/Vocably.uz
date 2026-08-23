@@ -41,7 +41,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable}`}>
-      <body className="bg-coffee-900 text-alabaster-200 min-h-screen antialiased font-body">
+      <body className="bg-bg text-primary min-h-screen antialiased font-body">
         {children}
       </body>
     </html>

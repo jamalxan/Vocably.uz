@@ -10,7 +10,7 @@ function ImageBubble({ media }) {
   const { token } = useApp();
   const { url } = useAuthedMediaUrl(media.key, token);
   const [open, setOpen] = useState(false);
-  if (!url) return <div className="w-40 h-32 bg-slate-200 rounded-lg animate-pulse" />;
+  if (!url) return <div className="w-40 h-32 bg-primary-soft rounded-lg animate-pulse" />;
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -36,14 +36,14 @@ function ImageBubble({ media }) {
 function VideoBubble({ media }) {
   const { token } = useApp();
   const { url } = useAuthedMediaUrl(media.key, token);
-  if (!url) return <div className="w-56 h-40 bg-slate-200 rounded-lg animate-pulse" />;
+  if (!url) return <div className="w-56 h-40 bg-primary-soft rounded-lg animate-pulse" />;
   return <video src={url} controls className="max-w-[260px] max-h-[300px] rounded-lg" />;
 }
 
 function VoiceBubble({ media }) {
   const { token } = useApp();
   const { url } = useAuthedMediaUrl(media.key, token);
-  if (!url) return <div className="w-48 h-10 bg-slate-200 rounded-full animate-pulse" />;
+  if (!url) return <div className="w-48 h-10 bg-primary-soft rounded-full animate-pulse" />;
   return <audio src={url} controls className="w-56 h-10" />;
 }
 
@@ -56,7 +56,7 @@ function FileBubble({ media }) {
       download
       target="_blank"
       rel="noreferrer"
-      className="flex items-center gap-2 px-3 py-2 bg-white/70 rounded-lg text-sm text-slate-700 hover:bg-white"
+      className="flex items-center gap-2 px-3 py-2 bg-surface/70 rounded-lg text-sm text-primary hover:bg-surface"
     >
       <FileText size={16} />
       <span className="truncate max-w-[160px]">Fayl</span>
@@ -88,7 +88,7 @@ export default function MessageBubble({ message, isMine }) {
             isPlain
               ? ''
               : `rounded-2xl px-3.5 py-2.5 text-sm ${
-                  isMine ? 'bg-indigo-600 text-white rounded-br-md' : 'bg-slate-100 text-slate-800 rounded-bl-md'
+                  isMine ? 'bg-accent text-white rounded-br-md' : 'bg-bg text-primary rounded-bl-md'
                 }`
           }
         >
@@ -106,7 +106,7 @@ export default function MessageBubble({ message, isMine }) {
           <button
             onClick={handleReport}
             title="Shikoyat qilish"
-            className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-400 transition-opacity flex-shrink-0"
+            className="opacity-0 group-hover:opacity-100 p-1 text-muted hover:text-accent transition-opacity flex-shrink-0"
           >
             <Flag size={12} />
           </button>

@@ -176,40 +176,40 @@ export default function SpeedQuiz() {
         onRestart={restartGame}
         onClose={closeFinished}
       >
-        <div className="flex items-center justify-center gap-1.5 text-xs text-amber-600 font-semibold mb-5">
+        <div className="flex items-center justify-center gap-1.5 text-xs text-accent font-semibold mb-5">
           <Flame size={14} /> Eng uzun ketma-ketlik: {bestStreak}
         </div>
       </SessionCompleteCard>
 
-      <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
-        <div className="flex justify-between items-center text-xs text-slate-400 mb-3">
+      <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
+        <div className="flex justify-between items-center text-xs text-muted mb-3">
           <div className="flex items-center gap-1" aria-label={`${lives} ta jon qoldi`}>
             {Array.from({ length: START_LIVES }).map((_, i) => (
               <Heart
                 key={i}
                 size={14}
-                className={i < lives ? 'text-red-500 fill-red-500' : 'text-slate-200 fill-slate-200'}
+                className={i < lives ? 'text-accent fill-red-500' : 'text-on-primary fill-slate-200'}
               />
             ))}
           </div>
-          <span className="flex items-center gap-1 font-semibold text-indigo-500">
+          <span className="flex items-center gap-1 font-semibold text-accent">
             <Zap size={13} /> {streak}x
           </span>
-          <button onClick={() => setActive(false)} className="text-indigo-500 hover:text-indigo-700 font-semibold">
+          <button onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
             Oraliqni o'zgartirish
           </button>
         </div>
 
-        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-5">
+        <div className="h-1.5 bg-bg rounded-full overflow-hidden mb-5">
           <div
             className={`h-full rounded-full transition-[width] duration-100 ease-linear ${
-              timePct > 40 ? 'bg-indigo-500' : timePct > 15 ? 'bg-amber-500' : 'bg-red-500'
+              timePct > 40 ? 'bg-accent' : timePct > 15 ? 'bg-accent-soft0' : 'bg-accent-soft0'
             }`}
             style={{ width: `${timePct}%` }}
           />
         </div>
 
-        <p className="text-xl font-bold text-slate-800 font-display mb-6 text-center break-words">
+        <p className="text-xl font-bold text-primary font-display mb-6 text-center break-words">
           {question.target.word}
         </p>
 
@@ -217,10 +217,10 @@ export default function SpeedQuiz() {
           {question.options.map((opt, i) => {
             const isCorrectOpt = opt === question.correctAnswer;
             const isSelected = selected === opt;
-            let style = 'border-slate-200 hover:border-indigo-300';
+            let style = 'border-border hover:border-accent/30';
             if (selected) {
               if (isCorrectOpt) style = 'border-green-300 bg-green-50 text-green-700';
-              else if (isSelected) style = 'border-red-300 bg-red-50 text-red-700';
+              else if (isSelected) style = 'border-red-300 bg-accent-soft text-red-700';
             }
             return (
               <button

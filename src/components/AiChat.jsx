@@ -448,17 +448,17 @@ export default function AiChat() {
   const isTyping = chatLoading && lastMsg?.role === 'model' && !lastMsg.parts[0].text;
 
   return (
-    <div className="relative flex h-[calc(100vh-11rem)] sm:h-[calc(100vh-13rem)] lg:h-[calc(100vh-14rem)] bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+    <div className="relative flex h-[calc(100vh-11rem)] sm:h-[calc(100vh-13rem)] lg:h-[calc(100vh-14rem)] bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="p-3 sm:p-4 bg-gradient-to-r from-indigo-50 to-slate-50 border-b border-slate-100 flex items-center gap-2 text-xs text-slate-500">
-          <span className="font-semibold text-indigo-600 flex items-center gap-1.5">
+        <div className="p-3 sm:p-4 bg-gradient-to-r from-accent-soft to-bg border-b border-border flex items-center gap-2 text-xs text-muted">
+          <span className="font-semibold text-accent flex items-center gap-1.5">
             <Sparkles size={14} /> Ingliz tili AI yordamchisi
           </span>
           <span className="hidden sm:inline">Til, tarjima va lug'atga so'z qo'shish</span>
           {voiceSupported && (
             <button
               onClick={() => setTtsEnabled((v) => !v)}
-              className="ml-auto p-1.5 hover:bg-white/60 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors flex-shrink-0"
+              className="ml-auto p-1.5 hover:bg-surface/60 rounded-lg text-muted hover:text-accent transition-colors flex-shrink-0"
               title={ttsEnabled ? 'AI ovozini o\'chirish' : 'AI ovozini yoqish'}
             >
               {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
@@ -466,13 +466,13 @@ export default function AiChat() {
           )}
         </div>
 
-        <div className="flex gap-1.5 px-3 sm:px-4 py-2 border-b border-slate-100 overflow-x-auto flex-shrink-0">
+        <div className="flex gap-1.5 px-3 sm:px-4 py-2 border-b border-border overflow-x-auto flex-shrink-0">
           {ASSISTANT_MODES.map((m) => (
             <button
               key={m.key}
               onClick={() => handleSend(m.text)}
               disabled={chatLoading}
-              className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 border border-slate-100 transition-colors whitespace-nowrap disabled:opacity-40"
+              className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-bg hover:bg-accent-soft hover:text-accent text-muted border border-border transition-colors whitespace-nowrap disabled:opacity-40"
             >
               {m.label}
             </button>
@@ -487,17 +487,17 @@ export default function AiChat() {
           className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4"
         >
           {isEmpty && (
-            <div className="text-center py-12 text-slate-400">
-              <Sparkles className="mx-auto mb-3 text-indigo-400" size={32} />
+            <div className="text-center py-12 text-muted">
+              <Sparkles className="mx-auto mb-3 text-accent" size={32} />
               <p className="text-sm">Assalomu alaykum! Ingliz tili yoki tarjima bo'yicha savolingiz bormi?</p>
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[10px] text-muted mt-1">
                 Masalan: "arise" so'zini bir nechta gapda ishlatib ko'rsat, yoki rasm yuboring
               </p>
             </div>
           )}
           {sessionLoading && (
             <div className="flex justify-center py-8">
-              <Loader2 className="animate-spin text-indigo-400" size={20} />
+              <Loader2 className="animate-spin text-accent" size={20} />
             </div>
           )}
           {messages.map((msg, i) => (
@@ -513,10 +513,10 @@ export default function AiChat() {
           ))}
           {isTyping && (
             <div className="flex justify-start gap-2">
-              <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+              <div className="w-7 h-7 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
                 <Sparkles size={13} />
               </div>
-              <div className="bg-slate-100 border border-slate-200 rounded-2xl rounded-bl-none px-4 py-2.5 text-sm text-slate-400 flex items-center gap-1.5">
+              <div className="bg-bg border border-border rounded-2xl rounded-bl-none px-4 py-2.5 text-sm text-muted flex items-center gap-1.5">
                 <Loader2 className="animate-spin" size={13} /> javob yozmoqda...
               </div>
             </div>
@@ -524,15 +524,15 @@ export default function AiChat() {
           <div ref={chatEndRef} />
         </div>
 
-        <div className="p-3 sm:p-4 border-t border-slate-100">
+        <div className="p-3 sm:p-4 border-t border-border">
           {voiceSupported ? (
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <button
                 onClick={toggleLiveMode}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors ${
                   liveMode
-                    ? 'bg-red-50 border-red-200 text-red-600'
-                    : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'
+                    ? 'bg-accent-soft border-accent/25 text-accent'
+                    : 'bg-surface border-border text-muted hover:border-accent/30'
                 }`}
                 title="Uzluksiz ovozli suhbat"
               >
@@ -540,18 +540,18 @@ export default function AiChat() {
                   {liveMode && (liveListening || speaking) && (
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                   )}
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${liveMode ? 'bg-red-500' : 'bg-slate-300'}`} />
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${liveMode ? 'bg-accent-soft0' : 'bg-muted/40'}`} />
                 </span>
                 <Radio size={12} /> Live rejim
               </button>
 
               {liveMode && (
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[10px] text-muted">
                   {speaking ? 'AI gapirmoqda...' : liveListening ? 'Tinglanmoqda...' : 'Kutilmoqda...'}
                 </span>
               )}
 
-              <div className="flex items-center gap-1 ml-auto text-[10px] text-slate-400">
+              <div className="flex items-center gap-1 ml-auto text-[10px] text-muted">
                 <span>Tezlik</span>
                 <input
                   type="range"
@@ -565,7 +565,7 @@ export default function AiChat() {
               </div>
             </div>
           ) : (
-            <p className="text-[10px] text-slate-400 mb-2">
+            <p className="text-[10px] text-muted mb-2">
               Brauzeringiz ovozli kiritish/chiqishni to'liq qo'llab-quvvatlamaydi — matn rejimida davom eting.
             </p>
           )}
@@ -574,16 +574,16 @@ export default function AiChat() {
               {attachedImages.map((img, i) => (
                 <div key={i} className="relative inline-block">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt="Yuklanadigan rasm" className="h-16 rounded-lg border border-slate-200" />
+                  <img src={img} alt="Yuklanadigan rasm" className="h-16 rounded-lg border border-border" />
                   <button
                     onClick={() => removeAttachedImage(i)}
-                    className="absolute -top-1.5 -right-1.5 bg-slate-800 text-white rounded-full p-0.5"
+                    className="absolute -top-1.5 -right-1.5 bg-primary-hover text-white rounded-full p-0.5"
                   >
                     <X size={11} />
                   </button>
                 </div>
               ))}
-              <span className="self-center text-[10px] text-slate-400">
+              <span className="self-center text-[10px] text-muted">
                 {attachedImages.length}/{MAX_ATTACHED_IMAGES}
               </span>
             </div>
@@ -601,7 +601,7 @@ export default function AiChat() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={attachedImages.length >= MAX_ATTACHED_IMAGES}
-              className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors flex-shrink-0 disabled:opacity-30"
+              className="p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors flex-shrink-0 disabled:opacity-30"
               title={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
             >
               <Paperclip size={18} />
@@ -614,8 +614,8 @@ export default function AiChat() {
                   disabled={liveMode}
                   className={`p-2.5 rounded-xl transition-colors disabled:opacity-30 ${
                     micListening
-                      ? 'text-red-500 bg-red-50 animate-pulse'
-                      : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
+                      ? 'text-accent bg-accent-soft animate-pulse'
+                      : 'text-muted hover:text-accent hover:bg-accent-soft'
                   }`}
                   title="Ovozli kiritish"
                 >
@@ -627,7 +627,7 @@ export default function AiChat() {
                   <button
                     type="button"
                     onClick={() => setLangMenuOpen((v) => !v)}
-                    className="absolute -top-1 -right-1 px-1 py-px rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] font-bold leading-tight shadow"
+                    className="absolute -top-1 -right-1 px-1 py-px rounded bg-accent hover:bg-accent-hover text-white text-[9px] font-bold leading-tight shadow"
                     title="Mikrofon tili"
                   >
                     {activeLang.label}
@@ -635,8 +635,8 @@ export default function AiChat() {
                 )}
 
                 {langMenuOpen && (
-                  <div className="absolute bottom-full mb-2 left-0 z-30 w-40 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
-                    <p className="px-3 py-1.5 text-[9px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50">
+                  <div className="absolute bottom-full mb-2 left-0 z-30 w-40 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
+                    <p className="px-3 py-1.5 text-[9px] font-semibold text-muted uppercase tracking-wider bg-bg">
                       Mikrofon tili
                     </p>
                     {RECOGNITION_LANGS.map((l) => (
@@ -646,12 +646,12 @@ export default function AiChat() {
                         onClick={() => changeRecognitionLang(l.code)}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
                           recognitionLang === l.code
-                            ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                            : 'text-slate-600 hover:bg-slate-50'
+                            ? 'bg-accent-soft text-accent font-semibold'
+                            : 'text-muted hover:bg-bg'
                         }`}
                       >
                         <span className="w-6 font-bold">{l.label}</span>
-                        <span className="text-[11px] text-slate-400">{l.name}</span>
+                        <span className="text-[11px] text-muted">{l.name}</span>
                       </button>
                     ))}
                   </div>
@@ -666,12 +666,12 @@ export default function AiChat() {
               onChange={(e) => setChatInput(e.target.value)}
               onPaste={handlePaste}
               onKeyDown={handleTextareaKeyDown}
-              className="flex-1 min-w-0 px-4 py-2.5 border border-slate-200 rounded-xl text-sm leading-5 outline-none focus:border-indigo-500 resize-none"
+              className="flex-1 min-w-0 px-4 py-2.5 border border-border rounded-xl text-sm leading-5 outline-none focus:border-accent resize-none"
             />
             <button
               type="submit"
               disabled={chatLoading || (!chatInput.trim() && attachedImages.length === 0)}
-              className="px-4 sm:px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
+              className="px-4 sm:px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
             >
               <Send size={16} />
             </button>

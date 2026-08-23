@@ -67,11 +67,11 @@ export default function SpacedRepetition() {
   return (
     <div className="flex flex-col items-center">
       {practiceSet && (
-        <div className="w-full max-w-md flex items-center justify-between gap-3 bg-amber-50 border border-amber-100 text-amber-800 text-xs rounded-lg px-3 py-2 mb-4">
+        <div className="w-full max-w-md flex items-center justify-between gap-3 bg-accent-soft border border-accent/20 text-accent text-xs rounded-lg px-3 py-2 mb-4">
           <span>Maxsus mashq: qiynalayotgan so'zlar ({dueWords.length} qoldi)</span>
           <button
             onClick={clearPracticeQueue}
-            className="flex items-center gap-1 font-semibold hover:text-amber-900 flex-shrink-0"
+            className="flex items-center gap-1 font-semibold hover:text-accent-hover flex-shrink-0"
           >
             <X size={12} /> Chiqish
           </button>
@@ -79,31 +79,31 @@ export default function SpacedRepetition() {
       )}
 
       <div className="w-full max-w-md grid grid-cols-3 gap-2 mb-6 text-center">
-        <div className="bg-white border border-slate-100 rounded-xl py-3 shadow-sm">
-          <CalendarCheck className="mx-auto text-indigo-500 mb-1" size={16} />
-          <p className="text-lg font-bold text-slate-800">{todayCount}</p>
-          <p className="text-[10px] text-slate-400">Bugun ko'rildi</p>
+        <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
+          <CalendarCheck className="mx-auto text-accent mb-1" size={16} />
+          <p className="text-lg font-bold text-primary">{todayCount}</p>
+          <p className="text-[10px] text-muted">Bugun ko'rildi</p>
         </div>
-        <div className="bg-white border border-slate-100 rounded-xl py-3 shadow-sm">
+        <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
           <Flame className="mx-auto text-orange-500 mb-1" size={16} />
-          <p className="text-lg font-bold text-slate-800">{reviewStreak}</p>
-          <p className="text-[10px] text-slate-400">Kunlik ketma-ket</p>
+          <p className="text-lg font-bold text-primary">{reviewStreak}</p>
+          <p className="text-[10px] text-muted">Kunlik ketma-ket</p>
         </div>
-        <div className="bg-white border border-slate-100 rounded-xl py-3 shadow-sm">
-          <Trophy className="mx-auto text-amber-500 mb-1" size={16} />
-          <p className="text-lg font-bold text-slate-800">{masteredCount}</p>
-          <p className="text-[10px] text-slate-400">O'zlashtirilgan</p>
+        <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
+          <Trophy className="mx-auto text-accent mb-1" size={16} />
+          <p className="text-lg font-bold text-primary">{masteredCount}</p>
+          <p className="text-[10px] text-muted">O'zlashtirilgan</p>
         </div>
       </div>
 
       {!current ? (
         <div className="text-center py-10">
           <p className="text-2xl mb-2">🎉</p>
-          <p className="text-sm text-slate-500">Bugungi takrorlash uchun so'z qolmadi!</p>
+          <p className="text-sm text-muted">Bugungi takrorlash uchun so'z qolmadi!</p>
         </div>
       ) : (
         <div className="w-full max-w-md">
-          <div className="flex justify-between items-center text-xs text-slate-400 mb-2">
+          <div className="flex justify-between items-center text-xs text-muted mb-2">
             <span>{current.categoryName}</span>
             <span>
               {reviewedCount + 1} / {reviewedCount + dueWords.length}
@@ -112,27 +112,27 @@ export default function SpacedRepetition() {
 
           <div
             onClick={() => setShowAnswer(!showAnswer)}
-            className="w-full h-64 sm:h-72 bg-white rounded-2xl shadow-premium border border-slate-100 flex flex-col justify-center items-center p-6 sm:p-8 cursor-pointer relative select-none transition-transform hover:scale-[1.01]"
+            className="w-full h-64 sm:h-72 bg-surface rounded-2xl shadow-premium border border-border flex flex-col justify-center items-center p-6 sm:p-8 cursor-pointer relative select-none transition-transform hover:scale-[1.01]"
           >
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 speakText(current.word.word);
               }}
-              className="absolute top-4 right-4 p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-full transition-colors"
+              className="absolute top-4 right-4 p-2 bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors"
               title="Talaffuzni eshitish"
             >
               <Volume2 size={16} />
             </button>
-            <p className="text-2xl sm:text-3xl font-extrabold text-slate-800 font-display text-center break-words">
+            <p className="text-2xl sm:text-3xl font-extrabold text-primary font-display text-center break-words">
               {current.word.word}
             </p>
             {showAnswer ? (
-              <p className="text-lg sm:text-xl font-medium text-indigo-600 mt-6 text-center">
+              <p className="text-lg sm:text-xl font-medium text-accent mt-6 text-center">
                 {current.word.syns.join(', ')}
               </p>
             ) : (
-              <p className="text-xs text-slate-500 mt-6 font-semibold">Ko'rish uchun bosing</p>
+              <p className="text-xs text-muted mt-6 font-semibold">Ko'rish uchun bosing</p>
             )}
           </div>
 
@@ -140,7 +140,7 @@ export default function SpacedRepetition() {
             <div className="flex gap-3 sm:gap-4 mt-6 w-full">
               <button
                 onClick={() => answer(false)}
-                className="flex-1 py-3 bg-red-50 border border-red-100 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-100 transition-colors"
+                className="flex-1 py-3 bg-accent-soft border border-accent/25 text-accent rounded-xl font-semibold text-sm hover:bg-red-100 transition-colors"
               >
                 ❌ Bilmadim
               </button>

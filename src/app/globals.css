@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+ * "Deep Merlot" — Vocably'ning yagona rang tizimi. Faqat shu yerda o'zgartiring —
+ * tailwind.config.js shu o'zgaruvchilarga ishora qiladi (rgb(var(--x) / <alpha-value>)
+ * pattern — Tailwind'ning opacity modifikatorlari, masalan bg-accent/60, shu tufayli
+ * ishlayveradi), shuning uchun butun sayt (login, sidebar, kartalar, tugmalar,
+ * range-selector va h.k.) avtomatik yangilanadi. Komponentlarda xom hex yozilmaydi.
+ * Dark mode yo'q — qasddan, faqat shu yagona (light, premium) tema.
+ * ========================================================================== */
+:root {
+  --color-bg: 243 237 230;             /* #F3EDE6 — sahifa foni */
+  --color-surface: 250 246 242;        /* #FAF6F2 — karta foni */
+  --color-primary: 74 18 38;           /* #4A1226 — matn/header/sidebar */
+  --color-primary-hover: 85 21 44;     /* #55152C — sidebar elementi hover (primary fonda) */
+  --color-primary-soft: 243 216 226;   /* #F3D8E2 — primary'ning yengil foni (badge va h.k.) */
+  --color-accent: 184 57 74;           /* #B8394A — tugmalar, CTA, aktiv holat */
+  --color-accent-hover: 144 44 58;     /* #902C3A — accent'ning to'qroq varianti (hover/active) */
+  --color-accent-soft: 246 229 231;    /* #F6E5E7 — accent'ning yengil foni */
+  --color-muted: 107 91 84;            /* #6B5B54 — subtitle, ikonka, o'chirilgan matn */
+  --color-border: 214 207 204;         /* #D6CFCC — chegaralar */
+  --color-on-accent: 255 255 255;      /* accent fon ustidagi matn */
+  --color-on-primary: 250 246 242;     /* primary (to'q) fon ustidagi matn */
+}
+
 html, body {
   height: 100%;
 }
@@ -19,7 +42,7 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: rgb(var(--color-border));
   border-radius: 8px;
 }
 ::-webkit-scrollbar-track {

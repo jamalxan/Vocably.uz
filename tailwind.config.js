@@ -8,40 +8,37 @@ module.exports = {
       fontFamily: {
         display: ['var(--font-display)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         body: ['var(--font-body)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        // Faqat admin panel uchun (src/app/admin/layout.jsx) — hashamatli serif sarlavhalar.
         luxury: ['var(--font-luxury)', 'Georgia', 'serif'],
       },
       boxShadow: {
-        premium: '0 20px 60px -15px rgba(79, 70, 229, 0.25)',
-        // Admin panel maksimalizm dizayni uchun — qatlamli, chuqur soyalar.
-        'admin-card': '0 1px 2px rgba(0,0,0,.4), 0 24px 48px -12px rgba(0,0,0,.65)',
-        'admin-glow': '0 0 0 1px rgba(221,2,0,.35), 0 8px 32px -4px rgba(221,2,0,.35)',
-        'admin-gold-glow': '0 0 0 1px rgba(201,150,43,.3), 0 8px 28px -6px rgba(201,150,43,.3)',
+        // "Deep Merlot" — qora emas, brendning o'z (primary) rangiga to'yingan yumshoq soya —
+        // premium ko'rinish shundan keladi. Kartalar uchun.
+        card: '0 1px 2px rgba(74,18,38,.05), 0 16px 40px -12px rgba(74,18,38,.14)',
+        // Accent atrofidagi nozik nurlanish — aktiv holat/asosiy CTA uchun.
+        glow: '0 0 0 1px rgba(184,57,74,.22), 0 10px 28px -8px rgba(184,57,74,.32)',
+        premium: '0 20px 60px -15px rgba(74,18,38,.20)',
       },
-      // Admin panelning to'liq rang tizimi — foydalanuvchi bergan 4 ta asosiy rangdan
-      // (Alabaster Grey, Racing Red, Black Cherry, Coffee Bean) hosil qilingan tonal
-      // shkalalar + muvozanat uchun oltin urg'u rangi (faqat ijobiy holat belgisi sifatida).
+      // Yagona manba: src/app/globals.css'dagi CSS o'zgaruvchilar. Bu yerda faqat
+      // Tailwind'ga "qanday nomlash" ko'rsatiladi — haqiqiy qiymat va uni o'zgartirish
+      // faqat globals.css'da. rgb(var(--x) / <alpha-value>) pattern opacity
+      // modifikatorlarini (masalan bg-accent/60) ishlashda qoldiradi.
       colors: {
-        racing: {
-          50: '#FFF0F0', 100: '#FFDCDB', 200: '#FFB3B2', 300: '#FF7170', 400: '#FF2B29',
-          500: '#EB0200', 600: '#DD0200', 700: '#AD0200', 800: '#850100', 900: '#610100', 950: '#3D0100',
+        bg: 'rgb(var(--color-bg) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        primary: {
+          DEFAULT: 'rgb(var(--color-primary) / <alpha-value>)',
+          hover: 'rgb(var(--color-primary-hover) / <alpha-value>)',
+          soft: 'rgb(var(--color-primary-soft) / <alpha-value>)',
         },
-        coffee: {
-          50: '#FAEBEA', 100: '#F1C3C1', 200: '#E28783', 300: '#D44C45', 400: '#A62D26',
-          500: '#741F1B', 600: '#531613', 700: '#3A100D', 800: '#290B0A', 900: '#1A0706', 950: '#130504',
+        accent: {
+          DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
+          hover: 'rgb(var(--color-accent-hover) / <alpha-value>)',
+          soft: 'rgb(var(--color-accent-soft) / <alpha-value>)',
         },
-        cherry: {
-          50: '#FCEAE9', 100: '#F5BFBD', 200: '#EB7F7A', 300: '#E13F38', 400: '#B1211B',
-          500: '#851914', 600: '#61120F', 700: '#55100D', 800: '#310907', 900: '#210605', 950: '#140403',
-        },
-        alabaster: {
-          50: '#FAFAFA', 100: '#F2F2F2', 200: '#E6E6E6', 300: '#D9D9D9', 400: '#BFBFBF',
-          500: '#A6A6A6', 600: '#8C8C8C', 700: '#6B6B6B', 800: '#474747', 900: '#292929', 950: '#171717',
-        },
-        gold: {
-          50: '#FDF9F2', 100: '#F9F0DC', 200: '#F1DCB1', 300: '#E8C57D', 400: '#E0B252',
-          500: '#C9962B', 600: '#B68620', 700: '#936C1A', 800: '#715314', 900: '#4E390E', 950: '#342609',
-        },
+        muted: 'rgb(var(--color-muted) / <alpha-value>)',
+        border: 'rgb(var(--color-border) / <alpha-value>)',
+        'on-accent': 'rgb(var(--color-on-accent) / <alpha-value>)',
+        'on-primary': 'rgb(var(--color-on-primary) / <alpha-value>)',
       },
     },
   },

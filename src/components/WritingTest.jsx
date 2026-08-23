@@ -128,9 +128,9 @@ export default function WritingTest() {
       ) : (
         <form
           onSubmit={handleAnswerSubmit}
-          className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm"
+          className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm"
         >
-          <div className="flex justify-between items-center text-xs text-slate-400 mb-4">
+          <div className="flex justify-between items-center text-xs text-muted mb-4">
             <span>
               {writeCurIdx + 1} / {writeWords.length}
             </span>
@@ -138,13 +138,13 @@ export default function WritingTest() {
           </div>
 
           <div className="flex items-center gap-2 mb-6">
-            <span className="text-xl sm:text-2xl font-bold text-slate-800 font-display break-words">
+            <span className="text-xl sm:text-2xl font-bold text-primary font-display break-words">
               {writeWords[writeCurIdx]?.word}
             </span>
             <button
               type="button"
               onClick={() => speakText(writeWords[writeCurIdx]?.word)}
-              className="p-1.5 bg-indigo-50 hover:bg-indigo-100 rounded text-indigo-600 transition-colors flex-shrink-0"
+              className="p-1.5 bg-accent-soft hover:bg-accent/20 rounded text-accent transition-colors flex-shrink-0"
             >
               <Volume2 size={14} />
             </button>
@@ -153,7 +153,7 @@ export default function WritingTest() {
           <div className="space-y-3 mb-6">
             {userAnswers.map((ans, idx) => (
               <div key={idx} className="flex gap-2 items-center">
-                <span className="text-xs font-semibold text-slate-400 w-6">{idx + 1}</span>
+                <span className="text-xs font-semibold text-muted w-6">{idx + 1}</span>
                 <input
                   type="text"
                   ref={(el) => (answerInputRefs.current[idx] = el)}
@@ -170,8 +170,8 @@ export default function WritingTest() {
                     writeChecked
                       ? writeWords[writeCurIdx].syns.map((s) => s.toLowerCase()).includes(ans.trim().toLowerCase())
                         ? 'border-green-300 bg-green-50 text-green-700'
-                        : 'border-red-300 bg-red-50 text-red-700'
-                      : 'focus:border-indigo-500'
+                        : 'border-red-300 bg-accent-soft text-red-700'
+                      : 'focus:border-accent'
                   }`}
                 />
               </div>
@@ -179,16 +179,16 @@ export default function WritingTest() {
           </div>
 
           {writeChecked && (
-            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs mb-4">
-              <span className="font-semibold text-slate-500 block mb-1">To'g'ri javoblar:</span>
-              <span className="font-bold text-indigo-600 text-sm">{writeWords[writeCurIdx].syns.join(', ')}</span>
+            <div className="bg-bg border border-border rounded-lg p-3 text-xs mb-4">
+              <span className="font-semibold text-muted block mb-1">To'g'ri javoblar:</span>
+              <span className="font-bold text-accent text-sm">{writeWords[writeCurIdx].syns.join(', ')}</span>
             </div>
           )}
 
           {!writeChecked ? (
             <button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+              className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
             >
               Tekshirish
             </button>

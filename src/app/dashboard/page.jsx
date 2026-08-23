@@ -28,37 +28,37 @@ function DashboardContent() {
 
   if (loadingApp) {
     return (
-      <div className="flex items-center justify-center h-screen bg-coffee-900">
-        <Loader2 className="animate-spin text-racing-500" size={28} />
+      <div className="flex items-center justify-center h-screen bg-bg">
+        <Loader2 className="animate-spin text-accent" size={28} />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-coffee-900">
+    <div className="flex h-screen overflow-hidden bg-bg">
       <Sidebar view={view} setView={setView} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col h-full overflow-y-auto w-full min-w-0">
-        <header className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 bg-coffee-900/90 backdrop-blur-md border-b border-cherry-900/60 flex items-center justify-between gap-3 sticky top-0 z-10">
+        <header className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 bg-bg/90 backdrop-blur-md border-b border-border flex items-center justify-between gap-3 sticky top-0 z-10">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-1 text-alabaster-400 hover:bg-cherry-900/50 rounded-lg transition-colors flex-shrink-0"
+              className="lg:hidden p-2 -ml-1 text-muted hover:bg-surface rounded-lg transition-colors flex-shrink-0"
             >
               <Menu size={20} />
             </button>
             <div className="min-w-0">
               {/* Bosh sahifa kategoriyalararo umumiy ko'rinish, shuning uchun sarlavhada
                   bitta kategoriya nomini emas, oddiy salomlashuvni ko'rsatamiz. */}
-              <h2 className="text-lg sm:text-xl font-bold text-alabaster-50 font-display truncate">
+              <h2 className="text-lg sm:text-xl font-bold text-primary font-display truncate">
                 {view === 'home' ? 'Bosh sahifa' : view === 'friends' ? "Do'stlar" : activeCategory.name || "Kategoriya yo'q"}
               </h2>
               {/* A5 (docs/AUDIT_FINDINGS.md): "Bugungi takrorlash" barcha kategoriyalar bo'yicha
                   ishlaydi, shuning uchun bitta kategoriyaga tegishli so'z sonini shu yerda
                   ko'rsatish SpacedRepetition'dagi "navbatda" soni bilan ziddiyatli ko'rinardi. */}
               {view !== 'review' && view !== 'home' && view !== 'friends' && (
-                <p className="text-xs text-alabaster-600 mt-0.5">Jami so'zlar: {activeCategory.words?.length || 0} ta</p>
+                <p className="text-xs text-muted mt-0.5">Jami so'zlar: {activeCategory.words?.length || 0} ta</p>
               )}
             </div>
           </div>
@@ -67,7 +67,7 @@ function DashboardContent() {
             <div className="flex gap-2 sm:gap-3 flex-shrink-0">
               <button
                 onClick={() => handleDeleteCategory(activeCatIndex)}
-                className="p-2 border border-racing-800/50 hover:bg-racing-900/40 text-racing-400 rounded-lg transition-colors flex-shrink-0"
+                className="p-2 border border-accent/25 hover:bg-accent-soft text-accent rounded-lg transition-colors flex-shrink-0"
                 title="Kategoriyani o'chirish"
               >
                 <Trash2 size={16} />

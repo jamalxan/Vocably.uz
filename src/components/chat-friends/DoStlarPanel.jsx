@@ -8,7 +8,7 @@ function DoStlarShell() {
   const { activeConversation, selectConversation, closeConversation } = useChat();
 
   return (
-    <div className="flex h-[calc(100vh-160px)] min-h-[420px] bg-white rounded-2xl border border-slate-100 overflow-hidden">
+    <div className="flex h-[calc(100vh-160px)] min-h-[420px] bg-surface rounded-2xl border border-border overflow-hidden">
       <div className={`${activeConversation ? 'hidden lg:flex' : 'flex'} flex-col h-full w-full lg:w-auto`}>
         <ConversationList onSelect={selectConversation} selectedId={activeConversation?.id} />
       </div>
@@ -25,7 +25,7 @@ export default function DoStlarPanel() {
   const { token, chatAccess } = useApp();
 
   if (!chatAccess) {
-    return <p className="text-sm text-slate-400 text-center py-12">Bu bo'lim uchun ruxsatingiz yo'q.</p>;
+    return <p className="text-sm text-muted text-center py-12">Bu bo'lim uchun ruxsatingiz yo'q.</p>;
   }
 
   return (

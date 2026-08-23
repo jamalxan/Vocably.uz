@@ -80,15 +80,15 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
       <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-white/20">
         <video ref={videoRef} muted playsInline className="w-full h-full object-cover -scale-x-100" />
         <span className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-soft0 animate-pulse" />
           {mm}:{ss}
         </span>
       </div>
       <div className="flex items-center gap-4">
-        <button onClick={cancel} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors">
+        <button onClick={cancel} className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors">
           <X size={20} />
         </button>
-        <button onClick={stop} className="p-4 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors">
+        <button onClick={stop} className="p-4 bg-accent hover:bg-accent-hover text-white rounded-full transition-colors">
           <Square size={22} />
         </button>
       </div>
@@ -103,7 +103,7 @@ export default function VideoRecorderButton({ onRecorded }) {
       <button
         onClick={() => setActive(true)}
         title="Video xabar"
-        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
+        className="p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
       >
         <Video size={18} />
       </button>

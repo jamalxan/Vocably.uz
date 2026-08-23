@@ -17,10 +17,10 @@ export default function ConversationList({ onSelect, selectedId }) {
   const { conversations, loadingConversations, socketConnected } = useChat();
 
   return (
-    <div className="w-full lg:w-72 flex-shrink-0 border-r border-slate-100 flex flex-col h-full">
+    <div className="w-full lg:w-72 flex-shrink-0 border-r border-border flex flex-col h-full">
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        <h3 className="text-sm font-bold text-slate-800">Do'stlar</h3>
-        <span title={socketConnected ? 'Onlayn' : 'Oflayn (yangilanish bilan)'} className="text-slate-300">
+        <h3 className="text-sm font-bold text-primary">Do'stlar</h3>
+        <span title={socketConnected ? 'Onlayn' : 'Oflayn (yangilanish bilan)'} className="text-muted">
           {socketConnected ? <Wifi size={13} className="text-emerald-500" /> : <WifiOff size={13} />}
         </span>
       </div>
@@ -30,11 +30,11 @@ export default function ConversationList({ onSelect, selectedId }) {
       <div className="flex-1 overflow-y-auto px-2 pb-3">
         {loadingConversations && (
           <div className="flex justify-center py-6">
-            <Loader2 size={18} className="animate-spin text-slate-300" />
+            <Loader2 size={18} className="animate-spin text-muted" />
           </div>
         )}
         {!loadingConversations && conversations.length === 0 && (
-          <p className="text-center text-xs text-slate-400 px-4 py-6">
+          <p className="text-center text-xs text-muted px-4 py-6">
             Hozircha suhbat yo'q. Yuqoridan username qidirib, yozishni boshlang.
           </p>
         )}
@@ -43,18 +43,18 @@ export default function ConversationList({ onSelect, selectedId }) {
             key={c.id}
             onClick={() => onSelect(c)}
             className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left transition-colors ${
-              String(selectedId) === String(c.id) ? 'bg-indigo-50' : 'hover:bg-slate-50'
+              String(selectedId) === String(c.id) ? 'bg-accent-soft' : 'hover:bg-bg'
             }`}
           >
-            <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold flex-shrink-0">
               {(c.otherUser?.username || '?')[0]?.toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-800 truncate">@{c.otherUser?.username || 'noma\'lum'}</p>
-                <span className="text-[10px] text-slate-400 flex-shrink-0">{timeAgo(c.lastMessageAt)}</span>
+                <p className="text-sm font-medium text-primary truncate">@{c.otherUser?.username || 'noma\'lum'}</p>
+                <span className="text-[10px] text-muted flex-shrink-0">{timeAgo(c.lastMessageAt)}</span>
               </div>
-              <p className="text-xs text-slate-400 truncate">{c.lastMessagePreview || ''}</p>
+              <p className="text-xs text-muted truncate">{c.lastMessagePreview || ''}</p>
             </div>
           </button>
         ))}

@@ -88,20 +88,20 @@ export default function WordTable() {
     <div className="space-y-5 sm:space-y-6">
       <form
         onSubmit={onAddWord}
-        className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-end"
+        className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-end"
       >
         <div className="flex-1 w-full">
-          <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Yangi so'z</label>
+          <label className="block text-[10px] font-semibold text-muted uppercase mb-1">Yangi so'z</label>
           <input
             type="text"
             placeholder="Masalan: Start"
             value={newWord}
             onChange={(e) => setNewWord(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500"
+            className="w-full px-3 py-2 border border-border rounded-lg text-sm outline-none focus:border-accent"
           />
         </div>
         <div className="flex-[2] w-full">
-          <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">
+          <label className="block text-[10px] font-semibold text-muted uppercase mb-1">
             Sinonimlar / tarjima, vergul bilan
           </label>
           <input
@@ -109,12 +109,12 @@ export default function WordTable() {
             placeholder="Masalan: begin, commence, launch"
             value={newSyns}
             onChange={(e) => setNewSyns(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500"
+            className="w-full px-3 py-2 border border-border rounded-lg text-sm outline-none focus:border-accent"
           />
         </div>
         <button
           type="submit"
-          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-sm transition-colors whitespace-nowrap"
+          className="px-5 py-2.5 bg-accent hover:bg-accent-hover text-white font-semibold rounded-lg text-sm transition-colors whitespace-nowrap"
         >
           Qo'shish
         </button>
@@ -122,29 +122,29 @@ export default function WordTable() {
 
       {/* Qidiruv jonli filtrlaydi — Enter bosilganda sahifa yangilanib ketmasligi kerak. */}
       <form onSubmit={(e) => e.preventDefault()} className="relative">
-        <Search className="absolute left-3 top-3 text-slate-400" size={16} />
+        <Search className="absolute left-3 top-3 text-muted" size={16} />
         <input
           type="search"
           placeholder="So'z yoki tarjimalar bo'yicha qidirish..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm outline-none focus:border-indigo-500"
+          className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-surface text-sm outline-none focus:border-accent"
         />
       </form>
 
       {selectedIds.length > 0 && (
-        <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm">
-          <span className="font-semibold text-indigo-700">{selectedIds.length} ta so'z tanlandi</span>
+        <div className="flex items-center justify-between bg-accent-soft border border-accent/15 rounded-xl px-4 py-3 text-sm">
+          <span className="font-semibold text-accent">{selectedIds.length} ta so'z tanlandi</span>
           <div className="flex gap-2">
             <button
               onClick={requestDeleteSelected}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors"
+              className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold transition-colors"
             >
               O'chirish
             </button>
             <button
               onClick={() => setSelectedIds([])}
-              className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold transition-colors"
+              className="px-3 py-1.5 bg-surface hover:bg-bg border border-border text-muted rounded-lg text-xs font-semibold transition-colors"
             >
               Bekor qilish
             </button>
@@ -152,11 +152,11 @@ export default function WordTable() {
         </div>
       )}
 
-      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[520px]">
             <thead>
-              <tr className="bg-slate-50 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+              <tr className="bg-bg text-[10px] font-semibold text-muted uppercase tracking-wider border-b border-border">
                 <th className="py-3 px-4 sm:px-6 w-10">
                   <input
                     type="checkbox"
@@ -173,7 +173,7 @@ export default function WordTable() {
             </thead>
             <tbody>
               {filtered.map((w) => (
-                <tr key={w._id || w.idx} className="border-b border-slate-50 hover:bg-slate-50/50 text-sm">
+                <tr key={w._id || w.idx} className="border-b border-border hover:bg-bg/50 text-sm">
                   <td className="py-3.5 px-4 sm:px-6">
                     <input
                       type="checkbox"
@@ -183,13 +183,13 @@ export default function WordTable() {
                       className="w-3.5 h-3.5 accent-indigo-600 cursor-pointer"
                     />
                   </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-slate-400 font-mono text-xs">{w.idx + 1}</td>
-                  <td className="py-3.5 px-4 sm:px-6 font-semibold text-slate-800">{w.word}</td>
-                  <td className="py-3.5 px-4 sm:px-6 text-slate-500">{w.syns.join(', ')}</td>
+                  <td className="py-3.5 px-4 sm:px-6 text-muted font-mono text-xs">{w.idx + 1}</td>
+                  <td className="py-3.5 px-4 sm:px-6 font-semibold text-primary">{w.word}</td>
+                  <td className="py-3.5 px-4 sm:px-6 text-muted">{w.syns.join(', ')}</td>
                   <td className="py-3.5 px-4 sm:px-6 flex gap-2">
                     <button
                       onClick={() => speakText(w.word)}
-                      className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded transition-colors"
+                      className="p-1.5 bg-accent-soft hover:bg-accent/20 text-accent rounded transition-colors"
                       title="Eshitish"
                     >
                       <Volume2 size={14} />
@@ -197,7 +197,7 @@ export default function WordTable() {
                     <button
                       onClick={() => requestDeleteSingle(w)}
                       disabled={!w._id}
-                      className="p-1.5 bg-red-50 hover:bg-red-100 text-red-500 rounded transition-colors disabled:opacity-40"
+                      className="p-1.5 bg-accent-soft hover:bg-red-100 text-accent rounded transition-colors disabled:opacity-40"
                       title="O'chirish"
                     >
                       <Trash2 size={14} />
@@ -207,7 +207,7 @@ export default function WordTable() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-sm text-slate-400">
+                  <td colSpan={5} className="py-10 text-center text-sm text-muted">
                     Bu kategoriyada hali so'z yo'q.
                   </td>
                 </tr>

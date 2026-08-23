@@ -55,25 +55,25 @@ export default function UsersTable({ token }) {
   return (
     <div>
       <div className="relative mb-5 max-w-sm">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-alabaster-600" />
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Telefon, ism yoki username qidirish..."
-          className="w-full pl-10 pr-4 py-2.5 bg-cherry-950/50 border border-cherry-800/60 rounded-xl text-sm text-alabaster-100 placeholder:text-alabaster-700 outline-none focus:border-racing-600/70 focus:ring-2 focus:ring-racing-700/30 transition-all"
+          className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-primary placeholder:text-muted/70 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
         />
       </div>
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="animate-spin text-racing-500" size={24} />
+          <Loader2 className="animate-spin text-accent" size={24} />
         </div>
       ) : (
-        <div className="rounded-2xl border border-cherry-800/60 bg-gradient-to-b from-cherry-950/40 to-coffee-900/60 shadow-admin-card overflow-hidden">
+        <div className="rounded-2xl border border-border bg-surface shadow-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[11px] text-gold-400 uppercase tracking-[0.15em] border-b border-cherry-800/60">
+                <tr className="text-left text-[11px] text-accent uppercase tracking-[0.15em] border-b border-border">
                   <th className="px-5 py-3.5 font-semibold">Foydalanuvchi</th>
                   <th className="px-5 py-3.5 font-semibold">Ro'yxatdan o'tgan</th>
                   <th className="px-5 py-3.5 font-semibold">Username</th>
@@ -84,19 +84,19 @@ export default function UsersTable({ token }) {
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u._id} className="border-t border-cherry-900/60 hover:bg-cherry-900/30 transition-colors">
+                  <tr key={u._id} className="border-t border-border hover:bg-bg/60 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-cherry-800/70 border border-cherry-700/50 flex items-center justify-center text-alabaster-300 flex-shrink-0">
-                          {u.role === 'admin' ? <Crown size={15} className="text-gold-400" /> : <UserIcon size={15} />}
+                        <div className="w-9 h-9 rounded-full bg-primary-soft border border-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                          {u.role === 'admin' ? <Crown size={15} className="text-accent" /> : <UserIcon size={15} />}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-alabaster-100 truncate">{u.name || '—'}</p>
-                          <p className="text-xs text-alabaster-600">{u.phoneDisplay}</p>
+                          <p className="font-medium text-primary truncate">{u.name || '—'}</p>
+                          <p className="text-xs text-muted">{u.phoneDisplay}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-alabaster-500">
+                    <td className="px-5 py-3.5 text-xs text-muted">
                       {u.createdAt ? new Date(u.createdAt).toLocaleDateString('uz-UZ') : '—'}
                     </td>
                     <td className="px-5 py-3.5">
@@ -104,7 +104,7 @@ export default function UsersTable({ token }) {
                         defaultValue={u.username || ''}
                         placeholder="username"
                         onChange={(e) => setUsernameDraft((d) => ({ ...d, [u._id]: e.target.value }))}
-                        className="w-32 px-2.5 py-1.5 bg-coffee-950/60 border border-cherry-800/60 rounded-lg text-xs text-alabaster-200 outline-none focus:border-racing-600/70 transition-colors"
+                        className="w-32 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-primary outline-none focus:border-accent transition-colors"
                       />
                     </td>
                     <td className="px-5 py-3.5">
@@ -112,7 +112,7 @@ export default function UsersTable({ token }) {
                         <button
                           disabled={savingId === u._id}
                           onClick={() => patchUser(u._id, { chatAccess: false })}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gold-500/10 border border-gold-600/40 text-gold-400 rounded-lg text-xs font-medium hover:bg-gold-500/20 transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-soft border border-accent/25 text-accent rounded-lg text-xs font-medium hover:bg-accent/15 transition-colors disabled:opacity-50"
                         >
                           <ShieldCheck size={13} /> Yoqilgan
                         </button>
@@ -120,7 +120,7 @@ export default function UsersTable({ token }) {
                         <button
                           disabled={savingId === u._id}
                           onClick={() => grantAccess(u)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cherry-900/60 border border-cherry-700/50 text-alabaster-500 rounded-lg text-xs font-medium hover:border-racing-600/60 hover:text-racing-400 transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg border border-border text-muted rounded-lg text-xs font-medium hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50"
                         >
                           <ShieldOff size={13} /> Ruxsat berish
                         </button>
@@ -131,7 +131,7 @@ export default function UsersTable({ token }) {
                         value={u.role}
                         disabled={savingId === u._id}
                         onChange={(e) => patchUser(u._id, { role: e.target.value })}
-                        className="px-2.5 py-1.5 bg-coffee-950/60 border border-cherry-800/60 rounded-lg text-xs text-alabaster-200 outline-none focus:border-racing-600/70 transition-colors"
+                        className="px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-primary outline-none focus:border-accent transition-colors"
                       >
                         <option value="user">user</option>
                         <option value="admin">admin</option>
@@ -143,8 +143,8 @@ export default function UsersTable({ token }) {
                         onClick={() => patchUser(u._id, { chatBanned: !u.chatBanned })}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
                           u.chatBanned
-                            ? 'bg-racing-900/40 border border-racing-700/50 text-racing-400 hover:bg-racing-900/60'
-                            : 'bg-cherry-900/60 border border-cherry-700/50 text-alabaster-500 hover:text-alabaster-200'
+                            ? 'bg-accent/15 border border-accent/40 text-accent hover:bg-accent/25'
+                            : 'bg-bg border border-border text-muted hover:text-primary'
                         }`}
                       >
                         {u.chatBanned ? <Ban size={13} /> : <CheckCircle2 size={13} />}
@@ -156,7 +156,7 @@ export default function UsersTable({ token }) {
               </tbody>
             </table>
           </div>
-          {users.length === 0 && <p className="text-center text-sm text-alabaster-600 py-10">Foydalanuvchi topilmadi</p>}
+          {users.length === 0 && <p className="text-center text-sm text-muted py-10">Foydalanuvchi topilmadi</p>}
         </div>
       )}
     </div>

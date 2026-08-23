@@ -58,19 +58,19 @@ export default function SidebarChatSessions({ expanded, onOpenChat }) {
   return (
     <>
       {expanded && (
-        <div ref={listRef} className="mt-1 ml-4 pl-3 border-l border-slate-800 space-y-0.5">
+        <div ref={listRef} className="mt-1 ml-4 pl-3 border-l border-on-primary/10 space-y-0.5">
           <button
             onClick={() => {
               startNewChatSession();
               onOpenChat?.();
             }}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted hover:bg-primary-hover hover:text-on-primary transition-colors"
           >
             <Plus size={13} /> Yangi suhbat
           </button>
 
           {chatSessions.length === 0 && (
-            <p className="px-2 py-1.5 text-[11px] text-slate-600">Hali suhbatlar yo'q</p>
+            <p className="px-2 py-1.5 text-[11px] text-muted">Hali suhbatlar yo'q</p>
           )}
 
           {visible.map((s) =>
@@ -84,7 +84,7 @@ export default function SidebarChatSessions({ expanded, onOpenChat }) {
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') setRenamingId(null);
                   }}
-                  className="w-full px-2 py-1 bg-slate-800 border border-indigo-500 rounded text-[11px] text-slate-100 outline-none"
+                  className="w-full px-2 py-1 bg-primary-hover border border-accent rounded text-[11px] text-on-primary outline-none"
                 />
               </form>
             ) : (
@@ -94,25 +94,25 @@ export default function SidebarChatSessions({ expanded, onOpenChat }) {
                   title={s.title}
                   className={`w-full text-left pl-2 pr-7 py-1.5 rounded-md text-xs truncate transition-colors ${
                     currentSessionId === s.id
-                      ? 'bg-slate-800 text-slate-100 font-medium'
-                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                      ? 'bg-primary-hover text-on-primary font-medium'
+                      : 'text-muted hover:bg-primary-hover/60 hover:text-on-primary'
                   }`}
                 >
                   {s.title}
                 </button>
                 <button
                   onClick={() => setMenuOpenId(menuOpenId === s.id ? null : s.id)}
-                  className="absolute top-1/2 -translate-y-1/2 right-1 p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-700 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                  className="absolute top-1/2 -translate-y-1/2 right-1 p-1 rounded text-muted hover:text-on-primary hover:bg-primary-hover opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                   title="Amallar"
                 >
                   <MoreHorizontal size={13} />
                 </button>
 
                 {menuOpenId === s.id && (
-                  <div className="absolute z-20 right-1 top-7 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden text-[11px]">
+                  <div className="absolute z-20 right-1 top-7 w-40 bg-primary-hover border border-on-primary/15 rounded-lg shadow-xl overflow-hidden text-[11px]">
                     <button
                       onClick={() => startRename(s)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-slate-700"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-muted hover:bg-primary-hover"
                     >
                       <Pencil size={12} /> Nomini o'zgartirish
                     </button>
@@ -121,7 +121,7 @@ export default function SidebarChatSessions({ expanded, onOpenChat }) {
                         setMenuOpenId(null);
                         setConfirmDeleteId(s.id);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-slate-700"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-accent hover:bg-primary-hover"
                     >
                       <Trash2 size={12} /> O'chirish
                     </button>
@@ -134,7 +134,7 @@ export default function SidebarChatSessions({ expanded, onOpenChat }) {
           {chatSessions.length > VISIBLE_LIMIT && (
             <button
               onClick={() => setAllModalOpen(true)}
-              className="w-full text-left px-2 py-1.5 rounded-md text-[11px] text-indigo-400 hover:bg-slate-800 hover:text-indigo-300 transition-colors"
+              className="w-full text-left px-2 py-1.5 rounded-md text-[11px] text-accent hover:bg-primary-hover hover:text-accent transition-colors"
             >
               Barchasini ko'rish ({chatSessions.length})
             </button>

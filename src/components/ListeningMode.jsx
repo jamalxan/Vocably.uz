@@ -114,13 +114,13 @@ export default function ListeningMode() {
         onRestart={restartRound}
         onClose={closeFinished}
       />
-      <form onSubmit={handleSubmit} className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
-        <div className="flex justify-between items-center text-xs text-slate-400 mb-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
+        <div className="flex justify-between items-center text-xs text-muted mb-4">
           <span>
             {idx + 1} / {queue.length}
           </span>
           <span>To'g'ri: {score}</span>
-          <button type="button" onClick={() => setActive(false)} className="text-indigo-500 hover:text-indigo-700 font-semibold">
+          <button type="button" onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
             Oraliqni o'zgartirish
           </button>
         </div>
@@ -129,12 +129,12 @@ export default function ListeningMode() {
           <button
             type="button"
             onClick={() => speakText(current.word)}
-            className="w-16 h-16 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center transition-colors"
+            className="w-16 h-16 rounded-full bg-accent-soft hover:bg-accent/20 text-accent flex items-center justify-center transition-colors"
             title="Qayta eshitish"
           >
             <Volume2 size={24} />
           </button>
-          <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-wider">Eshitilgan so'zni yozing</p>
+          <p className="text-[10px] text-muted mt-2 uppercase tracking-wider">Eshitilgan so'zni yozing</p>
         </div>
 
         <input
@@ -147,21 +147,21 @@ export default function ListeningMode() {
             checked
               ? isCorrect
                 ? 'border-green-300 bg-green-50 text-green-700'
-                : 'border-red-300 bg-red-50 text-red-700'
-              : 'focus:border-indigo-500'
+                : 'border-red-300 bg-accent-soft text-red-700'
+              : 'focus:border-accent'
           }`}
         />
 
         {checked && !isCorrect && (
-          <p className="text-xs text-slate-500 mb-4">
-            To'g'ri javob: <span className="font-bold text-indigo-600">{current.word}</span>
+          <p className="text-xs text-muted mb-4">
+            To'g'ri javob: <span className="font-bold text-accent">{current.word}</span>
           </p>
         )}
 
         {!checked ? (
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+            className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
             Tekshirish
           </button>

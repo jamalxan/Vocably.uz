@@ -217,34 +217,33 @@ export default function AuthPage() {
   const showStepper = mode !== 'login';
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 flex items-center justify-center px-4 py-10 sm:py-14">
+    <div className="relative min-h-screen overflow-hidden bg-bg flex items-center justify-center px-4 py-10 sm:py-14">
       {/* Fon: yumshoq gradient blob'lar */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-24 w-72 h-72 sm:w-96 sm:h-96 bg-indigo-600/30 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -right-24 w-72 h-72 sm:w-96 sm:h-96 bg-violet-600/30 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-64 h-64 bg-fuchsia-500/10 rounded-full blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.06)_1px,transparent_0)] bg-[size:28px_28px]" />
+        <div className="absolute -top-32 -left-24 w-72 h-72 sm:w-96 sm:h-96 bg-accent/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -right-24 w-72 h-72 sm:w-96 sm:h-96 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-64 h-64 bg-accent/5 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Brend */}
         <div className="flex flex-col items-center mb-6 sm:mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-900/40 mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-on-accent shadow-glow mb-4">
             <BookOpen size={26} />
           </div>
-          <h1 className="font-display text-2xl font-extrabold text-white tracking-tight">
-            Voc<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">ably</span>
+          <h1 className="font-display text-2xl font-extrabold text-primary tracking-tight">
+            Voc<span className="text-accent">ably</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Ingliz tili yordamchisi</p>
+          <p className="text-xs text-muted mt-1">Ingliz tili yordamchisi</p>
         </div>
 
         {/* Karta */}
-        <div className="bg-white/[0.07] backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl shadow-black/40 p-6 sm:p-8">
+        <div className="bg-surface border border-border rounded-3xl shadow-card p-6 sm:p-8">
           <div className="mb-6">
-            <h2 className="font-display text-xl font-bold text-white">{titleMap[mode]}</h2>
-            {mode === 'login' && <p className="text-xs text-slate-400 mt-1">Davom etish uchun tizimga kiring</p>}
-            {mode === 'register' && step === 'form' && <p className="text-xs text-slate-400 mt-1">Telefon raqamingiz Telegram orqali tasdiqlanadi</p>}
-            {mode === 'forgot' && step === 'form' && <p className="text-xs text-slate-400 mt-1">Parolni tiklash uchun raqamingizni kiriting</p>}
+            <h2 className="font-display text-xl font-bold text-primary">{titleMap[mode]}</h2>
+            {mode === 'login' && <p className="text-xs text-muted mt-1">Davom etish uchun tizimga kiring</p>}
+            {mode === 'register' && step === 'form' && <p className="text-xs text-muted mt-1">Telefon raqamingiz Telegram orqali tasdiqlanadi</p>}
+            {mode === 'forgot' && step === 'form' && <p className="text-xs text-muted mt-1">Parolni tiklash uchun raqamingizni kiriting</p>}
           </div>
 
           {showStepper && (
@@ -253,7 +252,7 @@ export default function AuthPage() {
                 <div
                   key={label}
                   className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-                    stepIndexMap[label] <= stepIndexMap[step] ? 'bg-indigo-500' : 'bg-white/10'
+                    stepIndexMap[label] <= stepIndexMap[step] ? 'bg-accent' : 'bg-border'
                   }`}
                 />
               ))}
@@ -261,12 +260,12 @@ export default function AuthPage() {
           )}
 
           {error && (
-            <div className="bg-red-500/10 text-red-300 border border-red-500/20 p-3 rounded-xl text-sm mb-4">
+            <div className="bg-accent-soft text-accent border border-accent/20 p-3 rounded-xl text-sm mb-4">
               {error}
             </div>
           )}
           {info && !error && (
-            <div className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 p-3 rounded-xl text-sm mb-4 flex items-center gap-2">
+            <div className="bg-primary-soft text-primary border border-primary/15 p-3 rounded-xl text-sm mb-4 flex items-center gap-2">
               <CheckCircle2 size={15} className="flex-shrink-0" /> {info}
             </div>
           )}
@@ -291,7 +290,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => resetFlow('forgot')}
-                  className="text-xs text-indigo-300 hover:text-indigo-200 font-medium"
+                  className="text-xs text-accent hover:text-accent-hover font-medium"
                 >
                   Parolni unutdingizmi?
                 </button>
@@ -359,30 +358,30 @@ export default function AuthPage() {
           {/* ---------- TELEGRAM: kutish bosqichi (register + forgot umumiy) ---------- */}
           {(mode === 'register' || mode === 'forgot') && step === 'telegram' && (
             <div className="flex flex-col items-center text-center py-2">
-              <div className="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-4">
-                <Send size={26} className="text-sky-400" />
+              <div className="w-16 h-16 rounded-2xl bg-primary-soft border border-primary/15 flex items-center justify-center mb-4">
+                <Send size={26} className="text-primary" />
               </div>
-              <p className="text-sm text-slate-200 font-medium mb-1.5">Telegram botga o'ting</p>
-              <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+              <p className="text-sm text-primary font-medium mb-1.5">Telegram botga o'ting</p>
+              <p className="text-xs text-muted mb-6 leading-relaxed">
                 Pastdagi tugma orqali botni oching va telefon raqamingizni ulashing.
-                Raqam siz kiritgan <span className="text-slate-200 font-semibold">{phone}</span> bilan mos bo'lishi kerak.
+                Raqam siz kiritgan <span className="text-primary font-semibold">{phone}</span> bilan mos bo'lishi kerak.
                 Tasdiqlangach, kod avtomatik shu yerga o'tkaziladi.
               </p>
               <a
                 href={telegramLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-400 hover:to-indigo-400 text-white font-semibold py-3 rounded-xl text-sm transition-all shadow-lg shadow-sky-900/30"
+                className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-3 rounded-xl text-sm transition-all shadow-glow"
               >
                 @{botUsername} ni ochish <ExternalLink size={15} />
               </a>
-              <div className="flex items-center gap-2 mt-5 text-xs text-slate-500">
+              <div className="flex items-center gap-2 mt-5 text-xs text-muted">
                 <Loader2 size={13} className="animate-spin" /> Tasdiqlanishi kutilmoqda...
               </div>
               <button
                 type="button"
                 onClick={() => { clearInterval(pollRef.current); setStep('form'); setError(''); }}
-                className="mt-4 text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1"
+                className="mt-4 text-xs text-muted hover:text-primary flex items-center gap-1"
               >
                 <ArrowLeft size={12} /> Orqaga
               </button>
@@ -393,10 +392,10 @@ export default function AuthPage() {
           {(mode === 'register' || mode === 'forgot') && step === 'code' && (
             <form onSubmit={handleVerifyCode} className="space-y-4">
               <div className="flex flex-col items-center text-center mb-2">
-                <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-3">
-                  <ShieldCheck size={24} className="text-indigo-400" />
+                <div className="w-14 h-14 rounded-2xl bg-accent-soft border border-accent/20 flex items-center justify-center mb-3">
+                  <ShieldCheck size={24} className="text-accent" />
                 </div>
-                <p className="text-xs text-slate-400">Telegram'da yuborilgan 6 xonali kodni kiriting</p>
+                <p className="text-xs text-muted">Telegram'da yuborilgan 6 xonali kodni kiriting</p>
               </div>
               <input
                 type="text"
@@ -413,7 +412,7 @@ export default function AuthPage() {
               <button
                 type="button"
                 onClick={() => { setStep('telegram'); setError(''); startPolling(sessionToken); }}
-                className="w-full text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1"
+                className="w-full text-xs text-muted hover:text-primary flex items-center justify-center gap-1"
               >
                 <ArrowLeft size={12} /> Telegramga qaytish
               </button>
@@ -424,10 +423,10 @@ export default function AuthPage() {
           {mode === 'forgot' && step === 'newPassword' && (
             <form onSubmit={handleSetNewPassword} className="space-y-4">
               <div className="flex flex-col items-center text-center mb-2">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
-                  <KeyRound size={24} className="text-emerald-400" />
+                <div className="w-14 h-14 rounded-2xl bg-primary-soft border border-primary/15 flex items-center justify-center mb-3">
+                  <KeyRound size={24} className="text-primary" />
                 </div>
-                <p className="text-xs text-slate-400">Raqam tasdiqlandi. Endi yangi parol o'rnating</p>
+                <p className="text-xs text-muted">Raqam tasdiqlandi. Endi yangi parol o'rnating</p>
               </div>
               <Field label="Yangi parol">
                 <PasswordInput value={password} onChange={setPassword} show={showPassword} setShow={setShowPassword} minLength={6} />
@@ -448,11 +447,11 @@ export default function AuthPage() {
 
           {/* Rejim almashtirish */}
           {step === 'form' && (
-            <p className="text-center text-xs text-slate-400 mt-6">
+            <p className="text-center text-xs text-muted mt-6">
               {mode === 'login' && (
                 <>
                   Hisobingiz yo'qmi?{' '}
-                  <button onClick={() => resetFlow('register')} className="text-indigo-300 font-semibold hover:text-indigo-200">
+                  <button onClick={() => resetFlow('register')} className="text-accent font-semibold hover:text-accent-hover">
                     Ro'yxatdan o'ting
                   </button>
                 </>
@@ -460,13 +459,13 @@ export default function AuthPage() {
               {mode === 'register' && (
                 <>
                   Hisobingiz bormi?{' '}
-                  <button onClick={() => resetFlow('login')} className="text-indigo-300 font-semibold hover:text-indigo-200">
+                  <button onClick={() => resetFlow('login')} className="text-accent font-semibold hover:text-accent-hover">
                     Kirish oynasiga o'ting
                   </button>
                 </>
               )}
               {mode === 'forgot' && (
-                <button onClick={() => resetFlow('login')} className="text-indigo-300 font-semibold hover:text-indigo-200 flex items-center gap-1 mx-auto">
+                <button onClick={() => resetFlow('login')} className="text-accent font-semibold hover:text-accent-hover flex items-center gap-1 mx-auto">
                   <ArrowLeft size={12} /> Kirish oynasiga qaytish
                 </button>
               )}
@@ -474,7 +473,7 @@ export default function AuthPage() {
           )}
         </div>
 
-        <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 mt-6">
+        <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted mt-6">
           <Sparkles size={12} /> Sun'iy intellekt asosida ishlaydi
         </p>
       </div>
@@ -483,12 +482,12 @@ export default function AuthPage() {
 }
 
 const inputClass =
-  'w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:border-indigo-400 focus:bg-white/[0.08] transition-colors';
+  'w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-primary placeholder-muted/60 outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition-colors';
 
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{label}</label>
+      <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -508,7 +507,7 @@ function PasswordInput({ value, onChange, show, setShow, minLength = 6 }) {
       <button
         type="button"
         onClick={() => setShow(!show)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
         tabIndex={-1}
       >
         {show ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -522,7 +521,7 @@ function SubmitButton({ loading, children }) {
     <button
       type="submit"
       disabled={loading}
-      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500 text-white font-semibold py-3 rounded-xl text-sm transition-all disabled:opacity-50 shadow-lg shadow-indigo-900/30"
+      className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-3 rounded-xl text-sm transition-all disabled:opacity-50 shadow-glow"
     >
       {loading ? <Loader2 size={16} className="animate-spin" /> : children}
     </button>

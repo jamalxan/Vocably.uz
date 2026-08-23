@@ -20,7 +20,7 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
   return (
     <div className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
-        <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <div className="w-7 h-7 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">
           <Sparkles size={13} />
         </div>
       )}
@@ -33,7 +33,7 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
                 key={i}
                 src={url}
                 alt="Yuklangan rasm"
-                className="max-w-[220px] rounded-xl border border-slate-200"
+                className="max-w-[220px] rounded-xl border border-border"
               />
             ))}
           </div>
@@ -41,14 +41,14 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
         <div
           className={`rounded-2xl px-4 py-2.5 text-sm ${
             isUser
-              ? 'bg-indigo-600 text-white rounded-br-none'
-              : 'bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200'
+              ? 'bg-accent text-white rounded-br-none'
+              : 'bg-bg text-primary rounded-bl-none border border-border'
           }`}
         >
           {isUser ? (
             <span className="whitespace-pre-wrap">{text}</span>
           ) : (
-            <div className="prose prose-sm max-w-none prose-p:my-1.5 prose-pre:bg-slate-800 prose-pre:text-slate-100">
+            <div className="prose prose-sm max-w-none prose-p:my-1.5 prose-pre:bg-primary-hover prose-pre:text-on-primary">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{text || ' '}</ReactMarkdown>
             </div>
           )}
@@ -57,7 +57,7 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
         {!isUser && text && (
           <button
             onClick={handleCopy}
-            className="mt-1 flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="mt-1 flex items-center gap-1 text-[10px] text-muted hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
           >
             {copied ? <Check size={11} /> : <Copy size={11} />} {copied ? 'Nusxalandi' : 'Nusxalash'}
           </button>
@@ -65,7 +65,7 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
         {isUser && onEdit && (
           <button
             onClick={() => onEdit(text)}
-            className="mt-1 flex items-center gap-1 text-[10px] text-indigo-200 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+            className="mt-1 flex items-center gap-1 text-[10px] text-on-accent/80 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <Pencil size={11} /> Tahrirlash
           </button>

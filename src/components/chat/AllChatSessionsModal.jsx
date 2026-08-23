@@ -56,38 +56,38 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-premium border border-slate-100 w-full max-w-lg flex flex-col max-h-[80vh]">
-          <div className="flex items-center gap-3 p-4 border-b border-slate-100 flex-shrink-0">
-            <h3 className="font-bold text-slate-800 font-display flex-1">
-              Barcha suhbatlar <span className="text-slate-400 font-normal text-sm">({chatSessions.length})</span>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary/60 backdrop-blur-sm">
+        <div className="bg-surface rounded-2xl shadow-premium border border-border w-full max-w-lg flex flex-col max-h-[80vh]">
+          <div className="flex items-center gap-3 p-4 border-b border-border flex-shrink-0">
+            <h3 className="font-bold text-primary font-display flex-1">
+              Barcha suhbatlar <span className="text-muted font-normal text-sm">({chatSessions.length})</span>
             </h3>
-            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg">
+            <button onClick={onClose} className="p-1.5 text-muted hover:text-primary hover:bg-bg rounded-lg">
               <X size={16} />
             </button>
           </div>
 
           <form onSubmit={(e) => e.preventDefault()} className="relative p-3 flex-shrink-0">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted" size={15} />
             <input
               type="search"
               autoFocus
               placeholder="Suhbat nomi bo'yicha qidirish..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500"
+              className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm outline-none focus:border-accent"
             />
           </form>
 
           <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
             {filtered.length === 0 && (
-              <p className="text-center text-xs text-slate-400 py-8">Suhbat topilmadi</p>
+              <p className="text-center text-xs text-muted py-8">Suhbat topilmadi</p>
             )}
             {filtered.map((s) => (
               <div
                 key={s.id}
                 className={`group flex items-center gap-2 rounded-lg px-3 py-2 transition-colors ${
-                  currentSessionId === s.id ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                  currentSessionId === s.id ? 'bg-accent-soft' : 'hover:bg-bg'
                 }`}
               >
                 {renamingId === s.id ? (
@@ -100,7 +100,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                       onKeyDown={(e) => {
                         if (e.key === 'Escape') setRenamingId(null);
                       }}
-                      className="w-full px-2 py-1 border border-indigo-300 rounded text-sm outline-none"
+                      className="w-full px-2 py-1 border border-accent/30 rounded text-sm outline-none"
                     />
                   </form>
                 ) : (
@@ -108,12 +108,12 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                     <button onClick={() => onSelect?.(s.id)} className="flex-1 min-w-0 text-left">
                       <p
                         className={`truncate text-sm ${
-                          currentSessionId === s.id ? 'text-indigo-700 font-semibold' : 'text-slate-700'
+                          currentSessionId === s.id ? 'text-accent font-semibold' : 'text-primary'
                         }`}
                       >
                         {s.title}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
+                      <p className="text-[10px] text-muted mt-0.5">
                         {formatRelativeTime(s.updatedAt)} · {s.messageCount} ta xabar
                       </p>
                     </button>
@@ -122,14 +122,14 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                         setRenamingId(s.id);
                         setRenameValue(s.title);
                       }}
-                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      className="p-1.5 text-muted hover:text-accent hover:bg-surface rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                       title="Nomini o'zgartirish"
                     >
                       <Pencil size={13} />
                     </button>
                     <button
                       onClick={() => setConfirmDeleteId(s.id)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      className="p-1.5 text-muted hover:text-accent hover:bg-surface rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                       title="O'chirish"
                     >
                       <Trash2 size={13} />
@@ -141,16 +141,16 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
           </div>
 
           {chatSessions.length > 0 && (
-            <div className="p-3 border-t border-slate-100 flex-shrink-0">
+            <div className="p-3 border-t border-border flex-shrink-0">
               {wipeStep === 0 ? (
                 <button
                   onClick={() => setWipeStep(1)}
-                  className="w-full flex items-center justify-center gap-2 py-2 text-red-600 hover:bg-red-50 border border-red-100 rounded-lg text-xs font-semibold transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-2 text-accent hover:bg-accent-soft border border-accent/25 rounded-lg text-xs font-semibold transition-colors"
                 >
                   <Trash2 size={13} /> Barcha suhbatlarni o'chirish
                 </button>
               ) : (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="bg-accent-soft border border-accent/25 rounded-lg p-3">
                   <p className="flex items-start gap-2 text-xs text-red-700 mb-3">
                     <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
                     <span>
@@ -160,13 +160,13 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setWipeStep(0)}
-                      className="flex-1 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold transition-colors"
+                      className="flex-1 py-2 bg-surface hover:bg-bg border border-border text-muted rounded-lg text-xs font-semibold transition-colors"
                     >
                       Bekor qilish
                     </button>
                     <button
                       onClick={() => setWipeStep(2)}
-                      className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                      className="flex-1 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold transition-colors"
                     >
                       Ha, hammasini o'chir
                     </button>

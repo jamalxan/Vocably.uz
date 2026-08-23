@@ -85,15 +85,15 @@ export default function MatchGame() {
   return (
     <div className="flex flex-col items-center">
       {matchPairs.length === 0 ? (
-        <p className="text-sm text-slate-400">Bu o'yin uchun kamida 4 ta so'z kerak.</p>
+        <p className="text-sm text-muted">Bu o'yin uchun kamida 4 ta so'z kerak.</p>
       ) : (
         <>
-          <div className="flex justify-between items-center text-xs text-slate-400 w-full max-w-md mb-2.5">
+          <div className="flex justify-between items-center text-xs text-muted w-full max-w-md mb-2.5">
             {/* A13 (docs/AUDIT_FINDINGS.md): ilgari bu joyda hech qanday progress ko'rsatilmasdi. */}
             <span>
               {matchedIds.length} / {matchPairs.length / 2} juftlik
             </span>
-            <button onClick={() => setActive(false)} className="text-indigo-500 hover:text-indigo-700 font-semibold">
+            <button onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
               Oraliqni o'zgartirish
             </button>
           </div>
@@ -109,8 +109,8 @@ export default function MatchGame() {
                     isMatched
                       ? 'border-green-100 bg-green-50 text-green-600 opacity-60 pointer-events-none'
                       : isSelected
-                      ? 'border-indigo-400 bg-indigo-50 text-indigo-600 ring-2 ring-indigo-200'
-                      : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                      ? 'border-accent bg-accent-soft text-accent ring-2 ring-accent/20'
+                      : 'border-border bg-surface hover:border-border text-primary'
                   }`}
                 >
                   {card.text}
@@ -124,7 +124,7 @@ export default function MatchGame() {
               <p className="text-green-600 font-bold text-sm mb-2">Barcha juftliklar topildi!</p>
               <button
                 onClick={() => initMatchGame(rangeWords)}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg transition-colors"
               >
                 Yana o'ynash
               </button>

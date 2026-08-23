@@ -20,14 +20,11 @@ function NavLink({ item, pathname, onClick }) {
     <Link
       href={item.href}
       onClick={onClick}
-      className={`group relative flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-        active
-          ? 'bg-gradient-to-r from-racing-700/90 to-racing-600/70 text-alabaster-50 shadow-admin-glow'
-          : 'text-alabaster-500 hover:text-alabaster-100 hover:bg-cherry-800/60'
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+        active ? 'bg-accent text-on-accent shadow-glow' : 'text-on-primary/60 hover:text-on-primary hover:bg-primary-hover'
       }`}
     >
-      {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-gold-400" />}
-      <Icon size={17} strokeWidth={2} className={active ? 'text-alabaster-50' : 'text-alabaster-600 group-hover:text-racing-400'} />
+      <Icon size={17} strokeWidth={2} />
       <span>{item.label}</span>
     </Link>
   );
@@ -41,43 +38,28 @@ export default function AdminShell({ children }) {
   const pageTitle = NAV.find((n) => (n.exact ? pathname === n.href : pathname.startsWith(n.href)))?.label || 'Admin';
 
   return (
-    // flex-row wrapper — aside va content shu tufayli yonma-yon joylashadi.
-    // overflow-hidden qasddan yo'q: u sticky pozitsiyalashni buzadi (har qanday
-    // oraliq ajdod'dagi overflow != visible sticky'ni o'chirib qo'yadi).
-    <div className="flex min-h-screen bg-coffee-900 text-alabaster-200 font-body relative">
-      {/* Maksimalizm — fonda chuqurlik beruvchi yumshoq qizil/oltin nurlanish, kontentga xalaqit bermaydi */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-0 opacity-70"
-        style={{
-          background:
-            'radial-gradient(1200px 600px at 15% -10%, rgba(221,2,0,0.16), transparent 60%), radial-gradient(900px 500px at 110% 10%, rgba(201,150,43,0.10), transparent 60%)',
-        }}
-      />
-
+    <div className="flex min-h-screen bg-bg text-primary font-body relative">
       {mobileOpen && (
-        <div onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden" />
+        <div onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-primary/40 backdrop-blur-sm z-40 md:hidden" />
       )}
 
-      {/* Mobil: fixed overlay drawer (translate bilan slide). md+: flex qatoridagi
-          oddiy element, sticky top-0 + h-screen — scroll qilganda joyida qoladi. */}
       <aside
-        className={`fixed md:sticky inset-y-0 md:inset-y-auto md:top-0 left-0 z-50 w-72 shrink-0 h-screen flex flex-col bg-gradient-to-b from-cherry-950 via-coffee-900 to-coffee-950 border-r border-cherry-800/60 transform transition-transform duration-300 ${
+        className={`fixed md:sticky inset-y-0 md:inset-y-auto md:top-0 left-0 z-50 w-72 shrink-0 h-screen flex flex-col bg-primary transform transition-transform duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0`}
       >
-        <div className="px-6 pt-7 pb-6 border-b border-cherry-800/50 flex-shrink-0">
+        <div className="px-6 pt-7 pb-6 border-b border-on-primary/10 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-racing-500 to-racing-800 flex items-center justify-center shadow-admin-glow">
-                <ShieldCheck size={20} className="text-alabaster-50" />
+              <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center shadow-glow">
+                <ShieldCheck size={20} className="text-on-accent" />
               </div>
               <div>
-                <p className="font-luxury text-xl leading-none text-alabaster-50 tracking-wide">Vocably</p>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-gold-400 mt-1">Admin Suite</p>
+                <p className="font-luxury text-xl leading-none text-on-primary tracking-wide">Vocably</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-accent mt-1">Admin Suite</p>
               </div>
             </div>
-            <button onClick={() => setMobileOpen(false)} className="md:hidden p-1.5 text-alabaster-500 hover:text-alabaster-100">
+            <button onClick={() => setMobileOpen(false)} className="md:hidden p-1.5 text-on-primary/60 hover:text-on-primary">
               <X size={18} />
             </button>
           </div>
@@ -89,36 +71,34 @@ export default function AdminShell({ children }) {
           ))}
         </nav>
 
-        {/* mt-auto — nav qancha qisqa bo'lmasin, profil bloki doim pastga yopishadi */}
-        <div className="mt-auto px-4 py-5 border-t border-cherry-800/50 flex-shrink-0">
+        <div className="mt-auto px-4 py-5 border-t border-on-primary/10 flex-shrink-0">
           <div className="flex items-center gap-3 px-2 mb-3">
-            <div className="w-9 h-9 rounded-full bg-gold-500/15 border border-gold-500/30 text-gold-400 flex items-center justify-center text-xs font-bold">
+            <div className="w-9 h-9 rounded-full bg-accent/20 border border-accent/40 text-accent flex items-center justify-center text-xs font-bold">
               {adminName?.[0]?.toUpperCase() || 'A'}
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-alabaster-600">Kirgan</p>
-              <p className="text-sm font-semibold text-alabaster-100 truncate">@{adminName}</p>
+              <p className="text-xs text-on-primary/50">Kirgan</p>
+              <p className="text-sm font-semibold text-on-primary truncate">@{adminName}</p>
             </div>
           </div>
           <a
             href="/dashboard"
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-alabaster-500 hover:text-alabaster-100 hover:bg-cherry-800/50 transition-colors"
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-on-primary/60 hover:text-on-primary hover:bg-primary-hover transition-colors"
           >
             <LogOut size={15} /> Ilovaga qaytish
           </a>
         </div>
       </aside>
 
-      {/* flex-1 + min-w-0 — margin/padding offset hack shart emas, flex o'zi joylashtiradi */}
       <div className="flex-1 min-w-0 relative z-10">
-        <header className="sticky top-0 z-30 flex items-center gap-3 px-5 sm:px-8 py-5 bg-coffee-900/80 backdrop-blur-md border-b border-cherry-900/60">
+        <header className="sticky top-0 z-30 flex items-center gap-3 px-5 sm:px-8 py-5 bg-bg/90 backdrop-blur-md border-b border-border">
           <button
             onClick={() => setMobileOpen(true)}
-            className="md:hidden p-2 -ml-1 text-alabaster-400 hover:text-alabaster-100 rounded-lg"
+            className="md:hidden p-2 -ml-1 text-muted hover:text-primary rounded-lg"
           >
             <Menu size={20} />
           </button>
-          <h1 className="font-luxury text-2xl sm:text-3xl text-alabaster-50 tracking-wide">{pageTitle}</h1>
+          <h1 className="font-luxury text-2xl sm:text-3xl text-primary tracking-wide">{pageTitle}</h1>
         </header>
 
         <main className="px-5 sm:px-8 py-7 max-w-7xl">{children}</main>

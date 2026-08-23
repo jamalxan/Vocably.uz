@@ -76,27 +76,27 @@ export default function TestMode() {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
-        <div className="flex justify-between items-center text-xs text-slate-400 mb-4">
+      <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
+        <div className="flex justify-between items-center text-xs text-muted mb-4">
           <span>Savol {score.total + 1}</span>
           <span>
             To'g'ri: {score.correct}/{score.total}
           </span>
-          <button onClick={() => setActive(false)} className="text-indigo-500 hover:text-indigo-700 font-semibold">
+          <button onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
             Oraliqni o'zgartirish
           </button>
         </div>
-        <p className="text-xl font-bold text-slate-800 font-display mb-6 text-center break-words">
+        <p className="text-xl font-bold text-primary font-display mb-6 text-center break-words">
           {question.target.word}
         </p>
         <div className="space-y-2 mb-4">
           {question.options.map((opt, i) => {
             const isCorrectOpt = opt === question.correctAnswer;
             const isSelected = selected === opt;
-            let style = 'border-slate-200 hover:border-indigo-300';
+            let style = 'border-border hover:border-accent/30';
             if (selected) {
               if (isCorrectOpt) style = 'border-green-300 bg-green-50 text-green-700';
-              else if (isSelected) style = 'border-red-300 bg-red-50 text-red-700';
+              else if (isSelected) style = 'border-red-300 bg-accent-soft text-red-700';
             }
             return (
               <button
@@ -115,7 +115,7 @@ export default function TestMode() {
           <button
             autoFocus
             onClick={nextQuestion}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+            className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
             Keyingi savol →
           </button>
