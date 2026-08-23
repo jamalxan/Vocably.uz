@@ -74,6 +74,8 @@ export async function POST(req) {
 
     return NextResponse.json({ success: true, announcement });
   } catch (err) {
-    return serverError(err, 'admin/announcements POST');
+    // VAQTINCHA DIAGNOSTIKA — ishlab chiqarishda xato matnini mijozga chiqarmaslik kerak,
+    // shuning uchun bu sinov tugagach albatta olib tashlanadi (pastdagi serverError'ga qaytariladi).
+    return NextResponse.json({ error: String(err?.message || err), stack: err?.stack }, { status: 500 });
   }
 }
