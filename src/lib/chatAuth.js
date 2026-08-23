@@ -1,6 +1,10 @@
 import { User, RateLimitHit, AdminAuditLog } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 
+// "Oxirgi faol bo'lgan" vaqtni har so'rovda emas, shu oraliqdan kamida bir marta yozadi —
+// Do'stlar bo'limi faol foydalanilganda ham har chat-so'rovida yozuv bo'lmasligi uchun.
+const LAST_ACTIVE_THROTTLE_MS = 2 * 60 * 1000;
+
 // Do'stlar bo'limi uchun: token haqiqiy, chatAccess yoqilgan va bloklanmagan
 // foydalanuvchinigina o'tkazadi. Har bir /api/chat/* route shu bilan boshlanadi —
 // frontendda yashirish himoya emas, bu yerda haqiqiy tekshiruv.
@@ -9,11 +13,18 @@ export async function requireChatUser(req) {
   if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
 
   const user = await User.findById(userId)
-    .select('username chatAccess chatBanned role name phone')
+    .select('username chatAccess chatBanned role name phone lastActiveAt')
     .lean();
   if (!user) return { error: 'Foydalanuvchi topilmadi', status: 404 };
   if (!user.chatAccess || user.chatBanned) {
     return { error: 'Bu bo\'lim uchun ruxsatingiz yo\'q', status: 403 };
+  }
+
+  // Javobni bloklamaydi — xato bo'lsa (masalan vaqtinchalik DB muammosi) jim o'tkazib
+  // yuboriladi, "oxirgi marta ko'rilgan" bir necha daqiqa eskirib qolishi muhim emas.
+  const lastActiveMs = user.lastActiveAt ? new Date(user.lastActiveAt).getTime() : 0;
+  if (Date.now() - lastActiveMs > LAST_ACTIVE_THROTTLE_MS) {
+    User.updateOne({ _id: userId }, { $set: { lastActiveAt: new Date() } }).catch(() => {});
   }
 
   return { user };

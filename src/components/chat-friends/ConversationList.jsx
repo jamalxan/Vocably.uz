@@ -1,6 +1,7 @@
 'use client';
 import { Loader2, Wifi, WifiOff } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
+import { isOnline } from '@/lib/presence';
 import UserSearchBar from './UserSearchBar';
 
 function timeAgo(dateStr) {
@@ -46,8 +47,13 @@ export default function ConversationList({ onSelect, selectedId }) {
               String(selectedId) === String(c.id) ? 'bg-accent-soft' : 'hover:bg-bg'
             }`}
           >
-            <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold flex-shrink-0">
-              {(c.otherUser?.username || '?')[0]?.toUpperCase()}
+            <div className="relative flex-shrink-0">
+              <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">
+                {(c.otherUser?.username || '?')[0]?.toUpperCase()}
+              </div>
+              {isOnline(c.otherUser?.lastActiveAt) && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-surface" />
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">

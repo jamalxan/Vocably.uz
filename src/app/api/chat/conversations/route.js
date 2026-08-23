@@ -23,7 +23,7 @@ export async function GET(req) {
     const otherIds = conversations.map(
       (c) => c.participantIds.find((id) => String(id) !== String(user._id))
     );
-    const others = await User.find({ _id: { $in: otherIds } }).select('username name').lean();
+    const others = await User.find({ _id: { $in: otherIds } }).select('username name lastActiveAt').lean();
     const byId = new Map(others.map((u) => [String(u._id), u]));
 
     const result = conversations.map((c) => {
@@ -31,7 +31,9 @@ export async function GET(req) {
       const other = byId.get(String(otherId));
       return {
         id: c._id,
-        otherUser: other ? { id: other._id, username: other.username, name: other.name || '' } : null,
+        otherUser: other
+          ? { id: other._id, username: other.username, name: other.name || '', lastActiveAt: other.lastActiveAt || null }
+          : null,
         lastMessageAt: c.lastMessageAt,
         lastMessagePreview: c.lastMessagePreview || '',
       };
@@ -79,7 +81,12 @@ export async function POST(req) {
     return NextResponse.json({
       conversation: {
         id: convo._id,
-        otherUser: { id: target._id, username: target.username, name: target.name || '' },
+        otherUser: {
+          id: target._id,
+          username: target.username,
+          name: target.name || '',
+          lastActiveAt: target.lastActiveAt || null,
+        },
         lastMessageAt: convo.lastMessageAt,
         lastMessagePreview: convo.lastMessagePreview || '',
       },

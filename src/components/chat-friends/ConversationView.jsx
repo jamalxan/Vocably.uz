@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { ArrowLeft, ShieldOff, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
+import { formatLastSeen, isOnline } from '@/lib/presence';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 
@@ -41,11 +42,21 @@ export default function ConversationView({ onBack }) {
         <button onClick={onBack} className="lg:hidden p-1 text-muted hover:text-primary">
           <ArrowLeft size={18} />
         </button>
-        <div className="w-8 h-8 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold flex-shrink-0">
-          {(activeConversation.otherUser?.username || '?')[0]?.toUpperCase()}
+        <div className="relative flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">
+            {(activeConversation.otherUser?.username || '?')[0]?.toUpperCase()}
+          </div>
+          {isOnline(activeConversation.otherUser?.lastActiveAt) && (
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-surface" />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-primary truncate">@{activeConversation.otherUser?.username}</p>
+          {formatLastSeen(activeConversation.otherUser?.lastActiveAt) && (
+            <p className="text-[11px] text-muted truncate">
+              {formatLastSeen(activeConversation.otherUser?.lastActiveAt)}
+            </p>
+          )}
         </div>
         <button onClick={handleBlock} title="Bloklash" className="p-1.5 text-muted hover:text-accent transition-colors">
           <ShieldOff size={16} />
