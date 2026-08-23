@@ -6,25 +6,67 @@ const TYPE_ICON = { image: ImageIcon, video: Video, voice: Mic, file: Paperclip,
 
 export default function ConversationViewer({ token }) {
   const [conversations, setConversations] = useState([]);
+  const [convCursor, setConvCursor] = useState(null);
+  const [loadingMoreConvos, setLoadingMoreConvos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(null);
   const [messages, setMessages] = useState(null);
+  const [msgCursor, setMsgCursor] = useState(null);
+  const [loadingMoreMsgs, setLoadingMoreMsgs] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/chat/conversations', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then((d) => setConversations(d.conversations || []))
+      .then((d) => {
+        setConversations(d.conversations || []);
+        setConvCursor(d.nextCursor || null);
+      })
       .finally(() => setLoading(false));
   }, [token]);
+
+  const loadMoreConversations = async () => {
+    if (!convCursor || loadingMoreConvos) return;
+    setLoadingMoreConvos(true);
+    try {
+      const res = await fetch(`/api/admin/chat/conversations?before=${encodeURIComponent(convCursor)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setConversations((prev) => [...prev, ...(data.conversations || [])]);
+      setConvCursor(data.nextCursor || null);
+    } finally {
+      setLoadingMoreConvos(false);
+    }
+  };
 
   const openConversation = async (c) => {
     setActive(c);
     setMessages(null);
+    setMsgCursor(null);
     const res = await fetch(`/api/admin/chat/conversations/${c.id}/messages`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     setMessages(data.messages || []);
+    setMsgCursor(data.nextCursor || null);
+  };
+
+  // Eski xabarlarni ro'yxat boshiga (yuqoriga) qo'shadi — xabarlar eskidan yangiga
+  // tartiblangan, shuning uchun "eskisini yuklash" tepada bo'lishi kerak.
+  const loadOlderMessages = async () => {
+    if (!msgCursor || loadingMoreMsgs || !active) return;
+    setLoadingMoreMsgs(true);
+    try {
+      const res = await fetch(
+        `/api/admin/chat/conversations/${active.id}/messages?before=${encodeURIComponent(msgCursor)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      setMessages((prev) => [...(data.messages || []), ...(prev || [])]);
+      setMsgCursor(data.nextCursor || null);
+    } finally {
+      setLoadingMoreMsgs(false);
+    }
   };
 
   if (loading) {
@@ -54,6 +96,17 @@ export default function ConversationViewer({ token }) {
           <Loader2 className="animate-spin text-accent" size={22} />
         ) : (
           <div className="rounded-2xl border border-border bg-bg/60 shadow-card p-5 max-h-[65vh] overflow-y-auto space-y-3">
+            {msgCursor && (
+              <div className="flex justify-center pb-1">
+                <button
+                  onClick={loadOlderMessages}
+                  disabled={loadingMoreMsgs}
+                  className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                >
+                  {loadingMoreMsgs && <Loader2 size={12} className="animate-spin" />} Eski xabarlarni yuklash
+                </button>
+              </div>
+            )}
             {messages.map((m) => {
               const mine = String(m.senderId) === String(p1?._id);
               const Icon = TYPE_ICON[m.type] || MessageSquareText;
@@ -91,22 +144,35 @@ export default function ConversationViewer({ token }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-surface shadow-card divide-y divide-border overflow-hidden">
-      {conversations.map((c) => (
-        <button
-          key={c.id}
-          onClick={() => openConversation(c)}
-          className="w-full text-left px-5 py-4 hover:bg-bg/60 flex items-center justify-between gap-3 transition-colors"
-        >
-          <span className="text-sm font-medium text-primary">
-            @{c.participants[0]?.username || c.participants[0]?.name || '?'}
-            <span className="text-muted mx-1.5">↔</span>
-            @{c.participants[1]?.username || c.participants[1]?.name || '?'}
-          </span>
-          <span className="text-xs text-muted truncate max-w-[220px]">{c.lastMessagePreview}</span>
-        </button>
-      ))}
-      {conversations.length === 0 && <p className="text-center text-sm text-muted py-10">Suhbat yo'q</p>}
+    <div>
+      <div className="rounded-2xl border border-border bg-surface shadow-card divide-y divide-border overflow-hidden">
+        {conversations.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => openConversation(c)}
+            className="w-full text-left px-5 py-4 hover:bg-bg/60 flex items-center justify-between gap-3 transition-colors"
+          >
+            <span className="text-sm font-medium text-primary">
+              @{c.participants[0]?.username || c.participants[0]?.name || '?'}
+              <span className="text-muted mx-1.5">↔</span>
+              @{c.participants[1]?.username || c.participants[1]?.name || '?'}
+            </span>
+            <span className="text-xs text-muted truncate max-w-[220px]">{c.lastMessagePreview}</span>
+          </button>
+        ))}
+        {conversations.length === 0 && <p className="text-center text-sm text-muted py-10">Suhbat yo'q</p>}
+      </div>
+      {convCursor && (
+        <div className="flex justify-center py-4">
+          <button
+            onClick={loadMoreConversations}
+            disabled={loadingMoreConvos}
+            className="px-4 py-2 bg-surface border border-border rounded-lg text-xs font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {loadingMoreConvos && <Loader2 size={13} className="animate-spin" />} Yana yuklash
+          </button>
+        </div>
+      )}
     </div>
   );
 }

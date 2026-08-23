@@ -4,14 +4,34 @@ import { Loader2, ScrollText } from 'lucide-react';
 
 export default function AuditLogTable({ token }) {
   const [logs, setLogs] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/admin/audit-log', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then((d) => setLogs(d.logs || []))
+      .then((d) => {
+        setLogs(d.logs || []);
+        setNextCursor(d.nextCursor || null);
+      })
       .finally(() => setLoading(false));
   }, [token]);
+
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/admin/audit-log?before=${encodeURIComponent(nextCursor)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setLogs((prev) => [...prev, ...(data.logs || [])]);
+      setNextCursor(data.nextCursor || null);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -43,6 +63,17 @@ export default function AuditLogTable({ token }) {
         </div>
       ))}
       {logs.length === 0 && <p className="text-center text-sm text-muted py-10">Yozuv yo'q</p>}
+      {nextCursor && (
+        <div className="flex justify-center py-3">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="px-4 py-2 bg-bg border border-border rounded-lg text-xs font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {loadingMore && <Loader2 size={13} className="animate-spin" />} Yana yuklash
+          </button>
+        </div>
+      )}
     </div>
   );
 }

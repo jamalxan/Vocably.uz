@@ -130,18 +130,25 @@ async function handleAdminCommand(chatId, text) {
 
   if (!['/users', '/stats'].includes(text)) return false;
 
-  const users = await User.find({}).select('name phone createdAt').sort({ createdAt: -1 }).lean();
-  const total = users.length;
+  const total = await User.countDocuments({});
 
   if (text === '/stats') {
     await sendMessage(chatId, `📊 Jami foydalanuvchilar: <b>${total}</b>`);
     return true;
   }
 
-  // Ilovada email maydoni yo'q (login faqat telefon orqali) — shuning uchun ism + telefon
-  // ko'rsatiladi. Telegram xabari 4096 belgi bilan cheklangan, shuning uchun 40 tadan bo'lib
-  // yuboriladi.
-  const header = `📊 Jami foydalanuvchilar: <b>${total}</b>\n<i>(Eslatma: ilovada email maydoni yo'q, faqat telefon orqali ro'yxatdan o'tiladi)</i>\n`;
+  // Telegram xabari 4096 belgi bilan cheklangan (40 tadan bo'lib yuboriladi) va bu bot
+  // buyrug'ida haqiqiy "load more" imkoni yo'q, shuning uchun ro'yxatning o'zi (jami hisob
+  // emas) MAX_LISTED bilan cheklanadi — foydalanuvchilar soni ko'paysa ham so'rov chegaralangan
+  // bo'lib qoladi. Ilovada email maydoni yo'q (login faqat telefon orqali), shuning uchun
+  // ism + telefon ko'rsatiladi.
+  const MAX_LISTED = 1000;
+  const users = await User.find({}).select('name phone createdAt').sort({ createdAt: -1 }).limit(MAX_LISTED).lean();
+
+  const header =
+    `📊 Jami foydalanuvchilar: <b>${total}</b>` +
+    (total > MAX_LISTED ? ` <i>(oxirgi ${MAX_LISTED} tasi ko'rsatilmoqda)</i>` : '') +
+    `\n<i>(Eslatma: ilovada email maydoni yo'q, faqat telefon orqali ro'yxatdan o'tiladi)</i>\n`;
   await sendMessage(chatId, header);
 
   const PAGE_SIZE = 40;

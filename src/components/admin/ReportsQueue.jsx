@@ -4,6 +4,8 @@ import { Loader2, Flag } from 'lucide-react';
 
 export default function ReportsQueue({ token }) {
   const [reports, setReports] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('open');
 
@@ -14,12 +16,29 @@ export default function ReportsQueue({ token }) {
     });
     const data = await res.json();
     setReports(data.reports || []);
+    setNextCursor(data.nextCursor || null);
     setLoading(false);
   }, [token, statusFilter]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(
+        `/api/admin/chat/reports?status=${statusFilter}&before=${encodeURIComponent(nextCursor)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      setReports((prev) => [...prev, ...(data.reports || [])]);
+      setNextCursor(data.nextCursor || null);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const updateStatus = async (id, status) => {
     await fetch(`/api/admin/chat/reports/${id}`, {
@@ -90,6 +109,17 @@ export default function ReportsQueue({ token }) {
             </div>
           ))}
           {reports.length === 0 && <p className="text-center text-sm text-muted py-10">Report yo'q</p>}
+          {nextCursor && (
+            <div className="flex justify-center py-2">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="px-4 py-2 bg-surface border border-border rounded-lg text-xs font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {loadingMore && <Loader2 size={13} className="animate-spin" />} Yana yuklash
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -15,23 +15,31 @@ export async function GET(req) {
 
     await connectToDatabase();
 
-    const conversations = await Conversation.find({})
-      .sort({ lastMessageAt: -1 })
-      .limit(300)
-      .lean();
+    const before = req.nextUrl.searchParams.get('before');
+    const query = before ? { lastMessageAt: { $lt: new Date(before) } } : {};
+    const limitParam = parseInt(req.nextUrl.searchParams.get('limit'), 10);
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 50;
 
-    const userIds = [...new Set(conversations.flatMap((c) => c.participantIds.map(String)))];
+    const conversations = await Conversation.find(query)
+      .sort({ lastMessageAt: -1 })
+      .limit(limit + 1)
+      .lean();
+    const hasMore = conversations.length > limit;
+    const page = hasMore ? conversations.slice(0, limit) : conversations;
+    const nextCursor = hasMore ? page[page.length - 1].lastMessageAt : null;
+
+    const userIds = [...new Set(page.flatMap((c) => c.participantIds.map(String)))];
     const users = await User.find({ _id: { $in: userIds } }).select('username name phone').lean();
     const byId = new Map(users.map((u) => [String(u._id), u]));
 
-    const result = conversations.map((c) => ({
+    const result = page.map((c) => ({
       id: c._id,
       participants: c.participantIds.map((id) => byId.get(String(id)) || { username: null, name: '?' }),
       lastMessageAt: c.lastMessageAt,
       lastMessagePreview: c.lastMessagePreview || '',
     }));
 
-    return NextResponse.json({ conversations: result });
+    return NextResponse.json({ conversations: result, nextCursor });
   } catch (err) {
     return serverError(err, 'admin/chat/conversations GET');
   }

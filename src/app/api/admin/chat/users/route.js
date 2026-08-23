@@ -13,6 +13,10 @@ export async function GET(req) {
     await connectToDatabase();
 
     const q = (req.nextUrl.searchParams.get('q') || '').trim();
+    const before = req.nextUrl.searchParams.get('before');
+    const limitParam = parseInt(req.nextUrl.searchParams.get('limit'), 10);
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 50;
+
     const filter = q
       ? {
           $or: [
@@ -22,15 +26,23 @@ export async function GET(req) {
           ],
         }
       : {};
+    if (before) filter.createdAt = { $lt: new Date(before) };
 
+    // Cursor-based (createdAt bo'yicha) — skip() o'rniga, chunki ma'lumot ko'paygan sari
+    // sekinlashmaydi. +1 chegara: navbatdagi sahifa bor-yo'qligini bitta so'rovda bilish uchun.
     const users = await User.find(filter)
       .select('phone name username role chatAccess chatBanned createdAt')
       .sort({ createdAt: -1 })
-      .limit(200)
+      .limit(limit + 1)
       .lean();
 
+    const hasMore = users.length > limit;
+    const page = hasMore ? users.slice(0, limit) : users;
+    const nextCursor = hasMore ? page[page.length - 1].createdAt : null;
+
     return NextResponse.json({
-      users: users.map((u) => ({ ...u, phoneDisplay: formatPhoneDisplay(u.phone) })),
+      users: page.map((u) => ({ ...u, phoneDisplay: formatPhoneDisplay(u.phone) })),
+      nextCursor,
     });
   } catch (err) {
     return serverError(err, 'admin/chat/users GET');

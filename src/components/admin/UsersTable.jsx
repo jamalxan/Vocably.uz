@@ -4,6 +4,8 @@ import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User
 
 export default function UsersTable({ token }) {
   const [users, setUsers] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
@@ -16,11 +18,32 @@ export default function UsersTable({ token }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (res.ok) setUsers(data.users || []);
+      if (res.ok) {
+        setUsers(data.users || []);
+        setNextCursor(data.nextCursor || null);
+      }
     } finally {
       setLoading(false);
     }
   }, [token, q]);
+
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(
+        `/api/admin/chat/users?q=${encodeURIComponent(q)}&before=${encodeURIComponent(nextCursor)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (res.ok) {
+        setUsers((prev) => [...prev, ...(data.users || [])]);
+        setNextCursor(data.nextCursor || null);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     const t = setTimeout(load, 300);
@@ -157,6 +180,17 @@ export default function UsersTable({ token }) {
             </table>
           </div>
           {users.length === 0 && <p className="text-center text-sm text-muted py-10">Foydalanuvchi topilmadi</p>}
+          {nextCursor && (
+            <div className="flex justify-center py-4 border-t border-border">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="px-4 py-2 bg-bg border border-border rounded-lg text-xs font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {loadingMore && <Loader2 size={13} className="animate-spin" />} Yana yuklash
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
