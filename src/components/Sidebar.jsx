@@ -7,7 +7,6 @@ import {
   Home,
   Layers,
   Sparkles,
-  Plus,
   X,
   LogOut,
   RotateCw,
@@ -15,14 +14,12 @@ import {
   Headphones,
   Zap,
   ChevronRight,
-  Pencil,
-  Trash2,
-  Check,
   Users,
   ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import SidebarChatSessions from './chat/SidebarChatSessions';
+import CategorySwitcher from './CategorySwitcher';
 
 const CHAT_ACCORDION_KEY = 'vocably.chatAccordionOpen';
 
@@ -46,26 +43,8 @@ function navItemClass(active) {
 }
 
 export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) {
-  const {
-    categories,
-    activeCatIndex,
-    setActiveCatIndex,
-    displayName,
-    logout,
-    handleAddCategory,
-    handleRenameCategory,
-    handleDeleteCategory,
-    triggerWriteReset,
-    triggerMatchReshuffle,
-    chatAccess,
-    chatRole,
-  } = useApp();
+  const { displayName, logout, triggerWriteReset, triggerMatchReshuffle, chatAccess, chatRole } = useApp();
 
-  const [newCatName, setNewCatName] = useState('');
-  const [showAddCat, setShowAddCat] = useState(false);
-  const [manageOpen, setManageOpen] = useState(false);
-  const [editingIdx, setEditingIdx] = useState(null);
-  const [editingName, setEditingName] = useState('');
   // Suhbatlar ro'yxati default yopiq; ochiq/yopiq holati localStorage'da eslab qolinadi.
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -78,27 +57,6 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
       localStorage.setItem(CHAT_ACCORDION_KEY, prev ? '0' : '1');
       return !prev;
     });
-  };
-
-  const onAddCategory = (e) => {
-    e?.preventDefault();
-    if (!newCatName.trim()) return;
-    handleAddCategory(newCatName);
-    setNewCatName('');
-    setShowAddCat(false);
-  };
-
-  const startEditCategory = (idx) => {
-    setEditingIdx(idx);
-    setEditingName(categories[idx]?.name || '');
-  };
-
-  const saveEditCategory = (e) => {
-    e?.preventDefault();
-    if (editingIdx === null) return;
-    handleRenameCategory(editingIdx, editingName);
-    setEditingIdx(null);
-    setEditingName('');
   };
 
   return (
@@ -138,121 +96,7 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
             </button>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-[10px] font-semibold text-accent uppercase tracking-wider mb-2">
-              Kategoriyalar
-            </label>
-            <select
-              value={activeCatIndex}
-              onChange={(e) => setActiveCatIndex(parseInt(e.target.value))}
-              className="w-full px-3 py-2 bg-primary-hover border border-on-primary/10 rounded-lg text-sm text-on-primary outline-none cursor-pointer focus:border-accent transition-colors"
-            >
-              {categories.map((c, i) => (
-                <option key={i} value={i}>
-                  {c.name} ({c.words.length})
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={() => setManageOpen((v) => !v)}
-              className="mt-2 w-full flex items-center justify-between px-2.5 py-1.5 bg-primary-hover/60 hover:bg-primary-hover border border-on-primary/10 rounded text-xs text-on-primary/60 hover:text-on-primary transition-colors"
-            >
-              <span>Kategoriyalarni boshqarish</span>
-              <ChevronRight size={12} className={`transition-transform ${manageOpen ? 'rotate-90' : ''}`} />
-            </button>
-
-            {manageOpen && (
-              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
-                {categories.map((c, i) =>
-                  editingIdx === i ? (
-                    <form key={i} onSubmit={saveEditCategory} className="flex gap-1.5">
-                      <input
-                        type="text"
-                        autoFocus
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Escape') setEditingIdx(null);
-                        }}
-                        className="flex-1 min-w-0 px-2 py-1 bg-primary-hover border border-accent/60 rounded text-xs text-on-primary outline-none"
-                      />
-                      <button type="submit" className="p-1 bg-accent hover:bg-accent-hover rounded text-on-accent transition-colors">
-                        <Check size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingIdx(null)}
-                        className="p-1 bg-primary-hover hover:bg-primary-hover/70 rounded text-on-primary/60 transition-colors"
-                      >
-                        <X size={12} />
-                      </button>
-                    </form>
-                  ) : (
-                    <div
-                      key={i}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-primary-hover/60 group"
-                    >
-                      <span className="flex-1 min-w-0 truncate text-xs text-on-primary/70">{c.name}</span>
-                      <button
-                        onClick={() => startEditCategory(i)}
-                        title="Tahrirlash"
-                        className="p-1 text-on-primary/40 hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCategory(i)}
-                        title="O'chirish"
-                        className="p-1 text-on-primary/40 hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-
-            {!showAddCat ? (
-              <button
-                onClick={() => setShowAddCat(true)}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-primary-hover/60 hover:bg-primary-hover border border-on-primary/10 rounded text-xs text-on-primary/60 hover:text-on-primary transition-colors"
-              >
-                <Plus size={13} /> Yangi kategoriya
-              </button>
-            ) : (
-              <form onSubmit={onAddCategory} className="flex gap-2 mt-2">
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Nomi (masalan: Words 2)"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') setShowAddCat(false);
-                  }}
-                  className="flex-1 min-w-0 px-2.5 py-1.5 bg-primary-hover/50 border border-on-primary/10 rounded text-xs text-on-primary outline-none focus:border-accent"
-                />
-                <button
-                  type="submit"
-                  className="p-1.5 bg-accent hover:bg-accent-hover rounded text-on-accent transition-colors"
-                >
-                  <Plus size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddCat(false);
-                    setNewCatName('');
-                  }}
-                  className="p-1.5 bg-primary-hover hover:bg-primary-hover/70 rounded text-on-primary/60 transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              </form>
-            )}
-          </div>
+          <CategorySwitcher />
 
           <nav className="space-y-1">
             {navItems.map(({ key, label, icon: Icon }) => {
