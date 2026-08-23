@@ -114,7 +114,7 @@ function DashboardContent() {
             <ListeningMode />
           </div>
           <div className={view === 'review' ? '' : 'hidden'}>
-            <SpacedRepetition />
+            <SpacedRepetition active={view === 'review'} />
           </div>
           <div className={view === 'table' ? '' : 'hidden'}>
             <WordTable />

@@ -3,8 +3,32 @@ import { useState, useMemo, useEffect } from 'react';
 import { Volume2, Flame, Trophy, CalendarCheck, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
+import { cardFromStats, nextReviewState } from '@/lib/srs';
 
-export default function SpacedRepetition() {
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+// Har bir baho tugmasi bosilsa keyingi takrorlash qachonligini taxminiy ko'rsatish uchun
+// (Anki'dagi kabi) — foydalanuvchi "Oson" bilan "Qiyin" orasidagi farqni ko'rib turadi.
+function formatDuration(ms) {
+  if (ms < HOUR_MS) return `${Math.max(1, Math.round(ms / MINUTE_MS))} daq`;
+  if (ms < DAY_MS) return `${Math.round(ms / HOUR_MS)} soat`;
+  const days = ms / DAY_MS;
+  if (days < 30) return `${Math.round(days)} kun`;
+  if (days < 365) return `${Math.round(days / 30)} oy`;
+  return `${Math.round(days / 365)} yil`;
+}
+
+// 1=Qayta(bilmadim) 2=Qiyin 3=Bildim 4=Oson — standart SM-2 baholash shkalasi (src/lib/srs.ts).
+const RATING_BUTTONS = [
+  { rating: 1, key: '1', label: 'Qayta', emoji: '🔁', className: 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700' },
+  { rating: 2, key: '2', label: 'Qiyin', emoji: '😓', className: 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700' },
+  { rating: 3, key: '3', label: 'Bildim', emoji: '✅', className: 'bg-green-50 hover:bg-green-100 border-green-200 text-green-700' },
+  { rating: 4, key: '4', label: 'Oson', emoji: '⚡', className: 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700' },
+];
+
+export default function SpacedRepetition({ active }) {
   const { categories, reviewWord, reviewStreak, practiceWordIds, clearPracticeQueue } = useApp();
   const [showAnswer, setShowAnswer] = useState(false);
   // A5/A13 (docs/AUDIT_FINDINGS.md): "Navbatda: N" bilan sarlavhadagi "Jami so'zlar" ziddiyatli
@@ -57,12 +81,54 @@ export default function SpacedRepetition() {
 
   const current = dueWords[0];
 
-  const answer = (correct) => {
+  // Har bir baho tugmasi ostida "keyingi safar qachon" taxminini ko'rsatish uchun — haqiqiy
+  // saqlanadigan natija emas (fuzz tasodifiy), lekin foydalanuvchiga farqni his qildiradi.
+  const previews = useMemo(() => {
+    if (!current) return null;
+    const prevCard = cardFromStats(current.word.stats || {});
+    const now = new Date();
+    const map = {};
+    for (const { rating } of RATING_BUTTONS) {
+      map[rating] = formatDuration(nextReviewState(prevCard, rating, now).dueAt.getTime() - now.getTime());
+    }
+    return map;
+  }, [current]);
+
+  const answer = (rating) => {
     if (!current) return;
-    reviewWord(current.categoryId, current.word._id, correct);
+    // rating===1 (Qayta) — eslay olmadi, hisobda "xato" sifatida yoziladi; 2-4 — "to'g'ri".
+    reviewWord(current.categoryId, current.word._id, rating >= 2, { rating });
     setReviewedCount((n) => n + 1);
     setShowAnswer(false);
   };
+
+  // A12 (docs/AUDIT_FINDINGS.md): klaviatura yorliqlari — Space kartani ochadi, 1-4 baholaydi.
+  // Dashboard hamma rejimlarni bir vaqtda mount qilib, faqat CSS bilan yashiradi (B14), shuning
+  // uchun `active` (view === 'review') tekshirilmasa, boshqa bo'limda ham bu tugmalar ishlab
+  // ketardi.
+  useEffect(() => {
+    if (!active || !current) return undefined;
+    const onKeyDown = (e) => {
+      if (e.target instanceof HTMLElement) {
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+      }
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        setShowAnswer((v) => !v);
+        return;
+      }
+      if (!showAnswer) return;
+      const btn = RATING_BUTTONS.find((b) => b.key === e.key);
+      if (btn) {
+        e.preventDefault();
+        answer(btn.rating);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, current, showAnswer]);
 
   return (
     <div className="flex flex-col items-center">
@@ -132,24 +198,29 @@ export default function SpacedRepetition() {
                 {current.word.syns.join(', ')}
               </p>
             ) : (
-              <p className="text-xs text-muted mt-6 font-semibold">Ko'rish uchun bosing</p>
+              <p className="text-xs text-muted mt-6 font-semibold">
+                Ko'rish uchun bosing <span className="hidden sm:inline">(yoki Space)</span>
+              </p>
             )}
           </div>
 
-          {showAnswer && (
-            <div className="flex gap-3 sm:gap-4 mt-6 w-full">
-              <button
-                onClick={() => answer(false)}
-                className="flex-1 py-3 bg-accent-soft border border-accent/25 text-accent rounded-xl font-semibold text-sm hover:bg-red-100 transition-colors"
-              >
-                ❌ Bilmadim
-              </button>
-              <button
-                onClick={() => answer(true)}
-                className="flex-1 py-3 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 transition-colors"
-              >
-                ✅ Bildim
-              </button>
+          {showAnswer ? (
+            <div className="grid grid-cols-4 gap-2 mt-6 w-full">
+              {RATING_BUTTONS.map((b) => (
+                <button
+                  key={b.rating}
+                  onClick={() => answer(b.rating)}
+                  className={`flex flex-col items-center gap-0.5 py-2.5 rounded-xl border font-semibold text-xs transition-colors ${b.className}`}
+                >
+                  <span className="text-base leading-none">{b.emoji}</span>
+                  <span>{b.label}</span>
+                  <span className="text-[10px] font-normal opacity-70">{previews?.[b.rating]}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 w-full h-[62px] flex items-center justify-center">
+              <p className="text-[10px] text-muted hidden sm:block">Klaviatura: Space — ochish, 1-4 — baholash</p>
             </div>
           )}
         </div>
