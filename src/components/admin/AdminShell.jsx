@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X } from 'lucide-react';
+import { BarChart3, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone } from 'lucide-react';
 import { useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 
@@ -10,6 +10,7 @@ const NAV = [
   { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
   { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare },
   { href: '/admin/reports', label: 'Reportlar', icon: Flag },
+  { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
   { href: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
 ];
 

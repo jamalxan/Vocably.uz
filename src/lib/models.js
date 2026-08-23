@@ -278,3 +278,55 @@ const RateLimitHitSchema = new mongoose.Schema({
 });
 
 export const RateLimitHit = mongoose.models.RateLimitHit || mongoose.model('RateLimitHit', RateLimitHitSchema);
+
+// ============================================================================
+// Bildirishnomalar — ilova ichidagi (qo'ng'iroq belgisi) va brauzer push
+// bildirishnomalari. Ikkalasi ham shu bitta manbadan ishlaydi: har hodisa
+// (yangi chat xabari, admin e'loni) bitta Notification hujjati yaratadi,
+// mavjud bo'lsa PushSubscription orqali haqiqiy brauzer bildirishnomasi ham
+// yuboriladi (src/lib/webPush.js).
+// ============================================================================
+
+const NotificationSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  type: { type: String, enum: ['chat_message', 'announcement'], required: true },
+  title: { type: String, required: true, trim: true },
+  body: { type: String, default: '', trim: true },
+  // 'chat_message' uchun suhbat ID'si, 'announcement' uchun Announcement ID'si —
+  // bildirishnoma bosilganda qayerga o'tishni frontend shu bo'yicha hal qiladi.
+  link: { type: String, default: null },
+  read: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+});
+NotificationSchema.index({ userId: 1, createdAt: -1 });
+NotificationSchema.index({ userId: 1, read: 1 });
+
+export const Notification = mongoose.models.Notification || mongoose.model('Notification', NotificationSchema);
+
+// Admin tomonidan yozilgan e'lon — yuborilganda har bir foydalanuvchiga bitta
+// Notification hujjati "fan-out" qilinadi (src/app/api/admin/announcements/route.js).
+const AnnouncementSchema = new mongoose.Schema({
+  title: { type: String, required: true, trim: true },
+  body: { type: String, default: '', trim: true },
+  authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  recipientCount: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+});
+AnnouncementSchema.index({ createdAt: -1 });
+
+export const Announcement = mongoose.models.Announcement || mongoose.model('Announcement', AnnouncementSchema);
+
+// Brauzer push obunasi (Web Push API) — bitta foydalanuvchi bir nechta qurilma/brauzerdan
+// obuna bo'lishi mumkin, shuning uchun userId unique emas, `endpoint` unique.
+const PushSubscriptionSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  endpoint: { type: String, required: true, unique: true },
+  keys: {
+    p256dh: { type: String, required: true },
+    auth: { type: String, required: true },
+  },
+  createdAt: { type: Date, default: Date.now },
+});
+
+export const PushSubscription =
+  mongoose.models.PushSubscription || mongoose.model('PushSubscription', PushSubscriptionSchema);

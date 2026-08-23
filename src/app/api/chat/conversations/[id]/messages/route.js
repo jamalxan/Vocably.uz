@@ -1,10 +1,11 @@
 import { connectToDatabase } from '@/lib/db';
 import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
-import { Conversation, Message, Block } from '@/lib/models';
+import { Conversation, Message, Block, Notification } from '@/lib/models';
 import { findSticker } from '@/lib/stickers';
 import { objectExists } from '@/lib/s3';
 import { pushNewMessage } from '@/lib/realtime';
+import { sendPushToUser } from '@/lib/webPush';
 import { NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
@@ -121,6 +122,18 @@ export async function POST(req, { params }) {
       stickerId: message.stickerId,
       createdAt: message.createdAt,
     });
+
+    // Bildirishnoma (qo'ng'iroq belgisi) + brauzer push — javobni bloklamaydi, xato
+    // bo'lsa faqat log qilinadi (xabarning o'zi allaqachon saqlangan).
+    const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
+    Notification.create({
+      userId: otherId,
+      type: 'chat_message',
+      title: senderLabel,
+      body: preview,
+      link: String(convo._id),
+    }).catch((err) => console.error('[notification] chat_message yozilmadi', err));
+    sendPushToUser(otherId, { title: senderLabel, body: preview, url: '/dashboard' }).catch(() => {});
 
     return NextResponse.json({ message });
   } catch (err) {

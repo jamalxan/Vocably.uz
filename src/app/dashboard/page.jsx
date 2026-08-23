@@ -15,6 +15,7 @@ import AiChat from '@/components/AiChat';
 import AiChatSessionsPanel from '@/components/chat/AiChatSessionsPanel';
 import DashboardHome from '@/components/dashboard/DashboardHome';
 import DoStlarPanel from '@/components/chat-friends/DoStlarPanel';
+import NotificationBell from '@/components/NotificationBell';
 
 function DashboardContent() {
   const [view, setView] = useState('home');
@@ -24,7 +25,7 @@ function DashboardContent() {
   // Panelning o'zidagi strelka bosilganda asosiy navigatsiyaga qaytadi.
   const [aiSessionsPanelOpen, setAiSessionsPanelOpen] = useState(false);
 
-  const { loadingApp, activeCatIndex, activeCategory, handleDeleteCategory, chatAccess } = useApp();
+  const { loadingApp, activeCatIndex, activeCategory, handleDeleteCategory, chatAccess, token } = useApp();
 
   // Mobil ekranda bo'lim almashtirilganda drawer'ni yopamiz
   useEffect(() => {
@@ -87,8 +88,9 @@ function DashboardContent() {
             </div>
           </div>
 
-          {view !== 'home' && view !== 'friends' && view !== 'ai' && (
-            <div className="flex gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <NotificationBell token={token} onOpenFriends={() => handleSetView('friends')} />
+            {view !== 'home' && view !== 'friends' && view !== 'ai' && (
               <button
                 onClick={() => handleDeleteCategory(activeCatIndex)}
                 className="p-2 border border-accent/25 hover:bg-accent-soft text-accent rounded-lg transition-colors flex-shrink-0"
@@ -96,8 +98,8 @@ function DashboardContent() {
               >
                 <Trash2 size={16} />
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </header>
 
         {/* AI Chat va Do'stlar — to'liq balandlikdagi "ilova ichida ilova" ko'rinishidagi
