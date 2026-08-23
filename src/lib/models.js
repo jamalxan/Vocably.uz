@@ -100,6 +100,17 @@ const UserSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Perfomans indekslari (docs/DB_PERFORMANCE.md audit'i): `phone`/`username` yuqorida
+// maydon darajasida allaqachon indekslangan (unique). Qo'shimcha:
+// - `role` — admin/stats va telegram/webhook'dagi countDocuments({role:'admin'}) uchun.
+// - `chatAccess`+`chatBanned` — Do'stlar bo'limi statistikasi/ro'yxatlari birga filtrlaydi.
+// - `createdAt` — admin/stats (dayAgo/weekAgo), telegram /users, admin/chat/users sort'i uchun.
+// - `telegramChatId` — telegram/webhook har bir admin buyrug'ida actor'ni shu bo'yicha topadi.
+UserSchema.index({ role: 1 });
+UserSchema.index({ chatAccess: 1, chatBanned: 1 });
+UserSchema.index({ createdAt: -1 });
+UserSchema.index({ telegramChatId: 1 });
+
 export const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 // Ro'yxatdan o'tish / parolni tiklash uchun vaqtinchalik Telegram tasdiqlash sessiyasi.
@@ -121,6 +132,9 @@ const OtpSessionSchema = new mongoose.Schema({
   attempts: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now, expires: 900 }, // 15 daqiqa TTL
 });
+// telegram/webhook.js kontakt qadamida shu 3 maydon bo'yicha aynan shu tartibda so'raydi
+// (findOne({telegramChatId, status}).sort({createdAt:-1})) — compound indeks to'liq qoplaydi.
+OtpSessionSchema.index({ telegramChatId: 1, status: 1, createdAt: -1 });
 
 export const OtpSession = mongoose.models.OtpSession || mongoose.model('OtpSession', OtpSessionSchema);
 
@@ -168,6 +182,11 @@ const ConversationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 ConversationSchema.index({ participantIds: 1 }, { unique: true });
+// Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
+// yangisi birinchi (src/app/api/chat/conversations); (2) admin panelning BARCHA
+// suhbatlar ro'yxati, eng yangisi birinchi (src/app/api/admin/chat/conversations).
+ConversationSchema.index({ participantIds: 1, lastMessageAt: -1 });
+ConversationSchema.index({ lastMessageAt: -1 });
 
 export const Conversation = mongoose.models.Conversation || mongoose.model('Conversation', ConversationSchema);
 
@@ -196,6 +215,9 @@ const MessageSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 MessageSchema.index({ conversationId: 1, createdAt: -1 });
+// admin/stats'dagi Message.aggregate($group by type) — indeks bo'lmasa har safar butun
+// kolleksiyani skanerlaydi; bu indeks bilan faqat indeksning o'zidan hisoblanadi (covered).
+MessageSchema.index({ type: 1 });
 
 export const Message = mongoose.models.Message || mongoose.model('Message', MessageSchema);
 
