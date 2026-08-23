@@ -41,11 +41,14 @@ export default function AdminShell({ children }) {
   const pageTitle = NAV.find((n) => (n.exact ? pathname === n.href : pathname.startsWith(n.href)))?.label || 'Admin';
 
   return (
-    <div className="min-h-screen bg-coffee-900 text-alabaster-200 font-body relative overflow-hidden">
+    // flex-row wrapper — aside va content shu tufayli yonma-yon joylashadi.
+    // overflow-hidden qasddan yo'q: u sticky pozitsiyalashni buzadi (har qanday
+    // oraliq ajdod'dagi overflow != visible sticky'ni o'chirib qo'yadi).
+    <div className="flex min-h-screen bg-coffee-900 text-alabaster-200 font-body relative">
       {/* Maksimalizm — fonda chuqurlik beruvchi yumshoq qizil/oltin nurlanish, kontentga xalaqit bermaydi */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 opacity-70"
+        className="pointer-events-none fixed inset-0 z-0 opacity-70"
         style={{
           background:
             'radial-gradient(1200px 600px at 15% -10%, rgba(221,2,0,0.16), transparent 60%), radial-gradient(900px 500px at 110% 10%, rgba(201,150,43,0.10), transparent 60%)',
@@ -53,15 +56,17 @@ export default function AdminShell({ children }) {
       />
 
       {mobileOpen && (
-        <div onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden" />
+        <div onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden" />
       )}
 
+      {/* Mobil: fixed overlay drawer (translate bilan slide). md+: flex qatoridagi
+          oddiy element, sticky top-0 + h-screen — scroll qilganda joyida qoladi. */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 flex flex-col bg-gradient-to-b from-cherry-950 via-coffee-900 to-coffee-950 border-r border-cherry-800/60 transform transition-transform duration-300 ${
+        className={`fixed md:sticky inset-y-0 md:inset-y-auto md:top-0 left-0 z-50 w-72 shrink-0 h-screen flex flex-col bg-gradient-to-b from-cherry-950 via-coffee-900 to-coffee-950 border-r border-cherry-800/60 transform transition-transform duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
+        } md:translate-x-0`}
       >
-        <div className="px-6 pt-7 pb-6 border-b border-cherry-800/50">
+        <div className="px-6 pt-7 pb-6 border-b border-cherry-800/50 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-racing-500 to-racing-800 flex items-center justify-center shadow-admin-glow">
@@ -72,7 +77,7 @@ export default function AdminShell({ children }) {
                 <p className="text-[10px] uppercase tracking-[0.2em] text-gold-400 mt-1">Admin Suite</p>
               </div>
             </div>
-            <button onClick={() => setMobileOpen(false)} className="lg:hidden p-1.5 text-alabaster-500 hover:text-alabaster-100">
+            <button onClick={() => setMobileOpen(false)} className="md:hidden p-1.5 text-alabaster-500 hover:text-alabaster-100">
               <X size={18} />
             </button>
           </div>
@@ -84,7 +89,8 @@ export default function AdminShell({ children }) {
           ))}
         </nav>
 
-        <div className="px-4 py-5 border-t border-cherry-800/50">
+        {/* mt-auto — nav qancha qisqa bo'lmasin, profil bloki doim pastga yopishadi */}
+        <div className="mt-auto px-4 py-5 border-t border-cherry-800/50 flex-shrink-0">
           <div className="flex items-center gap-3 px-2 mb-3">
             <div className="w-9 h-9 rounded-full bg-gold-500/15 border border-gold-500/30 text-gold-400 flex items-center justify-center text-xs font-bold">
               {adminName?.[0]?.toUpperCase() || 'A'}
@@ -103,11 +109,12 @@ export default function AdminShell({ children }) {
         </div>
       </aside>
 
-      <div className="lg:pl-72 relative">
+      {/* flex-1 + min-w-0 — margin/padding offset hack shart emas, flex o'zi joylashtiradi */}
+      <div className="flex-1 min-w-0 relative z-10">
         <header className="sticky top-0 z-30 flex items-center gap-3 px-5 sm:px-8 py-5 bg-coffee-900/80 backdrop-blur-md border-b border-cherry-900/60">
           <button
             onClick={() => setMobileOpen(true)}
-            className="lg:hidden p-2 -ml-1 text-alabaster-400 hover:text-alabaster-100 rounded-lg"
+            className="md:hidden p-2 -ml-1 text-alabaster-400 hover:text-alabaster-100 rounded-lg"
           >
             <Menu size={20} />
           </button>
