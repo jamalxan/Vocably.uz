@@ -9,6 +9,10 @@ module.exports = {
         display: ['var(--font-display)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         body: ['var(--font-body)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         luxury: ['var(--font-luxury)', 'Georgia', 'serif'],
+        // Do'stlar chat'i (xabarlar, input, emoji picker) uchun — matn shriftidan keyin
+        // platformaning emoji shriftiga tushadi, shunda emoji hech qachon lotin harflari
+        // shriftidan (glyph yo'qligi sababli) render bo'lmaydi.
+        chat: ['var(--font-body)', 'var(--font-emoji)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         // "Deep Merlot" — qora emas, brendning o'z (primary) rangiga to'yingan yumshoq soya —

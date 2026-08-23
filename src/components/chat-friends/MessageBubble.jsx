@@ -65,11 +65,26 @@ function FileBubble({ media }) {
   );
 }
 
+// Faqat emoji(lar)dan iborat qisqa xabar — Telegram/WhatsApp'dagidek pufaksiz,
+// kattalashtirib ko'rsatiladi. \p{Emoji_Component} ataylab ishlatilmadi (raqamlar,
+// #, * ham shu toifaga kiradi — faqat sonlardan iborat xabar noto'g'ri "emoji" deb topilib qolardi).
+const ZWJ = '‍';
+const VARIATION_SELECTOR = '️';
+const EMOJI_ONLY_RE = new RegExp(
+  `^[\\p{Extended_Pictographic}${ZWJ}${VARIATION_SELECTOR}\\u{1F3FB}-\\u{1F3FF}\\s]+$`,
+  'u'
+);
+function isEmojiOnly(text) {
+  if (!text || text.length > 30) return false;
+  return EMOJI_ONLY_RE.test(text);
+}
+
 export default function MessageBubble({ message, isMine }) {
   const { reportTarget } = useChat();
   const [reported, setReported] = useState(false);
 
   const sticker = message.type === 'sticker' ? findSticker(message.stickerId) : null;
+  const emojiOnly = message.type === 'text' && isEmojiOnly(message.text);
 
   const handleReport = async () => {
     const reason = window.prompt("Shikoyat sababi:");
@@ -78,7 +93,7 @@ export default function MessageBubble({ message, isMine }) {
     if (ok) setReported(true);
   };
 
-  const isPlain = message.type === 'sticker';
+  const isPlain = message.type === 'sticker' || emojiOnly;
 
   return (
     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
@@ -92,7 +107,11 @@ export default function MessageBubble({ message, isMine }) {
                 }`
           }
         >
-          {message.type === 'text' && <p className="whitespace-pre-wrap break-words">{message.text}</p>}
+          {message.type === 'text' && (
+            <p className={`whitespace-pre-wrap break-words font-chat ${emojiOnly ? 'text-4xl leading-tight' : ''}`}>
+              {message.text}
+            </p>
+          )}
           {message.type === 'sticker' && sticker && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={sticker.file} alt={sticker.label} className="w-24 h-24" />

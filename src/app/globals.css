@@ -23,6 +23,20 @@
   --color-border: 214 207 204;         /* #D6CFCC — chegaralar */
   --color-on-accent: 255 255 255;      /* accent fon ustidagi matn */
   --color-on-primary: 250 246 242;     /* primary (to'q) fon ustidagi matn */
+
+  /* Emoji-safe shrift stack — brauzer platformasining o'z emoji shriftini render
+     qiladi (iPhone/Mac'da Apple emoji, xuddi Telegramdagidek). Hech qanday rasm/asset
+     yuklanmaydi. Har doim matn shriftidan KEYIN qo'llaniladi — Composer.jsx (font-chat
+     Tailwind klassi), MessageBubble.jsx va EmojiPicker.jsx shu tartibda ishlatadi. */
+  --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", sans-serif;
+}
+
+/* Emojini kattaroq ko'rsatish uchun (masalan faqat-emoji xabarlar, picker katakchalari) */
+.emoji {
+  font-family: var(--font-emoji);
+  font-size: 1.4em;
+  line-height: 1;
+  vertical-align: -0.1em;
 }
 
 html, body {

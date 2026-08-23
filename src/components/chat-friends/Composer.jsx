@@ -1,10 +1,11 @@
 'use client';
 import { useRef, useState } from 'react';
-import { Send, Paperclip, Smile, Loader2 } from 'lucide-react';
+import { Send, Paperclip, Sticker as StickerIcon, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { VoiceRecorderButton } from './VoiceRecorder';
 import VideoRecorderButton from './VideoRecorder';
 import StickerPicker from './StickerPicker';
+import EmojiPicker from './EmojiPicker';
 
 const MAX_SIZE = { image: 10 * 1024 * 1024, video: 60 * 1024 * 1024, file: 25 * 1024 * 1024 };
 
@@ -13,7 +14,10 @@ export default function Composer() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const textInputRef = useRef(null);
+  const emojiButtonRef = useRef(null);
 
   const handleSendText = async (e) => {
     e?.preventDefault();
@@ -66,6 +70,22 @@ export default function Composer() {
     setSending(false);
   };
 
+  // Tanlangan emoji xabar oxiriga emas, aynan kursor turgan joyga qo'shiladi.
+  const handleEmojiPick = (emoji) => {
+    const input = textInputRef.current;
+    const start = input?.selectionStart ?? text.length;
+    const end = input?.selectionEnd ?? text.length;
+    const next = text.slice(0, start) + emoji + text.slice(end);
+    setText(next);
+
+    requestAnimationFrame(() => {
+      if (!input) return;
+      input.focus();
+      const pos = start + emoji.length;
+      input.setSelectionRange(pos, pos);
+    });
+  };
+
   return (
     <form onSubmit={handleSendText} className="flex items-center gap-1.5 border-t border-border px-3 py-2.5 bg-surface relative">
       <input ref={fileInputRef} type="file" className="hidden" onChange={handleFilePick} accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt" />
@@ -88,23 +108,45 @@ export default function Composer() {
           title="Stiker"
           className="p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
         >
-          <Smile size={18} />
+          <StickerIcon size={18} />
         </button>
         {stickerOpen && <StickerPicker onPick={handleSticker} onClose={() => setStickerOpen(false)} />}
       </div>
 
+      <div className="relative flex-shrink-0">
+        <button
+          ref={emojiButtonRef}
+          type="button"
+          onClick={() => setEmojiOpen((v) => !v)}
+          title="Emoji"
+          className="w-9 h-9 flex items-center justify-center text-muted hover:bg-bg rounded-lg transition-colors emoji font-chat"
+        >
+          🙂
+        </button>
+        {emojiOpen && (
+          <EmojiPicker
+            triggerRef={emojiButtonRef}
+            onPick={(e) => {
+              handleEmojiPick(e);
+            }}
+            onClose={() => setEmojiOpen(false)}
+          />
+        )}
+      </div>
+
       <input
+        ref={textInputRef}
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Xabar yozing..."
-        className="flex-1 min-w-0 px-3.5 py-2 bg-bg rounded-full text-sm outline-none focus:ring-2 focus:ring-accent/20"
+        className="flex-1 min-w-0 px-3.5 py-2 bg-bg rounded-full text-sm outline-none focus:ring-2 focus:ring-accent/20 font-chat"
       />
 
       <button
         type="submit"
         disabled={!text.trim() || sending}
-        className="p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full transition-colors flex-shrink-0"
+        className="p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-on-accent rounded-full transition-colors flex-shrink-0"
       >
         {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
       </button>
