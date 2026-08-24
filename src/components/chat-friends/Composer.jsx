@@ -7,6 +7,10 @@ import VideoRecorderButton from './VideoRecorder';
 import EmojiPicker from './EmojiPicker';
 
 const MAX_SIZE = { image: 10 * 1024 * 1024, video: 60 * 1024 * 1024, file: 25 * 1024 * 1024 };
+// Textarea 1 qatordan boshlanadi va ~5 qatorgacha o'sadi, keyin ichida scroll paydo bo'ladi
+// (AiChat.jsx'dagi bilan bir xil yondashuv — single-line <input> Shift+Enter'ni qo'llab-
+// quvvatlolmaydi va ba'zi brauzerlarda "beep" tovushi bilan rad etadi).
+const MAX_TEXTAREA_HEIGHT = 120;
 
 export default function Composer() {
   const { sendMessage, uploadAndSend, editingMessage, editMessage, cancelEditMessage } = useChat();
@@ -23,6 +27,19 @@ export default function Composer() {
     setText(editingMessage.text);
     textInputRef.current?.focus();
   }, [editingMessage]);
+
+  // Matn o'zgarganda textarea balandligini moslaymiz; xabar yuborilib matn
+  // tozalangach balandlik o'z-o'zidan 1 qatorga qaytadi.
+  useEffect(() => {
+    const el = textInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    if (!el.scrollHeight) return;
+    const border = el.offsetHeight - el.clientHeight;
+    const needed = el.scrollHeight + border;
+    el.style.height = `${Math.min(needed, MAX_TEXTAREA_HEIGHT)}px`;
+    el.style.overflowY = needed > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
+  }, [text]);
 
   const handleSendText = async (e) => {
     e?.preventDefault();
@@ -48,6 +65,20 @@ export default function Composer() {
   const handleCancelEdit = () => {
     cancelEditMessage();
     setText('');
+  };
+
+  // Enter — yuborish, Shift+Enter — yangi qator (AiChat.jsx bilan bir xil).
+  // IME (koreys/xitoy/yapon klaviaturasi) kompozitsiyasi paytida Enter xabarni
+  // yubormasligi kerak.
+  const handleTextareaKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      if (editingMessage) handleCancelEdit();
+      return;
+    }
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    handleSendText();
   };
 
   const handleFilePick = async (e) => {
@@ -107,7 +138,7 @@ export default function Composer() {
           </button>
         </div>
       )}
-      <form onSubmit={handleSendText} className="flex items-center gap-1.5 px-3 py-2.5 relative">
+      <form onSubmit={handleSendText} className="flex items-end gap-1.5 px-3 py-2.5 relative">
         {!editingMessage && (
           <>
             <input
@@ -152,16 +183,14 @@ export default function Composer() {
           )}
         </div>
 
-        <input
+        <textarea
           ref={textInputRef}
-          type="text"
+          rows={1}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape' && editingMessage) handleCancelEdit();
-          }}
-          placeholder="Xabar yozing..."
-          className="flex-1 min-w-0 px-3.5 py-2 bg-bg rounded-full text-sm outline-none focus:ring-2 focus:ring-accent/20 font-chat"
+          onKeyDown={handleTextareaKeyDown}
+          placeholder="Xabar yozing... (Shift+Enter — yangi qator)"
+          className="flex-1 min-w-0 px-3.5 py-2 bg-bg rounded-2xl text-sm leading-5 outline-none focus:ring-2 focus:ring-accent/20 font-chat resize-none"
         />
 
         <button

@@ -201,6 +201,9 @@ const ConversationSchema = new mongoose.Schema({
   lastMessageAt: { type: Date, default: Date.now },
   lastMessagePreview: { type: String, default: '', trim: true },
   createdAt: { type: Date, default: Date.now },
+  // Kim shu suhbatni "ovozsiz" qilgan (push/bell bildirishnoma o'chirilgan) —
+  // faqat o'sha userga ta'sir qiladi, ikkinchi tomon buni bilmaydi/ko'rmaydi.
+  mutedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
 });
 // Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
 // yangisi birinchi (src/app/api/chat/conversations); (2) admin panelning BARCHA

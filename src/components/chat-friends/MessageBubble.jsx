@@ -153,7 +153,10 @@ export default function MessageBubble({ message, isMine }) {
         </div>
 
         {!deleted && (
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          // Sichqoncha bo'lgan qurilmalarda (lg+) faqat hover'da ko'rinadi (Telegram Web
+          // uslubi) — lekin touch qurilmalarda :hover umuman ishlamaydi, shuning uchun
+          // aks holda tahrirlash/o'chirish tugmalari mobil'da butunlay yashiringan bo'lardi.
+          <div className="flex items-center gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity flex-shrink-0">
             {canEdit && (
               <button
                 onClick={() => startEditMessage(message)}

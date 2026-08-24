@@ -266,6 +266,26 @@ export function ChatProvider({ token, children }) {
     [authHeaders, closeConversation, loadConversations]
   );
 
+  // Faqat menda (bu userda) shu suhbatning push/bell bildirishnomasini o'chiradi —
+  // boshqa tomon buni bilmaydi, xabarlar odatdagidek yetib boraveradi.
+  const toggleMuteConversation = useCallback(
+    async (conversationId, mute) => {
+      try {
+        const res = await fetch(`/api/chat/conversations/${conversationId}/mute`, {
+          method: mute ? 'POST' : 'DELETE',
+          headers: authHeaders(),
+        });
+        if (!res.ok) return { error: "Bajarilmadi" };
+        setConversations((prev) => prev.map((c) => (String(c.id) === String(conversationId) ? { ...c, muted: mute } : c)));
+        setActiveConversation((prev) => (prev && String(prev.id) === String(conversationId) ? { ...prev, muted: mute } : prev));
+        return { success: true };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [authHeaders]
+  );
+
   useEffect(() => {
     loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -320,6 +340,7 @@ export function ChatProvider({ token, children }) {
     searchUsername,
     reportTarget,
     blockUser,
+    toggleMuteConversation,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

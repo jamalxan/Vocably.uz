@@ -40,6 +40,7 @@ export async function GET(req) {
           : null,
         lastMessageAt: c.lastMessageAt,
         lastMessagePreview: c.lastMessagePreview || '',
+        muted: (c.mutedBy || []).some((id) => String(id) === String(user._id)),
       };
     });
 
@@ -105,6 +106,7 @@ export async function POST(req) {
         },
         lastMessageAt: convo.lastMessageAt,
         lastMessagePreview: convo.lastMessagePreview || '',
+        muted: (convo.mutedBy || []).some((id) => String(id) === String(user._id)),
       },
     });
   } catch (err) {

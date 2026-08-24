@@ -1,5 +1,5 @@
 'use client';
-import { Loader2, Wifi, WifiOff } from 'lucide-react';
+import { Loader2, Wifi, WifiOff, BellOff } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { isOnline } from '@/lib/presence';
 import UserSearchBar from './UserSearchBar';
@@ -57,7 +57,10 @@ export default function ConversationList({ onSelect, selectedId }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-primary truncate">@{c.otherUser?.username || 'noma\'lum'}</p>
+                <span className="flex items-center gap-1 min-w-0">
+                  <p className="text-sm font-medium text-primary truncate">@{c.otherUser?.username || 'noma\'lum'}</p>
+                  {c.muted && <BellOff size={11} className="text-muted flex-shrink-0" />}
+                </span>
                 <span className="text-[10px] text-muted flex-shrink-0">{timeAgo(c.lastMessageAt)}</span>
               </div>
               <p className="text-xs text-muted truncate">{c.lastMessagePreview || ''}</p>

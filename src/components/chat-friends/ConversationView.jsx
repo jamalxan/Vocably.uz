@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { ArrowLeft, ShieldOff, Loader2 } from 'lucide-react';
+import { ArrowLeft, ShieldOff, Loader2, Bell, BellOff } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { formatLastSeen, isOnline } from '@/lib/presence';
@@ -8,7 +8,7 @@ import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 
 export default function ConversationView({ onBack }) {
-  const { activeConversation, messages, loadingMessages, loadOlderMessages, blockUser } = useChat();
+  const { activeConversation, messages, loadingMessages, loadOlderMessages, blockUser, toggleMuteConversation } = useChat();
   const { token: myToken } = useApp();
   const listRef = useRef(null);
   const bottomRef = useRef(null);
@@ -36,6 +36,10 @@ export default function ConversationView({ onBack }) {
     await blockUser(activeConversation.otherUser.id);
   };
 
+  const handleToggleMute = () => {
+    toggleMuteConversation(activeConversation.id, !activeConversation.muted);
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full min-w-0">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
@@ -58,7 +62,14 @@ export default function ConversationView({ onBack }) {
             </p>
           )}
         </div>
-        <button onClick={handleBlock} title="Bloklash" className="p-1.5 text-muted hover:text-accent transition-colors">
+        <button
+          onClick={handleToggleMute}
+          title={activeConversation.muted ? 'Bildirishnomani yoqish' : 'Bildirishnomani o\'chirish'}
+          className="p-1.5 text-muted hover:text-accent transition-colors flex-shrink-0"
+        >
+          {activeConversation.muted ? <BellOff size={16} /> : <Bell size={16} />}
+        </button>
+        <button onClick={handleBlock} title="Bloklash" className="p-1.5 text-muted hover:text-accent transition-colors flex-shrink-0">
           <ShieldOff size={16} />
         </button>
       </div>

@@ -135,16 +135,22 @@ export async function POST(req, { params }) {
     });
 
     // Bildirishnoma (qo'ng'iroq belgisi) + brauzer push — javobni bloklamaydi, xato
-    // bo'lsa faqat log qilinadi (xabarning o'zi allaqachon saqlangan).
-    const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
-    Notification.create({
-      userId: otherId,
-      type: 'chat_message',
-      title: senderLabel,
-      body: preview,
-      link: String(convo._id),
-    }).catch((err) => console.error('[notification] chat_message yozilmadi', err));
-    sendPushToUser(otherId, { title: senderLabel, body: preview, url: '/dashboard' }).catch(() => {});
+    // bo'lsa faqat log qilinadi (xabarning o'zi allaqachon saqlangan). Qabul qiluvchi
+    // shu suhbatni "ovozsiz" qilgan bo'lsa (mutedBy) — hech qanday bildirishnoma/push
+    // yubormaymiz, lekin xabarning o'zi (realtime/poll orqali) odatdagidek yetib boradi;
+    // yuboruvchi bu haqda hech narsa bilmaydi — API javobi ikkala holatda ham bir xil.
+    const recipientMuted = (convo.mutedBy || []).some((id) => String(id) === String(otherId));
+    if (!recipientMuted) {
+      const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
+      Notification.create({
+        userId: otherId,
+        type: 'chat_message',
+        title: senderLabel,
+        body: preview,
+        link: String(convo._id),
+      }).catch((err) => console.error('[notification] chat_message yozilmadi', err));
+      sendPushToUser(otherId, { title: senderLabel, body: preview, url: '/dashboard' }).catch(() => {});
+    }
 
     return NextResponse.json({ message });
   } catch (err) {
