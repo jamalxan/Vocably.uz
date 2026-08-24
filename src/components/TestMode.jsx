@@ -100,7 +100,7 @@ export default function TestMode() {
             Oraliqni o'zgartirish
           </button>
         </div>
-        <p className="text-xl font-bold text-primary font-display mb-6 text-center break-words">
+        <p className="text-xl font-bold text-primary font-word mb-6 text-center break-words">
           {question.target.word}
         </p>
         <div className="space-y-2 mb-4">

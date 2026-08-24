@@ -65,7 +65,7 @@ export default function Sidebar({ view, setView, sidebarOpen, setSidebarOpen }) 
                 V
               </div>
               <div className="min-w-0">
-                <h1 className="text-lg font-bold text-on-primary tracking-wide font-display leading-tight">
+                <h1 className="text-lg font-bold text-on-primary tracking-wide font-luxury leading-tight">
                   Voc<span className="text-accent">ably</span>
                 </h1>
                 <p className="text-[10px] text-on-primary/50 leading-tight">Ingliz tili yordamchisi</p>

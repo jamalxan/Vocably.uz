@@ -9,6 +9,9 @@ module.exports = {
         display: ['var(--font-display)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         body: ['var(--font-body)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         luxury: ['var(--font-luxury)', 'Georgia', 'serif'],
+        // Faqat o'rganilayotgan so'zning o'zi uchun (flashcard/test/quiz) — bosh
+        // so'z uslubidagi dictionary-serif, layout.jsx'dagi izohga q.
+        word: ['var(--font-word)', 'Georgia', 'serif'],
         // Do'stlar chat'i (xabarlar, input, emoji picker) uchun — matn shriftidan keyin
         // platformaning emoji shriftiga tushadi, shunda emoji hech qachon lotin harflari
         // shriftidan (glyph yo'qligi sababli) render bo'lmaydi.

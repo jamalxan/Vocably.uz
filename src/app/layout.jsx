@@ -1,5 +1,5 @@
 import '@/app/globals.css';
-import { Plus_Jakarta_Sans, Inter, Playfair_Display, IBM_Plex_Mono } from 'next/font/google';
+import { Plus_Jakarta_Sans, Inter, Playfair_Display, IBM_Plex_Mono, Source_Serif_4 } from 'next/font/google';
 
 const display = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -36,6 +36,18 @@ const mono = IBM_Plex_Mono({
   display: 'swap',
 });
 
+// FAQAT o'rganilayotgan so'zning o'zi uchun (flashcard old tarafi, test/tez
+// so'rov/yozish savoli) — lug'at kitobidagi bosh so'z kabi ajralib turadigan
+// serif, qolgan hamma joyda font-display (geometrik sans) qoladi. Aynan shu
+// maqsad uchun docs/VOCABLY_REDESIGN_SPEC.md'da rejalashtirilgan edi, lekin
+// hech qachon ulanmagan qolib ketgan edi.
+const word = Source_Serif_4({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-word',
+  display: 'swap',
+});
+
 export const metadata = {
   title: "Vocably — Ingliz tili yordamchisi",
   description: "Ingliz tilini o'rganish uchun AI yordamchili shaxsiy lug'at platformasi",
@@ -52,7 +64,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable} ${mono.variable}`}>
+    <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable} ${mono.variable} ${word.variable}`}>
       <body className="bg-bg text-primary min-h-screen antialiased font-body">
         {children}
       </body>

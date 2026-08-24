@@ -81,7 +81,7 @@ export default function FlashcardMode() {
             >
               <Volume2 size={16} />
             </button>
-            <p className="text-2xl sm:text-3xl font-extrabold text-primary font-display text-center break-words">
+            <p className="text-2xl sm:text-3xl font-bold text-primary font-word text-center break-words">
               {words[cardIndex]?.word}
             </p>
             {words[cardIndex]?.pronunciation && (

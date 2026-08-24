@@ -388,7 +388,7 @@ export default function AiChat() {
             <Sparkles size={18} className="text-on-accent" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold font-display text-on-primary leading-tight">Vocably AI</p>
+            <p className="text-sm font-bold font-luxury text-on-primary leading-tight">Vocably AI</p>
             <p className="text-[11px] text-on-primary/55 leading-tight">Har doim yordamga tayyor</p>
           </div>
         </div>

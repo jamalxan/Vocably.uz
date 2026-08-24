@@ -231,7 +231,7 @@ export default function AuthPage() {
           <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-on-accent shadow-glow mb-4">
             <BookOpen size={26} />
           </div>
-          <h1 className="font-display text-2xl font-extrabold text-primary tracking-tight">
+          <h1 className="font-luxury text-3xl font-bold text-primary tracking-tight">
             Voc<span className="text-accent">ably</span>
           </h1>
           <p className="text-xs text-muted mt-1">Ingliz tili yordamchisi</p>

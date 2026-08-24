@@ -190,7 +190,7 @@ export default function SpacedRepetition({ active }) {
             >
               <Volume2 size={16} />
             </button>
-            <p className="text-2xl sm:text-3xl font-extrabold text-primary font-display text-center break-words">
+            <p className="text-2xl sm:text-3xl font-bold text-primary font-word text-center break-words">
               {current.word.word}
             </p>
             {current.word.pronunciation && (

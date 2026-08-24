@@ -139,7 +139,7 @@ export default function WritingTest() {
           </div>
 
           <div className="flex items-center gap-2 mb-6">
-            <span className="text-xl sm:text-2xl font-bold text-primary font-display break-words">
+            <span className="text-xl sm:text-2xl font-bold text-primary font-word break-words">
               {writeWords[writeCurIdx]?.word}
             </span>
             <button
