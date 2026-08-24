@@ -83,7 +83,14 @@ const UserSchema = new mongoose.Schema({
   // `role` admin panelga kirishni, `chatAccess` esa Do'stlar bo'limining butunlay
   // yashirin/ko'rinishini boshqaradi — ikkalasi ham faqat admin tomonidan o'zgartiriladi.
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
-  username: { type: String, trim: true, default: null, unique: true, sparse: true, index: true },
+  // `default` yo'q — muhim: agar `default: null` bo'lsa, mongoose har bir yangi
+  // hujjatga `username: null` maydonini aynan shu qiymat bilan yozadi. Sparse indeks
+  // faqat maydon UMUMAN yo'q hujjatlarni e'tiborsiz qoldiradi — `null` qiymat esa
+  // "mavjud" hisoblanadi, shuning uchun ikkinchi ro'yxatdan o'tgan foydalanuvchi
+  // (unga hali username tayinlanmagan bo'lsa ham) E11000 duplicate key xatosiga
+  // uchraydi (`username_1` unique indeks). Default'siz maydon shunchaki mavjud
+  // bo'lmaydi (admin uni keyinroq tayinlagunga qadar), sparse indeks buni to'g'ri o'tkazib yuboradi.
+  username: { type: String, trim: true, unique: true, sparse: true, index: true },
   chatAccess: { type: Boolean, default: false },
   chatBanned: { type: Boolean, default: false },
   // Do'stlar bo'limida "oxirgi marta ko'rilgan" uchun — requireChatUser() har /api/chat/*
