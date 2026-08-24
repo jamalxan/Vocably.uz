@@ -20,6 +20,30 @@ const MAX_TEXTAREA_HEIGHT = 142;
 const PENDING_MARK_START = '\n[[PENDING_ADD_WORDS]]';
 const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]';
 
+// SpeechRecognition xatolari getUserMedia'dan farqli ismlar ishlatadi (masalan
+// "not-allowed", DOMException.name emas) — shuning uchun lib/mediaError.js dagi
+// mapping bu yerga to'g'ri kelmaydi, alohida xabar kerak.
+function recognitionErrorMessage(errorCode) {
+  switch (errorCode) {
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return (
+        'Mikrofonga ruxsat berilmagan. Manzil satridagi qulf (🔒) belgisini bosib, ' +
+        'saytga mikrofon ruxsatini "Ruxsat berish"ga o\'zgartiring, so\'ng sahifani yangilang. ' +
+        'Agar u yerda ruxsat berilgan ko\'rinsa — bu operatsion tizim darajasidagi cheklov bo\'lishi mumkin ' +
+        '(Windows: Sozlamalar → Maxfiylik va xavfsizlik → Mikrofon → "Ilovalarga ruxsat berish" yoqilganini tekshiring).'
+      );
+    case 'audio-capture':
+      return 'Mikrofon topilmadi. Qurilmangizda mikrofon ulanganligini tekshiring.';
+    case 'no-speech':
+      return "Ovoz eshitilmadi — qayta urinib ko'ring.";
+    case 'network':
+      return "Internet aloqasida muammo — ovozli kiritish xizmatiga ulanib bo'lmadi.";
+    default:
+      return "Ovozli kiritishni ishga tushirib bo'lmadi.";
+  }
+}
+
 function extractPendingAction(fullText) {
   const startIdx = fullText.indexOf(PENDING_MARK_START);
   if (startIdx === -1) return { visibleText: fullText, pendingAction: null };
@@ -59,6 +83,7 @@ export default function AiChat() {
   const [recognitionLang, setRecognitionLang] = useState(DEFAULT_RECOGNITION_LANG);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [micListening, setMicListening] = useState(false);
+  const [micError, setMicError] = useState('');
 
   const chatEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -227,6 +252,7 @@ export default function AiChat() {
     const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
     if (!SR) return;
 
+    setMicError('');
     const recognition = new SR();
     recognition.lang = recognitionLang;
     recognition.interimResults = true;
@@ -237,7 +263,11 @@ export default function AiChat() {
       setChatInput(text);
     };
     recognition.onend = () => setMicListening(false);
-    recognition.onerror = () => setMicListening(false);
+    recognition.onerror = (e) => {
+      // "aborted" — foydalanuvchi tugmani bosib o'zi to'xtatganda chiqadi, xato emas.
+      if (e.error !== 'aborted') setMicError(recognitionErrorMessage(e.error));
+      setMicListening(false);
+    };
     recognitionRef.current = recognition;
     setMicListening(true);
     recognition.start();
@@ -419,6 +449,18 @@ export default function AiChat() {
           {!voiceSupported && (
             <p className="text-[10px] text-muted mb-2">
               Brauzeringiz ovozli kiritishni qo'llab-quvvatlamaydi — matn rejimida davom eting.
+            </p>
+          )}
+          {micError && (
+            <p className="flex items-start gap-1.5 text-[11px] text-red-600 mb-2">
+              <span className="flex-1">{micError}</span>
+              <button
+                type="button"
+                onClick={() => setMicError('')}
+                className="flex-shrink-0 text-red-600/70 hover:text-red-600"
+              >
+                <X size={12} />
+              </button>
             </p>
           )}
           {attachedImages.length > 0 && (
