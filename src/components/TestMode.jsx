@@ -25,6 +25,10 @@ export default function TestMode() {
   const [question, setQuestion] = useState(null);
   const [selected, setSelected] = useState(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
+  // score.total darhol javob berilganda oshadi (natija hisoblash uchun), lekin ekrandagi
+  // "Savol N" sarlavhasi hali joriy savol ko'rinib turgan payt oldinga chopib ketmasligi
+  // kerak — shuning uchun alohida hisoblagich, faqat "Keyingi savol" bosilganda oshadi.
+  const [questionIndex, setQuestionIndex] = useState(1);
 
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda oraliq tanlashga qaytamiz.
   useEffect(() => {
@@ -38,6 +42,7 @@ export default function TestMode() {
     }
     setQuestion(buildQuestion(words));
     setSelected(null);
+    setQuestionIndex((n) => n + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words]);
 
@@ -55,6 +60,7 @@ export default function TestMode() {
     setQuestion(buildQuestion(selectedWords));
     setSelected(null);
     setScore({ correct: 0, total: 0 });
+    setQuestionIndex(1);
     setActive(true);
   };
 
@@ -69,7 +75,15 @@ export default function TestMode() {
   };
 
   if (!active) {
-    return <RangeSetupForm title="Test oraliqlari" range={range} onRangeChange={setRange} onSubmit={startTest} />;
+    return (
+      <RangeSetupForm
+        title="Test oraliqlari"
+        range={range}
+        onRangeChange={setRange}
+        onSubmit={startTest}
+        maxWords={activeCategory.words?.length || 0}
+      />
+    );
   }
 
   if (!question) return null;
@@ -78,7 +92,7 @@ export default function TestMode() {
     <div className="flex flex-col items-center">
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-muted mb-4">
-          <span>Savol {score.total + 1}</span>
+          <span>Savol {questionIndex}</span>
           <span>
             To'g'ri: {score.correct}/{score.total}
           </span>

@@ -78,6 +78,7 @@ export default function MatchGame() {
         range={range}
         onRangeChange={setRange}
         onSubmit={startMatchGame}
+        maxWords={activeCategory.words?.length || 0}
       />
     );
   }

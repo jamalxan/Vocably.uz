@@ -341,6 +341,11 @@ export default function AiChat() {
   const isEmpty = messages.length === 0 && !sessionLoading;
   const lastMsg = messages[messages.length - 1];
   const isTyping = chatLoading && lastMsg?.role === 'model' && !lastMsg.parts[0].text;
+  // Hali matni kelmagan model-placeholder (streaming boshlanishida qo'shiladi, handleSend)
+  // pastdagi maxsus "javob yozmoqda..." pufakchasi bilan bir vaqtda ko'rsatilmasin — aks holda
+  // ikkita bo'sh pufakcha ustma-ust chiqadi. Matn kela boshlashi bilan (isTyping false bo'ladi)
+  // xabar oddiy ro'yxatga qaytadi.
+  const visibleMessages = isTyping ? messages.slice(0, -1) : messages;
   const firstName = (displayName || '').trim().split(/\s+/)[0] || '';
 
   return (
@@ -386,7 +391,7 @@ export default function AiChat() {
               <Loader2 className="animate-spin text-accent" size={20} />
             </div>
           )}
-          {messages.map((msg, i) => (
+          {visibleMessages.map((msg, i) => (
             <ChatMessage
               key={i}
               msg={msg}

@@ -98,6 +98,7 @@ export default function ListeningMode() {
         range={range}
         onRangeChange={setRange}
         onSubmit={startListening}
+        maxWords={activeCategory.words?.length || 0}
       />
     );
   }

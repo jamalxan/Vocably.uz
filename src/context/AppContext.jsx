@@ -323,17 +323,36 @@ export function AppProvider({ children }) {
     }).catch((err) => console.error("Kategoriyani o'chirishda xatolik", err));
   }, [categories, categoryDeleteIdx, token]);
 
+  // B3 (docs/AUDIT_FINDINGS.md): bitta so'z qo'shish ilgari butun `categories` massivini
+  // qayta yozardi (`syncData`) — katta hujjatni har safar to'liq yuborish/saqlash, va ikkita
+  // ochiq tab bir vaqtda yozsa biri ikkinchisini "yutib" ketishi mumkin edi. Endi allaqachon
+  // mavjud, indekslangan `$push` endpointidan (`/api/words/add`, AI oqimi ham shuni ishlatadi)
+  // foydalanadi — atomik, faqat qo'shilayotgan so'zni yozadi. Qaytish qiymati (`false`) bo'sh
+  // maydon holatini chaqiruvchi tomonda (WordTable) xabar ko'rsatish uchun ishlatiladi.
   const handleAddWord = useCallback(
-    (word, synsStr) => {
-      if (!word.trim() || !synsStr.trim()) return;
-      const synsArray = synsStr.split(',').map((s) => s.trim()).filter(Boolean);
-      const updated = categories.map((c, i) =>
-        i === activeCatIndex ? { ...c, words: [...c.words, { word: word.trim(), syns: synsArray }] } : c
-      );
-      setCategories(updated);
-      syncData(updated);
+    async (word, synsStr) => {
+      const cleanWord = (word || '').trim();
+      const synsArray = (synsStr || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!cleanWord || synsArray.length === 0) return false;
+
+      const cat = categories[activeCatIndex];
+      if (!cat?._id) return false;
+
+      try {
+        const res = await fetch('/api/words/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ categoryId: cat._id, words: [{ word: cleanWord, syns: synsArray }] }),
+        });
+        if (!res.ok) throw new Error();
+      } catch (err) {
+        console.error("So'z qo'shishda xatolik", err);
+      } finally {
+        await refreshCategories();
+      }
+      return true;
     },
-    [categories, activeCatIndex, syncData]
+    [categories, activeCatIndex, token, refreshCategories]
   );
 
   // Bir yoki bir nechta so'zni barqaror _id bo'yicha o'chiradi (granular endpoint — butun massivni

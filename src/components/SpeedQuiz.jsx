@@ -122,12 +122,35 @@ export default function SpeedQuiz() {
   // Har savol uchun sanoqni boshqaradi; javob berilgach (selected o'zgarsa) yoki o'yin tugasa
   // darrov to'xtaydi — aks holda eski taymer fon rejimida ishlab, ikkinchi marta javob "yozib
   // qo'yishi" mumkin edi.
+  //
+  // MUHIM: avval "start = Date.now()" bitta marta yozib olinib, har tikda "TIME_PER_QUESTION_MS -
+  // (Date.now() - start)" hisoblanardi. Brauzer tab fon rejimida (foydalanuvchi boshqa oyna/
+  // tab'ga o'tsa) setInterval'ni cheklaydi yoki butunlay to'xtatadi — lekin Date.now() farqi
+  // haqiqiy (soat bo'yicha) vaqtni ko'rsataveradi. Natijada tab qayta faollashganda "remaining"
+  // darrov manfiy chiqib, bir nechta savol ketma-ket "vaqt tugadi" deb belgilanardi — foydalanuvchi
+  // to'g'ri javob bergan bo'lsa ham, yuraklar bir zumda tugab qolardi (aynan xabar qilingan xato).
+  // Tuzatish: fon rejimidagi vaqtni HISOBLAMASLIK — har tikda faqat OLDINGI tikdan beri o'tgan
+  // vaqt qo'shiladi, va tab yashirin bo'lgan payt bu farq 0 deb olinadi.
   useEffect(() => {
     if (!active || !question || selected || finished) return;
     setTimeLeft(TIME_PER_QUESTION_MS);
-    const start = Date.now();
+    let remaining = TIME_PER_QUESTION_MS;
+    let lastTick = Date.now();
+
+    // Tab yashirin↔ko'rinadigan holatga o'tgan zahoti "lastTick"ni yangilaymiz — shunda
+    // setInterval qayta faollashgach kelgan birinchi tik ham noto'g'ri katta farqni
+    // hisoblamaydi (brauzer intervalni yashirin paytda "navbatga qo'yib", ko'rinadigan
+    // bo'lgach bittalab bajarishi mumkin — shu holatda ham himoyalaydi).
+    const resync = () => {
+      lastTick = Date.now();
+    };
+    document.addEventListener('visibilitychange', resync);
+
     const interval = setInterval(() => {
-      const remaining = TIME_PER_QUESTION_MS - (Date.now() - start);
+      const now = Date.now();
+      if (!document.hidden) remaining -= now - lastTick;
+      lastTick = now;
+
       if (remaining <= 0) {
         clearInterval(interval);
         setTimeLeft(0);
@@ -136,7 +159,11 @@ export default function SpeedQuiz() {
         setTimeLeft(remaining);
       }
     }, TICK_MS);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', resync);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question, active, selected, finished]);
 
@@ -158,6 +185,7 @@ export default function SpeedQuiz() {
         onRangeChange={setRange}
         onSubmit={startGame}
         buttonLabel="O'yinni boshlash"
+        maxWords={activeCategory.words?.length || 0}
       />
     );
   }

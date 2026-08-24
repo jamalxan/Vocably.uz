@@ -2,6 +2,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2, Flag } from 'lucide-react';
 
+// Qiymatlar (`value`) API/DB status maydoni bilan bir xil bo'lishi kerak — faqat ko'rinadigan
+// yorliq (`label`) o'zbekchaga tarjima qilingan, admin panelning qolgan qismi bilan izchillik uchun.
+const STATUS_FILTERS = [
+  { value: 'open', label: 'Ochiq' },
+  { value: 'reviewed', label: "Ko'rildi" },
+  { value: 'actioned', label: 'Chora ko\'rildi' },
+  { value: 'all', label: 'Barchasi' },
+];
+
 export default function ReportsQueue({ token }) {
   const [reports, setReports] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
@@ -52,15 +61,15 @@ export default function ReportsQueue({ token }) {
   return (
     <div>
       <div className="flex gap-2 mb-5">
-        {['open', 'reviewed', 'actioned', 'all'].map((s) => (
+        {STATUS_FILTERS.map(({ value, label }) => (
           <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
+            key={value}
+            onClick={() => setStatusFilter(value)}
             className={`px-4 py-2 rounded-xl text-xs font-medium tracking-wide transition-colors ${
-              statusFilter === s ? 'bg-accent text-on-accent shadow-glow' : 'bg-surface border border-border text-muted hover:text-primary'
+              statusFilter === value ? 'bg-accent text-on-accent shadow-glow' : 'bg-surface border border-border text-muted hover:text-primary'
             }`}
           >
-            {s}
+            {label}
           </button>
         ))}
       </div>

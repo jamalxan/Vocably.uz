@@ -124,6 +124,7 @@ export default function WritingTest() {
           onRangeChange={setWriteRange}
           onSubmit={startWriteTest}
           buttonLabel="Testni boshlash"
+          maxWords={activeCategory.words?.length || 0}
         />
       ) : (
         <form

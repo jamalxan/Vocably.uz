@@ -16,6 +16,8 @@ export default function WordTable() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [confirmState, setConfirmState] = useState(null); // { ids, words }
   const [undoState, setUndoState] = useState(null); // { categoryId, words }
+  const [addError, setAddError] = useState('');
+  const [adding, setAdding] = useState(false);
   const undoTimerRef = useRef(null);
 
   const words = activeCategory.words || [];
@@ -34,11 +36,21 @@ export default function WordTable() {
 
   useEffect(() => () => clearTimeout(undoTimerRef.current), []);
 
-  const onAddWord = (e) => {
+  const onAddWord = async (e) => {
     e?.preventDefault();
-    handleAddWord(newWord, newSyns);
-    setNewWord('');
-    setNewSyns('');
+    if (!newWord.trim() || !newSyns.trim()) {
+      setAddError("So'z va sinonim/tarjima maydonlari to'ldirilishi kerak");
+      return;
+    }
+    setAddError('');
+    setAdding(true);
+    try {
+      await handleAddWord(newWord, newSyns);
+      setNewWord('');
+      setNewSyns('');
+    } finally {
+      setAdding(false);
+    }
   };
 
   const toggleSelect = (id) => {
@@ -88,36 +100,50 @@ export default function WordTable() {
     <div className="space-y-5 sm:space-y-6">
       <form
         onSubmit={onAddWord}
-        className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-end"
+        className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-3"
       >
-        <div className="flex-1 w-full">
-          <label className="block text-[10px] font-semibold text-muted uppercase mb-1">Yangi so'z</label>
-          <input
-            type="text"
-            placeholder="Masalan: Start"
-            value={newWord}
-            onChange={(e) => setNewWord(e.target.value)}
-            className="w-full px-3 py-2 border border-border rounded-lg text-sm outline-none focus:border-accent"
-          />
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-end">
+          <div className="flex-1 w-full">
+            <label className="block text-[10px] font-semibold text-muted uppercase mb-1">Yangi so'z</label>
+            <input
+              type="text"
+              placeholder="Masalan: Start"
+              value={newWord}
+              onChange={(e) => {
+                setNewWord(e.target.value);
+                if (addError) setAddError('');
+              }}
+              className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:border-accent ${
+                addError && !newWord.trim() ? 'border-red-300' : 'border-border'
+              }`}
+            />
+          </div>
+          <div className="flex-[2] w-full">
+            <label className="block text-[10px] font-semibold text-muted uppercase mb-1">
+              Sinonimlar / tarjima, vergul bilan
+            </label>
+            <input
+              type="text"
+              placeholder="Masalan: begin, commence, launch"
+              value={newSyns}
+              onChange={(e) => {
+                setNewSyns(e.target.value);
+                if (addError) setAddError('');
+              }}
+              className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:border-accent ${
+                addError && !newSyns.trim() ? 'border-red-300' : 'border-border'
+              }`}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={adding}
+            className="px-5 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-white font-semibold rounded-lg text-sm transition-colors whitespace-nowrap"
+          >
+            {adding ? 'Qo\'shilmoqda...' : "Qo'shish"}
+          </button>
         </div>
-        <div className="flex-[2] w-full">
-          <label className="block text-[10px] font-semibold text-muted uppercase mb-1">
-            Sinonimlar / tarjima, vergul bilan
-          </label>
-          <input
-            type="text"
-            placeholder="Masalan: begin, commence, launch"
-            value={newSyns}
-            onChange={(e) => setNewSyns(e.target.value)}
-            className="w-full px-3 py-2 border border-border rounded-lg text-sm outline-none focus:border-accent"
-          />
-        </div>
-        <button
-          type="submit"
-          className="px-5 py-2.5 bg-accent hover:bg-accent-hover text-white font-semibold rounded-lg text-sm transition-colors whitespace-nowrap"
-        >
-          Qo'shish
-        </button>
+        {addError && <p className="text-xs text-red-600 font-medium">{addError}</p>}
       </form>
 
       {/* Qidiruv jonli filtrlaydi — Enter bosilganda sahifa yangilanib ketmasligi kerak. */}

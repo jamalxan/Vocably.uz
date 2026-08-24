@@ -44,7 +44,13 @@ export default function FlashcardMode() {
 
   if (!active) {
     return (
-      <RangeSetupForm title="Kartochka oraliqlari" range={range} onRangeChange={setRange} onSubmit={startFlashcards} />
+      <RangeSetupForm
+        title="Kartochka oraliqlari"
+        range={range}
+        onRangeChange={setRange}
+        onSubmit={startFlashcards}
+        maxWords={activeCategory.words?.length || 0}
+      />
     );
   }
 
