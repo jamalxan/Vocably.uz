@@ -182,19 +182,26 @@ export const ReviewEvent = mongoose.models.ReviewEvent || mongoose.model('Review
 // ============================================================================
 
 // Ikki foydalanuvchi orasidagi bitta doimiy suhbat. `participantIds` doim
-// ObjectId qiymatlari bo'yicha saralangan holda saqlanadi — shu tufayli
-// (A,B) va (B,A) uchun bitta hujjatgina bo'lishini unique indeks kafolatlaydi.
+// ObjectId qiymatlari bo'yicha saralangan holda saqlanadi.
+// `pairKey` — "kichikId_kattaId" ko'rinishidagi hosila maydon, (A,B)/(B,A) uchun
+// bitta hujjatgina bo'lishini shu orqali ta'minlaymiz. MUHIM: buni to'g'ridan-to'g'ri
+// `participantIds` massivi ustida `unique: true` bilan qilib bo'lmaydi — Mongo'da
+// massiv ustidagi unique indeks butun massivni emas, HAR BIR ELEMENTNI alohida
+// (collection bo'yicha) unique qiladi, ya'ni bitta user faqat BITTA suhbatda
+// qatnasha oladigan bo'lib qolardi. Shuning uchun oddiy skalyar `pairKey`ga unique
+// qo'yamiz, `participantIds`dagi indeks esa faqat "mening suhbatlarim" so'rovi uchun
+// (unique emas, multikey qidiruv).
 const ConversationSchema = new mongoose.Schema({
   participantIds: {
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     required: true,
     validate: (v) => Array.isArray(v) && v.length === 2,
   },
+  pairKey: { type: String, required: true, unique: true },
   lastMessageAt: { type: Date, default: Date.now },
   lastMessagePreview: { type: String, default: '', trim: true },
   createdAt: { type: Date, default: Date.now },
 });
-ConversationSchema.index({ participantIds: 1 }, { unique: true });
 // Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
 // yangisi birinchi (src/app/api/chat/conversations); (2) admin panelning BARCHA
 // suhbatlar ro'yxati, eng yangisi birinchi (src/app/api/admin/chat/conversations).

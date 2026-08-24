@@ -8,6 +8,10 @@ function sortedPair(a, b) {
   return [String(a), String(b)].sort();
 }
 
+function pairKey(a, b) {
+  return sortedPair(a, b).join('_');
+}
+
 export async function GET(req) {
   try {
     const { error, status, user } = await requireChatUser(req);
@@ -73,9 +77,21 @@ export async function POST(req) {
     if (blocked) return NextResponse.json({ error: 'Ushbu foydalanuvchi bilan suhbat mavjud emas' }, { status: 403 });
 
     const participantIds = sortedPair(user._id, target._id);
-    let convo = await Conversation.findOne({ participantIds }).lean();
+    const key = pairKey(user._id, target._id);
+    let convo = await Conversation.findOne({ pairKey: key }).lean();
     if (!convo) {
-      convo = await Conversation.create({ participantIds });
+      try {
+        convo = await Conversation.create({ participantIds, pairKey: key });
+      } catch (createErr) {
+        // Poyga holati: ikkalasi bir vaqtda "Yozish"ni bossa, unique pairKey
+        // ikkinchisini E11000 bilan qaytaradi — bu holatda allaqachon yaratilgan
+        // hujjatni topib qaytaramiz, xato emas.
+        if (createErr?.code === 11000) {
+          convo = await Conversation.findOne({ pairKey: key }).lean();
+        } else {
+          throw createErr;
+        }
+      }
     }
 
     return NextResponse.json({
