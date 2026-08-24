@@ -1,5 +1,5 @@
 import '@/app/globals.css';
-import { Plus_Jakarta_Sans, Inter, Playfair_Display } from 'next/font/google';
+import { Plus_Jakarta_Sans, Inter, Playfair_Display, IBM_Plex_Mono } from 'next/font/google';
 
 const display = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -24,6 +24,18 @@ const luxury = Playfair_Display({
   display: 'swap',
 });
 
+// Statistika raqamlari, IPA, ID kabi "tabular" matnlar uchun — Tailwind'ning
+// standart font-mono (generik tizim shrifti, system-ui bilan bir xil darajada
+// "arzon" ko'rinadi) o'rniga brendning o'z premium mono shrifti (tailwind.config.js
+// bu klaviaturani 'mono' kaliti ostida almashtiradi — mavjud font-mono ishlatgan
+// barcha joylar avtomatik yangilanadi, komponentlarni o'zgartirish shart emas).
+const mono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-mono',
+  display: 'swap',
+});
+
 export const metadata = {
   title: "Vocably — Ingliz tili yordamchisi",
   description: "Ingliz tilini o'rganish uchun AI yordamchili shaxsiy lug'at platformasi",
@@ -40,7 +52,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable}`}>
+    <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable} ${mono.variable}`}>
       <body className="bg-bg text-primary min-h-screen antialiased font-body">
         {children}
       </body>
