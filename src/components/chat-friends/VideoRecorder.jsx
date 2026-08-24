@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Video, Square, X } from 'lucide-react';
+import { mediaErrorMessage } from '@/lib/mediaError';
 
 const MAX_SECONDS = 60; // Telegram uslubidagi qisqa "video xabar" — 1 daqiqagacha
 
@@ -52,8 +53,8 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
             return s + 1;
           });
         }, 1000);
-      } catch {
-        alert('Kamera/mikrofonga ruxsat berilmadi');
+      } catch (err) {
+        alert(mediaErrorMessage(err, 'Kamera/mikrofon'));
         onCancel();
       }
     })();

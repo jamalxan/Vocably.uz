@@ -1,10 +1,11 @@
 'use client';
 import { useState } from 'react';
-import { Download, FileText, Flag } from 'lucide-react';
+import { Download, FileText, Flag, Pencil, Trash2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
 import { findSticker } from '@/lib/stickers';
 import { useChat } from '@/context/ChatContext';
+import DeleteMessageModal from './DeleteMessageModal';
 
 function ImageBubble({ media }) {
   const { token } = useApp();
@@ -80,11 +81,14 @@ function isEmojiOnly(text) {
 }
 
 export default function MessageBubble({ message, isMine }) {
-  const { reportTarget } = useChat();
+  const { reportTarget, activeConversation, startEditMessage, deleteMessage } = useChat();
   const [reported, setReported] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const sticker = message.type === 'sticker' ? findSticker(message.stickerId) : null;
-  const emojiOnly = message.type === 'text' && isEmojiOnly(message.text);
+  const deleted = !!message.deletedForEveryone;
+  const emojiOnly = !deleted && message.type === 'text' && isEmojiOnly(message.text);
 
   const handleReport = async () => {
     const reason = window.prompt("Shikoyat sababi:");
@@ -93,7 +97,16 @@ export default function MessageBubble({ message, isMine }) {
     if (ok) setReported(true);
   };
 
-  const isPlain = message.type === 'sticker' || emojiOnly;
+  const handleDelete = async (forEveryone) => {
+    setDeleting(true);
+    const res = await deleteMessage(message.id || message._id, forEveryone);
+    setDeleting(false);
+    if (res.error) alert(res.error);
+    else setDeleteOpen(false);
+  };
+
+  const isPlain = !deleted && (message.type === 'sticker' || emojiOnly);
+  const canEdit = isMine && message.type === 'text' && !deleted;
 
   return (
     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
@@ -103,34 +116,76 @@ export default function MessageBubble({ message, isMine }) {
             isPlain
               ? ''
               : `rounded-2xl px-3.5 py-2.5 text-sm ${
-                  isMine ? 'bg-accent text-white rounded-br-md' : 'bg-bg text-primary rounded-bl-md'
+                  deleted
+                    ? 'bg-transparent border border-dashed border-border text-muted italic'
+                    : isMine
+                      ? 'bg-accent text-white rounded-br-md'
+                      : 'bg-bg text-primary rounded-bl-md'
                 }`
           }
         >
-          {message.type === 'text' && (
-            <p className={`whitespace-pre-wrap break-words font-chat ${emojiOnly ? 'text-4xl leading-tight' : ''}`}>
-              {message.text}
+          {deleted ? (
+            <p className="flex items-center gap-1.5">
+              <Trash2 size={13} /> Xabar o'chirildi
             </p>
+          ) : (
+            <>
+              {message.type === 'text' && (
+                <p className={`whitespace-pre-wrap break-words font-chat ${emojiOnly ? 'text-4xl leading-tight' : ''}`}>
+                  {message.text}
+                </p>
+              )}
+              {message.type === 'sticker' && sticker && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={sticker.file} alt={sticker.label} className="w-24 h-24" />
+              )}
+              {message.type === 'image' && <ImageBubble media={message.media} />}
+              {message.type === 'video' && <VideoBubble media={message.media} />}
+              {message.type === 'voice' && <VoiceBubble media={message.media} />}
+              {message.type === 'file' && <FileBubble media={message.media} />}
+              {message.edited && (
+                <span className={`block text-[10px] mt-0.5 ${isMine ? 'text-white/60' : 'text-muted'}`}>
+                  tahrirlangan
+                </span>
+              )}
+            </>
           )}
-          {message.type === 'sticker' && sticker && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={sticker.file} alt={sticker.label} className="w-24 h-24" />
-          )}
-          {message.type === 'image' && <ImageBubble media={message.media} />}
-          {message.type === 'video' && <VideoBubble media={message.media} />}
-          {message.type === 'voice' && <VoiceBubble media={message.media} />}
-          {message.type === 'file' && <FileBubble media={message.media} />}
         </div>
-        {!isMine && !reported && (
-          <button
-            onClick={handleReport}
-            title="Shikoyat qilish"
-            className="opacity-0 group-hover:opacity-100 p-1 text-muted hover:text-accent transition-opacity flex-shrink-0"
-          >
-            <Flag size={12} />
-          </button>
+
+        {!deleted && (
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+            {canEdit && (
+              <button
+                onClick={() => startEditMessage(message)}
+                title="Tahrirlash"
+                className="p-1 text-muted hover:text-accent transition-colors"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            <button
+              onClick={() => setDeleteOpen(true)}
+              title="O'chirish"
+              className="p-1 text-muted hover:text-accent transition-colors"
+            >
+              <Trash2 size={12} />
+            </button>
+            {!isMine && !reported && (
+              <button onClick={handleReport} title="Shikoyat qilish" className="p-1 text-muted hover:text-accent transition-colors">
+                <Flag size={12} />
+              </button>
+            )}
+          </div>
         )}
       </div>
+
+      <DeleteMessageModal
+        open={deleteOpen}
+        canDeleteForEveryone={isMine}
+        otherUsername={activeConversation?.otherUser?.username}
+        onConfirm={deleting ? undefined : handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </div>
   );
 }

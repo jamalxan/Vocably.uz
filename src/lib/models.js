@@ -216,7 +216,19 @@ const MessageSchema = new mongoose.Schema({
   media: { type: MessageMediaSchema, default: null },
   stickerId: { type: String, default: null }, // src/lib/stickers.js manifest'idagi statik id
   readAt: { type: Date, default: null },
+  // Telegram uslubidagi ikki xil o'chirish: `deletedFor` — faqat shu ro'yxatdagi
+  // foydalanuvchi(lar) o'z tarafidan ko'rmaydi (boshqa tomon xabarni odatdagidek
+  // ko'radi); `deletedForEveryone` — ikkala tomondan ham (faqat o'z xabarini yubor-
+  // gan kishi tanlashi mumkin). Hech biri hujjatni haqiqatan o'chirmaydi — admin
+  // panelda audit uchun to'liq matn/holat saqlanib qoladi.
+  deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   deletedForEveryone: { type: Boolean, default: false },
+  // Tahrirlash: oddiy foydalanuvchi chatida faqat "tahrirlangan" belgisi ko'rinadi
+  // (eski matn ko'rsatilmaydi), lekin admin panelda audit uchun ikkalasi ham kerak —
+  // shuning uchun `originalText` birinchi tahrirdan oldingi holatni saqlaydi.
+  edited: { type: Boolean, default: false },
+  editedAt: { type: Date, default: null },
+  originalText: { type: String, default: null },
   flagged: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });

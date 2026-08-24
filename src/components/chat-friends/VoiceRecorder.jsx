@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Square, X } from 'lucide-react';
+import { mediaErrorMessage } from '@/lib/mediaError';
 
 // MediaRecorder API'ga tayanadi — Safari/iOS'da ba'zi formatlarda cheklov bo'lishi
 // mumkin, haqiqiy qurilmada sinash tavsiya etiladi (docs/ chat plani, "Frontend" bo'limi).
@@ -30,8 +31,8 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
       setRecording(true);
       setSeconds(0);
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    } catch {
-      alert('Mikrofonga ruxsat berilmadi');
+    } catch (err) {
+      alert(mediaErrorMessage(err, 'Mikrofon'));
       onCancel();
     }
   };

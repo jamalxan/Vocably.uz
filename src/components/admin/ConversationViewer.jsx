@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, ArrowLeft, MessageSquareText, Image as ImageIcon, Video, Mic, Paperclip, Flag } from 'lucide-react';
+import { Loader2, ArrowLeft, MessageSquareText, Image as ImageIcon, Video, Mic, Paperclip, Flag, Pencil, Trash2 } from 'lucide-react';
 
 const TYPE_ICON = { image: ImageIcon, video: Video, voice: Mic, file: Paperclip, text: MessageSquareText };
 
@@ -119,11 +119,31 @@ export default function ConversationViewer({ token }) {
                         : 'bg-accent text-on-accent rounded-br-md'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-wide opacity-70">
+                    <div className="flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-wide opacity-70 flex-wrap">
                       <Icon size={11} />
                       {m.type}
                       {m.flagged && <Flag size={11} className="ml-1" />}
+                      {m.edited && (
+                        <span className="flex items-center gap-0.5 normal-case text-amber-600">
+                          <Pencil size={10} /> tahrirlangan
+                        </span>
+                      )}
+                      {m.deletedForEveryone && (
+                        <span className="flex items-center gap-0.5 normal-case text-red-600">
+                          <Trash2 size={10} /> hammadan o'chirilgan
+                        </span>
+                      )}
+                      {!m.deletedForEveryone && m.deletedFor?.length > 0 && (
+                        <span className="normal-case text-muted">
+                          ({m.deletedFor.length} tarafdan o'chirilgan)
+                        </span>
+                      )}
                     </div>
+                    {m.edited && m.originalText && (
+                      <p className="text-[11px] text-muted/70 line-through whitespace-pre-wrap break-words mb-1">
+                        {m.originalText}
+                      </p>
+                    )}
                     {m.type === 'text' && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
                     {m.type === 'sticker' && <p className="opacity-80">stiker: {m.stickerId}</p>}
                     {['image', 'video', 'voice', 'file'].includes(m.type) && (

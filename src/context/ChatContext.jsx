@@ -13,8 +13,10 @@ export function ChatProvider({ token, children }) {
   const [activeConversation, setActiveConversation] = useState(null); // { id, otherUser }
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [stickerPacks, setStickerPacks] = useState([]);
   const [socketConnected, setSocketConnected] = useState(false);
+  // Composer'da "tahrirlash rejimi" — xabar matni inputga qaytariladi, yuborish
+  // o'rniga saqlash (PATCH) chaqiriladi. Faqat o'z matnli xabarlariga tegishli.
+  const [editingMessage, setEditingMessage] = useState(null); // { id, text }
 
   const socketRef = useRef(null);
   const pollRef = useRef(null);
@@ -94,6 +96,7 @@ export function ChatProvider({ token, children }) {
   const selectConversation = useCallback(
     (conv) => {
       setActiveConversation(conv);
+      setEditingMessage(null);
       loadMessages(conv.id);
     },
     [loadMessages]
@@ -102,6 +105,7 @@ export function ChatProvider({ token, children }) {
   const closeConversation = useCallback(() => {
     setActiveConversation(null);
     setMessages([]);
+    setEditingMessage(null);
   }, []);
 
   const appendMessage = useCallback((msg) => {
@@ -127,6 +131,70 @@ export function ChatProvider({ token, children }) {
       }
     },
     [activeConversation, authHeaders, appendMessage, loadConversations]
+  );
+
+  const editMessage = useCallback(
+    async (messageId, text) => {
+      if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
+      try {
+        const res = await fetch(`/api/chat/conversations/${activeConversation.id}/messages/${messageId}`, {
+          method: 'PATCH',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (!res.ok) return { error: data.error || 'Tahrirlanmadi' };
+        setMessages((prev) => prev.map((m) => (String(m.id || m._id) === String(messageId) ? data.message : m)));
+        loadConversations();
+        setEditingMessage(null);
+        return { message: data.message };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [activeConversation, authHeaders, loadConversations]
+  );
+
+  const startEditMessage = useCallback((message) => {
+    setEditingMessage({ id: message.id || message._id, text: message.text || '' });
+  }, []);
+  const cancelEditMessage = useCallback(() => setEditingMessage(null), []);
+
+  // `forEveryone` bo'lmasa — faqat shu ro'yxatdan (mahalliy holatdan) olib tashlaymiz,
+  // chunki server ham xuddi shunday: boshqa tomon hali ko'raveradi. `forEveryone`da esa
+  // server "deletedForEveryone" bilan belgilaydi — mahalliyda ham shu holatga o'tkazamiz
+  // (butunlay olib tashlamaymiz, "xabar o'chirildi" ko'rinishi saqlanadi).
+  const deleteMessage = useCallback(
+    async (messageId, forEveryone) => {
+      if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
+      try {
+        const res = await fetch(`/api/chat/conversations/${activeConversation.id}/messages/${messageId}`, {
+          method: 'DELETE',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ forEveryone: !!forEveryone }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          return { error: data.error || "O'chirilmadi" };
+        }
+        if (forEveryone) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              String(m.id || m._id) === String(messageId)
+                ? { ...m, deletedForEveryone: true, text: '', media: null, stickerId: null }
+                : m
+            )
+          );
+        } else {
+          setMessages((prev) => prev.filter((m) => String(m.id || m._id) !== String(messageId)));
+        }
+        loadConversations();
+        return { success: true };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [activeConversation, authHeaders, loadConversations]
   );
 
   const uploadAndSend = useCallback(
@@ -200,10 +268,6 @@ export function ChatProvider({ token, children }) {
 
   useEffect(() => {
     loadConversations();
-    fetch('/api/chat/stickers', { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((d) => setStickerPacks(d.packs || []))
-      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -240,13 +304,17 @@ export function ChatProvider({ token, children }) {
     activeConversation,
     messages,
     loadingMessages,
-    stickerPacks,
     socketConnected,
     loadConversations,
     selectConversation,
     closeConversation,
     openConversationByUsername,
     sendMessage,
+    editMessage,
+    deleteMessage,
+    editingMessage,
+    startEditMessage,
+    cancelEditMessage,
     uploadAndSend,
     loadOlderMessages,
     searchUsername,

@@ -29,12 +29,23 @@ export async function GET(req, { params }) {
     if (!convo) return NextResponse.json({ error: 'Suhbat topilmadi' }, { status: 404 });
 
     const before = req.nextUrl.searchParams.get('before');
-    const query = { conversationId: convo._id };
+    // O'zi "faqat men uchun" o'chirgan xabarlarini butunlay ko'rmaydi (boshqa tomon
+    // odatdagidek ko'raveradi) — shuning uchun query darajasida filtrlanadi.
+    const query = { conversationId: convo._id, deletedFor: { $ne: user._id } };
     if (before) query.createdAt = { $lt: new Date(before) };
 
     const messages = await Message.find(query).sort({ createdAt: -1 }).limit(50).lean();
 
-    return NextResponse.json({ messages: messages.reverse() });
+    // Ikkala tomondan o'chirilgan xabar hujjati saqlanib qoladi (admin audit uchun),
+    // lekin oddiy foydalanuvchiga haqiqiy matn/media o'rniga faqat belgisi ko'rsatiladi —
+    // xabarning joylashuvi (vaqt tartibi) suhbatda saqlanib qoladi, Telegram'dagidek.
+    const sanitized = messages.map((m) =>
+      m.deletedForEveryone
+        ? { ...m, text: '', media: null, stickerId: null, originalText: undefined }
+        : { ...m, originalText: undefined }
+    );
+
+    return NextResponse.json({ messages: sanitized.reverse() });
   } catch (err) {
     return serverError(err, 'chat/messages GET');
   }
