@@ -125,6 +125,23 @@ export function ChatProvider({ token, children }) {
     setMessages((prev) => (prev.some((m) => String(m.id || m._id) === String(msg.id || msg._id)) ? prev : [...prev, msg]));
   }, []);
 
+  // Suhbat ochiq turganda jonli (socket) xabar kelganda chaqiriladi — GET /messages
+  // har safar qayta so'ralmaydi (socket ulangan bo'lsa poll o'chiq), shuning uchun
+  // "o'qildi" belgisini shu yengil so'rov bilan darhol qo'yamiz (src/lib/chatRead.js).
+  const markRead = useCallback(
+    async (conversationId) => {
+      try {
+        await fetch(`/api/chat/conversations/${conversationId}/read`, {
+          method: 'PATCH',
+          headers: authHeaders(),
+        });
+      } catch {
+        // jimgina — keyingi safar suhbat qayta ochilganda/yuklanganda baribir belgilanadi
+      }
+    },
+    [authHeaders]
+  );
+
   const sendMessage = useCallback(
     async (payload) => {
       if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
@@ -388,8 +405,19 @@ export function ChatProvider({ token, children }) {
     });
     socket.on('disconnect', () => setSocketConnected(false));
     socket.on('message:new', ({ conversationId, message }) => {
-      if (String(conversationId) === String(activeIdRef.current)) appendMessage(message);
+      if (String(conversationId) === String(activeIdRef.current)) {
+        appendMessage(message);
+        // Suhbat hozir ochiq turibdi — kelgan zahoti "o'qildi" deb belgilaymiz
+        // (Telegram uslubi: chat ochiq bo'lsa yangi xabar darhol o'qilgan hisoblanadi).
+        markRead(conversationId);
+      }
       loadConversations();
+    });
+    // Men yuborgan xabar(lar) boshqa tomonda o'qilganda kelib, bitta ptichkani
+    // ikkitaga aylantiradi — faqat hozir ochiq suhbatga tegishli bo'lsa.
+    socket.on('message:read', ({ conversationId, readAt } = {}) => {
+      if (!conversationId || String(conversationId) !== String(activeIdRef.current)) return;
+      setMessages((prev) => prev.map((m) => (m.readAt ? m : { ...m, readAt })));
     });
     socket.on('presence:update', ({ userId, online }) => {
       setLivePresence((prev) => ({ ...prev, [String(userId)]: online }));

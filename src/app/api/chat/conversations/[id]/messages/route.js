@@ -1,11 +1,13 @@
 import { connectToDatabase } from '@/lib/db';
 import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
-import { Conversation, Message, Block, Notification } from '@/lib/models';
+import { Conversation, Message, Block, User } from '@/lib/models';
 import { findSticker } from '@/lib/stickers';
 import { objectExists } from '@/lib/s3';
 import { pushNewMessage } from '@/lib/realtime';
 import { sendPushToUser } from '@/lib/webPush';
+import { markConversationRead } from '@/lib/chatRead';
+import { sendMessage as sendTelegramMessage, escapeHtml } from '@/lib/telegram';
 import { NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
@@ -35,6 +37,17 @@ export async function GET(req, { params }) {
     if (before) query.createdAt = { $lt: new Date(before) };
 
     const messages = await Message.find(query).sort({ createdAt: -1 }).limit(50).lean();
+
+    // Suhbatni ochish/qayta yuklash = o'qish: boshqa tomon yozgan va hali `readAt`
+    // belgilanmagan xabarlarni shu yerda "o'qildi" deb belgilaymiz (javobni bloklamaydi).
+    // Faqat SHU (oddiy foydalanuvchi) endpointi shunday qiladi — admin panelning
+    // suhbatni ko'rish endpointi buni chaqirmaydi (src/lib/chatRead.js izohiga qarang).
+    const otherIdForRead = convo.participantIds.find((id) => String(id) !== String(user._id));
+    if (otherIdForRead) {
+      markConversationRead(convo._id, user._id, otherIdForRead).catch((err) =>
+        console.error('[chat] o\'qilgan deb belgilanmadi', err)
+      );
+    }
 
     // Ikkala tomondan o'chirilgan xabar hujjati saqlanib qoladi (admin audit uchun),
     // lekin oddiy foydalanuvchiga haqiqiy matn/media o'rniga faqat belgisi ko'rsatiladi —
@@ -141,22 +154,39 @@ export async function POST(req, { params }) {
       createdAt: message.createdAt,
     });
 
-    // Bildirishnoma (qo'ng'iroq belgisi) + brauzer push — javobni bloklamaydi, xato
-    // bo'lsa faqat log qilinadi (xabarning o'zi allaqachon saqlangan). Qabul qiluvchi
-    // shu suhbatni "ovozsiz" qilgan bo'lsa (mutedBy) — hech qanday bildirishnoma/push
-    // yubormaymiz, lekin xabarning o'zi (realtime/poll orqali) odatdagidek yetib boradi;
-    // yuboruvchi bu haqda hech narsa bilmaydi — API javobi ikkala holatda ham bir xil.
+    // Brauzer push — javobni bloklamaydi, xato bo'lsa faqat log qilinadi (xabarning
+    // o'zi allaqachon saqlangan). Qabul qiluvchi shu suhbatni "ovozsiz" qilgan bo'lsa
+    // (mutedBy) — hech qanday push yubormaymiz, lekin xabarning o'zi (realtime/poll
+    // orqali) odatdagidek yetib boradi; yuboruvchi bu haqda hech narsa bilmaydi — API
+    // javobi ikkala holatda ham bir xil. Ilova ichidagi qo'ng'iroq belgisida (Notification
+    // hujjati) chat xabarlari uchun ATAYLAB endi bildirishnoma yaratilmaydi — buning
+    // o'rniga adminga Telegram orqali xabar boradi (pastga qarang).
+    const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
     const recipientMuted = (convo.mutedBy || []).some((id) => String(id) === String(otherId));
     if (!recipientMuted) {
-      const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
-      Notification.create({
-        userId: otherId,
-        type: 'chat_message',
-        title: senderLabel,
-        body: preview,
-        link: String(convo._id),
-      }).catch((err) => console.error('[notification] chat_message yozilmadi', err));
       sendPushToUser(otherId, { title: senderLabel, body: preview, url: '/dashboard' }).catch(() => {});
+    }
+
+    // Admin nazorati uchun Telegram xabari — foydalanuvchining shaxsiy "ovozsiz"
+    // sozlamasidan qat'iy nazar HAR DOIM yuboriladi (bu recipientga emas, adminga
+    // boradi). ATAYLAB faqat "kim kimga yozdi" deyiladi — xabarning haqiqiy matni/
+    // mazmuni (`preview`) hech qachon Telegram'ga chiqarilmaydi (foydalanuvchi
+    // yozishmalari maxfiy qoladi, bu faqat "yangi xabar bor" signalidir).
+    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+    if (adminChatId) {
+      User.findById(otherId)
+        .select('username name')
+        .lean()
+        .then((recipient) => {
+          const recipientLabel = recipient?.username
+            ? `@${recipient.username}`
+            : recipient?.name || 'Foydalanuvchi';
+          return sendTelegramMessage(
+            adminChatId,
+            `💬 ${escapeHtml(senderLabel)} → ${escapeHtml(recipientLabel)} ga xabar yozdi.`
+          );
+        })
+        .catch((err) => console.error('[telegram] admin chat xabari yuborilmadi', err));
     }
 
     return NextResponse.json({ message });

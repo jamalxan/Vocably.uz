@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Download, FileText, Flag, Pencil, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, Download, FileText, Flag, Pencil, Trash2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
 import { findSticker } from '@/lib/stickers';
@@ -197,7 +197,16 @@ export default function MessageBubble({ message, isMine }) {
         )}
       </div>
 
-      <span className="text-[10px] text-muted mt-0.5 px-1 select-none">{formatMessageTime(message.createdAt)}</span>
+      <span className="flex items-center gap-0.5 text-[10px] text-muted mt-0.5 px-1 select-none">
+        {formatMessageTime(message.createdAt)}
+        {isMine && !deleted && (
+          message.readAt ? (
+            <CheckCheck size={13} className="text-accent" />
+          ) : (
+            <Check size={13} />
+          )
+        )}
+      </span>
       </div>
 
       <DeleteMessageModal

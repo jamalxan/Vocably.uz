@@ -26,6 +26,30 @@ export async function pushNewMessage(recipientId, conversationId, message) {
   }
 }
 
+// Xabar(lar) o'qilgan deb belgilangandan keyin ASL yuboruvchiga chaqiriladi — uning
+// ochiq socket'iga real-vaqtda "o'qildi" hodisasini yetkazadi (bitta ptichka -> ikkita).
+// pushNewMessage kabi ixtiyoriy: xizmat o'chiq bo'lsa jimgina o'tkazib yuboriladi,
+// keyingi safar suhbat qayta yuklanganda (`readAt` allaqachon Mongo'da) baribir to'g'ri ko'rinadi.
+export async function pushMessagesRead(userId, conversationId, readAt) {
+  const url = process.env.REALTIME_INTERNAL_URL;
+  const secret = process.env.REALTIME_SHARED_SECRET;
+  if (!url || !secret) return;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    await fetch(`${url.replace(/\/$/, '')}/internal/read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': secret },
+      body: JSON.stringify({ userId: String(userId), conversationId, readAt }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+  } catch (err) {
+    console.error('[realtime] read push yuborilmadi', err?.message || err);
+  }
+}
+
 export async function isUserOnline(userId) {
   const url = process.env.REALTIME_INTERNAL_URL;
   const secret = process.env.REALTIME_SHARED_SECRET;

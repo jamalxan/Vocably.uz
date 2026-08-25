@@ -102,6 +102,17 @@ app.post('/internal/emit', requireInternalSecret, (req, res) => {
   res.json({ ok: true });
 });
 
+// Next.js API xabar(lar)ni "o'qildi" deb belgilagandan keyin shu yerga chaqiradi —
+// asl yuboruvchining xonasiga forward qilinadi, u o'z ekranida ptichkani darhol yangilaydi.
+app.post('/internal/read', requireInternalSecret, (req, res) => {
+  const { userId, conversationId, readAt } = req.body || {};
+  if (!userId || !conversationId || !readAt) {
+    return res.status(400).json({ error: 'userId, conversationId, readAt kerak' });
+  }
+  io.to(`user:${userId}`).emit('message:read', { conversationId, readAt });
+  res.json({ ok: true });
+});
+
 app.get('/internal/presence/:userId', requireInternalSecret, (req, res) => {
   res.json({ online: onlineCounts.has(String(req.params.userId)) });
 });
