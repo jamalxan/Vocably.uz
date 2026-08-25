@@ -1,7 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
-import { Conversation, Message, Block } from '@/lib/models';
+import { Conversation, Message, Block, User } from '@/lib/models';
 import { findSticker } from '@/lib/stickers';
 import { objectExists } from '@/lib/s3';
 import { pushNewMessage } from '@/lib/realtime';
@@ -167,15 +167,20 @@ export async function POST(req, { params }) {
       sendPushToUser(otherId, { title: senderLabel, body: preview, url: '/dashboard' }).catch(() => {});
     }
 
-    // Admin nazorati uchun Telegram xabari — foydalanuvchining shaxsiy "ovozsiz"
-    // sozlamasidan qat'iy nazar HAR DOIM yuboriladi. ATAYLAB butunlay umumiy: kim
-    // kimga yozgani, xabar turi yoki mazmuni (`preview`) hech qachon ko'rsatilmaydi —
-    // bu faqat "hozir kimdir kimgadir yozdi" degan sodda signal, hech qanday tafsilotsiz.
+    // Telegram xabari — FAQAT xabar aynan adminning o'ziga (qabul qiluvchi roli
+    // 'admin' bo'lganda) yozilganda yuboriladi, boshqa har qanday ikki foydalanuvchi
+    // suhbatlashganda EMAS (aks holda admin o'zi kimgadir yozganda ham unga bekorga
+    // bildirishnoma kelaverardi). Foydalanuvchining shaxsiy "ovozsiz" sozlamasidan
+    // qat'iy nazar yuboriladi. ATAYLAB butunlay umumiy: kim yozgani, xabar turi yoki
+    // mazmuni (`preview`) hech qachon ko'rsatilmaydi — faqat "sizga xabar keldi" signali.
     const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
     if (adminChatId) {
-      sendTelegramMessage(adminChatId, '💬 Sizga xabar keldi.').catch((err) =>
-        console.error('[telegram] admin chat xabari yuborilmadi', err)
-      );
+      const recipient = await User.findById(otherId).select('role').lean();
+      if (recipient?.role === 'admin') {
+        sendTelegramMessage(adminChatId, '💬 Sizga xabar keldi.').catch((err) =>
+          console.error('[telegram] admin chat xabari yuborilmadi', err)
+        );
+      }
     }
 
     return NextResponse.json({ message });
