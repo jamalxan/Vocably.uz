@@ -1,13 +1,13 @@
 import { connectToDatabase } from '@/lib/db';
 import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
-import { Conversation, Message, Block, User } from '@/lib/models';
+import { Conversation, Message, Block } from '@/lib/models';
 import { findSticker } from '@/lib/stickers';
 import { objectExists } from '@/lib/s3';
 import { pushNewMessage } from '@/lib/realtime';
 import { sendPushToUser } from '@/lib/webPush';
 import { markConversationRead } from '@/lib/chatRead';
-import { sendMessage as sendTelegramMessage, escapeHtml } from '@/lib/telegram';
+import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
 import { NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
@@ -168,25 +168,14 @@ export async function POST(req, { params }) {
     }
 
     // Admin nazorati uchun Telegram xabari — foydalanuvchining shaxsiy "ovozsiz"
-    // sozlamasidan qat'iy nazar HAR DOIM yuboriladi (bu recipientga emas, adminga
-    // boradi). ATAYLAB faqat "kim kimga yozdi" deyiladi — xabarning haqiqiy matni/
-    // mazmuni (`preview`) hech qachon Telegram'ga chiqarilmaydi (foydalanuvchi
-    // yozishmalari maxfiy qoladi, bu faqat "yangi xabar bor" signalidir).
+    // sozlamasidan qat'iy nazar HAR DOIM yuboriladi. ATAYLAB butunlay umumiy: kim
+    // kimga yozgani, xabar turi yoki mazmuni (`preview`) hech qachon ko'rsatilmaydi —
+    // bu faqat "hozir kimdir kimgadir yozdi" degan sodda signal, hech qanday tafsilotsiz.
     const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
     if (adminChatId) {
-      User.findById(otherId)
-        .select('username name')
-        .lean()
-        .then((recipient) => {
-          const recipientLabel = recipient?.username
-            ? `@${recipient.username}`
-            : recipient?.name || 'Foydalanuvchi';
-          return sendTelegramMessage(
-            adminChatId,
-            `💬 ${escapeHtml(senderLabel)} → ${escapeHtml(recipientLabel)} ga xabar yozdi.`
-          );
-        })
-        .catch((err) => console.error('[telegram] admin chat xabari yuborilmadi', err));
+      sendTelegramMessage(adminChatId, '💬 Sizga xabar keldi.').catch((err) =>
+        console.error('[telegram] admin chat xabari yuborilmadi', err)
+      );
     }
 
     return NextResponse.json({ message });

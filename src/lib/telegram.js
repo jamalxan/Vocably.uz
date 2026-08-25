@@ -16,16 +16,6 @@ export function getBotUsername() {
   return process.env.TELEGRAM_BOT_USERNAME || '';
 }
 
-// parse_mode: 'HTML' bilan yuborilayotgan xabarga foydalanuvchi kiritgan erkin matn
-// (ism, xabar matni va h.k.) qo'shilganda majburiy — aks holda matnda "<"/">" kabi
-// belgilar bo'lsa Telegram API xabarni butunlay rad etadi.
-export function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
 export function getTelegramDeepLink(sessionToken) {
   const username = getBotUsername();
   return `https://t.me/${username}?start=${sessionToken}`;
