@@ -18,12 +18,17 @@ async function loadConversationForUser(conversationId, userId) {
 // conversations/[id]/messages/[messageId]). Boshqa tomon hech narsani sezmaydi,
 // o'z ro'yxatida va tarixida hammasi odatdagidek qoladi.
 // `forEveryone: true` — ikkala tomon ro'yxatidan ham yashiriladi va BARCHA xabarlar
-// (kim yozganidan qat'iy nazar) deletedForEveryone bo'ladi — bu alohida xabarni
-// o'chirishdagi "faqat o'z xabaringizni" cheklovidan farqli, chunki bu butun suhbatni
-// ikkala tomon roziligisiz emas, aynan shu userning ochiq tanlovi bilan tozalaydi.
+// ikkala tomon uchun ham `deletedFor`ga qo'shiladi (kim yozganidan qat'iy nazar).
+// MUHIM: ataylab `deletedForEveryone` EMAS — o'sha bayroq GET /messages'da "Xabar
+// o'chirildi" bo'sh pufakcha (tombstone) sifatida qaytariladi, ya'ni suhbat qayta
+// ochilganda eski joylar bo'sh-o'chirilgan ko'rinishda qolib ketardi. Butun suhbatni
+// tozalashda esa maqsad — chindan ham "yangidan boshlanish": eski xabarlar hech qanday
+// iz qoldirmasdan butunlay yo'qolishi kerak (`deletedFor` GET so'rovda butunlay
+// filtrlab tashlaydi, tombstone ko'rsatmaydi).
 // Hujjatning o'zi (Conversation va Message'lar) hech qachon o'chirilmaydi — faqat
 // yashiriladi/belgilanadi, shuning uchun keyinroq (qidiruv orqali qayta yozilsa yoki
-// yangi xabar kelsa) hiddenFor'dan olib tashlanib, suhbat qaytadan ko'rinadi.
+// yangi xabar kelsa) hiddenFor'dan olib tashlanib, suhbat qaytadan ko'rinadi (admin
+// panelda esa filtrlanmasdan, to'liq holda hamon ko'rinadi).
 export async function DELETE(req, { params }) {
   try {
     const { error, status, user } = await requireChatUser(req);
@@ -37,22 +42,16 @@ export async function DELETE(req, { params }) {
     const body = await req.json().catch(() => ({}));
     const forEveryone = !!body.forEveryone;
     const otherId = convo.participantIds.find((id) => String(id) !== String(user._id));
+    const targets = forEveryone ? [user._id, otherId] : [user._id];
 
-    if (forEveryone) {
-      await Message.updateMany({ conversationId: convo._id }, { $set: { deletedForEveryone: true } });
-      const hidden = new Set((convo.hiddenFor || []).map((id) => String(id)));
-      hidden.add(String(user._id));
-      hidden.add(String(otherId));
-      convo.hiddenFor = Array.from(hidden);
-    } else {
-      await Message.updateMany(
-        { conversationId: convo._id, deletedFor: { $ne: user._id } },
-        { $push: { deletedFor: user._id } }
-      );
-      if (!(convo.hiddenFor || []).some((id) => String(id) === String(user._id))) {
-        convo.hiddenFor = [...(convo.hiddenFor || []), user._id];
-      }
-    }
+    await Message.updateMany(
+      { conversationId: convo._id },
+      { $addToSet: { deletedFor: { $each: targets } } }
+    );
+
+    const hidden = new Set((convo.hiddenFor || []).map((id) => String(id)));
+    targets.forEach((id) => hidden.add(String(id)));
+    convo.hiddenFor = Array.from(hidden);
     await convo.save();
 
     return NextResponse.json({ success: true });

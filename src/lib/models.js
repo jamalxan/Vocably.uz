@@ -208,9 +208,11 @@ const ConversationSchema = new mongoose.Schema({
   // faqat shu userning ro'yxatida yashiriladi). Bitta tomon o'chirsa — faqat shu
   // ro'yxatdan yashiriladi (deletedFor xabarlarga qo'shiladi, ikkinchi tomon
   // hech narsani sezmaydi). Ikkala tomon uchun o'chirilsa — ikkalasi ham shu
-  // massivga tushadi va barcha xabarlar deletedForEveryone bo'ladi. Ikkala holatda
-  // ham keyinroq (qidiruv orqali qayta ochilsa yoki yangi xabar kelsa) shu userning
-  // id'si bu massivdan olib tashlanadi — suhbat ro'yxatga qaytadi (src/app/api/chat/conversations).
+  // massivga tushadi va barcha xabarlar HAR IKKI tomonning id'si bilan deletedFor'ga
+  // qo'shiladi (deletedForEveryone EMAS — shu tufayli hech qanday "o'chirilgan xabar"
+  // tombstone'i ko'rinmaydi, suhbat chindan ham izsiz "yangidan boshlanadi"). Ikkala
+  // holatda ham keyinroq (qidiruv orqali qayta ochilsa yoki yangi xabar kelsa) shu
+  // userning id'si bu massivdan olib tashlanadi — suhbat ro'yxatga qaytadi (src/app/api/chat/conversations).
   hiddenFor: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
 });
 // Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
