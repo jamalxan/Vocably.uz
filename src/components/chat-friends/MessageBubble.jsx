@@ -80,6 +80,20 @@ function isEmojiOnly(text) {
   return EMOJI_ONLY_RE.test(text);
 }
 
+// Xabar yuborilgan vaqt — har bir pufakcha tagida (Telegram/WhatsApp uslubi).
+// Bugungi kun uchun faqat soat:daqiqa, kechagi uchun "kecha", undan eski bo'lsa sana.
+function formatMessageTime(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  if (d.toDateString() === now.toDateString()) return `${hh}:${mm}`;
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return `kecha ${hh}:${mm}`;
+  return `${d.toLocaleDateString('uz-UZ')} ${hh}:${mm}`;
+}
+
 export default function MessageBubble({ message, isMine }) {
   const { reportTarget, activeConversation, startEditMessage, deleteMessage } = useChat();
   const [reported, setReported] = useState(false);
@@ -110,7 +124,8 @@ export default function MessageBubble({ message, isMine }) {
 
   return (
     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
-      <div className={`flex items-end gap-1.5 max-w-[85%] ${isMine ? 'flex-row-reverse' : ''}`}>
+      <div className={`flex flex-col max-w-[85%] ${isMine ? 'items-end' : 'items-start'}`}>
+      <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : ''}`}>
         <div
           className={
             isPlain
@@ -180,6 +195,9 @@ export default function MessageBubble({ message, isMine }) {
             )}
           </div>
         )}
+      </div>
+
+      <span className="text-[10px] text-muted mt-0.5 px-1 select-none">{formatMessageTime(message.createdAt)}</span>
       </div>
 
       <DeleteMessageModal

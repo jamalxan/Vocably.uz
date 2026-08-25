@@ -39,14 +39,18 @@ function DashboardContent() {
 
   if (loadingApp) {
     return (
-      <div className="flex items-center justify-center h-screen bg-bg">
+      <div className="flex items-center justify-center h-dvh bg-bg">
         <Loader2 className="animate-spin text-accent" size={28} />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
+    // `h-dvh` (100vh EMAS) — mobil Chrome'da manzil paneli ochilib-yopilganda
+    // yoki klaviatura chiqqanda 100vh o'zgarmay qoladi (dinamik emas), shuning
+    // uchun Do'stlar bo'limining pastki qismi (Composer) qisman ekrandan tashqarida
+    // qolib qolardi. `dvh` haqiqiy ko'rinadigan balandlikka moslashadi.
+    <div className="flex h-dvh overflow-hidden bg-bg">
       {aiSessionsPanelOpen && view === 'ai' ? (
         <AiChatSessionsPanel
           sidebarOpen={sidebarOpen}

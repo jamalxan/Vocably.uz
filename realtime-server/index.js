@@ -38,15 +38,48 @@ io.use((socket, next) => {
   }
 });
 
+// userId onlayn/oflaynga o'tganda BARCHA ulangan client'larga xabar beradi — bu
+// kichik ilova uchun oddiy va yetarli (Do'stlar ro'yxati/suhbat ochiq bo'lgan har
+// bir client shu orqali `livePresence` xaritasini yangilaydi, src/context/ChatContext.jsx).
+function broadcastPresence(userId, online) {
+  io.emit('presence:update', { userId, online });
+}
+
 io.on('connection', (socket) => {
   const room = `user:${socket.userId}`;
   socket.join(room);
+  const wasOffline = !onlineCounts.has(socket.userId);
   onlineCounts.set(socket.userId, (onlineCounts.get(socket.userId) || 0) + 1);
+  if (wasOffline) broadcastPresence(socket.userId, true);
+
+  // Client ulanganda/ro'yxati yangilanganda "hozir kim onlayn" haqida bir martalik
+  // aniq javob so'raydi (ack orqali) — presence:update'ni kutib o'tirmasdan, darhol
+  // to'g'ri holatni ko'rsatish uchun (src/context/ChatContext.jsx queryPresenceForKnownUsers).
+  socket.on('presence:query', (userIds, cb) => {
+    if (typeof cb !== 'function') return;
+    const ids = Array.isArray(userIds) ? userIds : [];
+    const result = {};
+    ids.forEach((id) => {
+      result[String(id)] = onlineCounts.has(String(id));
+    });
+    cb(result);
+  });
+
+  // "Yozmoqda..." holati — hech narsa saqlanmaydi, faqat qabul qiluvchining shaxsiy
+  // xonasiga forward qilinadi (kim yozayotganini bilish uchun boshqa hech kim shart emas).
+  socket.on('typing', ({ recipientId, conversationId } = {}) => {
+    if (!recipientId || !conversationId) return;
+    io.to(`user:${recipientId}`).emit('typing', { conversationId, userId: socket.userId });
+  });
 
   socket.on('disconnect', () => {
     const n = (onlineCounts.get(socket.userId) || 1) - 1;
-    if (n <= 0) onlineCounts.delete(socket.userId);
-    else onlineCounts.set(socket.userId, n);
+    if (n <= 0) {
+      onlineCounts.delete(socket.userId);
+      broadcastPresence(socket.userId, false);
+    } else {
+      onlineCounts.set(socket.userId, n);
+    }
   });
 });
 

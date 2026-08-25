@@ -17,11 +17,24 @@ export function ChatProvider({ token, children }) {
   // Composer'da "tahrirlash rejimi" — xabar matni inputga qaytariladi, yuborish
   // o'rniga saqlash (PATCH) chaqiriladi. Faqat o'z matnli xabarlariga tegishli.
   const [editingMessage, setEditingMessage] = useState(null); // { id, text }
+  // realtime-server'dan kelgan ANIQ onlayn holat: { [userId]: true|false } — mavjud
+  // bo'lsa src/lib/presence.js'dagi lastActiveAt-taxminidan ustuvor (docs/ shu faylning
+  // pastidagi queryPresenceForKnownUsers izohiga qarang).
+  const [livePresence, setLivePresence] = useState({});
+  // Qaysi suhbatda hozir "yozmoqda..." holati faol: { [conversationId]: true } —
+  // har bir yozuv 3s'dan keyin o'zi tozalanadi (pastdagi socket 'typing' handler'i).
+  const [typingByConversation, setTypingByConversation] = useState({});
 
   const socketRef = useRef(null);
   const pollRef = useRef(null);
   const activeIdRef = useRef(null);
   activeIdRef.current = activeConversation?.id || null;
+  const activeConversationRef = useRef(null);
+  activeConversationRef.current = activeConversation;
+  const conversationsRef = useRef([]);
+  conversationsRef.current = conversations;
+  const typingTimersRef = useRef({});
+  const lastTypingEmitRef = useRef({});
 
   const authHeaders = useCallback(
     (extra = {}) => ({ Authorization: `Bearer ${token}`, ...extra }),
@@ -266,6 +279,36 @@ export function ChatProvider({ token, children }) {
     [authHeaders, closeConversation, loadConversations]
   );
 
+  // Do'stlar ro'yxatidan suhbatni o'chiradi (src/app/api/chat/conversations/[id]
+  // DELETE) — `forEveryone` bo'lmasa faqat mening ro'yxatimdan/tarixim uchun,
+  // bo'lsa ikkala tomon uchun ham. Hujjat o'zi o'chmaydi: keyin qidiruvdan topib
+  // qayta yozsa yoki boshqa tomon yozsa, suhbat ro'yxatga qaytadi.
+  const deleteConversation = useCallback(
+    async (conversationId, forEveryone) => {
+      try {
+        const res = await fetch(`/api/chat/conversations/${conversationId}`, {
+          method: 'DELETE',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ forEveryone: !!forEveryone }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          return { error: data.error || "O'chirilmadi" };
+        }
+        setConversations((prev) => prev.filter((c) => String(c.id) !== String(conversationId)));
+        if (String(activeIdRef.current) === String(conversationId)) {
+          setActiveConversation(null);
+          setMessages([]);
+          setEditingMessage(null);
+        }
+        return { success: true };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [authHeaders]
+  );
+
   // Faqat menda (bu userda) shu suhbatning push/bell bildirishnomasini o'chiradi —
   // boshqa tomon buni bilmaydi, xabarlar odatdagidek yetib boraveradi.
   const toggleMuteConversation = useCallback(
@@ -286,9 +329,49 @@ export function ChatProvider({ token, children }) {
     [authHeaders]
   );
 
+  // Hozir bilingan barcha "boshqa foydalanuvchi"lar (suhbatlar ro'yxati + ochiq
+  // suhbat) uchun realtime-server'dan ANIQ onlayn holatni so'raydi (ack orqali) —
+  // presence:update hodisasini kutib o'tirmasdan darhol to'g'ri ko'rsatish uchun
+  // (masalan sahifa yangi ochilganda yoki yangi suhbat qo'shilganda).
+  const queryPresenceForKnownUsers = useCallback(() => {
+    const socket = socketRef.current;
+    if (!socket || !socket.connected) return;
+    const ids = new Set();
+    conversationsRef.current.forEach((c) => {
+      if (c.otherUser?.id) ids.add(String(c.otherUser.id));
+    });
+    const activeOtherId = activeConversationRef.current?.otherUser?.id;
+    if (activeOtherId) ids.add(String(activeOtherId));
+    if (ids.size === 0) return;
+    socket.emit('presence:query', Array.from(ids), (result) => {
+      if (result && typeof result === 'object') {
+        setLivePresence((prev) => ({ ...prev, ...result }));
+      }
+    });
+  }, []);
+
   useEffect(() => {
     loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ro'yxat yangilanganda (masalan yangi suhbat qidiruvdan ochilganda) ham yangi
+  // paydo bo'lgan foydalanuvchilar uchun onlayn holatni so'raymiz.
+  useEffect(() => {
+    queryPresenceForKnownUsers();
+  }, [conversations, activeConversation, queryPresenceForKnownUsers]);
+
+  // Composer matn kiritganda chaqiradi (throttled — bitta suhbat uchun 2s'da bir
+  // marta ko'proq emas) — boshqa tomonga "yozmoqda..." signalini yuboradi.
+  const sendTyping = useCallback(() => {
+    const socket = socketRef.current;
+    const convo = activeConversationRef.current;
+    if (!socket || !socket.connected || !convo?.otherUser?.id) return;
+    const key = convo.id;
+    const now = Date.now();
+    if (lastTypingEmitRef.current[key] && now - lastTypingEmitRef.current[key] < 2000) return;
+    lastTypingEmitRef.current[key] = now;
+    socket.emit('typing', { recipientId: convo.otherUser.id, conversationId: convo.id });
   }, []);
 
   // Realtime: mavjud bo'lsa socket orqali jonli push, aks holda (yoki uzilganda)
@@ -299,14 +382,39 @@ export function ChatProvider({ token, children }) {
     socketRef.current = socket;
     if (!socket) return undefined;
 
-    socket.on('connect', () => setSocketConnected(true));
+    socket.on('connect', () => {
+      setSocketConnected(true);
+      queryPresenceForKnownUsers();
+    });
     socket.on('disconnect', () => setSocketConnected(false));
     socket.on('message:new', ({ conversationId, message }) => {
       if (String(conversationId) === String(activeIdRef.current)) appendMessage(message);
       loadConversations();
     });
+    socket.on('presence:update', ({ userId, online }) => {
+      setLivePresence((prev) => ({ ...prev, [String(userId)]: online }));
+    });
+    // Boshqa tomon yozayotganini bildiradi — 3s ichida yana kelmasa "yozmoqda..."
+    // o'zi tozalanadi (aniq "to'xtatdi" hodisasi yo'q, bu soddaroq va uzilishlarga chidamli).
+    socket.on('typing', ({ conversationId } = {}) => {
+      if (!conversationId) return;
+      clearTimeout(typingTimersRef.current[conversationId]);
+      setTypingByConversation((prev) => ({ ...prev, [conversationId]: true }));
+      typingTimersRef.current[conversationId] = setTimeout(() => {
+        setTypingByConversation((prev) => {
+          if (!prev[conversationId]) return prev;
+          const next = { ...prev };
+          delete next[conversationId];
+          return next;
+        });
+      }, 3000);
+    });
 
-    return () => socket.disconnect();
+    return () => {
+      socket.disconnect();
+      Object.values(typingTimersRef.current).forEach(clearTimeout);
+      typingTimersRef.current = {};
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -341,6 +449,10 @@ export function ChatProvider({ token, children }) {
     reportTarget,
     blockUser,
     toggleMuteConversation,
+    deleteConversation,
+    livePresence,
+    typingByConversation,
+    sendTyping,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

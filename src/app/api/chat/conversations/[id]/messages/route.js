@@ -121,6 +121,13 @@ export async function POST(req, { params }) {
 
     convo.lastMessageAt = message.createdAt;
     convo.lastMessagePreview = preview;
+    // Yangi xabar kelsa — ikkala tomon uchun ham ro'yxatga qaytadi, agar avval
+    // (bir yoki ikki taraflama) o'chirilgan/yashirilgan bo'lsa (docs/ conversations/[id] DELETE).
+    if ((convo.hiddenFor || []).length) {
+      convo.hiddenFor = convo.hiddenFor.filter(
+        (id) => String(id) !== String(user._id) && String(id) !== String(otherId)
+      );
+    }
     await convo.save();
 
     pushNewMessage(otherId, String(convo._id), {

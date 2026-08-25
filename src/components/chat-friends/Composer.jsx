@@ -13,7 +13,7 @@ const MAX_SIZE = { image: 10 * 1024 * 1024, video: 60 * 1024 * 1024, file: 25 * 
 const MAX_TEXTAREA_HEIGHT = 120;
 
 export default function Composer() {
-  const { sendMessage, uploadAndSend, editingMessage, editMessage, cancelEditMessage } = useChat();
+  const { sendMessage, uploadAndSend, editingMessage, editMessage, cancelEditMessage, sendTyping } = useChat();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -128,7 +128,7 @@ export default function Composer() {
   };
 
   return (
-    <div className="border-t border-border bg-surface">
+    <div className="border-t border-border bg-surface" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {editingMessage && (
         <div className="flex items-center gap-2 px-3.5 pt-2 text-xs text-accent">
           <Pencil size={12} className="flex-shrink-0" />
@@ -138,60 +138,72 @@ export default function Composer() {
           </button>
         </div>
       )}
-      <form onSubmit={handleSendText} className="flex items-end gap-1.5 px-3 py-2.5 relative">
-        {!editingMessage && (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              onChange={handleFilePick}
-              accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt"
-            />
+      <form onSubmit={handleSendText} className="flex items-end gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-2.5 relative">
+        {/* Yagona dumaloq "yozish qutisi" — emoji va fayl biriktirish tugmalari
+            endi alohida qator elementi emas, aynan shu quti ICHIDA (WhatsApp/Telegram
+            uslubi) — tor mobil ekranda ortiqcha qatorlar bosim qilmasligi uchun. */}
+        <div className="flex-1 min-w-0 flex items-end gap-0.5 bg-bg rounded-2xl pl-1 pr-1 py-1">
+          <div className="relative flex-shrink-0">
             <button
+              ref={emojiButtonRef}
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Fayl biriktirish"
-              className="p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors flex-shrink-0"
+              onClick={() => setEmojiOpen((v) => !v)}
+              title="Emoji"
+              className="w-8 h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors emoji font-chat"
             >
-              <Paperclip size={18} />
+              🙂
             </button>
+            {emojiOpen && (
+              <EmojiPicker
+                triggerRef={emojiButtonRef}
+                onPick={(e) => {
+                  handleEmojiPick(e);
+                }}
+                onClose={() => setEmojiOpen(false)}
+              />
+            )}
+          </div>
 
-            <VoiceRecorderButton onRecorded={handleRecordedVoice} />
-            <VideoRecorderButton onRecorded={handleRecordedVideo} />
-          </>
-        )}
+          <textarea
+            ref={textInputRef}
+            rows={1}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              sendTyping();
+            }}
+            onKeyDown={handleTextareaKeyDown}
+            placeholder="Xabar yozing..."
+            className="flex-1 min-w-0 px-1.5 py-1.5 bg-transparent text-sm leading-5 outline-none font-chat resize-none"
+          />
 
-        <div className="relative flex-shrink-0">
-          <button
-            ref={emojiButtonRef}
-            type="button"
-            onClick={() => setEmojiOpen((v) => !v)}
-            title="Emoji"
-            className="w-9 h-9 flex items-center justify-center text-muted hover:bg-bg rounded-lg transition-colors emoji font-chat"
-          >
-            🙂
-          </button>
-          {emojiOpen && (
-            <EmojiPicker
-              triggerRef={emojiButtonRef}
-              onPick={(e) => {
-                handleEmojiPick(e);
-              }}
-              onClose={() => setEmojiOpen(false)}
-            />
+          {!editingMessage && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFilePick}
+                accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Fayl biriktirish"
+                className="w-8 h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors flex-shrink-0"
+              >
+                <Paperclip size={17} />
+              </button>
+            </>
           )}
         </div>
 
-        <textarea
-          ref={textInputRef}
-          rows={1}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleTextareaKeyDown}
-          placeholder="Xabar yozing... (Shift+Enter — yangi qator)"
-          className="flex-1 min-w-0 px-3.5 py-2 bg-bg rounded-2xl text-sm leading-5 outline-none focus:ring-2 focus:ring-accent/20 font-chat resize-none"
-        />
+        {!editingMessage && (
+          <div className="flex items-end gap-0.5 flex-shrink-0">
+            <VoiceRecorderButton onRecorded={handleRecordedVoice} />
+            <VideoRecorderButton onRecorded={handleRecordedVideo} />
+          </div>
+        )}
 
         <button
           type="submit"

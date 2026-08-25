@@ -204,6 +204,14 @@ const ConversationSchema = new mongoose.Schema({
   // Kim shu suhbatni "ovozsiz" qilgan (push/bell bildirishnoma o'chirilgan) —
   // faqat o'sha userga ta'sir qiladi, ikkinchi tomon buni bilmaydi/ko'rmaydi.
   mutedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  // Kim "Do'stlar" ro'yxatidan shu suhbatni o'chirgan (hujjat o'zi o'chmaydi —
+  // faqat shu userning ro'yxatida yashiriladi). Bitta tomon o'chirsa — faqat shu
+  // ro'yxatdan yashiriladi (deletedFor xabarlarga qo'shiladi, ikkinchi tomon
+  // hech narsani sezmaydi). Ikkala tomon uchun o'chirilsa — ikkalasi ham shu
+  // massivga tushadi va barcha xabarlar deletedForEveryone bo'ladi. Ikkala holatda
+  // ham keyinroq (qidiruv orqali qayta ochilsa yoki yangi xabar kelsa) shu userning
+  // id'si bu massivdan olib tashlanadi — suhbat ro'yxatga qaytadi (src/app/api/chat/conversations).
+  hiddenFor: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
 });
 // Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
 // yangisi birinchi (src/app/api/chat/conversations); (2) admin panelning BARCHA

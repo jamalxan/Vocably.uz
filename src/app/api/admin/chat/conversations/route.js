@@ -37,6 +37,10 @@ export async function GET(req) {
       participants: c.participantIds.map((id) => byId.get(String(id)) || { username: null, name: '?' }),
       lastMessageAt: c.lastMessageAt,
       lastMessagePreview: c.lastMessagePreview || '',
+      // Kim shu suhbatni o'z "Do'stlar" ro'yxatidan o'chirgan (docs/ src/app/api/chat/
+      // conversations/[id] DELETE) — hujjatning o'zi hech qachon o'chmaydi, admin
+      // barchasini har doim ko'ra oladi, faqat shaffoflik uchun shu ro'yxat ko'rsatiladi.
+      hiddenFor: (c.hiddenFor || []).map((id) => byId.get(String(id))?.username).filter(Boolean),
     }));
 
     return NextResponse.json({ conversations: result, nextCursor });

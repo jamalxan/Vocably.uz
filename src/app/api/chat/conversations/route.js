@@ -19,7 +19,9 @@ export async function GET(req) {
 
     await connectToDatabase();
 
-    const conversations = await Conversation.find({ participantIds: user._id })
+    // `hiddenFor` — shu user "Do'stlar" ro'yxatidan o'chirgan suhbatlar (docs/ hujjat
+    // o'zi saqlanadi, faqat ro'yxatdan yashiriladi — src/app/api/chat/conversations/[id]).
+    const conversations = await Conversation.find({ participantIds: user._id, hiddenFor: { $ne: user._id } })
       .sort({ lastMessageAt: -1 })
       .limit(200)
       .lean();
@@ -93,6 +95,11 @@ export async function POST(req) {
           throw createErr;
         }
       }
+    } else if ((convo.hiddenFor || []).some((id) => String(id) === String(user._id))) {
+      // Bu user ilgari shu suhbatni ro'yxatidan o'chirgan edi — qidiruv orqali qayta
+      // topib "Yozish"ni bossa, ro'yxatga qaytadi (eski xabarlar deletedFor tufayli
+      // baribir yashirin qoladi, faqat shu nuqtadan keyingi yangi xabarlar ko'rinadi).
+      await Conversation.updateOne({ _id: convo._id }, { $pull: { hiddenFor: user._id } });
     }
 
     return NextResponse.json({

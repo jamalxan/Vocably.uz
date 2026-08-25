@@ -1,8 +1,59 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, ArrowLeft, MessageSquareText, Image as ImageIcon, Video, Mic, Paperclip, Flag, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, ArrowLeft, MessageSquareText, Image as ImageIcon, Video, Mic, Paperclip, Flag, Pencil, Trash2, Download, UserX } from 'lucide-react';
+import { useAuthedAdminMediaUrl } from '@/lib/useAuthedMedia';
 
 const TYPE_ICON = { image: ImageIcon, video: Video, voice: Mic, file: Paperclip, text: MessageSquareText };
+
+// Quyidagi 4 ta komponent — oddiy foydalanuvchi tomonidagi MessageBubble.jsx'dagi
+// Image/Video/Voice/FileBubble bilan bir xil naqsh, lekin admin endpointi orqali
+// (/api/admin/chat/media) — ishtirokchi bo'lmasa ham, hatto xabar/suhbat "o'chirilgan"
+// bo'lsa ham fayl ko'rinadi (haqiqiy S3 obyekt hech qachon o'chirilmaydi).
+function AdminImageBubble({ media, token }) {
+  const { url } = useAuthedAdminMediaUrl(media.key, token);
+  if (!url) return <div className="w-40 h-32 bg-primary-soft/40 rounded-lg animate-pulse" />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt="Rasm" className="max-w-[220px] max-h-[240px] rounded-lg object-cover" />;
+}
+
+function AdminVideoBubble({ media, token }) {
+  const { url } = useAuthedAdminMediaUrl(media.key, token);
+  if (!url) return <div className="w-56 h-40 bg-primary-soft/40 rounded-lg animate-pulse" />;
+  return <video src={url} controls className="max-w-[240px] max-h-[260px] rounded-lg" />;
+}
+
+function AdminVoiceBubble({ media, token }) {
+  const { url } = useAuthedAdminMediaUrl(media.key, token);
+  if (!url) return <div className="w-48 h-10 bg-primary-soft/40 rounded-full animate-pulse" />;
+  return <audio src={url} controls className="w-56 h-10" />;
+}
+
+function AdminFileBubble({ media, token }) {
+  const { url } = useAuthedAdminMediaUrl(media.key, token);
+  return (
+    <a
+      href={url || '#'}
+      download
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-2 px-3 py-2 bg-bg/70 rounded-lg text-xs hover:bg-bg transition-colors"
+    >
+      <Paperclip size={13} />
+      <span>Faylni ko&apos;rish</span>
+      {media?.size ? <span className="opacity-60">({Math.round(media.size / 1024)}KB)</span> : null}
+      <Download size={12} className="ml-auto flex-shrink-0" />
+    </a>
+  );
+}
+
+function AdminMediaContent({ message, token }) {
+  if (!message.media) return null;
+  if (message.type === 'image') return <AdminImageBubble media={message.media} token={token} />;
+  if (message.type === 'video') return <AdminVideoBubble media={message.media} token={token} />;
+  if (message.type === 'voice') return <AdminVoiceBubble media={message.media} token={token} />;
+  if (message.type === 'file') return <AdminFileBubble media={message.media} token={token} />;
+  return null;
+}
 
 export default function ConversationViewer({ token }) {
   const [conversations, setConversations] = useState([]);
@@ -87,10 +138,18 @@ export default function ConversationViewer({ token }) {
         >
           <ArrowLeft size={15} /> Suhbatlar ro'yxati
         </button>
-        <p className="font-luxury text-lg text-primary mb-4">
+        <p className="font-luxury text-lg text-primary mb-1.5">
           @{active.participants[0]?.username || active.participants[0]?.name || '?'}
           <span className="text-muted mx-2">↔</span>
           @{active.participants[1]?.username || active.participants[1]?.name || '?'}
+        </p>
+        <p className="flex items-center gap-1.5 text-xs text-amber-600 mb-4 min-h-[1em]">
+          {active.hiddenFor?.length > 0 && (
+            <>
+              <UserX size={12} />
+              Ro&apos;yxatdan o&apos;chirgan: {active.hiddenFor.map((u) => `@${u}`).join(', ')}
+            </>
+          )}
         </p>
         {messages === null ? (
           <Loader2 className="animate-spin text-accent" size={22} />
@@ -146,11 +205,7 @@ export default function ConversationViewer({ token }) {
                     )}
                     {m.type === 'text' && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
                     {m.type === 'sticker' && <p className="opacity-80">stiker: {m.stickerId}</p>}
-                    {['image', 'video', 'voice', 'file'].includes(m.type) && (
-                      <p className="opacity-80">
-                        {m.media?.mimeType} · {Math.round((m.media?.size || 0) / 1024)}KB
-                      </p>
-                    )}
+                    <AdminMediaContent message={m} token={token} />
                     <p className="text-[10px] opacity-60 mt-1.5">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
                   </div>
                 </div>
@@ -172,10 +227,15 @@ export default function ConversationViewer({ token }) {
             onClick={() => openConversation(c)}
             className="w-full text-left px-5 py-4 hover:bg-bg/60 flex items-center justify-between gap-3 transition-colors"
           >
-            <span className="text-sm font-medium text-primary">
+            <span className="text-sm font-medium text-primary flex items-center gap-2 flex-wrap">
               @{c.participants[0]?.username || c.participants[0]?.name || '?'}
-              <span className="text-muted mx-1.5">↔</span>
+              <span className="text-muted mx-0.5">↔</span>
               @{c.participants[1]?.username || c.participants[1]?.name || '?'}
+              {c.hiddenFor?.length > 0 && (
+                <span title={`Ro'yxatdan o'chirgan: ${c.hiddenFor.map((u) => `@${u}`).join(', ')}`}>
+                  <UserX size={13} className="text-amber-600" />
+                </span>
+              )}
             </span>
             <span className="text-xs text-muted truncate max-w-[220px]">{c.lastMessagePreview}</span>
           </button>

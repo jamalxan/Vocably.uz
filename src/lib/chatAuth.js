@@ -1,10 +1,12 @@
 import { User, RateLimitHit, AdminAuditLog } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db';
+import { LAST_ACTIVE_THROTTLE_MS } from '@/lib/chatConstants';
 
 // "Oxirgi faol bo'lgan" vaqtni har so'rovda emas, shu oraliqdan kamida bir marta yozadi —
 // Do'stlar bo'limi faol foydalanilganda ham har chat-so'rovida yozuv bo'lmasligi uchun.
-const LAST_ACTIVE_THROTTLE_MS = 2 * 60 * 1000;
+// Qiymat src/lib/chatConstants.js'da — src/lib/presence.js (client) shu bilan mos
+// "onlayn" chegarasini hisoblaydi (docs/ shu faylning izohiga qarang).
 
 // Do'stlar bo'limi uchun: token haqiqiy, chatAccess yoqilgan va bloklanmagan
 // foydalanuvchinigina o'tkazadi. Har bir /api/chat/* route shu bilan boshlanadi —

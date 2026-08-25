@@ -1,8 +1,10 @@
 'use client';
-import { Loader2, Wifi, WifiOff, BellOff } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Loader2, Wifi, WifiOff, BellOff, Trash2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { isOnline } from '@/lib/presence';
 import UserSearchBar from './UserSearchBar';
+import DeleteConversationModal from './DeleteConversationModal';
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -14,8 +16,105 @@ function timeAgo(dateStr) {
   return `${Math.floor(hours / 24)}kun`;
 }
 
+// Uzoq bosish (long-press) uchun chegara — bundan qisqarog'i oddiy bosish
+// (suhbatni ochish) hisoblanadi, uzunrog'i esa o'chirish menyusini chiqaradi
+// (Telegram/WhatsApp mobil uslubi — "usernameni ustiga bosib turish").
+const LONG_PRESS_MS = 500;
+
+function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typing }) {
+  const pressTimer = useRef(null);
+  const longPressFired = useRef(false);
+
+  const startPress = () => {
+    longPressFired.current = false;
+    clearTimeout(pressTimer.current);
+    pressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      onDeleteRequest(c);
+    }, LONG_PRESS_MS);
+  };
+  const cancelPress = () => clearTimeout(pressTimer.current);
+
+  const handleClick = () => {
+    // Uzoq bosish allaqachon o'chirish oynasini ochgan bo'lsa — shu bosishni
+    // "suhbatni ochish" sifatida qayta ishlatmaymiz.
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
+    onSelect(c);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') onSelect(c);
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onDeleteRequest(c);
+      }}
+      onPointerDown={startPress}
+      onPointerUp={cancelPress}
+      onPointerLeave={cancelPress}
+      onPointerCancel={cancelPress}
+      className={`group w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left transition-colors cursor-pointer select-none ${
+        selected ? 'bg-accent-soft' : 'hover:bg-bg'
+      }`}
+    >
+      <div className="relative flex-shrink-0">
+        <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">
+          {(c.otherUser?.username || '?')[0]?.toUpperCase()}
+        </div>
+        {online && (
+          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-surface" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-1 min-w-0">
+            <p className="text-sm font-medium text-primary truncate">@{c.otherUser?.username || 'noma\'lum'}</p>
+            {c.muted && <BellOff size={11} className="text-muted flex-shrink-0" />}
+          </span>
+          <span className="text-[10px] text-muted flex-shrink-0">{timeAgo(c.lastMessageAt)}</span>
+        </div>
+        {typing ? (
+          <p className="text-xs text-accent italic truncate">yozmoqda...</p>
+        ) : (
+          <p className="text-xs text-muted truncate">{c.lastMessagePreview || ''}</p>
+        )}
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDeleteRequest(c);
+        }}
+        title="Suhbatni tozalash"
+        className="p-1 text-muted hover:text-accent transition-colors flex-shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+      >
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function ConversationList({ onSelect, selectedId }) {
-  const { conversations, loadingConversations, socketConnected } = useChat();
+  const { conversations, loadingConversations, socketConnected, deleteConversation, livePresence, typingByConversation } =
+    useChat();
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleConfirmDelete = async (forEveryone) => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const res = await deleteConversation(deleteTarget.id, forEveryone);
+    setDeleting(false);
+    if (res.error) alert(res.error);
+    else setDeleteTarget(null);
+  };
 
   return (
     <div className="w-full lg:w-72 flex-shrink-0 border-r border-border flex flex-col h-full">
@@ -40,34 +139,24 @@ export default function ConversationList({ onSelect, selectedId }) {
           </p>
         )}
         {conversations.map((c) => (
-          <button
+          <ConversationRow
             key={c.id}
-            onClick={() => onSelect(c)}
-            className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left transition-colors ${
-              String(selectedId) === String(c.id) ? 'bg-accent-soft' : 'hover:bg-bg'
-            }`}
-          >
-            <div className="relative flex-shrink-0">
-              <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">
-                {(c.otherUser?.username || '?')[0]?.toUpperCase()}
-              </div>
-              {isOnline(c.otherUser?.lastActiveAt) && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-surface" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1 min-w-0">
-                  <p className="text-sm font-medium text-primary truncate">@{c.otherUser?.username || 'noma\'lum'}</p>
-                  {c.muted && <BellOff size={11} className="text-muted flex-shrink-0" />}
-                </span>
-                <span className="text-[10px] text-muted flex-shrink-0">{timeAgo(c.lastMessageAt)}</span>
-              </div>
-              <p className="text-xs text-muted truncate">{c.lastMessagePreview || ''}</p>
-            </div>
-          </button>
+            c={c}
+            selected={String(selectedId) === String(c.id)}
+            onSelect={onSelect}
+            onDeleteRequest={setDeleteTarget}
+            online={isOnline(c.otherUser?.lastActiveAt, livePresence[String(c.otherUser?.id)])}
+            typing={!!typingByConversation[c.id]}
+          />
         ))}
       </div>
+
+      <DeleteConversationModal
+        open={!!deleteTarget}
+        otherUsername={deleteTarget?.otherUser?.username}
+        onConfirm={deleting ? undefined : handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
