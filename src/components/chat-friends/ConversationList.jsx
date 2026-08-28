@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { Loader2, Wifi, WifiOff, BellOff, Trash2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
-import { isOnline } from '@/lib/presence';
+import { isOnline, useLiveClock } from '@/lib/presence';
 import UserSearchBar from './UserSearchBar';
 import DeleteConversationModal from './DeleteConversationModal';
 
@@ -106,6 +106,7 @@ export default function ConversationList({ onSelect, selectedId }) {
     useChat();
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  useLiveClock();
 
   const handleConfirmDelete = async (forEveryone) => {
     if (!deleteTarget) return;

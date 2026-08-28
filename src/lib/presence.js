@@ -1,4 +1,19 @@
+import { useEffect, useState } from 'react';
 import { LAST_ACTIVE_THROTTLE_MS } from './chatConstants';
+
+// formatLastSeen/isOnline har render'da Date.now()'dan qayta hisoblanadi, lekin
+// hech qanday boshqa holat o'zgarmasa (yangi xabar, typing va h.k.) component
+// qayta render bo'lmaydi — natijada "5 daqiqa oldin" matni yangi xabar kelguncha
+// "muzlab qolgandek" ko'rinadi (avvalgi xato manbai — real vaqtda yangilanmasdi).
+// Shu hook har `intervalMs'da bitta mayda state o'zgarishi orqali qayta render'ni
+// majburlaydi (ConversationView.jsx, ConversationList.jsx foydalanadi).
+export function useLiveClock(intervalMs = 30000) {
+  const [, forceRender] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => forceRender((t) => t + 1), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+}
 
 // Do'stlar bo'limida "onlayn" / "oxirgi marta ko'rilgan" matnini hisoblaydi.
 // `lastActiveAt` — src/lib/chatAuth.js'dagi requireChatUser() har /api/chat/* so'rovida

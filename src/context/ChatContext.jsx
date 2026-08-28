@@ -1,6 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { connectChatSocket } from '@/lib/socketClient';
+import { getJwtUserId } from '@/lib/jwtClient';
 
 const ChatContext = createContext(null);
 
@@ -38,6 +39,8 @@ export function ChatProvider({ token, children }) {
   conversationsRef.current = conversations;
   const replyingToRef = useRef(null);
   replyingToRef.current = replyingTo;
+  const myIdRef = useRef(null);
+  myIdRef.current = getJwtUserId(token);
   const typingTimersRef = useRef({});
   const lastTypingEmitRef = useRef({});
 
@@ -442,7 +445,14 @@ export function ChatProvider({ token, children }) {
     // ikkitaga aylantiradi — faqat hozir ochiq suhbatga tegishli bo'lsa.
     socket.on('message:read', ({ conversationId, readAt } = {}) => {
       if (!conversationId || String(conversationId) !== String(activeIdRef.current)) return;
-      setMessages((prev) => prev.map((m) => (m.readAt ? m : { ...m, readAt })));
+      // Faqat MEN yuborgan (hali readAt'siz) xabarlarni belgilaydi — boshqa
+      // tomonning o'zi yuborgan xabarlariga tegmaydi (ular UI'da tick ko'rsatmaydi,
+      // lekin noto'g'ri lokal holat qoldirmaslik uchun aniq cheklaymiz).
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.readAt || String(m.senderId) !== String(myIdRef.current) ? m : { ...m, readAt }
+        )
+      );
     });
     socket.on('presence:update', ({ userId, online }) => {
       setLivePresence((prev) => ({ ...prev, [String(userId)]: online }));

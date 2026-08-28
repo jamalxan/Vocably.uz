@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { ArrowLeft, ShieldOff, Loader2, Bell, BellOff } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
-import { formatLastSeen, isOnline } from '@/lib/presence';
+import { formatLastSeen, isOnline, useLiveClock } from '@/lib/presence';
 import { getJwtUserId } from '@/lib/jwtClient';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
@@ -23,6 +23,7 @@ export default function ConversationView({ onBack }) {
   const listRef = useRef(null);
   const bottomRef = useRef(null);
   const prevLenRef = useRef(0);
+  useLiveClock();
 
   useEffect(() => {
     if (messages.length > prevLenRef.current) {
