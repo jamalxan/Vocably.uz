@@ -2,10 +2,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Video, Square, X } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
+import { useChat } from '@/context/ChatContext';
 
 const MAX_SECONDS = 60; // Telegram uslubidagi qisqa "video xabar" — 1 daqiqagacha
 
 function VideoRecorderPanel({ onRecorded, onCancel }) {
+  const { sendTyping } = useChat();
   const [seconds, setSeconds] = useState(0);
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -47,11 +49,16 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
         };
         mediaRecorderRef.current = recorder;
         recorder.start();
+        // Boshqa tomonga "video yubormoqda..." ko'rsatish uchun — sendTyping'ning
+        // o'zida 2s throttle bor, shuning uchun har soniya chaqirsak ham socket'ga
+        // faqat 2s'da bir ketadi, lekin butun yozuv davomida tirik turadi.
+        sendTyping('video');
         timerRef.current = setInterval(() => {
           setSeconds((s) => {
             if (s + 1 >= MAX_SECONDS) stop();
             return s + 1;
           });
+          sendTyping('video');
         }, 1000);
       } catch (err) {
         alert(mediaErrorMessage(err, 'Kamera/mikrofon'));

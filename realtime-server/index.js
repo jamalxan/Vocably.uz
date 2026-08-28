@@ -65,11 +65,12 @@ io.on('connection', (socket) => {
     cb(result);
   });
 
-  // "Yozmoqda..." holati — hech narsa saqlanmaydi, faqat qabul qiluvchining shaxsiy
-  // xonasiga forward qilinadi (kim yozayotganini bilish uchun boshqa hech kim shart emas).
-  socket.on('typing', ({ recipientId, conversationId } = {}) => {
+  // "Yozmoqda..." holati (yoki ovozli/video xabar yozib turgani, `kind`) — hech
+  // narsa saqlanmaydi, faqat qabul qiluvchining shaxsiy xonasiga forward qilinadi
+  // (kim yozayotganini bilish uchun boshqa hech kim shart emas).
+  socket.on('typing', ({ recipientId, conversationId, kind } = {}) => {
     if (!recipientId || !conversationId) return;
-    io.to(`user:${recipientId}`).emit('typing', { conversationId, userId: socket.userId });
+    io.to(`user:${recipientId}`).emit('typing', { conversationId, userId: socket.userId, kind: kind || 'text' });
   });
 
   socket.on('disconnect', () => {

@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Loader2, Wifi, WifiOff, BellOff, Trash2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { isOnline, useLiveClock } from '@/lib/presence';
+import { TYPING_LABEL } from '@/lib/chatConstants';
 import UserSearchBar from './UserSearchBar';
 import DeleteConversationModal from './DeleteConversationModal';
 
@@ -82,7 +83,7 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
           <span className="text-[10px] text-muted flex-shrink-0">{timeAgo(c.lastMessageAt)}</span>
         </div>
         {typing ? (
-          <p className="text-xs text-accent italic truncate">yozmoqda...</p>
+          <p className="text-xs text-accent italic truncate">{TYPING_LABEL[typing] || TYPING_LABEL.text}</p>
         ) : (
           <p className="text-xs text-muted truncate">{c.lastMessagePreview || ''}</p>
         )}
@@ -147,7 +148,7 @@ export default function ConversationList({ onSelect, selectedId }) {
             onSelect={onSelect}
             onDeleteRequest={setDeleteTarget}
             online={isOnline(c.otherUser?.lastActiveAt, livePresence[String(c.otherUser?.id)])}
-            typing={!!typingByConversation[c.id]}
+            typing={typingByConversation[c.id]}
           />
         ))}
       </div>

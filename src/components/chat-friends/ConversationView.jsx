@@ -5,6 +5,7 @@ import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { formatLastSeen, isOnline, useLiveClock } from '@/lib/presence';
 import { getJwtUserId } from '@/lib/jwtClient';
+import { TYPING_LABEL } from '@/lib/chatConstants';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 
@@ -38,7 +39,8 @@ export default function ConversationView({ onBack }) {
 
   const myId = getJwtUserId(myToken);
   const online = isOnline(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
-  const isTyping = !!typingByConversation[activeConversation.id];
+  const typingKind = typingByConversation[activeConversation.id];
+  const isTyping = !!typingKind;
   const lastSeenText = formatLastSeen(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
 
   const handleScroll = () => {
@@ -82,7 +84,7 @@ export default function ConversationView({ onBack }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-primary truncate">@{activeConversation.otherUser?.username}</p>
           {isTyping ? (
-            <p className="text-[11px] text-accent italic truncate">yozmoqda...</p>
+            <p className="text-[11px] text-accent italic truncate">{TYPING_LABEL[typingKind] || TYPING_LABEL.text}</p>
           ) : (
             lastSeenText && <p className="text-[11px] text-muted truncate">{lastSeenText}</p>
           )}

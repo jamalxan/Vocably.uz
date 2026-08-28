@@ -106,6 +106,10 @@ export default function Composer() {
       setSending(true);
       setText('');
       clearPendingAttachment();
+      // Video biriktirilgan bo'lsa (fayl tanlash/paste orqali, mikrofon/kamera
+      // yozuvi emas) — yuklanayotgan payt boshqa tomonga "video yubormoqda..."
+      // ko'rsatiladi (VoiceRecorder/VideoRecorder'dagi bilan bir xil kanal).
+      if (type === 'video') sendTyping('video');
       const res = await uploadAndSend(file, type, clean || undefined);
       if (res.error) alert(res.error);
       setSending(false);

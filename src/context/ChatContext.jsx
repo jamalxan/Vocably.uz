@@ -406,9 +406,12 @@ export function ChatProvider({ token, children }) {
     queryPresenceForKnownUsers();
   }, [conversations, activeConversation, queryPresenceForKnownUsers]);
 
-  // Composer matn kiritganda chaqiradi (throttled — bitta suhbat uchun 2s'da bir
-  // marta ko'proq emas) — boshqa tomonga "yozmoqda..." signalini yuboradi.
-  const sendTyping = useCallback(() => {
+  // Composer matn kiritganda (kind='text', standart) yoki ovozli/video xabar
+  // yozib turilganda (VoiceRecorder/VideoRecorder — 2s'da bir marta "heartbeat"
+  // sifatida) chaqiradi (throttled — bitta suhbat uchun 2s'da bir marta ko'proq
+  // emas) — boshqa tomonga "yozmoqda.../ovoz yubormoqda.../video yubormoqda..."
+  // signalini yuboradi.
+  const sendTyping = useCallback((kind = 'text') => {
     const socket = socketRef.current;
     const convo = activeConversationRef.current;
     if (!socket || !socket.connected || !convo?.otherUser?.id) return;
@@ -416,7 +419,7 @@ export function ChatProvider({ token, children }) {
     const now = Date.now();
     if (lastTypingEmitRef.current[key] && now - lastTypingEmitRef.current[key] < 2000) return;
     lastTypingEmitRef.current[key] = now;
-    socket.emit('typing', { recipientId: convo.otherUser.id, conversationId: convo.id });
+    socket.emit('typing', { recipientId: convo.otherUser.id, conversationId: convo.id, kind });
   }, []);
 
   // Realtime: mavjud bo'lsa socket orqali jonli push, aks holda (yoki uzilganda)
@@ -457,12 +460,15 @@ export function ChatProvider({ token, children }) {
     socket.on('presence:update', ({ userId, online }) => {
       setLivePresence((prev) => ({ ...prev, [String(userId)]: online }));
     });
-    // Boshqa tomon yozayotganini bildiradi — 3s ichida yana kelmasa "yozmoqda..."
-    // o'zi tozalanadi (aniq "to'xtatdi" hodisasi yo'q, bu soddaroq va uzilishlarga chidamli).
-    socket.on('typing', ({ conversationId } = {}) => {
+    // Boshqa tomon yozayotganini (yoki ovozli/video xabar yozib turganini)
+    // bildiradi — 3s ichida yana kelmasa "yozmoqda..." o'zi tozalanadi (aniq
+    // "to'xtatdi" hodisasi yo'q, bu soddaroq va uzilishlarga chidamli). Uzun
+    // yozuvlarda (voice/video) jo'natuvchi shu 3s oynasidan tez-tez (2s'da bir)
+    // qayta yuboradi, shuning uchun butun yozuv davomida ko'rinib turadi.
+    socket.on('typing', ({ conversationId, kind } = {}) => {
       if (!conversationId) return;
       clearTimeout(typingTimersRef.current[conversationId]);
-      setTypingByConversation((prev) => ({ ...prev, [conversationId]: true }));
+      setTypingByConversation((prev) => ({ ...prev, [conversationId]: kind || 'text' }));
       typingTimersRef.current[conversationId] = setTimeout(() => {
         setTypingByConversation((prev) => {
           if (!prev[conversationId]) return prev;

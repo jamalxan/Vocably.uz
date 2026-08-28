@@ -15,3 +15,12 @@ export const REPLY_TYPE_LABEL = {
   file: '📎 Fayl',
   sticker: '😊 Stiker',
 };
+
+// "typing" socket hodisasining `kind`i -> ConversationView/ConversationList'da
+// ko'rsatiladigan matn (Composer'da yozish, VoiceRecorder/VideoRecorder'da
+// yozib turish uchun bir xil "typing" kanali ishlatiladi, faqat matni farq qiladi).
+export const TYPING_LABEL = {
+  text: 'yozmoqda...',
+  voice: 'ovoz yubormoqda...',
+  video: 'video yubormoqda...',
+};

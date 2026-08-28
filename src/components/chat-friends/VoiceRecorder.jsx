@@ -2,10 +2,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Square, X } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
+import { useChat } from '@/context/ChatContext';
 
 // MediaRecorder API'ga tayanadi — Safari/iOS'da ba'zi formatlarda cheklov bo'lishi
 // mumkin, haqiqiy qurilmada sinash tavsiya etiladi (docs/ chat plani, "Frontend" bo'limi).
 export default function VoiceRecorder({ onRecorded, onCancel }) {
+  const { sendTyping } = useChat();
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const mediaRecorderRef = useRef(null);
@@ -30,7 +32,14 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
       recorder.start();
       setRecording(true);
       setSeconds(0);
-      timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+      // Boshqa tomonga "ovoz yubormoqda..." ko'rsatish uchun — sendTyping'ning o'zida
+      // 2s throttle bor, shuning uchun har soniya chaqirsak ham socket'ga faqat
+      // 2s'da bir ketadi, lekin butun yozuv davomida (3s auto-clear oynasidan tez-tez) tirik turadi.
+      sendTyping('voice');
+      timerRef.current = setInterval(() => {
+        setSeconds((s) => s + 1);
+        sendTyping('voice');
+      }, 1000);
     } catch (err) {
       alert(mediaErrorMessage(err, 'Mikrofon'));
       onCancel();
