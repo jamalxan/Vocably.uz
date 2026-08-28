@@ -40,7 +40,7 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
         recorder.ondataavailable = (e) => e.data.size > 0 && chunksRef.current.push(e.data);
         recorder.onstop = () => {
           stream.getTracks().forEach((t) => t.stop());
-          if (chunksRef.current.length === 0) return; // cancel orqali to'xtatilgan
+          if (chunksRef.current.length === 0) return;
           const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' });
           const file = new File([blob], `video-${Date.now()}.webm`, { type: blob.type });
           onRecorded(file);
@@ -67,6 +67,12 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
 
   const cancel = () => {
     clearInterval(timerRef.current);
+    // `stop()` navbatdagi bufer uchun oxirgi bitta `ondataavailable`ni chaqiradi
+    // (shu chunk faqat SHUNDAN keyin, `onstop`dan oldin keladi) — shuning uchun
+    // "bo'sh massiv" tekshiruvi yetarli emas edi: cancel bosilsa ham o'sha oxirgi
+    // chunk qayta qo'shilib, video baribir yuborilib ketardi. `onstop`ning o'zini
+    // uzib qo'yish (VoiceRecorder.jsx'dagi bilan bir xil yondashuv) buni oldini oladi.
+    if (mediaRecorderRef.current) mediaRecorderRef.current.onstop = null;
     chunksRef.current = [];
     mediaRecorderRef.current?.stop();
     streamRef.current?.getTracks().forEach((t) => t.stop());
