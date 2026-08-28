@@ -79,15 +79,23 @@ export async function DELETE(req, { params }) {
     const forEveryone = !!body.forEveryone;
     const isMine = String(message.senderId) === String(user._id);
 
+    let silently = false;
     if (forEveryone) {
       if (!isMine) return NextResponse.json({ error: "Faqat o'z xabaringizni ikkala tomondan ham o'chira olasiz" }, { status: 403 });
       message.deletedForEveryone = true;
+      // Admin o'z xabarini o'chirsa — "xabar o'chirildi" tombstone'i ikkala tomonda
+      // ham ko'rinmasin (GET query'si shu bayroqni butunlay chiqarib tashlaydi),
+      // oddiy foydalanuvchida esa Telegram uslubidagi belgi qoladi.
+      if (user.role === 'admin') {
+        message.deletedForEveryoneSilently = true;
+        silently = true;
+      }
     } else if (!message.deletedFor.some((id) => String(id) === String(user._id))) {
       message.deletedFor.push(user._id);
     }
     await message.save();
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, silently });
   } catch (err) {
     return serverError(err, 'chat/messages/[messageId] DELETE');
   }

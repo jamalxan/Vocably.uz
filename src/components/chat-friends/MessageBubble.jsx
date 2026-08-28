@@ -185,6 +185,9 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
               {message.type === 'video' && <VideoBubble media={message.media} />}
               {message.type === 'voice' && <VoiceBubble media={message.media} />}
               {message.type === 'file' && <FileBubble media={message.media} />}
+              {message.text && ['image', 'video', 'file'].includes(message.type) && (
+                <p className="whitespace-pre-wrap break-words font-chat mt-1.5">{message.text}</p>
+              )}
               {message.edited && (
                 <span className={`block text-[10px] mt-0.5 ${isMine ? 'text-white/60' : 'text-muted'}`}>
                   tahrirlangan

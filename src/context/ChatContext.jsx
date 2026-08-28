@@ -224,11 +224,14 @@ export function ChatProvider({ token, children }) {
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ forEveryone: !!forEveryone }),
         });
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
           return { error: data.error || "O'chirilmadi" };
         }
-        if (forEveryone) {
+        // Admin o'z xabarini "hamma uchun" o'chirsa server `silently: true` qaytaradi —
+        // tombstone qoldirilmaydi, xabar ro'yxatdan butunlay olib tashlanadi (server
+        // GET query'si ham buni tasdiqlaydi, src/lib/models.js'dagi izohga qarang).
+        if (forEveryone && !data.silently) {
           setMessages((prev) =>
             prev.map((m) =>
               String(m.id || m._id) === String(messageId)
@@ -249,7 +252,7 @@ export function ChatProvider({ token, children }) {
   );
 
   const uploadAndSend = useCallback(
-    async (file, type) => {
+    async (file, type, caption) => {
       if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
       try {
         const presignRes = await fetch('/api/chat/upload/presign', {
@@ -275,6 +278,7 @@ export function ChatProvider({ token, children }) {
         return sendMessage({
           type,
           media: { key: presignData.key, mimeType: file.type, size: file.size },
+          ...(caption ? { text: caption } : {}),
         });
       } catch {
         return { error: 'Tarmoq xatoligi' };

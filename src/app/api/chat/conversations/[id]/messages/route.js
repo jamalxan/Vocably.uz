@@ -32,8 +32,14 @@ export async function GET(req, { params }) {
 
     const before = req.nextUrl.searchParams.get('before');
     // O'zi "faqat men uchun" o'chirgan xabarlarini butunlay ko'rmaydi (boshqa tomon
-    // odatdagidek ko'raveradi) — shuning uchun query darajasida filtrlanadi.
-    const query = { conversationId: convo._id, deletedFor: { $ne: user._id } };
+    // odatdagidek ko'raveradi) — shuning uchun query darajasida filtrlanadi. Admin
+    // o'z xabarini "hamma uchun" o'chirsa ham xuddi shunday — ikkala tomon uchun ham
+    // butunlay chiqarib tashlanadi (tombstone'siz), src/lib/models.js'dagi izohga qarang.
+    const query = {
+      conversationId: convo._id,
+      deletedFor: { $ne: user._id },
+      deletedForEveryoneSilently: { $ne: true },
+    };
     if (before) query.createdAt = { $lt: new Date(before) };
 
     const messages = await Message.find(query).sort({ createdAt: -1 }).limit(50).lean();
@@ -125,7 +131,14 @@ export async function POST(req, { params }) {
         height: media.height || null,
         durationSec: media.durationSec || null,
       };
-      preview = PREVIEW_BY_TYPE[type];
+      // Izoh (caption) — ixtiyoriy, faqat Composer'da fayl tanlab/joylab (paste) preview
+      // ko'rinishida yozilgan bo'lsa keladi (ovozli xabarda yo'q — u darhol yuboriladi).
+      const caption = (body.text || '').trim();
+      if (caption) {
+        if (caption.length > MAX_TEXT_LEN) return NextResponse.json({ error: 'Xabar juda uzun' }, { status: 400 });
+        doc.text = caption;
+      }
+      preview = caption ? caption.slice(0, 80) : PREVIEW_BY_TYPE[type];
     } else {
       return NextResponse.json({ error: "Noto'g'ri xabar turi" }, { status: 400 });
     }

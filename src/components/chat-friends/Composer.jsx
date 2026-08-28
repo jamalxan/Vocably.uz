@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Send, Paperclip, Loader2, X, Pencil, Reply } from 'lucide-react';
+import { Send, Paperclip, Loader2, X, Pencil, Reply, FileText } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { getJwtUserId } from '@/lib/jwtClient';
@@ -31,15 +31,31 @@ export default function Composer() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  // Fayl tanlash/joylashtirish (paste) darhol yubormaydi — Telegram/WhatsApp uslubida
+  // avval shu preview ko'rsatiladi (ixtiyoriy izoh yozish imkoni bilan), faqat "Yuborish"
+  // tugmasi (yoki Enter) bosilganda haqiqatan yuklab yuboriladi. { file, type, previewUrl }
+  const [pendingAttachment, setPendingAttachment] = useState(null);
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
   const emojiButtonRef = useRef(null);
+  const pendingAttachmentRef = useRef(null);
+  pendingAttachmentRef.current = pendingAttachment;
 
-  // Tahrirlash rejimiga o'tilganda xabar matni inputga tushadi va fokus beriladi.
+  const clearPendingAttachment = () => {
+    setPendingAttachment((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+  };
+
+  // Tahrirlash rejimiga o'tilganda xabar matni inputga tushadi va fokus beriladi
+  // (kutilayotgan biriktirma bo'lsa — konflikt bo'lmasligi uchun bekor qilinadi).
   useEffect(() => {
     if (!editingMessage) return;
     setText(editingMessage.text);
     textInputRef.current?.focus();
+    clearPendingAttachment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingMessage]);
 
   // Javob berish rejimiga o'tilganda (xabardagi "Reply" tugmasi) inputga fokus
@@ -61,23 +77,48 @@ export default function Composer() {
     el.style.overflowY = needed > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
   }, [text]);
 
+  // Faqat unmount'da — biriktirma almashtirilganda/tozalanganda revoke qilish
+  // clearPendingAttachment/setPendingAttachment ichida allaqachon bajariladi.
+  useEffect(() => {
+    return () => {
+      if (pendingAttachment?.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSendText = async (e) => {
     e?.preventDefault();
+    if (sending) return;
     const clean = text.trim();
-    if (!clean || sending) return;
-    setSending(true);
 
     if (editingMessage) {
+      if (!clean) return;
+      setSending(true);
       const res = await editMessage(editingMessage.id, clean);
       if (res.error) alert(res.error);
       else setText('');
-    } else {
+      setSending(false);
+      return;
+    }
+
+    if (pendingAttachment) {
+      const { file, type } = pendingAttachment;
+      setSending(true);
       setText('');
-      const res = await sendMessage({ type: 'text', text: clean });
-      if (res.error) {
-        setText(clean);
-        alert(res.error);
-      }
+      clearPendingAttachment();
+      const res = await uploadAndSend(file, type, clean || undefined);
+      if (res.error) alert(res.error);
+      setSending(false);
+      return;
+    }
+
+    if (!clean) return;
+    setSending(true);
+    setText('');
+    const res = await sendMessage({ type: 'text', text: clean });
+    if (res.error) {
+      setText(clean);
+      alert(res.error);
     }
     setSending(false);
   };
@@ -93,6 +134,7 @@ export default function Composer() {
   const handleTextareaKeyDown = (e) => {
     if (e.key === 'Escape') {
       if (editingMessage) handleCancelEdit();
+      else if (pendingAttachment) clearPendingAttachment();
       else if (replyingTo) cancelReply();
       return;
     }
@@ -102,36 +144,41 @@ export default function Composer() {
     handleSendText();
   };
 
-  const sendFile = async (file, type) => {
+  // Darhol yuklab yubormaydi — preview'ga qo'yadi, haqiqiy yuborish faqat
+  // "Yuborish" tugmasi/Enter bosilganda (handleSendText) sodir bo'ladi.
+  const stageAttachment = (file, type) => {
     if (file.size > MAX_SIZE[type]) {
       alert(`Fayl juda katta (maksimum ${Math.round(MAX_SIZE[type] / 1024 / 1024)}MB)`);
       return;
     }
-    setSending(true);
-    const res = await uploadAndSend(file, type);
-    if (res.error) alert(res.error);
-    setSending(false);
+    clearPendingAttachment();
+    setPendingAttachment({
+      file,
+      type,
+      previewUrl: type !== 'file' ? URL.createObjectURL(file) : null,
+    });
+    textInputRef.current?.focus();
   };
 
-  const handleFilePick = async (e) => {
+  const handleFilePick = (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
     const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
-    await sendFile(file, type);
+    stageAttachment(file, type);
   };
 
   // Boshqa joydan (screenshot, brauzer, boshqa ilova) nusxalangan rasm/videoni
-  // to'g'ridan-to'g'ri matn maydoniga joylashtirib (Ctrl/Cmd+V) yuborish — fayl
-  // tanlash oynasini ochmasdan, Telegram/WhatsApp Web uslubida.
-  const handlePaste = async (e) => {
+  // to'g'ridan-to'g'ri matn maydoniga joylashtirib (Ctrl/Cmd+V) preview'ga qo'yish —
+  // fayl tanlash oynasini ochmasdan, Telegram/WhatsApp Web uslubida.
+  const handlePaste = (e) => {
     const items = Array.from(e.clipboardData?.items || []);
     const fileItem = items.find((it) => it.kind === 'file' && (it.type.startsWith('image/') || it.type.startsWith('video/')));
     if (!fileItem) return;
     e.preventDefault();
     const file = fileItem.getAsFile();
     if (!file) return;
-    await sendFile(file, fileItem.type.startsWith('image/') ? 'image' : 'video');
+    stageAttachment(file, fileItem.type.startsWith('image/') ? 'image' : 'video');
   };
 
   const handleRecordedVoice = async (file) => {
@@ -197,6 +244,29 @@ export default function Composer() {
           </button>
         </div>
       )}
+      {pendingAttachment && (
+        <div className="flex items-center gap-2.5 px-3.5 pt-2">
+          <div className="w-12 h-12 rounded-lg overflow-hidden bg-bg flex items-center justify-center flex-shrink-0">
+            {pendingAttachment.type === 'image' && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={pendingAttachment.previewUrl} alt="" className="w-full h-full object-cover" />
+            )}
+            {pendingAttachment.type === 'video' && (
+              <video src={pendingAttachment.previewUrl} className="w-full h-full object-cover" muted />
+            )}
+            {pendingAttachment.type === 'file' && <FileText size={18} className="text-muted" />}
+          </div>
+          <div className="flex-1 min-w-0 text-xs">
+            <p className="font-semibold text-primary truncate">
+              {pendingAttachment.type === 'image' ? 'Rasm' : pendingAttachment.type === 'video' ? 'Video' : pendingAttachment.file.name}
+            </p>
+            <p className="text-muted">{(pendingAttachment.file.size / 1024 / 1024).toFixed(1)} MB</p>
+          </div>
+          <button onClick={clearPendingAttachment} className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+            <X size={14} />
+          </button>
+        </div>
+      )}
       <form onSubmit={handleSendText} className="flex items-end gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-2.5 relative">
         {/* Yagona dumaloq "yozish qutisi" — emoji va fayl biriktirish tugmalari
             endi alohida qator elementi emas, aynan shu quti ICHIDA (WhatsApp/Telegram
@@ -233,7 +303,7 @@ export default function Composer() {
             }}
             onKeyDown={handleTextareaKeyDown}
             onPaste={handlePaste}
-            placeholder="Xabar yozing..."
+            placeholder={pendingAttachment ? "Izoh qo'shing (ixtiyoriy)..." : 'Xabar yozing...'}
             className="flex-1 min-w-0 px-1.5 py-1.5 bg-transparent text-sm leading-5 outline-none font-chat resize-none"
           />
 
@@ -267,7 +337,7 @@ export default function Composer() {
 
         <button
           type="submit"
-          disabled={!text.trim() || sending}
+          disabled={(!text.trim() && !pendingAttachment) || sending}
           className="p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-on-accent rounded-full transition-colors flex-shrink-0"
         >
           {sending ? <Loader2 size={16} className="animate-spin" /> : editingMessage ? <Pencil size={16} /> : <Send size={16} />}

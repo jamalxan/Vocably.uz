@@ -265,6 +265,12 @@ const MessageSchema = new mongoose.Schema({
   // panelda audit uchun to'liq matn/holat saqlanib qoladi.
   deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   deletedForEveryone: { type: Boolean, default: false },
+  // Admin o'z xabarini "hamma uchun" o'chirsa — oddiy foydalanuvchidan farqli o'laroq
+  // hech qanday "xabar o'chirildi" belgisi qoldirmaydi, xuddi umuman yozilmagandek
+  // (chat/conversations/[id]/messages GET query'si shu bayroqli xabarlarni butunlay
+  // chiqarib tashlaydi). Hujjatning o'zi baribir saqlanadi — admin panelning audit
+  // ko'rinishi (admin/chat/conversations/[id]/messages) hech narsani filtrlamaydi.
+  deletedForEveryoneSilently: { type: Boolean, default: false },
   // Tahrirlash: oddiy foydalanuvchi chatida faqat "tahrirlangan" belgisi ko'rinadi
   // (eski matn ko'rsatilmaydi), lekin admin panelda audit uchun ikkalasi ham kerak —
   // shuning uchun `originalText` birinchi tahrirdan oldingi holatni saqlaydi.
