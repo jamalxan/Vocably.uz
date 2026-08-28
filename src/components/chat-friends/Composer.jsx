@@ -1,7 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Send, Paperclip, Loader2, X, Pencil } from 'lucide-react';
+import { Send, Paperclip, Loader2, X, Pencil, Reply } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
+import { useApp } from '@/context/AppContext';
+import { getJwtUserId } from '@/lib/jwtClient';
+import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import { VoiceRecorderButton } from './VoiceRecorder';
 import VideoRecorderButton from './VideoRecorder';
 import EmojiPicker from './EmojiPicker';
@@ -13,7 +16,18 @@ const MAX_SIZE = { image: 10 * 1024 * 1024, video: 60 * 1024 * 1024, file: 25 * 
 const MAX_TEXTAREA_HEIGHT = 120;
 
 export default function Composer() {
-  const { sendMessage, uploadAndSend, editingMessage, editMessage, cancelEditMessage, sendTyping } = useChat();
+  const {
+    sendMessage,
+    uploadAndSend,
+    editingMessage,
+    editMessage,
+    cancelEditMessage,
+    replyingTo,
+    cancelReply,
+    activeConversation,
+    sendTyping,
+  } = useChat();
+  const { token: myToken } = useApp();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -27,6 +41,12 @@ export default function Composer() {
     setText(editingMessage.text);
     textInputRef.current?.focus();
   }, [editingMessage]);
+
+  // Javob berish rejimiga o'tilganda (xabardagi "Reply" tugmasi) inputga fokus
+  // beriladi, lekin matn o'zgarmaydi — foydalanuvchi o'z javobini yozadi.
+  useEffect(() => {
+    if (replyingTo) textInputRef.current?.focus();
+  }, [replyingTo]);
 
   // Matn o'zgarganda textarea balandligini moslaymiz; xabar yuborilib matn
   // tozalangach balandlik o'z-o'zidan 1 qatorga qaytadi.
@@ -73,6 +93,7 @@ export default function Composer() {
   const handleTextareaKeyDown = (e) => {
     if (e.key === 'Escape') {
       if (editingMessage) handleCancelEdit();
+      else if (replyingTo) cancelReply();
       return;
     }
     if (e.key !== 'Enter' || e.shiftKey) return;
@@ -81,12 +102,7 @@ export default function Composer() {
     handleSendText();
   };
 
-  const handleFilePick = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-
-    const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
+  const sendFile = async (file, type) => {
     if (file.size > MAX_SIZE[type]) {
       alert(`Fayl juda katta (maksimum ${Math.round(MAX_SIZE[type] / 1024 / 1024)}MB)`);
       return;
@@ -95,6 +111,27 @@ export default function Composer() {
     const res = await uploadAndSend(file, type);
     if (res.error) alert(res.error);
     setSending(false);
+  };
+
+  const handleFilePick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
+    await sendFile(file, type);
+  };
+
+  // Boshqa joydan (screenshot, brauzer, boshqa ilova) nusxalangan rasm/videoni
+  // to'g'ridan-to'g'ri matn maydoniga joylashtirib (Ctrl/Cmd+V) yuborish — fayl
+  // tanlash oynasini ochmasdan, Telegram/WhatsApp Web uslubida.
+  const handlePaste = async (e) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const fileItem = items.find((it) => it.kind === 'file' && (it.type.startsWith('image/') || it.type.startsWith('video/')));
+    if (!fileItem) return;
+    e.preventDefault();
+    const file = fileItem.getAsFile();
+    if (!file) return;
+    await sendFile(file, fileItem.type.startsWith('image/') ? 'image' : 'video');
   };
 
   const handleRecordedVoice = async (file) => {
@@ -127,6 +164,16 @@ export default function Composer() {
     });
   };
 
+  const myId = getJwtUserId(myToken);
+  const replySenderLabel = replyingTo
+    ? String(replyingTo.senderId) === String(myId)
+      ? 'Siz'
+      : activeConversation?.otherUser?.username
+        ? `@${activeConversation.otherUser.username}`
+        : 'Foydalanuvchi'
+    : '';
+  const replyPreview = replyingTo && (replyingTo.type === 'text' ? replyingTo.text : REPLY_TYPE_LABEL[replyingTo.type] || '');
+
   return (
     <div className="border-t border-border bg-surface" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {editingMessage && (
@@ -134,6 +181,18 @@ export default function Composer() {
           <Pencil size={12} className="flex-shrink-0" />
           <span className="flex-1 min-w-0 truncate">Xabarni tahrirlash</span>
           <button onClick={handleCancelEdit} className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      {!editingMessage && replyingTo && (
+        <div className="flex items-center gap-2 px-3.5 pt-2 text-xs">
+          <Reply size={12} className="flex-shrink-0 text-accent" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-accent truncate">{replySenderLabel}ga javob</p>
+            <p className="text-muted truncate">{replyPreview || '…'}</p>
+          </div>
+          <button onClick={cancelReply} className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -173,6 +232,7 @@ export default function Composer() {
               sendTyping();
             }}
             onKeyDown={handleTextareaKeyDown}
+            onPaste={handlePaste}
             placeholder="Xabar yozing..."
             className="flex-1 min-w-0 px-1.5 py-1.5 bg-transparent text-sm leading-5 outline-none font-chat resize-none"
           />

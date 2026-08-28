@@ -1,11 +1,29 @@
 'use client';
 import { useState } from 'react';
-import { Check, CheckCheck, Download, FileText, Flag, Pencil, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, Download, FileText, Flag, Pencil, Reply, Trash2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
 import { findSticker } from '@/lib/stickers';
 import { useChat } from '@/context/ChatContext';
+import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import DeleteMessageModal from './DeleteMessageModal';
+
+function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
+  const senderLabel = String(replyTo.senderId) === String(myId) ? 'Siz' : otherUsername ? `@${otherUsername}` : 'Foydalanuvchi';
+  const preview = replyTo.type === 'text' ? replyTo.text : REPLY_TYPE_LABEL[replyTo.type] || '';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`block w-full text-left mb-1.5 pl-2 border-l-2 rounded-sm ${
+        isMine ? 'border-white/50 hover:bg-white/10' : 'border-accent hover:bg-primary-soft/40'
+      } transition-colors`}
+    >
+      <p className={`text-xs font-semibold truncate ${isMine ? 'text-white/90' : 'text-accent'}`}>{senderLabel}</p>
+      <p className={`text-xs truncate ${isMine ? 'text-white/70' : 'text-muted'}`}>{preview || '…'}</p>
+    </button>
+  );
+}
 
 function ImageBubble({ media }) {
   const { token } = useApp();
@@ -94,8 +112,8 @@ function formatMessageTime(dateStr) {
   return `${d.toLocaleDateString('uz-UZ')} ${hh}:${mm}`;
 }
 
-export default function MessageBubble({ message, isMine }) {
-  const { reportTarget, activeConversation, startEditMessage, deleteMessage } = useChat();
+export default function MessageBubble({ message, isMine, myId, onJumpToReply }) {
+  const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage } = useChat();
   const [reported, setReported] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -123,7 +141,7 @@ export default function MessageBubble({ message, isMine }) {
   const canEdit = isMine && message.type === 'text' && !deleted;
 
   return (
-    <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
+    <div data-msg-id={String(message.id || message._id)} className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
       <div className={`flex flex-col max-w-[85%] ${isMine ? 'items-end' : 'items-start'}`}>
       <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : ''}`}>
         <div
@@ -145,6 +163,15 @@ export default function MessageBubble({ message, isMine }) {
             </p>
           ) : (
             <>
+              {message.replyTo && (
+                <ReplyQuote
+                  replyTo={message.replyTo}
+                  isMine={isMine}
+                  myId={myId}
+                  otherUsername={activeConversation?.otherUser?.username}
+                  onClick={() => onJumpToReply?.(String(message.replyTo.messageId))}
+                />
+              )}
               {message.type === 'text' && (
                 <p className={`whitespace-pre-wrap break-words font-chat ${emojiOnly ? 'text-4xl leading-tight' : ''}`}>
                   {message.text}
@@ -171,26 +198,37 @@ export default function MessageBubble({ message, isMine }) {
           // Sichqoncha bo'lgan qurilmalarda (lg+) faqat hover'da ko'rinadi (Telegram Web
           // uslubi) — lekin touch qurilmalarda :hover umuman ishlamaydi, shuning uchun
           // aks holda tahrirlash/o'chirish tugmalari mobil'da butunlay yashiringan bo'lardi.
-          <div className="flex items-center gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <div className="flex items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity flex-shrink-0">
+            <button
+              onClick={() => startReply(message)}
+              title="Javob berish"
+              className="p-2 -m-1 text-muted hover:text-accent transition-colors touch-manipulation"
+            >
+              <Reply size={13} />
+            </button>
             {canEdit && (
               <button
                 onClick={() => startEditMessage(message)}
                 title="Tahrirlash"
-                className="p-1 text-muted hover:text-accent transition-colors"
+                className="p-2 -m-1 text-muted hover:text-accent transition-colors touch-manipulation"
               >
-                <Pencil size={12} />
+                <Pencil size={13} />
               </button>
             )}
             <button
               onClick={() => setDeleteOpen(true)}
               title="O'chirish"
-              className="p-1 text-muted hover:text-accent transition-colors"
+              className="p-2 -m-1 text-muted hover:text-accent transition-colors touch-manipulation"
             >
-              <Trash2 size={12} />
+              <Trash2 size={13} />
             </button>
             {!isMine && !reported && (
-              <button onClick={handleReport} title="Shikoyat qilish" className="p-1 text-muted hover:text-accent transition-colors">
-                <Flag size={12} />
+              <button
+                onClick={handleReport}
+                title="Shikoyat qilish"
+                className="p-2 -m-1 text-muted hover:text-accent transition-colors touch-manipulation"
+              >
+                <Flag size={13} />
               </button>
             )}
           </div>

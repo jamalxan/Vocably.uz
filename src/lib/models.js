@@ -235,6 +235,20 @@ const MessageMediaSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Javob (reply) — original xabarning to'liq hujjatiga bog'lanish o'rniga, yaratilish
+// paytidagi kichik "surat" (snapshot) saqlanadi: shu tufayli original keyinchalik
+// (ikkala tomondan) o'chirilsa ham javob pufakchasida iqtibos ko'rinishda qolaveradi,
+// va xabarlarni o'qishda har safar qo'shimcha so'rov/JOIN kerak bo'lmaydi.
+const ReplyToSchema = new mongoose.Schema(
+  {
+    messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', required: true },
+    senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    type: { type: String, required: true },
+    text: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
 const MessageSchema = new mongoose.Schema({
   conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
   senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -242,6 +256,7 @@ const MessageSchema = new mongoose.Schema({
   text: { type: String, trim: true, default: '' },
   media: { type: MessageMediaSchema, default: null },
   stickerId: { type: String, default: null }, // src/lib/stickers.js manifest'idagi statik id
+  replyTo: { type: ReplyToSchema, default: null },
   readAt: { type: Date, default: null },
   // Telegram uslubidagi ikki xil o'chirish: `deletedFor` — faqat shu ro'yxatdagi
   // foydalanuvchi(lar) o'z tarafidan ko'rmaydi (boshqa tomon xabarni odatdagidek

@@ -4,6 +4,7 @@ import { ArrowLeft, ShieldOff, Loader2, Bell, BellOff } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { formatLastSeen, isOnline } from '@/lib/presence';
+import { getJwtUserId } from '@/lib/jwtClient';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 
@@ -34,13 +35,24 @@ export default function ConversationView({ onBack }) {
     return <div className="hidden lg:flex flex-1 items-center justify-center text-sm text-muted">Suhbatni tanlang</div>;
   }
 
-  const myId = jwtUserId(myToken);
+  const myId = getJwtUserId(myToken);
   const online = isOnline(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
   const isTyping = !!typingByConversation[activeConversation.id];
   const lastSeenText = formatLastSeen(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
 
   const handleScroll = () => {
     if (listRef.current && listRef.current.scrollTop < 40) loadOlderMessages();
+  };
+
+  // Javob (reply) iqtibosiga bosilganda original xabarga sirg'alib o'tadi va
+  // uni bir lahza yoritib ko'rsatadi (Telegram uslubi) — agar xabar hali
+  // yuklanmagan (eski, "oldingi xabarlar"da) bo'lsa, hech narsa qilmaydi.
+  const jumpToMessage = (messageId) => {
+    const el = listRef.current?.querySelector(`[data-msg-id="${messageId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('chat-highlight');
+    setTimeout(() => el.classList.remove('chat-highlight'), 1200);
   };
 
   const handleBlock = async () => {
@@ -96,7 +108,13 @@ export default function ConversationView({ onBack }) {
           <p className="text-center text-sm text-muted py-8">Hali xabar yo'q. Birinchi xabarni yozing!</p>
         )}
         {messages.map((m) => (
-          <MessageBubble key={m.id || m._id} message={m} isMine={String(m.senderId) === String(myId)} />
+          <MessageBubble
+            key={m.id || m._id}
+            message={m}
+            isMine={String(m.senderId) === String(myId)}
+            myId={myId}
+            onJumpToReply={jumpToMessage}
+          />
         ))}
         <div ref={bottomRef} />
       </div>
@@ -104,16 +122,4 @@ export default function ConversationView({ onBack }) {
       <Composer />
     </div>
   );
-}
-
-// Token bevosita import qilinsa hook chaqiruv tartibiga ta'sir qilmasligi uchun
-// oddiy funksiya sifatida — JWT payload'ini serverga so'rovsiz o'qiydi (faqat userId
-// solishtirish uchun, imzoni tekshirmaydi — bu client-side, faqat "kim menman" UI belgisi).
-function jwtUserId(token) {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.userId;
-  } catch {
-    return null;
-  }
 }

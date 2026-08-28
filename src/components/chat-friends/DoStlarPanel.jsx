@@ -1,11 +1,20 @@
 'use client';
+import { useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChatProvider, useChat } from '@/context/ChatContext';
 import ConversationList from './ConversationList';
 import ConversationView from './ConversationView';
 
-function DoStlarShell() {
+function DoStlarShell({ onActiveChange }) {
   const { activeConversation, selectConversation, closeConversation } = useChat();
+
+  // Ota komponentga (dashboard/page.jsx) qaysi suhbat ochiqligini bildiradi — mobil
+  // ekranda tashqi sahifa header'ini yashirish uchun ishlatiladi (ConversationView'ning
+  // o'z header'i + orqaga strelkasi bilan ikkita sarlavha bir vaqtda ko'rinmasin).
+  useEffect(() => {
+    onActiveChange?.(!!activeConversation);
+  }, [activeConversation, onActiveChange]);
+  useEffect(() => () => onActiveChange?.(false), [onActiveChange]);
 
   // Ramka/karta yo'q — panel to'g'ridan-to'g'ri sahifaning o'zi (header ostida davom
   // etadi), WhatsApp Web/Telegram Web uslubida. Ro'yxat va suhbat orasidagi yagona
@@ -24,7 +33,7 @@ function DoStlarShell() {
 
 // Do'stlar bo'limi — faqat chatAccess=true bo'lganda mount qilinadi (Sidebar shu
 // tekshiruvni allaqachon qiladi, bu yerda yana bir marta — himoyaning ikkinchi qatlami).
-export default function DoStlarPanel() {
+export default function DoStlarPanel({ onActiveChange }) {
   const { token, chatAccess } = useApp();
 
   if (!chatAccess) {
@@ -33,7 +42,7 @@ export default function DoStlarPanel() {
 
   return (
     <ChatProvider token={token}>
-      <DoStlarShell />
+      <DoStlarShell onActiveChange={onActiveChange} />
     </ChatProvider>
   );
 }

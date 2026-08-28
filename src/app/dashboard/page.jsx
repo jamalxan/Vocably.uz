@@ -24,12 +24,18 @@ function DashboardContent() {
   // ko'rsatiladi (ikkalasi yonma-yon emas — bitta ustun, ikkita holat orasida almashadi).
   // Panelning o'zidagi strelka bosilganda asosiy navigatsiyaga qaytadi.
   const [aiSessionsPanelOpen, setAiSessionsPanelOpen] = useState(false);
+  // Do'stlar bo'limida biror suhbat ochilganmi — mobil ekranda ikkita sarlavha
+  // (tashqi sahifa header'i + ConversationView'ning o'z header'i, orqaga qaytish
+  // strelkasi bilan) bir vaqtda ko'rinib, chat uchun tik joyni yeb qo'ymasligi
+  // uchun shu holatda tashqi header mobil'da yashiriladi (pastga qarang).
+  const [friendsChatOpen, setFriendsChatOpen] = useState(false);
 
   const { loadingApp, activeCatIndex, activeCategory, handleDeleteCategory, chatAccess, token } = useApp();
 
   // Mobil ekranda bo'lim almashtirilganda drawer'ni yopamiz
   useEffect(() => {
     setSidebarOpen(false);
+    if (view !== 'friends') setFriendsChatOpen(false);
   }, [view]);
 
   const handleSetView = (v) => {
@@ -63,7 +69,11 @@ function DashboardContent() {
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col h-full overflow-y-auto w-full min-w-0">
-        <header className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 bg-bg/90 backdrop-blur-md border-b border-border flex items-center justify-between gap-3 sticky top-0 z-10">
+        <header
+          className={`px-4 sm:px-6 lg:px-8 py-4 sm:py-5 bg-bg/90 backdrop-blur-md border-b border-border items-center justify-between gap-3 sticky top-0 z-10 ${
+            friendsChatOpen ? 'hidden lg:flex' : 'flex'
+          }`}
+        >
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -116,7 +126,7 @@ function DashboardContent() {
           </div>
           {chatAccess && (
             <div className={view === 'friends' ? 'flex-1 min-h-0' : 'hidden'}>
-              <DoStlarPanel />
+              <DoStlarPanel onActiveChange={setFriendsChatOpen} />
             </div>
           )}
         </div>

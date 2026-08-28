@@ -130,6 +130,21 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Noto'g'ri xabar turi" }, { status: 400 });
     }
 
+    // Javob (reply) — faqat shu suhbatga tegishli xabarga bo'lishi mumkin (boshqa
+    // suhbatning id'sini "yasab" bo'lmasligi uchun conversationId ham tekshiriladi).
+    // Snapshot shu yerda olinadi — keyin original o'chirilsa ham iqtibos saqlanib qoladi.
+    if (body.replyTo) {
+      const original = await Message.findOne({ _id: body.replyTo, conversationId: convo._id }).lean();
+      if (original) {
+        doc.replyTo = {
+          messageId: original._id,
+          senderId: original.senderId,
+          type: original.type,
+          text: !original.deletedForEveryone && original.type === 'text' ? original.text.slice(0, 120) : '',
+        };
+      }
+    }
+
     const message = await Message.create(doc);
 
     convo.lastMessageAt = message.createdAt;
@@ -151,6 +166,7 @@ export async function POST(req, { params }) {
       text: message.text,
       media: message.media,
       stickerId: message.stickerId,
+      replyTo: message.replyTo,
       createdAt: message.createdAt,
     });
 

@@ -91,3 +91,18 @@ body {
   animation-delay: var(--delay, 0ms);
   pointer-events: none;
 }
+
+/* Javob (reply) iqtibosiga bosilganda sirg'alib borilgan xabarni bir lahza
+   yoritib ko'rsatadi — src/components/chat-friends/ConversationView.jsx (jumpToMessage). */
+@keyframes chat-highlight-fade {
+  0%, 40% {
+    background-color: rgb(var(--color-accent-soft));
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.chat-highlight {
+  animation: chat-highlight-fade 1.2s ease-out;
+  border-radius: 0.75rem;
+}

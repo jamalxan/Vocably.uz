@@ -17,6 +17,9 @@ export function ChatProvider({ token, children }) {
   // Composer'da "tahrirlash rejimi" — xabar matni inputga qaytariladi, yuborish
   // o'rniga saqlash (PATCH) chaqiriladi. Faqat o'z matnli xabarlariga tegishli.
   const [editingMessage, setEditingMessage] = useState(null); // { id, text }
+  // Composer'da "javob berish rejimi" — keyingi yuboriladigan xabar (matn yoki
+  // media, farqi yo'q) shu xabarga iqtibos sifatida bog'lanadi (server snapshot oladi).
+  const [replyingTo, setReplyingTo] = useState(null); // { id, senderId, type, text }
   // realtime-server'dan kelgan ANIQ onlayn holat: { [userId]: true|false } — mavjud
   // bo'lsa src/lib/presence.js'dagi lastActiveAt-taxminidan ustuvor (docs/ shu faylning
   // pastidagi queryPresenceForKnownUsers izohiga qarang).
@@ -33,6 +36,8 @@ export function ChatProvider({ token, children }) {
   activeConversationRef.current = activeConversation;
   const conversationsRef = useRef([]);
   conversationsRef.current = conversations;
+  const replyingToRef = useRef(null);
+  replyingToRef.current = replyingTo;
   const typingTimersRef = useRef({});
   const lastTypingEmitRef = useRef({});
 
@@ -110,6 +115,7 @@ export function ChatProvider({ token, children }) {
     (conv) => {
       setActiveConversation(conv);
       setEditingMessage(null);
+      setReplyingTo(null);
       loadMessages(conv.id);
     },
     [loadMessages]
@@ -119,6 +125,7 @@ export function ChatProvider({ token, children }) {
     setActiveConversation(null);
     setMessages([]);
     setEditingMessage(null);
+    setReplyingTo(null);
   }, []);
 
   const appendMessage = useCallback((msg) => {
@@ -145,16 +152,18 @@ export function ChatProvider({ token, children }) {
   const sendMessage = useCallback(
     async (payload) => {
       if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
+      const replyId = replyingToRef.current?.id;
       try {
         const res = await fetch(`/api/chat/conversations/${activeConversation.id}/messages`, {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(payload),
+          body: JSON.stringify(replyId ? { ...payload, replyTo: replyId } : payload),
         });
         const data = await res.json();
         if (!res.ok) return { error: data.error || "Xabar yuborilmadi" };
         appendMessage(data.message);
         loadConversations();
+        if (replyId) setReplyingTo(null);
         return { message: data.message };
       } catch {
         return { error: 'Tarmoq xatoligi' };
@@ -187,8 +196,20 @@ export function ChatProvider({ token, children }) {
 
   const startEditMessage = useCallback((message) => {
     setEditingMessage({ id: message.id || message._id, text: message.text || '' });
+    setReplyingTo(null);
   }, []);
   const cancelEditMessage = useCallback(() => setEditingMessage(null), []);
+
+  const startReply = useCallback((message) => {
+    setReplyingTo({
+      id: message.id || message._id,
+      senderId: message.senderId,
+      type: message.type,
+      text: message.type === 'text' ? message.text || '' : '',
+    });
+    setEditingMessage(null);
+  }, []);
+  const cancelReply = useCallback(() => setReplyingTo(null), []);
 
   // `forEveryone` bo'lmasa — faqat shu ro'yxatdan (mahalliy holatdan) olib tashlaymiz,
   // chunki server ham xuddi shunday: boshqa tomon hali ko'raveradi. `forEveryone`da esa
@@ -471,6 +492,9 @@ export function ChatProvider({ token, children }) {
     editingMessage,
     startEditMessage,
     cancelEditMessage,
+    replyingTo,
+    startReply,
+    cancelReply,
     uploadAndSend,
     loadOlderMessages,
     searchUsername,
