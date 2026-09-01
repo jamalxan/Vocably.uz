@@ -172,17 +172,21 @@ export default function Composer() {
     stageAttachment(file, type);
   };
 
-  // Boshqa joydan (screenshot, brauzer, boshqa ilova) nusxalangan rasm/videoni
-  // to'g'ridan-to'g'ri matn maydoniga joylashtirib (Ctrl/Cmd+V) preview'ga qo'yish —
-  // fayl tanlash oynasini ochmasdan, Telegram/WhatsApp Web uslubida.
+  // Boshqa joydan (screenshot, brauzer, fayl menejeri — nusxalangan istalgan fayl)
+  // nusxalangan narsani to'g'ridan-to'g'ri matn maydoniga joylashtirib (Ctrl/Cmd+V)
+  // preview'ga qo'yish — fayl tanlash oynasini ochmasdan, Telegram/WhatsApp Web
+  // uslubida. Rasm/video bo'lsa shu turda, boshqa har qanday fayl (masalan .html,
+  // .json, .pdf) 'file' turida biriktiriladi — mimeType server tomonda ('file'
+  // uchun) cheklanmagan, faqat hajm tekshiriladi (src/lib/s3.js ALLOWED_MEDIA).
   const handlePaste = (e) => {
     const items = Array.from(e.clipboardData?.items || []);
-    const fileItem = items.find((it) => it.kind === 'file' && (it.type.startsWith('image/') || it.type.startsWith('video/')));
+    const fileItem = items.find((it) => it.kind === 'file');
     if (!fileItem) return;
     e.preventDefault();
     const file = fileItem.getAsFile();
     if (!file) return;
-    stageAttachment(file, fileItem.type.startsWith('image/') ? 'image' : 'video');
+    const type = fileItem.type.startsWith('image/') ? 'image' : fileItem.type.startsWith('video/') ? 'video' : 'file';
+    stageAttachment(file, type);
   };
 
   const handleRecordedVoice = async (file) => {
@@ -318,7 +322,7 @@ export default function Composer() {
                 type="file"
                 className="hidden"
                 onChange={handleFilePick}
-                accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt"
+                accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt,.html,.htm,.json"
               />
               <button
                 type="button"
