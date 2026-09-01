@@ -98,6 +98,36 @@ function isEmojiOnly(text) {
   return EMOJI_ONLY_RE.test(text);
 }
 
+// Xabar matnidagi havolalarni (http(s):// yoki www.) bosiladigan <a>'ga aylantiradi —
+// dangerouslySetInnerHTML ISHLATILMAYDI (XSS xavfi), buning o'rniga regex bo'yicha
+// bo'lib, oddiy matnni React string sifatida qoldiramiz, faqat havola qismini
+// alohida elementga o'raymiz. Oxiridagi tinish belgilari (masalan gap oxiridagi
+// nuqta) havolaga kirib ketmasligi uchun alohida ajratiladi.
+const URL_RE = /((?:https?:\/\/|www\.)\S+)/gi;
+const TRAILING_PUNCT_RE = /[.,:;!?'")\]]+$/;
+
+function linkifyText(text) {
+  const segments = text.split(URL_RE);
+  const nodes = [];
+  segments.forEach((seg, i) => {
+    if (!seg) return;
+    if (/^(https?:\/\/|www\.)/i.test(seg)) {
+      const trailing = seg.match(TRAILING_PUNCT_RE)?.[0] || '';
+      const urlPart = trailing ? seg.slice(0, -trailing.length) : seg;
+      const href = urlPart.startsWith('www.') ? `https://${urlPart}` : urlPart;
+      nodes.push(
+        <a key={`${i}-url`} href={href} target="_blank" rel="noreferrer" className="underline break-all">
+          {urlPart}
+        </a>
+      );
+      if (trailing) nodes.push(trailing);
+    } else {
+      nodes.push(seg);
+    }
+  });
+  return nodes;
+}
+
 // Xabar yuborilgan vaqt — har bir pufakcha tagida (Telegram/WhatsApp uslubi).
 // Bugungi kun uchun faqat soat:daqiqa, kechagi uchun "kecha", undan eski bo'lsa sana.
 function formatMessageTime(dateStr) {
@@ -174,7 +204,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
               )}
               {message.type === 'text' && (
                 <p className={`whitespace-pre-wrap break-words font-chat ${emojiOnly ? 'text-4xl leading-tight' : ''}`}>
-                  {message.text}
+                  {emojiOnly ? message.text : linkifyText(message.text)}
                 </p>
               )}
               {message.type === 'sticker' && sticker && (
@@ -186,7 +216,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
               {message.type === 'voice' && <VoiceBubble media={message.media} />}
               {message.type === 'file' && <FileBubble media={message.media} />}
               {message.text && ['image', 'video', 'file'].includes(message.type) && (
-                <p className="whitespace-pre-wrap break-words font-chat mt-1.5">{message.text}</p>
+                <p className="whitespace-pre-wrap break-words font-chat mt-1.5">{linkifyText(message.text)}</p>
               )}
               {message.edited && (
                 <span className={`block text-[10px] mt-0.5 ${isMine ? 'text-white/60' : 'text-muted'}`}>
