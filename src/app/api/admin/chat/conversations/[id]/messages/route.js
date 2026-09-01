@@ -23,6 +23,13 @@ export async function GET(req, { params }) {
     const before = req.nextUrl.searchParams.get('before');
     const query = { conversationId: convo._id };
     if (before) query.createdAt = { $lt: new Date(before) };
+    // `media=1` — faqat rasm/video/ovozli xabarlar (Media tab, ConversationViewer.jsx).
+    // Matnli xabarlar orasidan qidirmasdan, to'g'ridan-to'g'ri hammasini (o'chirilganlari
+    // ham — bu yerda hech narsa sanitizatsiya qilinmaydi, media/matn xom holicha qaytadi)
+    // ko'rish uchun.
+    if (req.nextUrl.searchParams.get('media') === '1') {
+      query.type = { $in: ['image', 'video', 'voice'] };
+    }
     const limitParam = parseInt(req.nextUrl.searchParams.get('limit'), 10);
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 200) : 50;
 

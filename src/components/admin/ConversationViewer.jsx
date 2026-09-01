@@ -64,6 +64,14 @@ export default function ConversationViewer({ token }) {
   const [messages, setMessages] = useState(null);
   const [msgCursor, setMsgCursor] = useState(null);
   const [loadingMoreMsgs, setLoadingMoreMsgs] = useState(false);
+  // Suhbat ichida "Suhbat" (matn + media aralash, tartib bo'yicha) va "Media"
+  // (faqat rasm/video/ovozli xabarlar, alohida to'plam) o'rtasida almashtiradi —
+  // o'chirilgan xabarlarning fayli ham shu yerda ko'rinadi (S3 obyekt o'chmaydi,
+  // admin endpointi hech narsani sanitizatsiya qilmaydi).
+  const [viewMode, setViewMode] = useState('chat');
+  const [mediaMessages, setMediaMessages] = useState(null);
+  const [mediaCursor, setMediaCursor] = useState(null);
+  const [loadingMoreMedia, setLoadingMoreMedia] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/chat/conversations', { headers: { Authorization: `Bearer ${token}` } })
@@ -94,12 +102,44 @@ export default function ConversationViewer({ token }) {
     setActive(c);
     setMessages(null);
     setMsgCursor(null);
+    setViewMode('chat');
+    setMediaMessages(null);
+    setMediaCursor(null);
     const res = await fetch(`/api/admin/chat/conversations/${c.id}/messages`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     setMessages(data.messages || []);
     setMsgCursor(data.nextCursor || null);
+  };
+
+  // "Media" tab birinchi marta ochilganda yuklanadi (keyin qayta bosilsa qayta
+  // so'ralmaydi — allaqachon yuklangan bo'lsa shu holat saqlanadi).
+  const openMediaTab = async () => {
+    setViewMode('media');
+    if (mediaMessages !== null || !active) return;
+    const res = await fetch(`/api/admin/chat/conversations/${active.id}/messages?media=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setMediaMessages(data.messages || []);
+    setMediaCursor(data.nextCursor || null);
+  };
+
+  const loadMoreMedia = async () => {
+    if (!mediaCursor || loadingMoreMedia || !active) return;
+    setLoadingMoreMedia(true);
+    try {
+      const res = await fetch(
+        `/api/admin/chat/conversations/${active.id}/messages?media=1&before=${encodeURIComponent(mediaCursor)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      setMediaMessages((prev) => [...(data.messages || []), ...(prev || [])]);
+      setMediaCursor(data.nextCursor || null);
+    } finally {
+      setLoadingMoreMedia(false);
+    }
   };
 
   // Eski xabarlarni ro'yxat boshiga (yuqoriga) qo'shadi — xabarlar eskidan yangiga
@@ -151,7 +191,66 @@ export default function ConversationViewer({ token }) {
             </>
           )}
         </p>
-        {messages === null ? (
+        <div className="flex items-center gap-1.5 mb-4">
+          <button
+            onClick={() => setViewMode('chat')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              viewMode === 'chat' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
+            }`}
+          >
+            <MessageSquareText size={13} /> Suhbat
+          </button>
+          <button
+            onClick={openMediaTab}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              viewMode === 'media' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
+            }`}
+          >
+            <ImageIcon size={13} /> Media (rasm/video/ovozli)
+          </button>
+        </div>
+
+        {viewMode === 'media' ? (
+          mediaMessages === null ? (
+            <Loader2 className="animate-spin text-accent" size={22} />
+          ) : (
+            <div className="rounded-2xl border border-border bg-bg/60 shadow-card p-5 max-h-[65vh] overflow-y-auto">
+              {mediaCursor && (
+                <div className="flex justify-center pb-3">
+                  <button
+                    onClick={loadMoreMedia}
+                    disabled={loadingMoreMedia}
+                    className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    {loadingMoreMedia && <Loader2 size={12} className="animate-spin" />} Eski media'ni yuklash
+                  </button>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-3">
+                {mediaMessages.map((m) => {
+                  const sender = active.participants.find((p) => String(p._id) === String(m.senderId));
+                  const Icon = TYPE_ICON[m.type] || MessageSquareText;
+                  return (
+                    <div key={m._id} className="w-fit rounded-xl border border-border bg-surface p-2.5 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted flex-wrap">
+                        <Icon size={11} />
+                        @{sender?.username || sender?.name || '?'}
+                        {m.deletedForEveryone && (
+                          <span className="flex items-center gap-0.5 normal-case text-red-600">
+                            <Trash2 size={10} /> o'chirilgan
+                          </span>
+                        )}
+                      </div>
+                      <AdminMediaContent message={m} token={token} />
+                      <p className="text-[10px] text-muted">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              {mediaMessages.length === 0 && <p className="text-center text-sm text-muted py-8">Media xabar yo'q</p>}
+            </div>
+          )
+        ) : messages === null ? (
           <Loader2 className="animate-spin text-accent" size={22} />
         ) : (
           <div className="rounded-2xl border border-border bg-bg/60 shadow-card p-5 max-h-[65vh] overflow-y-auto space-y-3">
