@@ -193,7 +193,8 @@ export async function POST(req, { params }) {
     const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
     const recipientMuted = (convo.mutedBy || []).some((id) => String(id) === String(otherId));
     if (!recipientMuted) {
-      sendPushToUser(otherId, { title: senderLabel, body: preview, url: '/dashboard' }).catch(() => {});
+      const pushUrl = user.username ? `/dashboard/friends/${user.username}` : '/dashboard/friends';
+      sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }).catch(() => {});
     }
 
     // Telegram xabari — FAQAT xabar aynan adminning o'ziga (qabul qiluvchi roli

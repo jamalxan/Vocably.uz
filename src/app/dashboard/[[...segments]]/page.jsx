@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { Trash2, Menu, Loader2 } from 'lucide-react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import Sidebar from '@/components/Sidebar';
@@ -18,7 +19,21 @@ import DoStlarPanel from '@/components/chat-friends/DoStlarPanel';
 import NotificationBell from '@/components/NotificationBell';
 
 function DashboardContent() {
-  const [view, setView] = useState('home');
+  const params = useParams();
+  const router = useRouter();
+  // /dashboard/friends va /dashboard/friends/[username] — Do'stlar bo'limi endi
+  // o'z (haqiqiy, ulashsa/yangilasa ham ishlaydigan) URL'iga ega: shu bir xil
+  // sahifa (optional catch-all) buni ham, oddiy /dashboard'ni ham ko'rsatadi —
+  // shunda suhbat almashtirilganda ChatProvider/socket qayta ulanmaydi (turli
+  // page.jsx fayllari bo'lganda Next.js komponentni qayta mount qilardi).
+  // Boshqa bo'limlar (kartochka, test va h.k.) hali ham faqat ichki holat —
+  // ularga alohida URL kerak emas.
+  const segments = Array.isArray(params?.segments) ? params.segments : [];
+  const onFriendsRoute = segments[0] === 'friends';
+
+  const [internalView, setInternalView] = useState('home');
+  const view = onFriendsRoute ? 'friends' : internalView;
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // AI Chat'ga o'tilganda chap ustunda asosiy navigatsiya o'rniga suhbatlar ro'yxati
   // ko'rsatiladi (ikkalasi yonma-yon emas — bitta ustun, ikkita holat orasida almashadi).
@@ -39,7 +54,12 @@ function DashboardContent() {
   }, [view]);
 
   const handleSetView = (v) => {
-    setView(v);
+    if (v === 'friends') {
+      if (!onFriendsRoute) router.push('/dashboard/friends');
+    } else {
+      if (onFriendsRoute) router.push('/dashboard');
+      setInternalView(v);
+    }
     if (v === 'ai') setAiSessionsPanelOpen(true);
   };
 
@@ -124,10 +144,14 @@ function DashboardContent() {
           <div className={view === 'ai' ? 'flex-1 min-h-0' : 'hidden'}>
             <AiChat />
           </div>
-          {chatAccess && (
+          {chatAccess ? (
             <div className={view === 'friends' ? 'flex-1 min-h-0' : 'hidden'}>
               <DoStlarPanel onActiveChange={setFriendsChatOpen} />
             </div>
+          ) : (
+            view === 'friends' && (
+              <p className="text-sm text-muted text-center py-12">Bu bo'lim uchun ruxsatingiz yo'q.</p>
+            )
           )}
         </div>
 
