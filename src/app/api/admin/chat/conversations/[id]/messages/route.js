@@ -23,20 +23,30 @@ export async function GET(req, { params }) {
     const before = req.nextUrl.searchParams.get('before');
     const query = { conversationId: convo._id };
     if (before) query.createdAt = { $lt: new Date(before) };
-    // `media=1` — faqat rasm/video/ovozli xabarlar (Media tab, ConversationViewer.jsx).
-    // Matnli xabarlar orasidan qidirmasdan, to'g'ridan-to'g'ri hammasini (o'chirilganlari
-    // ham — bu yerda hech narsa sanitizatsiya qilinmaydi, media/matn xom holicha qaytadi)
-    // ko'rish uchun.
-    if (req.nextUrl.searchParams.get('media') === '1') {
+    // `type` — bitta media turi bo'yicha alohida galereya (Rasmlar/Videolar/Ovozli
+    // xabarlar — ConversationViewer.jsx'da 3 ta alohida tab). Matnli xabarlar orasidan
+    // qidirmasdan, to'g'ridan-to'g'ri hammasini (o'chirilganlari ham — bu yerda hech
+    // narsa sanitizatsiya qilinmaydi, media/matn xom holicha qaytadi) ko'rish uchun.
+    const galleryType = req.nextUrl.searchParams.get('type');
+    if (['image', 'video', 'voice'].includes(galleryType)) {
+      query.type = galleryType;
+    } else if (req.nextUrl.searchParams.get('media') === '1') {
       query.type = { $in: ['image', 'video', 'voice'] };
     }
     const limitParam = parseInt(req.nextUrl.searchParams.get('limit'), 10);
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 200) : 50;
 
+    // `order=desc` — galereya rejimi: eng yangisi tepada, eskisi pastda (suhbat
+    // oqimidagi eskidan-yangiga tartib bilan aralashtirilmaydi). `nextCursor`
+    // (eski elementlarni "Yana yuklash" uchun) reverse qilishdan OLDIN olinadi —
+    // desc tartibda oxirgi element eng eskisi.
+    const desc = req.nextUrl.searchParams.get('order') === 'desc';
     const page = await Message.find(query).sort({ createdAt: -1 }).limit(limit + 1).lean();
     const hasMore = page.length > limit;
-    const messages = (hasMore ? page.slice(0, limit) : page).reverse();
-    const nextCursor = hasMore ? messages[0].createdAt : null;
+    const trimmed = hasMore ? page.slice(0, limit) : page;
+    const oldestInBatch = trimmed[trimmed.length - 1]?.createdAt || null;
+    const messages = desc ? trimmed : trimmed.reverse();
+    const nextCursor = hasMore ? oldestInBatch : null;
 
     // Faqat birinchi (kursorsiz) ko'rishda audit-log yoziladi — "load more" bosilganda
     // har safar emas, aks holda bitta suhbatni ko'rish o'nlab audit yozuvi yaratardi.

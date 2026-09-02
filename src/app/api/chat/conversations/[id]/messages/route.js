@@ -42,17 +42,34 @@ export async function GET(req, { params }) {
     };
     if (before) query.createdAt = { $lt: new Date(before) };
 
-    const messages = await Message.find(query).sort({ createdAt: -1 }).limit(50).lean();
+    // `type` — foydalanuvchi profili oynasidagi galereya (Rasmlar/Videolar/Ovozli
+    // xabarlar, UserProfileModal.jsx), suhbat oqimidan mustaqil, alohida so'rov.
+    const galleryType = req.nextUrl.searchParams.get('type');
+    if (['image', 'video', 'voice'].includes(galleryType)) {
+      query.type = galleryType;
+    }
+    const desc = req.nextUrl.searchParams.get('order') === 'desc';
+
+    const page = await Message.find(query).sort({ createdAt: -1 }).limit(50).lean();
+    // Keyingi (eskiroq) sahifa bor-yo'qligini bilishning oddiy yo'li: to'liq sahifa
+    // qaytgan bo'lsa (limitga teng), ehtimol davomi bor — admin endpointidagi kabi
+    // limit+1 "buferi" ishlatilmagan, chunki oddiy suhbat oqimi ham shu naqshda ishlaydi.
+    const nextCursor = desc && page.length === 50 ? page[page.length - 1]?.createdAt || null : null;
+    const messages = desc ? page : page.reverse();
 
     // Suhbatni ochish/qayta yuklash = o'qish: boshqa tomon yozgan va hali `readAt`
     // belgilanmagan xabarlarni shu yerda "o'qildi" deb belgilaymiz (javobni bloklamaydi).
     // Faqat SHU (oddiy foydalanuvchi) endpointi shunday qiladi — admin panelning
     // suhbatni ko'rish endpointi buni chaqirmaydi (src/lib/chatRead.js izohiga qarang).
-    const otherIdForRead = convo.participantIds.find((id) => String(id) !== String(user._id));
-    if (otherIdForRead) {
-      markConversationRead(convo._id, user._id, otherIdForRead).catch((err) =>
-        console.error('[chat] o\'qilgan deb belgilanmadi', err)
-      );
+    // Galereya so'rovi (`type` bilan) buni chaqirmaydi — profil oynasini ochish
+    // o'qilgan/o'qilmagan holatiga ta'sir qilmasligi kerak.
+    if (!galleryType) {
+      const otherIdForRead = convo.participantIds.find((id) => String(id) !== String(user._id));
+      if (otherIdForRead) {
+        markConversationRead(convo._id, user._id, otherIdForRead).catch((err) =>
+          console.error('[chat] o\'qilgan deb belgilanmadi', err)
+        );
+      }
     }
 
     // Ikkala tomondan o'chirilgan xabar hujjati saqlanib qoladi (admin audit uchun),
@@ -64,7 +81,7 @@ export async function GET(req, { params }) {
         : { ...m, originalText: undefined }
     );
 
-    return NextResponse.json({ messages: sanitized.reverse() });
+    return NextResponse.json({ messages: sanitized, nextCursor });
   } catch (err) {
     return serverError(err, 'chat/messages GET');
   }

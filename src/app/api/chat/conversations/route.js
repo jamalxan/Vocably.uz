@@ -1,7 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { requireChatUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
-import { Conversation, User, Block } from '@/lib/models';
+import { Conversation, User, Block, Message } from '@/lib/models';
 import { NextResponse } from 'next/server';
 
 function sortedPair(a, b) {
@@ -32,17 +32,42 @@ export async function GET(req) {
     const others = await User.find({ _id: { $in: otherIds } }).select('username name lastActiveAt').lean();
     const byId = new Map(others.map((u) => [String(u._id), u]));
 
+    // "Do'stlar" ro'yxatida kimdan o'qilmagan xabar borligini ko'rsatish uchun —
+    // bitta aggregatsiya bilan HAMMA suhbat uchun birdek hisoblanadi (har biri uchun
+    // alohida so'rov o'rniga). Faqat BOSHQA tomon yuborgan va hali `readAt`siz
+        // xabarlar hisoblanadi (o'zim yozganlarim "o'qilmagan" emas).
+    const convoIds = conversations.map((c) => c._id);
+    const unreadAgg = convoIds.length
+      ? await Message.aggregate([
+          {
+            $match: {
+              conversationId: { $in: convoIds },
+              senderId: { $ne: user._id },
+              readAt: null,
+              deletedFor: { $ne: user._id },
+              deletedForEveryoneSilently: { $ne: true },
+            },
+          },
+          { $group: { _id: '$conversationId', count: { $sum: 1 } } },
+        ])
+      : [];
+    const unreadById = new Map(unreadAgg.map((u) => [String(u._id), u.count]));
+
     const result = conversations.map((c) => {
       const otherId = c.participantIds.find((id) => String(id) !== String(user._id));
       const other = byId.get(String(otherId));
+      // Men shu boshqa foydalanuvchiga qo'ygan taxallus (faqat menda ko'rinadi) —
+      // src/app/api/chat/conversations/[id]/nickname PATCH orqali o'rnatiladi.
+      const nickname = c.nicknames?.[String(user._id)] || '';
       return {
         id: c._id,
         otherUser: other
-          ? { id: other._id, username: other.username, name: other.name || '', lastActiveAt: other.lastActiveAt || null }
+          ? { id: other._id, username: other.username, name: other.name || '', lastActiveAt: other.lastActiveAt || null, nickname }
           : null,
         lastMessageAt: c.lastMessageAt,
         lastMessagePreview: c.lastMessagePreview || '',
         muted: (c.mutedBy || []).some((id) => String(id) === String(user._id)),
+        unreadCount: unreadById.get(String(c._id)) || 0,
       };
     });
 
@@ -110,6 +135,7 @@ export async function POST(req) {
           username: target.username,
           name: target.name || '',
           lastActiveAt: target.lastActiveAt || null,
+          nickname: convo.nicknames?.get ? convo.nicknames.get(String(user._id)) || '' : convo.nicknames?.[String(user._id)] || '',
         },
         lastMessageAt: convo.lastMessageAt,
         lastMessagePreview: convo.lastMessagePreview || '',

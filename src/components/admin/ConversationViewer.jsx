@@ -64,14 +64,14 @@ export default function ConversationViewer({ token }) {
   const [messages, setMessages] = useState(null);
   const [msgCursor, setMsgCursor] = useState(null);
   const [loadingMoreMsgs, setLoadingMoreMsgs] = useState(false);
-  // Suhbat ichida "Suhbat" (matn + media aralash, tartib bo'yicha) va "Media"
-  // (faqat rasm/video/ovozli xabarlar, alohida to'plam) o'rtasida almashtiradi —
+  // Suhbat ichida "Suhbat" (matn + media aralash, eskidan-yangiga) va uchta alohida
+  // galereya — Rasmlar/Videolar/Ovozli xabarlar (har biri o'zining {messages, cursor}
+  // holatiga ega, faqat birinchi marta ochilganda yuklanadi) o'rtasida almashtiradi —
   // o'chirilgan xabarlarning fayli ham shu yerda ko'rinadi (S3 obyekt o'chmaydi,
   // admin endpointi hech narsani sanitizatsiya qilmaydi).
   const [viewMode, setViewMode] = useState('chat');
-  const [mediaMessages, setMediaMessages] = useState(null);
-  const [mediaCursor, setMediaCursor] = useState(null);
-  const [loadingMoreMedia, setLoadingMoreMedia] = useState(false);
+  const [galleryData, setGalleryData] = useState({}); // { image: {messages, cursor}, video: {...}, voice: {...} }
+  const [loadingMoreGallery, setLoadingMoreGallery] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/chat/conversations', { headers: { Authorization: `Bearer ${token}` } })
@@ -103,8 +103,7 @@ export default function ConversationViewer({ token }) {
     setMessages(null);
     setMsgCursor(null);
     setViewMode('chat');
-    setMediaMessages(null);
-    setMediaCursor(null);
+    setGalleryData({});
     const res = await fetch(`/api/admin/chat/conversations/${c.id}/messages`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -113,32 +112,38 @@ export default function ConversationViewer({ token }) {
     setMsgCursor(data.nextCursor || null);
   };
 
-  // "Media" tab birinchi marta ochilganda yuklanadi (keyin qayta bosilsa qayta
-  // so'ralmaydi — allaqachon yuklangan bo'lsa shu holat saqlanadi).
-  const openMediaTab = async () => {
-    setViewMode('media');
-    if (mediaMessages !== null || !active) return;
-    const res = await fetch(`/api/admin/chat/conversations/${active.id}/messages?media=1`, {
+  // Har bir galereya (Rasmlar/Videolar/Ovozli xabarlar) birinchi marta ochilganda
+  // yuklanadi (keyin qayta bosilsa qayta so'ralmaydi — allaqachon yuklangan bo'lsa
+  // shu holat saqlanadi). Natija eng yangisi tepada (order=desc).
+  const openGalleryTab = async (type) => {
+    setViewMode(type);
+    if (galleryData[type] || !active) return;
+    const res = await fetch(`/api/admin/chat/conversations/${active.id}/messages?type=${type}&order=desc`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
-    setMediaMessages(data.messages || []);
-    setMediaCursor(data.nextCursor || null);
+    setGalleryData((prev) => ({ ...prev, [type]: { messages: data.messages || [], cursor: data.nextCursor || null } }));
   };
 
-  const loadMoreMedia = async () => {
-    if (!mediaCursor || loadingMoreMedia || !active) return;
-    setLoadingMoreMedia(true);
+  const loadMoreGallery = async () => {
+    const current = galleryData[viewMode];
+    if (!current?.cursor || loadingMoreGallery || !active) return;
+    setLoadingMoreGallery(true);
     try {
       const res = await fetch(
-        `/api/admin/chat/conversations/${active.id}/messages?media=1&before=${encodeURIComponent(mediaCursor)}`,
+        `/api/admin/chat/conversations/${active.id}/messages?type=${viewMode}&order=desc&before=${encodeURIComponent(current.cursor)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
-      setMediaMessages((prev) => [...(data.messages || []), ...(prev || [])]);
-      setMediaCursor(data.nextCursor || null);
+      setGalleryData((prev) => ({
+        ...prev,
+        [viewMode]: {
+          messages: [...(prev[viewMode]?.messages || []), ...(data.messages || [])],
+          cursor: data.nextCursor || null,
+        },
+      }));
     } finally {
-      setLoadingMoreMedia(false);
+      setLoadingMoreGallery(false);
     }
   };
 
@@ -201,33 +206,38 @@ export default function ConversationViewer({ token }) {
             <MessageSquareText size={13} /> Suhbat
           </button>
           <button
-            onClick={openMediaTab}
+            onClick={() => openGalleryTab('image')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              viewMode === 'media' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
+              viewMode === 'image' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
             }`}
           >
-            <ImageIcon size={13} /> Media (rasm/video/ovozli)
+            <ImageIcon size={13} /> Rasmlar
+          </button>
+          <button
+            onClick={() => openGalleryTab('video')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              viewMode === 'video' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
+            }`}
+          >
+            <Video size={13} /> Videolar
+          </button>
+          <button
+            onClick={() => openGalleryTab('voice')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              viewMode === 'voice' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
+            }`}
+          >
+            <Mic size={13} /> Ovozli xabarlar
           </button>
         </div>
 
-        {viewMode === 'media' ? (
-          mediaMessages === null ? (
+        {['image', 'video', 'voice'].includes(viewMode) ? (
+          !galleryData[viewMode] ? (
             <Loader2 className="animate-spin text-accent" size={22} />
           ) : (
             <div className="rounded-2xl border border-border bg-bg/60 shadow-card p-5 max-h-[65vh] overflow-y-auto">
-              {mediaCursor && (
-                <div className="flex justify-center pb-3">
-                  <button
-                    onClick={loadMoreMedia}
-                    disabled={loadingMoreMedia}
-                    className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
-                  >
-                    {loadingMoreMedia && <Loader2 size={12} className="animate-spin" />} Eski media'ni yuklash
-                  </button>
-                </div>
-              )}
               <div className="flex flex-wrap gap-3">
-                {mediaMessages.map((m) => {
+                {galleryData[viewMode].messages.map((m) => {
                   const sender = active.participants.find((p) => String(p._id) === String(m.senderId));
                   const Icon = TYPE_ICON[m.type] || MessageSquareText;
                   return (
@@ -247,7 +257,20 @@ export default function ConversationViewer({ token }) {
                   );
                 })}
               </div>
-              {mediaMessages.length === 0 && <p className="text-center text-sm text-muted py-8">Media xabar yo'q</p>}
+              {galleryData[viewMode].messages.length === 0 && (
+                <p className="text-center text-sm text-muted py-8">Media xabar yo'q</p>
+              )}
+              {galleryData[viewMode].cursor && (
+                <div className="flex justify-center pt-3">
+                  <button
+                    onClick={loadMoreGallery}
+                    disabled={loadingMoreGallery}
+                    className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    {loadingMoreGallery && <Loader2 size={12} className="animate-spin" />} Eskisini yuklash
+                  </button>
+                </div>
+              )}
             </div>
           )
         ) : messages === null ? (

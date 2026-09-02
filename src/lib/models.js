@@ -214,6 +214,10 @@ const ConversationSchema = new mongoose.Schema({
   // holatda ham keyinroq (qidiruv orqali qayta ochilsa yoki yangi xabar kelsa) shu
   // userning id'si bu massivdan olib tashlanadi — suhbat ro'yxatga qaytadi (src/app/api/chat/conversations).
   hiddenFor: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  // Har bir tomon boshqasiga o'zi xohlagan taxallus qo'yishi mumkin (faqat o'zida
+  // ko'rinadi) — kalit shu userning id'si (String), qiymat esa u ko'rgan taxallus.
+  // .lean() bilan oddiy JS obyektiga aylanadi (src/app/api/chat/conversations/[id]/nickname).
+  nicknames: { type: Map, of: String, default: {} },
 });
 // Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
 // yangisi birinchi (src/app/api/chat/conversations); (2) admin panelning BARCHA

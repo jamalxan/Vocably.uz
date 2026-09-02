@@ -354,6 +354,36 @@ export function ChatProvider({ token, children }) {
     [authHeaders]
   );
 
+  // Boshqa foydalanuvchiga men (faqat men) uchun ko'rinadigan taxallus qo'yadi —
+  // UserProfileModal.jsx'dagi "Saqlash" tugmasi chaqiradi (bo'sh string — o'chirish).
+  const setNickname = useCallback(
+    async (conversationId, nickname) => {
+      try {
+        const res = await fetch(`/api/chat/conversations/${conversationId}/nickname`, {
+          method: 'PATCH',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ nickname }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { error: data.error || 'Saqlanmadi' };
+        setConversations((prev) =>
+          prev.map((c) =>
+            String(c.id) === String(conversationId) ? { ...c, otherUser: { ...c.otherUser, nickname: data.nickname } } : c
+          )
+        );
+        setActiveConversation((prev) =>
+          prev && String(prev.id) === String(conversationId)
+            ? { ...prev, otherUser: { ...prev.otherUser, nickname: data.nickname } }
+            : prev
+        );
+        return { success: true, nickname: data.nickname };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [authHeaders]
+  );
+
   // Faqat menda (bu userda) shu suhbatning push/bell bildirishnomasini o'chiradi —
   // boshqa tomon buni bilmaydi, xabarlar odatdagidek yetib boraveradi.
   const toggleMuteConversation = useCallback(
@@ -521,6 +551,7 @@ export function ChatProvider({ token, children }) {
     reportTarget,
     blockUser,
     toggleMuteConversation,
+    setNickname,
     deleteConversation,
     livePresence,
     typingByConversation,

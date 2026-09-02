@@ -77,16 +77,27 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-1 min-w-0">
-            <p className="text-sm font-medium text-primary truncate">@{c.otherUser?.username || 'noma\'lum'}</p>
+            <p className={`text-sm truncate ${c.unreadCount > 0 ? 'font-bold text-primary' : 'font-medium text-primary'}`}>
+              {c.otherUser?.nickname || `@${c.otherUser?.username || 'noma\'lum'}`}
+            </p>
             {c.muted && <BellOff size={11} className="text-muted flex-shrink-0" />}
           </span>
           <span className="text-[10px] text-muted flex-shrink-0">{timeAgo(c.lastMessageAt)}</span>
         </div>
-        {typing ? (
-          <p className="text-xs text-accent italic truncate">{TYPING_LABEL[typing] || TYPING_LABEL.text}</p>
-        ) : (
-          <p className="text-xs text-muted truncate">{c.lastMessagePreview || ''}</p>
-        )}
+        <div className="flex items-center justify-between gap-2">
+          {typing ? (
+            <p className="text-xs text-accent italic truncate">{TYPING_LABEL[typing] || TYPING_LABEL.text}</p>
+          ) : (
+            <p className={`text-xs truncate ${c.unreadCount > 0 ? 'text-primary font-semibold' : 'text-muted'}`}>
+              {c.lastMessagePreview || ''}
+            </p>
+          )}
+          {c.unreadCount > 0 && (
+            <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-on-accent text-[10px] font-bold flex items-center justify-center">
+              {c.unreadCount > 99 ? '99+' : c.unreadCount}
+            </span>
+          )}
+        </div>
       </div>
       <button
         onClick={(e) => {
