@@ -49,6 +49,13 @@ const INDEX_PLAN = [
         options: { name: 'participantIds_1_lastMessageAt_-1', background: true },
       },
       { key: { lastMessageAt: -1 }, options: { name: 'lastMessageAt_-1', background: true } },
+      // src/lib/models.js declares this `unique: true` on the schema, but Mongoose's
+      // autoIndex never actually built it here (this manual list was the only thing
+      // creating indexes in practice) — meaning duplicate conversations for the same
+      // pair of users were never actually blocked. Run scripts/fix-duplicate-conversations.mjs
+      // FIRST if this is the first time adding this index to an existing database —
+      // MongoDB refuses to build a unique index while duplicate/missing values exist.
+      { key: { pairKey: 1 }, options: { name: 'pairKey_1', unique: true, background: true } },
     ],
   },
   {

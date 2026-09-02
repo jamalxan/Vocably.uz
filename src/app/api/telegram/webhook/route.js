@@ -214,9 +214,13 @@ async function sendAdminOverview(chatId) {
 
 export async function POST(req) {
   try {
-    // Webhook so'rovi haqiqatan ham Telegram'dan kelayotganini tekshiramiz
+    // Webhook so'rovi haqiqatan ham Telegram'dan kelayotganini tekshiramiz. ATAYLAB
+    // "fail closed": TELEGRAM_WEBHOOK_SECRET sozlanmagan bo'lsa ham so'rov RAD ETILADI —
+    // ilgari sozlanmagan holatda tekshiruv butunlay o'tkazib yuborilardi, bu esa
+    // bu yerga (masalan /admin buyruqlari ishlaydigan) soxta so'rov (haqiqiy Telegram'dan
+    // emas) yuborish imkonini berardi.
     const secret = req.headers.get('x-telegram-bot-api-secret-token');
-    if (process.env.TELEGRAM_WEBHOOK_SECRET && secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+    if (!process.env.TELEGRAM_WEBHOOK_SECRET || secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
       return NextResponse.json({ ok: false }, { status: 401 });
     }
 

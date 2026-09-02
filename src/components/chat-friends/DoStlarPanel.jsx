@@ -43,18 +43,33 @@ function DoStlarShell({ onActiveChange }) {
   // ochilganda/yopilganda URL'ni shunga moslaymiz. Faqat Do'stlar bo'limida
   // ekanimizda (panel boshqa bo'limga o'tilganda ham mount holida qolaveradi,
   // shunda socket qayta ulanmaydi — o'sha holatda URL'ga tegmaymiz).
+  //
+  // MUHIM (avvalgi xato manbai): ro'yxatdan ketma-ket ikkita (yoki undan ko'p)
+  // suhbatga TEZ bosilsa, har bir bosish shu effektni qayta ishga tushirib,
+  // o'zining `router.replace()` chaqiruvini yuborardi — ikkinchisi birinchisi
+  // hali tugamasdan (Next.js RSC navigatsiyasi tarmoq orqali ketayotganda)
+  // boshlanardi. Next.js App Router'da ikkita navigatsiya shunday bir-birining
+  // ustiga chiqib qolsa, ba'zan yumshoq (client-side) o'tish o'rniga BUTUN
+  // sahifani qayta yuklashga (hard/MPA reload) tushib qolar edi — aynan
+  // "chat ochilganda sahifa yangilanadi" muammosi shundan edi. Shuning uchun
+  // bu yerda darhol emas, holat bir necha o'n millisekund davomida "tinch"
+  // turgandan keyingina (debounce) bitta marta yo'naltiramiz — tez-tez
+  // almashtirishlar bitta, oxirgi navigatsiyaga birlashtiriladi.
   useEffect(() => {
     if (!onFriendsRoute) {
       prevActiveUsernameRef.current = activeConversation?.otherUser?.username || null;
-      return;
+      return undefined;
     }
     const uname = activeConversation?.otherUser?.username || null;
-    if (uname) {
-      if (uname !== routeUsername) router.replace(`/dashboard/friends/${uname}`);
-    } else if (prevActiveUsernameRef.current && routeUsername) {
-      router.replace('/dashboard/friends');
-    }
-    prevActiveUsernameRef.current = uname;
+    const timer = setTimeout(() => {
+      if (uname) {
+        if (uname !== routeUsername) router.replace(`/dashboard/friends/${uname}`);
+      } else if (prevActiveUsernameRef.current && routeUsername) {
+        router.replace('/dashboard/friends');
+      }
+      prevActiveUsernameRef.current = uname;
+    }, 150);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversation, onFriendsRoute]);
 
