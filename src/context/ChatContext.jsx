@@ -61,9 +61,13 @@ export function ChatProvider({ token, children }) {
     }
   }, [authHeaders]);
 
+  // `silent` — fon rejimidagi qayta yuklash (masalan pastdagi 5s poll, socket
+  // ulanmaganda) uchun: spinner ko'rsatmaydi, aks holda suhbat ochiq turganda ham
+  // har 5 soniyada butun ro'yxat bir lahzaga yo'qolib, "sahifa qayta yuklanyapti"
+  // taassurotini berardi (avvalgi xato manbai).
   const loadMessages = useCallback(
-    async (conversationId) => {
-      setLoadingMessages(true);
+    async (conversationId, { silent = false } = {}) => {
+      if (!silent) setLoadingMessages(true);
       try {
         const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
           headers: authHeaders(),
@@ -73,7 +77,7 @@ export function ChatProvider({ token, children }) {
       } catch {
         // jimgina
       } finally {
-        setLoadingMessages(false);
+        if (!silent) setLoadingMessages(false);
       }
     },
     [authHeaders]
@@ -520,7 +524,7 @@ export function ChatProvider({ token, children }) {
   useEffect(() => {
     clearInterval(pollRef.current);
     if (activeConversation && !socketConnected) {
-      pollRef.current = setInterval(() => loadMessages(activeConversation.id), 5000);
+      pollRef.current = setInterval(() => loadMessages(activeConversation.id, { silent: true }), 5000);
     }
     return () => clearInterval(pollRef.current);
   }, [activeConversation, socketConnected, loadMessages]);

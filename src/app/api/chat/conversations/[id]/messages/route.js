@@ -44,9 +44,14 @@ export async function GET(req, { params }) {
 
     // `type` — foydalanuvchi profili oynasidagi galereya (Rasmlar/Videolar/Ovozli
     // xabarlar, UserProfileModal.jsx), suhbat oqimidan mustaqil, alohida so'rov.
+    // "Hammadan o'chirilgan" xabarlar bu yerda chiqarib tashlanadi — ularning
+    // `media`si pastda sanitizatsiya bosqichida `null`ga aylantiriladi, galereyada
+    // ko'rsatiladigan hech narsasi yo'q (suhbat oqimidan farqli, u yerda "o'chirilgan"
+    // tombstone'i ko'rsatish uchun ular saqlanadi).
     const galleryType = req.nextUrl.searchParams.get('type');
     if (['image', 'video', 'voice'].includes(galleryType)) {
       query.type = galleryType;
+      query.deletedForEveryone = { $ne: true };
     }
     const desc = req.nextUrl.searchParams.get('order') === 'desc';
 

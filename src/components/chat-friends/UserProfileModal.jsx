@@ -71,17 +71,23 @@ function MediaGallery({ conversationId, type, token }) {
     );
   }
 
+  // `media` yo'q xabar (masalan hammadan o'chirilgan) server tarafda allaqachon
+  // chiqarib tashlanadi (order=desc so'rovida), lekin kesh/eski javoblarga qarshi
+  // himoya sifatida bu yerda ham qoldiriladi — aks holda Bubble komponenti
+  // `media.key`ni null'dan o'qishga urinib butun sahifani qulatadi.
+  const visibleMessages = data.messages.filter((m) => m.media);
+
   return (
     <div>
       <div className="flex flex-wrap gap-2.5">
-        {data.messages.map((m) => (
+        {visibleMessages.map((m) => (
           <div key={m.id || m._id} className="w-fit rounded-xl border border-border bg-bg p-2 flex flex-col gap-1">
             <Bubble media={m.media} token={token} />
             <p className="text-[10px] text-muted">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
           </div>
         ))}
       </div>
-      {data.messages.length === 0 && <p className="text-center text-xs text-muted py-8">Bu yerda hali hech narsa yo'q</p>}
+      {visibleMessages.length === 0 && <p className="text-center text-xs text-muted py-8">Bu yerda hali hech narsa yo'q</p>}
       {data.cursor && (
         <div className="flex justify-center pt-3">
           <button
