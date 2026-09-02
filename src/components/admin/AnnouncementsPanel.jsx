@@ -28,6 +28,10 @@ export default function AnnouncementsPanel({ token }) {
   const send = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
+    // Bu — BARCHA foydalanuvchiga qaytarib bo'lmaydigan tarzda yuboriladigan
+    // umumiy e'lon (bekor qilish/o'chirish imkoni yo'q), shuning uchun tasodifiy
+    // yuborishning oldini olish uchun tasdiqlash so'raladi.
+    if (!confirm("Bu e'lon BARCHA foydalanuvchilarga yuboriladi. Davom etasizmi?")) return;
     setSending(true);
     setError('');
     try {

@@ -342,6 +342,15 @@ export async function POST(req) {
 
         if (!succeeded) {
           controller.enqueue(encoder.encode(`\n⚠️ ${friendlyError(lastErr)}`));
+          // Barcha provayderlar muvaffaqiyatsiz bo'lsa ham, foydalanuvchining o'zi
+          // yozgan xabari (yuqorida qo'shilgan) saqlanib qolishi kerak — aks holda
+          // u ekranda ko'rinib turadi (client optimistik qo'shgan), lekin sahifa
+          // qayta yuklanganda sessiyada umuman yo'q bo'lib chiqardi (avvalgi xato manbai).
+          try {
+            await user.save();
+          } catch {
+            // jimgina — xabar allaqachon oqimda xato bilan ko'rsatilgan
+          }
         } else {
           if (pendingAction) {
             controller.enqueue(encoder.encode(`${PENDING_MARK_START}${JSON.stringify(pendingAction)}${PENDING_MARK_END}`));

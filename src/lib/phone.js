@@ -25,14 +25,17 @@ export function normalizePhone(raw) {
   return '+' + digits;
 }
 
-// Ikki raqamni oxirgi 9 ta raqami bo'yicha solishtiradi (kod farqi bo'lsa ham mos kelishi uchun)
+// Ikki raqamni to'liq (davlat kodi bilan) solishtiradi — ikkalasi ham (saytda
+// kiritilgan, normalizePhone orqali, va Telegram "contact" ulashishdan kelgan)
+// har doim davlat kodi bilan keladi, shuning uchun to'liq solishtirish yetarli.
+// ILGARI faqat oxirgi 9 ta raqam solishtirilardi ("kod farqi" uchun degan asosda),
+// lekin bu boshqa davlat kodidagi, tasodifan bir xil oxirgi 9 raqamli haqiqiy
+// boshqa raqamni ham "mos keladi" deb hisoblardi — parolni tiklash oqimida
+// (Telegram orqali tasdiqlash) xavfsizlik teshigi edi.
 export function phonesMatch(a, b) {
   const da = digitsOnly(a);
   const db = digitsOnly(b);
-  if (!da || !db) return false;
-  const tailA = da.slice(-9);
-  const tailB = db.slice(-9);
-  return tailA === tailB && tailA.length === 9;
+  return !!da && !!db && da === db;
 }
 
 // Foydalanuvchiga ko'rsatish uchun chiroyli formatlash: +998 90 123 45 67

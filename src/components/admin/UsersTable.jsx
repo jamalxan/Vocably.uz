@@ -153,7 +153,21 @@ export default function UsersTable({ token }) {
                       <select
                         value={u.role}
                         disabled={savingId === u._id}
-                        onChange={(e) => patchUser(u._id, { role: e.target.value })}
+                        onChange={(e) => {
+                          const nextRole = e.target.value;
+                          // Rol o'zgartirish qaytarilishi mumkin bo'lsa ham (admin
+                          // huquqi berish yoki olib tashlash) og'ir oqibatli — tasodifiy
+                          // bosishning oldini olish uchun tasdiqlash so'raladi.
+                          if (
+                            !confirm(
+                              `${u.name || u.phoneDisplay} uchun rolni "${nextRole}"ga o'zgartirasizmi?`
+                            )
+                          ) {
+                            e.target.value = u.role;
+                            return;
+                          }
+                          patchUser(u._id, { role: nextRole });
+                        }}
                         className="px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-primary outline-none focus:border-accent transition-colors"
                       >
                         <option value="user">user</option>
