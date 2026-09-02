@@ -72,13 +72,16 @@ export function ChatProvider({ token, children }) {
   // ulanmaganda) uchun: spinner ko'rsatmaydi, aks holda suhbat ochiq turganda ham
   // har 5 soniyada butun ro'yxat bir lahzaga yo'qolib, "sahifa qayta yuklanyapti"
   // taassurotini berardi (avvalgi xato manbai).
+  // `noRead` — server tarafda avtomatik "o'qildi" belgilashni o'chiradi (pastdagi
+  // 5s poll shuni ishlatadi — tab/oyna fokusda bo'lmasa ham xabar "o'qilgan"
+  // ko'rsatilib qolmasligi uchun; haqiqiy o'qilgan holatini alohida, tab ko'rinib
+  // turganini tekshirgandan keyin belgilaymiz).
   const loadMessages = useCallback(
-    async (conversationId, { silent = false } = {}) => {
+    async (conversationId, { silent = false, noRead = false } = {}) => {
       if (!silent) setLoadingMessages(true);
       try {
-        const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
-          headers: authHeaders(),
-        });
+        const url = `/api/chat/conversations/${conversationId}/messages${noRead ? '?noRead=1' : ''}`;
+        const res = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
         if (res.ok) setMessages(data.messages || []);
       } catch {
@@ -506,8 +509,13 @@ export function ChatProvider({ token, children }) {
       if (String(conversationId) === String(activeIdRef.current)) {
         appendMessage(message);
         // Suhbat hozir ochiq turibdi — kelgan zahoti "o'qildi" deb belgilaymiz
-        // (Telegram uslubi: chat ochiq bo'lsa yangi xabar darhol o'qilgan hisoblanadi).
-        markRead(conversationId);
+        // (Telegram uslubi: chat ochiq bo'lsa yangi xabar darhol o'qilgan hisoblanadi),
+        // LEKIN faqat tab/oyna haqiqatan ham ko'rinib turgan bo'lsa (foydalanuvchi
+        // boshqa tabda yoki oynani kichraytirgan bo'lsa, xabar tab qayta fokusga
+        // qaytmaguncha "o'qilmagan" holida qoladi — pastdagi visibilitychange
+        // effekti o'sha paytda orqada qolganini tutib oladi, avvalgi xato manbai:
+        // yashirin tabda ham xabar darhol "o'qilgan" deb ko'rsatilardi).
+        if (!document.hidden) markRead(conversationId);
       }
       loadConversations();
     });
@@ -557,10 +565,32 @@ export function ChatProvider({ token, children }) {
   useEffect(() => {
     clearInterval(pollRef.current);
     if (activeConversation && !socketConnected) {
-      pollRef.current = setInterval(() => loadMessages(activeConversation.id, { silent: true }), 5000);
+      pollRef.current = setInterval(async () => {
+        // `noRead: true` — bu shunchaki fon rejimidagi qayta tekshirish, tab
+        // yashirin bo'lsa ham ishlaydi (setInterval brauzerda davom etaveradi),
+        // shuning uchun server tarafda avtomatik "o'qildi" belgilanmaydi. Tab
+        // haqiqatan ham ko'rinib turgan bo'lsagina alohida (yengil) /read
+        // so'rovi bilan o'qilgan deb belgilaymiz.
+        await loadMessages(activeConversation.id, { silent: true, noRead: true });
+        if (!document.hidden) markRead(activeConversation.id);
+      }, 5000);
     }
     return () => clearInterval(pollRef.current);
-  }, [activeConversation, socketConnected, loadMessages]);
+  }, [activeConversation, socketConnected, loadMessages, markRead]);
+
+  // Foydalanuvchi tabga qaytganda (masalan boshqa tabda edi yoki oynani
+  // kichraytirgan edi) — shu vaqt ichida "o'qilmagan" holida qolgan xabarlarni
+  // (yuqoridagi ikkita joy ataylab tab yashirin bo'lganda belgilamagan) endi
+  // tutib olamiz.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (!document.hidden && activeConversationRef.current) {
+        markRead(activeConversationRef.current.id);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [markRead]);
 
   const value = {
     conversations,

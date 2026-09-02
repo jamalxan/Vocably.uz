@@ -67,8 +67,15 @@ export async function GET(req, { params }) {
     // Faqat SHU (oddiy foydalanuvchi) endpointi shunday qiladi — admin panelning
     // suhbatni ko'rish endpointi buni chaqirmaydi (src/lib/chatRead.js izohiga qarang).
     // Galereya so'rovi (`type` bilan) buni chaqirmaydi — profil oynasini ochish
-    // o'qilgan/o'qilmagan holatiga ta'sir qilmasligi kerak.
-    if (!galleryType) {
+    // o'qilgan/o'qilmagan holatiga ta'sir qilmasligi kerak. `noRead=1` — foydalanuvchi
+    // tab/oyna FOKUSDA BO'LMAGANDA ham fon rejimida 5s'da bir chaqiriladigan poll
+    // so'rovi (ChatContext.jsx) — bu yerda "o'qildi" belgilanmaydi, aks holda
+    // foydalanuvchi hatto oynani ko'rmasa ham xabar "o'qilgan" deb ko'rsatilardi
+    // (avvalgi xato manbai — o'qilgan/o'qilmagan holati noto'g'ri aniqlanardi).
+    // Tab qayta fokusga qaytganda ChatContext shu o'qilmagan xabarlarni alohida
+    // (/read endpointi orqali) o'qilgan deb belgilaydi.
+    const noRead = req.nextUrl.searchParams.get('noRead') === '1';
+    if (!galleryType && !noRead) {
       const otherIdForRead = convo.participantIds.find((id) => String(id) !== String(user._id));
       if (otherIdForRead) {
         markConversationRead(convo._id, user._id, otherIdForRead).catch((err) =>
