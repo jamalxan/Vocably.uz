@@ -31,6 +31,13 @@ export function ChatProvider({ token, children }) {
 
   const socketRef = useRef(null);
   const pollRef = useRef(null);
+  // Har bir suhbat uchun oxirgi ko'rilgan xabarlar ro'yxatini eslab qoladi —
+  // ikkita suhbat orasida oldinga-orqaga o'tilganda (masalan ikki do'st bilan
+  // navbatma-navbat yozishganda) HAR SAFAR bo'sh ekrandan spinner ko'rsatib
+  // qayta yuklamaslik uchun: keshdagi xabar darhol ko'rsatiladi, so'ngra fon
+  // rejimida (silent) yangilanadi — aks holda har almashtirishda butun ro'yxat
+  // bir lahzaga yo'qolib "sahifa qayta yuklanyapti" taassurotini berardi.
+  const messagesCacheRef = useRef(new Map());
   const activeIdRef = useRef(null);
   activeIdRef.current = activeConversation?.id || null;
   const activeConversationRef = useRef(null);
@@ -100,6 +107,21 @@ export function ChatProvider({ token, children }) {
     }
   }, [activeConversation, messages, authHeaders]);
 
+  // Keshda bo'lsa — darhol shuni ko'rsatadi (spinnersiz) va fonda yangilaydi;
+  // bo'lmasa (bu suhbat birinchi marta ochilyapti) oddiy spinner bilan yuklaydi.
+  const loadMessagesWithCache = useCallback(
+    (conversationId) => {
+      const cached = messagesCacheRef.current.get(String(conversationId));
+      if (cached) {
+        setMessages(cached);
+        loadMessages(conversationId, { silent: true });
+      } else {
+        loadMessages(conversationId);
+      }
+    },
+    [loadMessages]
+  );
+
   const openConversationByUsername = useCallback(
     async (username) => {
       const res = await fetch('/api/chat/conversations', {
@@ -111,11 +133,11 @@ export function ChatProvider({ token, children }) {
       if (!res.ok) return { error: data.error || 'Xatolik yuz berdi' };
 
       setActiveConversation(data.conversation);
-      await loadMessages(data.conversation.id);
+      loadMessagesWithCache(data.conversation.id);
       loadConversations();
       return { conversation: data.conversation };
     },
-    [authHeaders, loadMessages, loadConversations]
+    [authHeaders, loadMessagesWithCache, loadConversations]
   );
 
   const selectConversation = useCallback(
@@ -123,9 +145,9 @@ export function ChatProvider({ token, children }) {
       setActiveConversation(conv);
       setEditingMessage(null);
       setReplyingTo(null);
-      loadMessages(conv.id);
+      loadMessagesWithCache(conv.id);
     },
-    [loadMessages]
+    [loadMessagesWithCache]
   );
 
   const closeConversation = useCallback(() => {
@@ -345,6 +367,7 @@ export function ChatProvider({ token, children }) {
           return { error: data.error || "O'chirilmadi" };
         }
         setConversations((prev) => prev.filter((c) => String(c.id) !== String(conversationId)));
+        messagesCacheRef.current.delete(String(conversationId));
         if (String(activeIdRef.current) === String(conversationId)) {
           setActiveConversation(null);
           setMessages([]);
@@ -433,6 +456,16 @@ export function ChatProvider({ token, children }) {
     loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Faol suhbatning xabarlar ro'yxati o'zgargan sayin (yuklandi, yangi xabar
+  // keldi, tahrirlandi/o'chirildi) keshni ham yangilab boradi — shu suhbatga
+  // keyinroq qaytilganda (loadMessagesWithCache) yuklashni kutmasdan darhol
+  // eng oxirgi holat ko'rsatiladi.
+  useEffect(() => {
+    if (activeConversation) {
+      messagesCacheRef.current.set(String(activeConversation.id), messages);
+    }
+  }, [messages, activeConversation]);
 
   // Ro'yxat yangilanganda (masalan yangi suhbat qidiruvdan ochilganda) ham yangi
   // paydo bo'lgan foydalanuvchilar uchun onlayn holatni so'raymiz.
