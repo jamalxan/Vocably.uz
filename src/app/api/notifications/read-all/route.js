@@ -11,7 +11,9 @@ export async function POST(req) {
 
     await connectToDatabase();
 
-    await Notification.updateMany({ userId, read: false }, { $set: { read: true } });
+    // "O'qilgan" = o'chirilgan — ro'yxat doim faqat yangi bildirishnomalar bilan
+    // "toza" qolishi uchun read:true qilib saqlash o'rniga butunlay o'chirib tashlanadi.
+    await Notification.deleteMany({ userId });
     return NextResponse.json({ success: true });
   } catch (err) {
     return serverError(err, 'notifications/read-all POST');

@@ -66,14 +66,17 @@ export default function NotificationBell({ token, onOpenFriends }) {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
 
+  // O'qilgan bildirishnoma bazadan o'chiriladi (route.js), shuning uchun ro'yxatdan
+  // ham darhol olib tashlanadi — eski o'qilganlar osilib qolmasin, faqat yangilari qolsin.
   const markRead = async (id) => {
-    setItems((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
-    setUnreadCount((n) => Math.max(0, n - 1));
+    const wasUnread = items.find((n) => n._id === id)?.read === false;
+    setItems((prev) => prev.filter((n) => n._id !== id));
+    if (wasUnread) setUnreadCount((n) => Math.max(0, n - 1));
     fetch(`/api/notifications/${id}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
   };
 
   const markAllRead = async () => {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    setItems([]);
     setUnreadCount(0);
     fetch('/api/notifications/read-all', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(
       () => {}

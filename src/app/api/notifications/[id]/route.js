@@ -4,7 +4,9 @@ import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
-// Bitta bildirishnomani o'qilgan deb belgilaydi (bosilganda chaqiriladi).
+// Bitta bildirishnomani o'qilgan deb belgilaydi (bosilganda chaqiriladi) — ro'yxat doim
+// faqat yangi/o'qilmagan bildirishnomalar bilan "toza" qolishi uchun o'qilgani zahoti
+// bazadan butunlay o'chirib tashlanadi (read:true qilib saqlanmaydi).
 export async function PATCH(req, { params }) {
   try {
     const userId = getUserIdFromRequest(req);
@@ -12,8 +14,8 @@ export async function PATCH(req, { params }) {
 
     await connectToDatabase();
 
-    const result = await Notification.updateOne({ _id: params.id, userId }, { $set: { read: true } });
-    if (result.matchedCount === 0) return NextResponse.json({ error: 'Topilmadi' }, { status: 404 });
+    const result = await Notification.deleteOne({ _id: params.id, userId });
+    if (result.deletedCount === 0) return NextResponse.json({ error: 'Topilmadi' }, { status: 404 });
 
     return NextResponse.json({ success: true });
   } catch (err) {
