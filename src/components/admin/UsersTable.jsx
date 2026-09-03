@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User as UserIcon } from 'lucide-react';
+import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User as UserIcon, BookOpen } from 'lucide-react';
+import UserWordsModal from './UserWordsModal';
 
 export default function UsersTable({ token }) {
   const [users, setUsers] = useState([]);
@@ -10,6 +11,7 @@ export default function UsersTable({ token }) {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
   const [usernameDraft, setUsernameDraft] = useState({});
+  const [wordsUserId, setWordsUserId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,6 +105,7 @@ export default function UsersTable({ token }) {
                   <th className="px-5 py-3.5 font-semibold">Do'stlar</th>
                   <th className="px-5 py-3.5 font-semibold">Rol</th>
                   <th className="px-5 py-3.5 font-semibold">Holat</th>
+                  <th className="px-5 py-3.5 font-semibold">So'zlar</th>
                 </tr>
               </thead>
               <tbody>
@@ -188,6 +191,14 @@ export default function UsersTable({ token }) {
                         {u.chatBanned ? 'Bloklangan' : 'Faol'}
                       </button>
                     </td>
+                    <td className="px-5 py-3.5">
+                      <button
+                        onClick={() => setWordsUserId(u._id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg border border-border text-muted rounded-lg text-xs font-medium hover:border-accent/40 hover:text-accent transition-colors"
+                      >
+                        <BookOpen size={13} /> Ko'rish
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -206,6 +217,9 @@ export default function UsersTable({ token }) {
             </div>
           )}
         </div>
+      )}
+      {wordsUserId && (
+        <UserWordsModal userId={wordsUserId} token={token} onClose={() => setWordsUserId(null)} />
       )}
     </div>
   );
