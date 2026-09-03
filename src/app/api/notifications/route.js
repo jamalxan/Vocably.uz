@@ -19,6 +19,13 @@ export async function GET(req) {
     const limitParam = parseInt(req.nextUrl.searchParams.get('limit'), 10);
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 30;
 
+    // O'qish/o'qilgan-hammasini belgilash endi notificationni darhol o'chiradi
+    // (src/app/api/notifications/[id], read-all), lekin shu o'zgarishdan oldin
+    // read:true bo'lib "osilib qolgan" eski yozuvlar bor bo'lishi mumkin — har bir
+    // foydalanuvchi ilovani ochganda (faqat birinchi, kursorsiz sahifada) ular shu
+    // yerda o'zi tozalanadi, alohida qo'lda tozalash skripti shart emas.
+    if (!before) await Notification.deleteMany({ userId, read: true });
+
     const [items, unreadCount] = await Promise.all([
       Notification.find(query).sort({ createdAt: -1 }).limit(limit + 1).lean(),
       // Faqat birinchi (kursorsiz) sahifada hisoblanadi — "yana yuklash"da qayta-qayta
