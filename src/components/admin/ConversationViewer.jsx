@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, ArrowLeft, MessageSquareText, Image as ImageIcon, Video, Mic, Paperclip, Flag, Pencil, Trash2, Download, UserX } from 'lucide-react';
+import { Loader2, ArrowLeft, MessageSquareText, Image as ImageIcon, Video, Mic, Paperclip, Flag, Pencil, Trash2, Download, UserX, Tag } from 'lucide-react';
 import { useAuthedAdminMediaUrl } from '@/lib/useAuthedMedia';
 
 const TYPE_ICON = { image: ImageIcon, video: Video, voice: Mic, file: Paperclip, text: MessageSquareText };
@@ -188,6 +188,24 @@ export default function ConversationViewer({ token }) {
           <span className="text-muted mx-2">↔</span>
           @{active.participants[1]?.username || active.participants[1]?.name || '?'}
         </p>
+        {(active.participants[0]?.savedAsByOther || active.participants[1]?.savedAsByOther) && (
+          <div className="flex flex-col gap-0.5 text-xs text-muted mb-2">
+            {active.participants[1]?.savedAsByOther && (
+              <p className="flex items-center gap-1.5">
+                <Tag size={12} />
+                @{active.participants[0]?.username} → @{active.participants[1]?.username}ni{' '}
+                <span className="text-primary font-medium">"{active.participants[1].savedAsByOther}"</span> deb saqlagan
+              </p>
+            )}
+            {active.participants[0]?.savedAsByOther && (
+              <p className="flex items-center gap-1.5">
+                <Tag size={12} />
+                @{active.participants[1]?.username} → @{active.participants[0]?.username}ni{' '}
+                <span className="text-primary font-medium">"{active.participants[0].savedAsByOther}"</span> deb saqlagan
+              </p>
+            )}
+          </div>
+        )}
         <p className="flex items-center gap-1.5 text-xs text-amber-600 mb-4 min-h-[1em]">
           {active.hiddenFor?.length > 0 && (
             <>
@@ -356,6 +374,11 @@ export default function ConversationViewer({ token }) {
               {c.hiddenFor?.length > 0 && (
                 <span title={`Ro'yxatdan o'chirgan: ${c.hiddenFor.map((u) => `@${u}`).join(', ')}`}>
                   <UserX size={13} className="text-amber-600" />
+                </span>
+              )}
+              {(c.participants[0]?.savedAsByOther || c.participants[1]?.savedAsByOther) && (
+                <span title="Taxallus qo'yilgan">
+                  <Tag size={13} className="text-accent" />
                 </span>
               )}
             </span>
