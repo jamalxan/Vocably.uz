@@ -10,7 +10,17 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
   const { sendTyping } = useChat();
   const [seconds, setSeconds] = useState(0);
   const [facing, setFacing] = useState('user');
-  const [canFlip, setCanFlip] = useState(false);
+  // Boshlang'ich taxmin: teginish ekranli (deyarli barcha telefon/planshet)
+  // qurilmalarda kamera almashtirish tugmasi DARHOL, birinchi render'dayoq
+  // ko'rinadi — `enumerateDevices()` natijasini kutib keyin paydo bo'lsa,
+  // tugmalar qatori siljib, foydalanuvchi "aylantirish"ni bosganda barmog'i
+  // aslida siljib ulgurgan "yuborish" tugmasi ustiga tushib qolardi. Faqat
+  // haqiqatan bitta kameraga ega ekanligi aniqlansa (kamdan-kam holat) keyin
+  // yashiriladi — desktop'da (sichqoncha, teginish yo'q) boshidanoq yashirin.
+  const [canFlip, setCanFlip] = useState(
+    () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0
+  );
+  const [flipping, setFlipping] = useState(false);
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -40,14 +50,14 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(() => {});
         }
-        // Old/orqa kamerani almashtirish tugmasi faqat bir nechta kamera bo'lgan
-        // qurilmalarda (odatda telefonlarda) ko'rsatiladi — desktop'da ma'nosiz.
+        // Yuqoridagi boshlang'ich taxminni haqiqiy kamera soniga qarab
+        // to'g'rilaymiz — faqat bitta kamera bo'lsa (kamdan-kam, masalan ba'zi
+        // planshetlar) tugmani yashiramiz; aks holda (2+) ko'rinishda qoladi.
         navigator.mediaDevices
           .enumerateDevices()
           .then((devices) => {
-            if (!cancelled && devices.filter((d) => d.kind === 'videoinput').length > 1) {
-              setCanFlip(true);
-            }
+            if (cancelled) return;
+            setCanFlip(devices.filter((d) => d.kind === 'videoinput').length > 1);
           })
           .catch(() => {});
         const recorder = new MediaRecorder(stream);
@@ -102,9 +112,16 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
   // Old (frontal) va orqa kamera orasida yozuvni to'xtatmasdan almashtiradi:
   // faqat video trekni bir xil MediaStream ichida almashtiramiz, shu sababli
   // MediaRecorder qayta yaratilmaydi va yozuv uzluksiz davom etadi.
+  const requestFacing = (mode) =>
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: mode, width: 480, height: 480 },
+      audio: false,
+    });
+
   const flipCamera = async () => {
     if (flippingRef.current || !streamRef.current) return;
     flippingRef.current = true;
+    setFlipping(true);
     const prevFacing = facing;
     const nextFacing = facing === 'user' ? 'environment' : 'user';
     const oldTrack = streamRef.current.getVideoTracks()[0];
@@ -117,20 +134,29 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
         streamRef.current.removeTrack(oldTrack);
         oldTrack.stop();
       }
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: nextFacing, width: 480, height: 480 },
-        audio: false,
-      });
+      let newStream;
+      try {
+        newStream = await requestFacing(nextFacing);
+      } catch (err) {
+        // Ba'zi qurilmalarda apparat (kamera hardware) trek to'xtatilgandan
+        // keyin ham darhol emas, bir oz kechikib bo'shaydi — shu oraliqda
+        // getUserMedia chaqirilsa hech kim band qilmagan bo'lsa ham
+        // "NotReadableError" (band) xatosi qaytadi. Shu holatda bir oz kutib,
+        // bitta marta qayta urinamiz — bekorga "band" deb chiqib ketmasin.
+        if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
+          await new Promise((resolve) => setTimeout(resolve, 350));
+          newStream = await requestFacing(nextFacing);
+        } else {
+          throw err;
+        }
+      }
       streamRef.current.addTrack(newStream.getVideoTracks()[0]);
       setFacing(nextFacing);
     } catch (err) {
       // Yangi kamera ochilmadi — ekran qorayib qolmasligi uchun avvalgi
       // kamerani qaytarishga urinamiz.
       try {
-        const fallbackStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: prevFacing, width: 480, height: 480 },
-          audio: false,
-        });
+        const fallbackStream = await requestFacing(prevFacing);
         streamRef.current.addTrack(fallbackStream.getVideoTracks()[0]);
       } catch {
         // Fallback ham muvaffaqiyatsiz bo'lsa — video oynasi qorayib qoladi,
@@ -139,6 +165,7 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
       alert(mediaErrorMessage(err, 'Kamera'));
     } finally {
       flippingRef.current = false;
+      setFlipping(false);
     }
   };
 
@@ -169,25 +196,26 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
           onClick={cancel}
           title="Bekor qilish"
           aria-label="Video yozishni bekor qilish"
-          className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors"
+          className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors touch-manipulation"
         >
           <X size={20} />
         </button>
         {canFlip && (
           <button
             onClick={flipCamera}
+            disabled={flipping}
             title="Kamerani almashtirish"
             aria-label={facing === 'user' ? 'Orqa kameraga o‘tish' : 'Old kameraga o‘tish'}
-            className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors"
+            className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors touch-manipulation disabled:opacity-40"
           >
-            <SwitchCamera size={20} />
+            <SwitchCamera size={20} className={flipping ? 'animate-spin' : ''} />
           </button>
         )}
         <button
           onClick={stop}
           title="Yuborish"
           aria-label="Yozuvni tugatib yuborish"
-          className="p-4 bg-accent hover:bg-accent-hover text-white rounded-full transition-colors"
+          className="p-4 bg-accent hover:bg-accent-hover text-white rounded-full transition-colors touch-manipulation"
         >
           <Square size={22} />
         </button>
