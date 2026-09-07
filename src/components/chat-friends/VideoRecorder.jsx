@@ -105,21 +105,37 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
   const flipCamera = async () => {
     if (flippingRef.current || !streamRef.current) return;
     flippingRef.current = true;
+    const prevFacing = facing;
     const nextFacing = facing === 'user' ? 'environment' : 'user';
+    const oldTrack = streamRef.current.getVideoTracks()[0];
     try {
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: nextFacing, width: 480, height: 480 },
-        audio: false,
-      });
-      const newTrack = newStream.getVideoTracks()[0];
-      const oldTrack = streamRef.current.getVideoTracks()[0];
+      // MUHIM: yangi kamerani so'rashdan OLDIN eskisini to'xtatish kerak —
+      // ko'p telefonlar bir vaqtning o'zida faqat bitta kamera oqimini
+      // ochishga ruxsat beradi, shuning uchun eski trek band turgan holda
+      // getUserMedia() "NotReadableError" (kamera band) bilan qulab tushardi.
       if (oldTrack) {
         streamRef.current.removeTrack(oldTrack);
         oldTrack.stop();
       }
-      streamRef.current.addTrack(newTrack);
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: nextFacing, width: 480, height: 480 },
+        audio: false,
+      });
+      streamRef.current.addTrack(newStream.getVideoTracks()[0]);
       setFacing(nextFacing);
     } catch (err) {
+      // Yangi kamera ochilmadi — ekran qorayib qolmasligi uchun avvalgi
+      // kamerani qaytarishga urinamiz.
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: prevFacing, width: 480, height: 480 },
+          audio: false,
+        });
+        streamRef.current.addTrack(fallbackStream.getVideoTracks()[0]);
+      } catch {
+        // Fallback ham muvaffaqiyatsiz bo'lsa — video oynasi qorayib qoladi,
+        // lekin foydalanuvchi hech bo'lmasa asosiy xatoni ko'radi.
+      }
       alert(mediaErrorMessage(err, 'Kamera'));
     } finally {
       flippingRef.current = false;
@@ -131,42 +147,48 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center gap-4 p-4">
-      {/* Tashqi wrapper klipsiz (overflow-hidden emas) — doira ichidagi
-          `rounded-full overflow-hidden` konteyner burchaklarni kesib tashlaydi,
-          shuning uchun flip tugmasi o'sha konteyner ICHIDA bo'lsa burchakka
-          yaqin joylashgani sabab ko'rinmay qolar edi. Tugma endi shu tashqi,
-          kesilmaydigan wrapper'da — doiraning pastki chetiga "badge" sifatida
-          qo'yiladi. */}
-      <div className="relative w-64 h-64">
-        <div className="w-full h-full rounded-full overflow-hidden border-4 border-white/20">
-          <video
-            ref={videoRef}
-            muted
-            playsInline
-            className={`w-full h-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`}
-          />
-          <span className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-soft0 animate-pulse" />
-            {mm}:{ss}
-          </span>
-        </div>
+      <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-white/20">
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          className={`w-full h-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`}
+        />
+        <span className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-soft0 animate-pulse" />
+          {mm}:{ss}
+        </span>
+      </div>
+      {/* Bekor qilish (chiqish) va Yuborish (yozuvni to'xtatib jo'natish) — ikkalasi
+          ham asosiy harakatlar, shu sababli kamera almashtirish (ikkinchi darajali,
+          "utility" harakat) ularning O'RTASIGA, bir xil kichik vazndagi doira
+          tugma sifatida qo'yiladi — Yuborish tugmasi kattaroq/accent rangda
+          qolib, asosiy harakat ekanligi vizual ravshan bo'lib qoladi. */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={cancel}
+          title="Bekor qilish"
+          aria-label="Video yozishni bekor qilish"
+          className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors"
+        >
+          <X size={20} />
+        </button>
         {canFlip && (
           <button
             onClick={flipCamera}
             title="Kamerani almashtirish"
-            className="absolute bottom-1 right-1 flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors border-2 border-white/20"
+            aria-label={facing === 'user' ? 'Orqa kameraga o‘tish' : 'Old kameraga o‘tish'}
+            className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors"
           >
-            <SwitchCamera size={16} />
-            {/* Hozir qaysi kamera ochiqligini ko'rsatadi — bosilsa aksinchasiga o'tadi */}
-            <span className="text-xs font-medium">{facing === 'user' ? 'Old' : 'Orqa'}</span>
+            <SwitchCamera size={20} />
           </button>
         )}
-      </div>
-      <div className="flex items-center gap-4">
-        <button onClick={cancel} className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors">
-          <X size={20} />
-        </button>
-        <button onClick={stop} className="p-4 bg-accent hover:bg-accent-hover text-white rounded-full transition-colors">
+        <button
+          onClick={stop}
+          title="Yuborish"
+          aria-label="Yozuvni tugatib yuborish"
+          className="p-4 bg-accent hover:bg-accent-hover text-white rounded-full transition-colors"
+        >
           <Square size={22} />
         </button>
       </div>
