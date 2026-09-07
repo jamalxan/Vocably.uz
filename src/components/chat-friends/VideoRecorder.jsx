@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Video, Square, X } from 'lucide-react';
+import { Video, Square, X, SwitchCamera } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
 import { useChat } from '@/context/ChatContext';
 
@@ -9,11 +9,14 @@ const MAX_SECONDS = 60; // Telegram uslubidagi qisqa "video xabar" — 1 daqiqag
 function VideoRecorderPanel({ onRecorded, onCancel }) {
   const { sendTyping } = useChat();
   const [seconds, setSeconds] = useState(0);
+  const [facing, setFacing] = useState('user');
+  const [canFlip, setCanFlip] = useState(false);
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
   const timerRef = useRef(null);
+  const flippingRef = useRef(false);
 
   const stop = () => {
     clearInterval(timerRef.current);
@@ -37,6 +40,16 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(() => {});
         }
+        // Old/orqa kamerani almashtirish tugmasi faqat bir nechta kamera bo'lgan
+        // qurilmalarda (odatda telefonlarda) ko'rsatiladi — desktop'da ma'nosiz.
+        navigator.mediaDevices
+          .enumerateDevices()
+          .then((devices) => {
+            if (!cancelled && devices.filter((d) => d.kind === 'videoinput').length > 1) {
+              setCanFlip(true);
+            }
+          })
+          .catch(() => {});
         const recorder = new MediaRecorder(stream);
         chunksRef.current = [];
         recorder.ondataavailable = (e) => e.data.size > 0 && chunksRef.current.push(e.data);
@@ -86,17 +99,58 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
     onCancel();
   };
 
+  // Old (frontal) va orqa kamera orasida yozuvni to'xtatmasdan almashtiradi:
+  // faqat video trekni bir xil MediaStream ichida almashtiramiz, shu sababli
+  // MediaRecorder qayta yaratilmaydi va yozuv uzluksiz davom etadi.
+  const flipCamera = async () => {
+    if (flippingRef.current || !streamRef.current) return;
+    flippingRef.current = true;
+    const nextFacing = facing === 'user' ? 'environment' : 'user';
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: nextFacing, width: 480, height: 480 },
+        audio: false,
+      });
+      const newTrack = newStream.getVideoTracks()[0];
+      const oldTrack = streamRef.current.getVideoTracks()[0];
+      if (oldTrack) {
+        streamRef.current.removeTrack(oldTrack);
+        oldTrack.stop();
+      }
+      streamRef.current.addTrack(newTrack);
+      setFacing(nextFacing);
+    } catch (err) {
+      alert(mediaErrorMessage(err, 'Kamera'));
+    } finally {
+      flippingRef.current = false;
+    }
+  };
+
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center gap-4 p-4">
       <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-white/20">
-        <video ref={videoRef} muted playsInline className="w-full h-full object-cover -scale-x-100" />
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          className={`w-full h-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`}
+        />
         <span className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
           <span className="w-1.5 h-1.5 rounded-full bg-accent-soft0 animate-pulse" />
           {mm}:{ss}
         </span>
+        {canFlip && (
+          <button
+            onClick={flipCamera}
+            title="Kamerani almashtirish"
+            className="absolute bottom-3 right-3 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
+          >
+            <SwitchCamera size={18} />
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-4">
         <button onClick={cancel} className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors">
