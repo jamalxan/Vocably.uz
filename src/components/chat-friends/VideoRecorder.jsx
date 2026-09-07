@@ -131,24 +131,34 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center gap-4 p-4">
-      <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-white/20">
-        <video
-          ref={videoRef}
-          muted
-          playsInline
-          className={`w-full h-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`}
-        />
-        <span className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent-soft0 animate-pulse" />
-          {mm}:{ss}
-        </span>
+      {/* Tashqi wrapper klipsiz (overflow-hidden emas) — doira ichidagi
+          `rounded-full overflow-hidden` konteyner burchaklarni kesib tashlaydi,
+          shuning uchun flip tugmasi o'sha konteyner ICHIDA bo'lsa burchakka
+          yaqin joylashgani sabab ko'rinmay qolar edi. Tugma endi shu tashqi,
+          kesilmaydigan wrapper'da — doiraning pastki chetiga "badge" sifatida
+          qo'yiladi. */}
+      <div className="relative w-64 h-64">
+        <div className="w-full h-full rounded-full overflow-hidden border-4 border-white/20">
+          <video
+            ref={videoRef}
+            muted
+            playsInline
+            className={`w-full h-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`}
+          />
+          <span className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-soft0 animate-pulse" />
+            {mm}:{ss}
+          </span>
+        </div>
         {canFlip && (
           <button
             onClick={flipCamera}
             title="Kamerani almashtirish"
-            className="absolute bottom-3 right-3 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
+            className="absolute bottom-1 right-1 flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors border-2 border-white/20"
           >
-            <SwitchCamera size={18} />
+            <SwitchCamera size={16} />
+            {/* Hozir qaysi kamera ochiqligini ko'rsatadi — bosilsa aksinchasiga o'tadi */}
+            <span className="text-xs font-medium">{facing === 'user' ? 'Old' : 'Orqa'}</span>
           </button>
         )}
       </div>
