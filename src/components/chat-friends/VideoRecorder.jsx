@@ -33,6 +33,17 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
     mediaRecorderRef.current?.stop();
   };
 
+  // Panel ochiq turgan vaqtda orqadagi sahifa surilmasin — aks holda mobil
+  // brauzerda tasodifiy surish manzil qatorini (address bar) yashirib/ko'rsatib,
+  // bu esa `fixed inset-0` panelning butun ekranini "qimirlatib" qo'yardi.
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -173,8 +184,22 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
   const ss = String(seconds % 60).padStart(2, '0');
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center gap-4 p-4">
-      <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-white/20">
+    <div
+      // `h-dvh`/`w-dvw` — mobil brauzerda manzil qatori ko'rinib/yashiringanda
+      // "dinamik" viewport'ni kuzatadi, `100vh`dan farqli o'laroq ekran
+      // "qimirlab" qolmaydi. `overscroll-behavior: none` panel ichida surish
+      // orqa sahifaga (yoki brauzer "pull-to-refresh"iga) o'tib ketishini
+      // to'xtatadi. Pastki xavfsiz zona (notch/home-indicator) uchun
+      // qo'shimcha padding — boshqa mobil-panellar (Composer, EmojiPicker)
+      // bilan bir xil konventsiya.
+      className="fixed inset-0 h-dvh w-dvw bg-black/80 z-50 flex flex-col items-center justify-center gap-4 p-4 overflow-hidden"
+      style={{ overscrollBehavior: 'none', paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+    >
+      {/* Doira o'lchami `vmin`ga bog'liq — juda tor (kichik telefon) yoki juda
+          past (gorizontal holat) ekranlarda ham hech qachon konteynerdan
+          toshib ketmaydi, shu bilan sahifani zoom/scroll qilishga majburlamaydi
+          va "kattalashib" yoki siljib ko'rinmaydi. */}
+      <div className="relative w-[clamp(12rem,60vmin,16rem)] h-[clamp(12rem,60vmin,16rem)] shrink-0 rounded-full overflow-hidden border-4 border-white/20">
         <video
           ref={videoRef}
           muted
