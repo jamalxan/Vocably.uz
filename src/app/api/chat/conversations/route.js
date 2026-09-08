@@ -67,6 +67,7 @@ export async function GET(req) {
         lastMessageAt: c.lastMessageAt,
         lastMessagePreview: c.lastMessagePreview || '',
         muted: (c.mutedBy || []).some((id) => String(id) === String(user._id)),
+        notifyOnline: (c.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
         unreadCount: unreadById.get(String(c._id)) || 0,
       };
     });
@@ -140,6 +141,7 @@ export async function POST(req) {
         lastMessageAt: convo.lastMessageAt,
         lastMessagePreview: convo.lastMessagePreview || '',
         muted: (convo.mutedBy || []).some((id) => String(id) === String(user._id)),
+        notifyOnline: (convo.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
       },
     });
   } catch (err) {

@@ -13,6 +13,11 @@ const { Server } = require('socket.io');
 const PORT = process.env.PORT || 4001;
 const JWT_SECRET = process.env.JWT_SECRET;
 const INTERNAL_SECRET = process.env.REALTIME_SHARED_SECRET;
+// Foydalanuvchi onlaynga o'tganda Next.js'ga xabar berish uchun (Telegram
+// "onlayn bo'ldi" bildirishnomasi, src/app/api/internal/presence-online) —
+// ixtiyoriy: sozlanmagan bo'lsa shunchaki bu funksiya jimgina o'tkazib
+// yuboriladi, presence'ning o'zi (socket) baribir odatdagidek ishlayveradi.
+const NEXTJS_INTERNAL_URL = process.env.NEXTJS_INTERNAL_URL;
 
 if (!JWT_SECRET) throw new Error('JWT_SECRET sozlanmagan');
 if (!INTERNAL_SECRET) throw new Error('REALTIME_SHARED_SECRET sozlanmagan');
@@ -45,12 +50,35 @@ function broadcastPresence(userId, online) {
   io.emit('presence:update', { userId, online });
 }
 
+// `wasOffline` bilan bir vaqtda chaqiriladi — ya'ni faqat haqiqiy oflayn->onlayn
+// o'tishda (bir nechta tab/qurilmadan biri qo'shilganda EMAS). Javobni kutmaydi:
+// Telegram'ga yetib bormasa ham presence'ning o'zi (socket) ta'sirlanmasligi kerak.
+async function notifyPresenceOnline(userId) {
+  if (!NEXTJS_INTERNAL_URL) return;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    await fetch(`${NEXTJS_INTERNAL_URL.replace(/\/$/, '')}/api/internal/presence-online`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': INTERNAL_SECRET },
+      body: JSON.stringify({ userId }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+  } catch (err) {
+    console.error('[realtime] onlayn bildirishnomasi yuborilmadi', err?.message || err);
+  }
+}
+
 io.on('connection', (socket) => {
   const room = `user:${socket.userId}`;
   socket.join(room);
   const wasOffline = !onlineCounts.has(socket.userId);
   onlineCounts.set(socket.userId, (onlineCounts.get(socket.userId) || 0) + 1);
-  if (wasOffline) broadcastPresence(socket.userId, true);
+  if (wasOffline) {
+    broadcastPresence(socket.userId, true);
+    notifyPresenceOnline(socket.userId);
+  }
 
   // Client ulanganda/ro'yxati yangilanganda "hozir kim onlayn" haqida bir martalik
   // aniq javob so'raydi (ack orqali) — presence:update'ni kutib o'tirmasdan, darhol

@@ -434,6 +434,32 @@ export function ChatProvider({ token, children }) {
     [authHeaders]
   );
 
+  // Faqat menda (bu userda) — shu suhbatning ikkinchi tomoni ONLAYNGA o'tganda
+  // menga Telegram bot orqali xabar kelishini yoqadi/o'chiradi (boshqa tomon
+  // buni bilmaydi). Haqiqiy yuborish realtime-server -> src/app/api/internal/
+  // presence-online orqali bo'ladi, bu yerda faqat so'rovni yozib qo'yamiz.
+  const toggleNotifyOnline = useCallback(
+    async (conversationId, notify) => {
+      try {
+        const res = await fetch(`/api/chat/conversations/${conversationId}/notify-online`, {
+          method: notify ? 'POST' : 'DELETE',
+          headers: authHeaders(),
+        });
+        if (!res.ok) return { error: "Bajarilmadi" };
+        setConversations((prev) =>
+          prev.map((c) => (String(c.id) === String(conversationId) ? { ...c, notifyOnline: notify } : c))
+        );
+        setActiveConversation((prev) =>
+          prev && String(prev.id) === String(conversationId) ? { ...prev, notifyOnline: notify } : prev
+        );
+        return { success: true };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [authHeaders]
+  );
+
   // Hozir bilingan barcha "boshqa foydalanuvchi"lar (suhbatlar ro'yxati + ochiq
   // suhbat) uchun realtime-server'dan ANIQ onlayn holatni so'raydi (ack orqali) —
   // presence:update hodisasini kutib o'tirmasdan darhol to'g'ri ko'rsatish uchun
@@ -618,6 +644,7 @@ export function ChatProvider({ token, children }) {
     reportTarget,
     blockUser,
     toggleMuteConversation,
+    toggleNotifyOnline,
     setNickname,
     deleteConversation,
     livePresence,

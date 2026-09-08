@@ -204,6 +204,12 @@ const ConversationSchema = new mongoose.Schema({
   // Kim shu suhbatni "ovozsiz" qilgan (push/bell bildirishnoma o'chirilgan) —
   // faqat o'sha userga ta'sir qiladi, ikkinchi tomon buni bilmaydi/ko'rmaydi.
   mutedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  // Kim shu suhbatning IKKINCHI tomoni onlayn bo'lganda Telegram bot orqali xabar
+  // olishni so'ragan — faqat o'sha userga ta'sir qiladi (ikkinchi tomon buni
+  // bilmaydi/ko'rmaydi). realtime-server foydalanuvchi onlaynga o'tganda
+  // /api/internal/presence-online'ga xabar beradi, u esa shu massivni tekshirib
+  // Telegram orqali "onlayn bo'ldi" xabarini yuboradi (src/app/api/internal/presence-online).
+  onlineNotifyBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   // Kim "Do'stlar" ro'yxatidan shu suhbatni o'chirgan (hujjat o'zi o'chmaydi —
   // faqat shu userning ro'yxatida yashiriladi). Bitta tomon o'chirsa — faqat shu
   // ro'yxatdan yashiriladi (deletedFor xabarlarga qo'shiladi, ikkinchi tomon

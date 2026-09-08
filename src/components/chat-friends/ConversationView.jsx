@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ShieldOff, Loader2, Bell, BellOff, ArrowDown } from 'lucide-react';
+import { ArrowLeft, ShieldOff, Loader2, Bell, BellOff, Wifi, WifiOff, ArrowDown } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { formatLastSeen, isOnline, useLiveClock } from '@/lib/presence';
@@ -23,6 +23,7 @@ export default function ConversationView({ onBack }) {
     loadOlderMessages,
     blockUser,
     toggleMuteConversation,
+    toggleNotifyOnline,
     livePresence,
     typingByConversation,
   } = useChat();
@@ -143,6 +144,10 @@ export default function ConversationView({ onBack }) {
     toggleMuteConversation(activeConversation.id, !activeConversation.muted);
   };
 
+  const handleToggleNotifyOnline = () => {
+    toggleNotifyOnline(activeConversation.id, !activeConversation.notifyOnline);
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full min-w-0">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
@@ -170,6 +175,19 @@ export default function ConversationView({ onBack }) {
           ) : (
             lastSeenText && <p className="text-[11px] text-muted truncate">{lastSeenText}</p>
           )}
+        </button>
+        <button
+          onClick={handleToggleNotifyOnline}
+          title={
+            activeConversation.notifyOnline
+              ? "Onlayn bo'lganda Telegram orqali xabar berishni o'chirish"
+              : "Onlayn bo'lganda Telegram bot orqali xabar ber"
+          }
+          className={`p-1.5 transition-colors flex-shrink-0 ${
+            activeConversation.notifyOnline ? 'text-accent' : 'text-muted hover:text-accent'
+          }`}
+        >
+          {activeConversation.notifyOnline ? <Wifi size={16} /> : <WifiOff size={16} />}
         </button>
         <button
           onClick={handleToggleMute}
