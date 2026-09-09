@@ -31,6 +31,7 @@ import {
   Rows,
   Lightbulb,
   Swords,
+  Target,
 } from 'lucide-react';
 
 // Ko'nikma bo'limlari — /app/mashq menyusida va desktop sidebar'da ishlatiladi.
@@ -40,6 +41,7 @@ export const SKILL_SECTIONS = [
   { key: 'tinglash', label: 'Tinglash', href: '/app/tinglash', icon: Ear, matchPrefix: true, description: 'Listening — audio va tushunish savollari' },
   { key: 'gapirish', label: 'Gapirish', href: '/app/gapirish', icon: Mic, matchPrefix: true, description: 'Speaking — ovozli javob va AI baho' },
   { key: 'yozish-skill', label: 'Yozish', href: '/app/yozish', icon: PenLine, matchPrefix: true, description: 'Writing — insho va AI baho' },
+  { key: 'mock', label: 'Mock imtihon', href: '/app/mock', icon: Target, matchPrefix: true, description: "To'liq 4 bo'limli sinov imtihoni" },
 ];
 
 // Desktop sidebar / planshet rail — joy yetarli, hammasi alohida ko'rinadi.

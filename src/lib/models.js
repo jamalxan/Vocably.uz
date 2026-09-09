@@ -554,3 +554,54 @@ SpeakingAttemptSchema.index({ userId: 1, createdAt: -1 });
 
 export const SpeakingAttempt =
   mongoose.models.SpeakingAttempt || mongoose.model('SpeakingAttempt', SpeakingAttemptSchema);
+
+// ============================================================================
+// FAZA 4 (VOCABLY-TZ.md §11) — Mock imtihon. github.com/jamalxan/Everest-Mock
+// (backend/exam.py) dan PORTLANGAN — server-authoritative taymer, autosave,
+// play-once audio, idempotent submit. Asl Python demo `user_id`ni CLIENTDAN
+// ishonib oladi (auth qatlami yo'q) — bu yerda esa har doim JWT'dan olingan
+// `userId` (src/lib/auth.js) ishlatiladi va har so'rovda egalik tekshiriladi
+// (src/app/api/exam/**). Bu — mantiqni "qayta yozish" emas, faqat xavfsizlik
+// qatlamini shu ilovaning haqiqiy autentifikatsiyasiga ulash (11.2'dagi
+// "Bu mantiqni qayta yozmang" qoidasiga zid emas — taymer/autosave/audio-once/
+// submit hisoblash mantig'i lib/exam/engine.ts'da so'zma-so'z bir xil).
+const ExamSectionStateSchema = new mongoose.Schema(
+  {
+    startedAt: { type: Date, default: null },
+    endsAt: { type: Date, default: null },
+    locked: { type: Boolean, default: false },
+    duration: { type: Number, required: true }, // soniyalarda
+  },
+  { _id: false }
+);
+
+const ExamSessionSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  mockId: { type: String, required: true },
+  examType: { type: String, default: 'ielts_academic' },
+  // TZ §11.3 — "practice"da applyExpiry o'chadi, javob har savoldan keyin
+  // ko'rsatiladi, audio qayta ijro etiladi (lib/exam/engine.ts'dagi tekshiruvlar).
+  mode: { type: String, enum: ['exam', 'practice'], default: 'exam' },
+  status: { type: String, enum: ['in_progress', 'submitted'], default: 'in_progress' },
+  sections: {
+    listening: { type: ExamSectionStateSchema, required: true },
+    reading: { type: ExamSectionStateSchema, required: true },
+    writing: { type: ExamSectionStateSchema, required: true },
+    speaking: { type: ExamSectionStateSchema, required: true },
+  },
+  answers: { type: mongoose.Schema.Types.Mixed, default: {} }, // {questionId: value}
+  essays: {
+    task1: { type: String, default: '' },
+    task2: { type: String, default: '' },
+  },
+  audio: { type: mongoose.Schema.Types.Mixed, default: {} }, // {sectionKey: {startedAt, plays}}
+  result: { type: mongoose.Schema.Types.Mixed, default: null },
+  submittedAt: { type: Date, default: null },
+  submitReason: { type: String, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+// start'dagi "davom ettirish" so'rovi shu bo'yicha (userId+mockId+status) — exam.py'dagi
+// server.py'dan portlangan indeks bilan bir xil.
+ExamSessionSchema.index({ userId: 1, mockId: 1, status: 1 });
+
+export const ExamSession = mongoose.models.ExamSession || mongoose.model('ExamSession', ExamSessionSchema);
