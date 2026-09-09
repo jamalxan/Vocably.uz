@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
-import { User } from '@/lib/models';
+import { User, XpEvent } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { XP } from '@/lib/gamification';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -36,6 +37,16 @@ export async function POST(req) {
     if (result.matchedCount === 0) {
       return NextResponse.json({ error: 'Kategoriya topilmadi' }, { status: 404 });
     }
+
+    // FAZA 5 — gamifikatsiya (VOCABLY-TZ.md §13: "yangi so'z 5"). To'liq User hujjatini
+    // qayta yuklamaslik uchun (yuqoridagi updateOne allaqachon yengil) to'g'ridan-to'g'ri
+    // $inc + XpEvent — src/lib/gamification.js:awardXp shu ikkalasini bitta hujjat
+    // ustida qiladi, bu yerda esa hujjat umuman yuklanmaydi.
+    const xpAmount = cleanWords.length * XP.NEW_WORD;
+    await Promise.all([
+      User.updateOne({ _id: userId }, { $inc: { xp: xpAmount } }),
+      XpEvent.create({ userId, amount: xpAmount, reason: 'new_word' }),
+    ]);
 
     return NextResponse.json({ success: true, added: cleanWords.length });
   } catch (err) {

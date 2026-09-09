@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Loader2, Paperclip, X, Send, Mic } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ChatMessage from './chat/ChatMessage';
+import EmojiPicker from './chat-friends/EmojiPicker';
 
 // Bu til FAQAT mikrofon (SpeechRecognition, ovozli kiritish) uchun — matn yozishga ta'sir
 // qilmaydi, tanlagich faqat mikrofon yoqilganda ko'rinadi.
@@ -13,6 +14,14 @@ const RECOGNITION_LANGS = [
 ];
 const DEFAULT_RECOGNITION_LANG = 'en-US';
 const MAX_ATTACHED_IMAGES = 10;
+// VOCABLY-TZ.md §12.2 — "Tez amallar (chat ostida chip'lar)". Bo'sh holatda
+// ko'rsatiladi, bosilsa handleSend(overrideText) orqali darhol yuboriladi.
+const QUICK_ACTIONS = [
+  "Bu so'zni tushuntir",
+  'Misol jumla ber',
+  "Mnemonika o'ylab top",
+  'Test tuz',
+];
 const RECOGNITION_LANG_KEY = 'vocably.recognitionLang';
 // Textarea 1 qatordan boshlanadi va ~6 qatorgacha o'sadi, keyin ichida scroll paydo bo'ladi.
 const MAX_TEXTAREA_HEIGHT = 142;
@@ -58,7 +67,11 @@ function extractPendingAction(fullText) {
   }
 }
 
-export default function AiChat() {
+// `contextHint` — VOCABLY-TZ.md §12.1: qaysi sahifadan ochilgani haqida qisqa,
+// tabiiy tildagi jumla (masalan "Reading (Oqish) bo'limida"). AiPanel.jsx
+// (global sirg'aluvchi panel) usePathname() orqali hisoblab beradi; /app/ai
+// to'liq sahifasi bu propni bermaydi (umumiy, kontekstsiz suhbat).
+export default function AiChat({ contextHint } = {}) {
   // Suhbatlar ro'yxati alohida panelda (AiChatSessionsPanel) — bu yerda faqat joriy
   // suhbat xabarlari boshqariladi.
   const {
@@ -78,6 +91,7 @@ export default function AiChat() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [attachedImages, setAttachedImages] = useState([]);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [recognitionLang, setRecognitionLang] = useState(DEFAULT_RECOGNITION_LANG);
@@ -90,6 +104,7 @@ export default function AiChat() {
   const stickToBottomRef = useRef(true);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const emojiButtonRef = useRef(null);
   const langMenuRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -295,7 +310,7 @@ export default function AiChat() {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ sessionId: currentSessionId, message: text, imagesBase64: imagesToSend }),
+        body: JSON.stringify({ sessionId: currentSessionId, message: text, imagesBase64: imagesToSend, context: contextHint }),
       });
 
       if (!res.ok || !res.body) {
@@ -359,6 +374,22 @@ export default function AiChat() {
     handleSend();
   };
 
+  // Tanlangan emoji xabar oxiriga emas, aynan kursor turgan joyga qo'shiladi —
+  // Composer.jsx (Do'stlar chati)dagi bilan bir xil naqsh.
+  const handleEmojiPick = (emoji) => {
+    const input = textareaRef.current;
+    const start = input?.selectionStart ?? chatInput.length;
+    const end = input?.selectionEnd ?? chatInput.length;
+    const next = chatInput.slice(0, start) + emoji + chatInput.slice(end);
+    setChatInput(next);
+    requestAnimationFrame(() => {
+      if (!input) return;
+      input.focus();
+      const pos = start + emoji.length;
+      input.setSelectionRange(pos, pos);
+    });
+  };
+
   // Enter — yuborish, Shift+Enter — yangi qator.
   // IME (koreys/xitoy/yapon klaviaturasi) kompozitsiyasi paytida Enter xabarni yubormasligi kerak.
   const handleTextareaKeyDown = (e) => {
@@ -414,6 +445,18 @@ export default function AiChat() {
               <p className="text-[10px] text-muted/70 mt-2">
                 Masalan: "arise" so'zini bir nechta gapda ishlatib ko'rsat, yoki rasm yuboring
               </p>
+              {/* Tez amallar (VOCABLY-TZ.md §12.2) — bosilsa darhol yuboriladi. */}
+              <div className="flex flex-wrap justify-center gap-1.5 mt-5 max-w-sm mx-auto">
+                {QUICK_ACTIONS.map((qa) => (
+                  <button
+                    key={qa}
+                    onClick={() => handleSend(qa)}
+                    className="px-3 py-1.5 bg-surface border border-border hover:border-accent/40 hover:text-accent rounded-full text-xs text-muted transition-colors"
+                  >
+                    {qa}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {sessionLoading && (
@@ -493,6 +536,20 @@ export default function AiChat() {
               className="hidden"
               onChange={handleFileInputChange}
             />
+            <div ref={emojiButtonRef} className="relative flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setEmojiOpen((v) => !v)}
+                title="Emoji"
+                aria-label="Emoji tanlash"
+                className="p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors emoji font-chat"
+              >
+                🙂
+              </button>
+              {emojiOpen && (
+                <EmojiPicker triggerRef={emojiButtonRef} onPick={handleEmojiPick} onClose={() => setEmojiOpen(false)} />
+              )}
+            </div>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}

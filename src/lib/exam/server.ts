@@ -1,8 +1,9 @@
 // API route'lar orasida takrorlanadigan DB-bog'liq mantiq — exam.py'dagi
 // `_get_session`/`_finalize` ekvivalenti. Sof hisoblash lib/exam/engine.ts'da,
 // bu yerda faqat Mongoose bilan gaplashish bor.
-import { ExamSession as ExamSessionModel } from '@/lib/models';
+import { ExamSession as ExamSessionModel, User as UserModel } from '@/lib/models';
 import { applyExpiry, shouldAutosubmit, scoreExam, publicState, ExamDoc } from './engine';
+import { awardXp, XP, checkAndAwardBadges } from '@/lib/gamification';
 
 // models.js oddiy JavaScript (mongoose.model() natijasi Mongoose'ning generic
 // bo'lmagan Model turi sifatida chiqadi) — .ts fayldan chaqirilganda ba'zi
@@ -10,6 +11,7 @@ import { applyExpiry, shouldAutosubmit, scoreExam, publicState, ExamDoc } from '
 // qolgan qismi ham (masalan chat/route'lardagi User.findById) shu modellarni
 // tur tekshiruvsiz ishlatadi — bu yerda ham xuddi shunday, aniq belgilangan.
 const ExamSession: any = ExamSessionModel;
+const User: any = UserModel;
 
 export class ExamError extends Error {
   status: number;
@@ -67,6 +69,21 @@ export async function finalize(sessionId: string, userId: string, reason: string
     { _id: sessionId },
     { $set: { result, submittedAt: new Date(), submitReason: reason } }
   );
+
+  // FAZA 5 — gamifikatsiya (VOCABLY-TZ.md §13: "mock 100"). Shu `finalize()` faqat
+  // BIR MARTA (yuqoridagi atomik shart tufayli) ishga tushgani uchun — XP ikki marta
+  // berilib qolish xavfi yo'q, hatto parallel/qayta submit chaqirilsa ham.
+  try {
+    const user = await User.findById(userId);
+    if (user) {
+      await awardXp(user, XP.MOCK_COMPLETE, 'mock');
+      checkAndAwardBadges(user, { bestMockBand: result.overall });
+      await user.save();
+    }
+  } catch (err) {
+    console.error('Mock XP berishda xatolik', err);
+  }
+
   return result;
 }
 

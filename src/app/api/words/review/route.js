@@ -3,6 +3,7 @@ import { User, ReviewEvent } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { nextReviewState, ratingFromOutcome, cardFromStats, levelFromIntervalDays, computeStreakUpdate } from '@/lib/srs';
+import { awardXp, xpForReview, checkAndAwardBadges, countMasteredWords } from '@/lib/gamification';
 import { NextResponse } from 'next/server';
 
 export async function PATCH(req) {
@@ -59,6 +60,14 @@ export async function PATCH(req) {
     user.lastReviewDate = lastReviewDate;
     user.longestReviewStreak = Math.max(user.longestReviewStreak || 0, streak);
 
+    // FAZA 5 — gamifikatsiya (VOCABLY-TZ.md §13). Yutuqlar so'z holatini yangilagandan
+    // KEYIN tekshiriladi — "mastered so'zlar soni" aynan shu javobdan keyingi holatni aks ettirsin.
+    await awardXp(user, xpForReview(correct), 'review');
+    const newBadges = checkAndAwardBadges(user, {
+      masteredWords: countMasteredWords(user),
+      longestStreak: user.longestReviewStreak,
+    });
+
     await user.save();
 
     try {
@@ -89,6 +98,8 @@ export async function PATCH(req) {
       success: true,
       stats: word.stats,
       reviewStreak: user.reviewStreak,
+      xp: user.xp,
+      newBadges,
     });
   } catch (err) {
     return serverError(err, 'words/review');

@@ -155,6 +155,11 @@ const UserSchema = new mongoose.Schema({
   // Dashboard'dagi kunlik maqsad halqasi uchun (spec §5.2 "daily_goal_reviews"). To'liq Settings
   // sahifasi hali yo'q, shuning uchun hozircha o'zgartirib bo'lmaydigan default qiymat.
   dailyGoal: { type: Number, default: 20 },
+  // FAZA 5 — gamifikatsiya (VOCABLY-TZ.md §13). Jami XP; daraja shundan hosila
+  // hisoblanadi (src/lib/gamification.js:levelForXp), bazada saqlanmaydi —
+  // XP o'zgarganda avtomatik to'g'ri chiqadi, ikkalasi sinxronsizlanib qolmaydi.
+  xp: { type: Number, default: 0 },
+  badges: [{ key: { type: String, required: true }, earnedAt: { type: Date, default: Date.now } }],
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -605,3 +610,18 @@ const ExamSessionSchema = new mongoose.Schema({
 ExamSessionSchema.index({ userId: 1, mockId: 1, status: 1 });
 
 export const ExamSession = mongoose.models.ExamSession || mongoose.model('ExamSession', ExamSessionSchema);
+
+// FAZA 5 (VOCABLY-TZ.md §13) — har bir XP berilishi shu yerga yoziladi (ReviewEvent'dagi
+// bilan bir xil append-only audit naqshi). User.xp — joriy jami (tez o'qish uchun);
+// bu kolleksiya esa VAQT OYNASI bo'yicha so'rovlar uchun (haftalik reyting) — faqat
+// User.xp'dan buni olib bo'lmaydi, chunki u umr bo'yi jamlanma.
+const XpEventSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  amount: { type: Number, required: true },
+  reason: { type: String, required: true }, // 'review' | 'new_word' | 'mock'
+  createdAt: { type: Date, default: Date.now },
+});
+XpEventSchema.index({ userId: 1, createdAt: -1 });
+XpEventSchema.index({ createdAt: -1 }); // haftalik reyting — barcha userlar bo'yicha
+
+export const XpEvent = mongoose.models.XpEvent || mongoose.model('XpEvent', XpEventSchema);

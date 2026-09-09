@@ -1,13 +1,14 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone } from 'lucide-react';
+import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone } from 'lucide-react';
 import { useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 
 const NAV = [
   { href: '/admin', label: 'Statistika', icon: BarChart3, exact: true },
   { href: '/admin/activity', label: 'Faollik', icon: Activity },
+  { href: '/admin/learning', label: "O'quv analitikasi", icon: GraduationCap },
   { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
   { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare },
   { href: '/admin/reports', label: 'Reportlar', icon: Flag },

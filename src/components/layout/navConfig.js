@@ -32,6 +32,7 @@ import {
   Lightbulb,
   Swords,
   Target,
+  Trophy,
 } from 'lucide-react';
 
 // Ko'nikma bo'limlari — /app/mashq menyusida va desktop sidebar'da ishlatiladi.
@@ -49,6 +50,7 @@ export const SIDEBAR_NAV = [
   { key: 'home', label: 'Bugun', href: '/app', icon: Home },
   ...SKILL_SECTIONS,
   { key: 'ai', label: 'AI', href: '/app/ai', icon: Sparkles },
+  { key: 'reyting', label: 'Reyting', href: '/app/reyting', icon: Trophy },
   { key: 'dostlar', label: "Do'stlar", href: '/app/dostlar', icon: Users, matchPrefix: true, requiresChatAccess: true },
   { key: 'profil', label: 'Profil', href: '/app/profil', icon: User },
 ];

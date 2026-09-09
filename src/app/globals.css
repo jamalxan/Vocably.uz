@@ -8,7 +8,7 @@
  * pattern — Tailwind'ning opacity modifikatorlari, masalan bg-accent/60, shu tufayli
  * ishlayveradi), shuning uchun butun sayt (login, sidebar, kartalar, tugmalar,
  * range-selector va h.k.) avtomatik yangilanadi. Komponentlarda xom hex yozilmaydi.
- * Dark mode yo'q — qasddan, faqat shu yagona (light, premium) tema.
+ * Dark mode — pastdagi @media/[data-theme] bloklarida (ThemeContext.jsx boshqaradi).
  * ========================================================================== */
 :root {
   --color-bg: 243 237 230;             /* #F3EDE6 — sahifa foni */
@@ -175,4 +175,22 @@ body {
 .chat-highlight {
   animation: chat-highlight-fade 1.2s ease-out;
   border-radius: 0.75rem;
+}
+
+/* AI panelning o'ngdan sirg'alib kirishi — src/components/layout/AiPanel.jsx
+   (VOCABLY-TZ.md §12.1). prefers-reduced-motion'da pastda o'chiriladi. */
+@keyframes slideIn {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[slideIn_200ms_ease-out\] {
+    animation: none !important;
+  }
 }

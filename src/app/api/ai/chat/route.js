@@ -73,11 +73,11 @@ const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]\n';
 
 // Gemini SDK orqali bir "navbat"ni funksiya-chaqiruv sikli bilan bajaradi va oqim davomida
 // matnni to'g'ridan-to'g'ri controller'ga yuboradi.
-async function runGeminiProviderTurn({ history, userParts, controller, encoder, user, state, createdCategoryIds }) {
+async function runGeminiProviderTurn({ history, userParts, controller, encoder, user, state, createdCategoryIds, systemInstruction }) {
   const genAI = getGeminiClient();
   const model = genAI.getGenerativeModel({
     model: 'gemini-3.6-flash',
-    systemInstruction: SYSTEM_INSTRUCTION,
+    systemInstruction: systemInstruction || SYSTEM_INSTRUCTION,
     tools: toGeminiTools(),
   });
 
@@ -151,8 +151,8 @@ async function runGeminiProviderTurn({ history, userParts, controller, encoder, 
 }
 
 // Groq/OpenRouter (OpenAI bilan mos) uchun bir "navbat"ni funksiya-chaqiruv sikli bilan bajaradi.
-async function runOpenAiProviderTurn({ provider, history, currentMessage, controller, encoder, user, state, createdCategoryIds }) {
-  const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }, ...history, currentMessage];
+async function runOpenAiProviderTurn({ provider, history, currentMessage, controller, encoder, user, state, createdCategoryIds, systemInstruction }) {
+  const messages = [{ role: 'system', content: systemInstruction || SYSTEM_INSTRUCTION }, ...history, currentMessage];
   const tools = toOpenAiTools();
   let assistantText = '';
   let pendingAction = null;
@@ -228,11 +228,22 @@ export async function POST(req) {
 
     await connectToDatabase();
 
-    const { sessionId, message, imagesBase64 } = await req.json();
+    const { sessionId, message, imagesBase64, context } = await req.json();
     const images = Array.isArray(imagesBase64) ? imagesBase64.slice(0, MAX_IMAGES) : [];
     if ((!message || !message.trim()) && images.length === 0) {
       return NextResponse.json({ error: "Xabar bo'sh bo'lmasin" }, { status: 400 });
     }
+
+    // VOCABLY-TZ.md §12.1 — kontekstli AI panel: chaqiruvchi sahifa qayerda
+    // ekanini (masalan "Reading bo'limida, shu matn ustida") qisqa matn sifatida
+    // yuboradi (AiPanel.jsx), shu tur bir martalik qo'shimcha ko'rsatma sifatida
+    // asosiy SYSTEM_INSTRUCTION'ga qo'shiladi — chatning o'zi bilmaydi, faqat
+    // shu "navbat" uchun kontekstni hisobga oladi. Ishonchsiz emas (foydalanuvchi
+    // o'zi haqidagi holat, promptga ta'sir qiluvchi tashqi ma'lumot emas).
+    const systemInstruction =
+      typeof context === 'string' && context.trim()
+        ? `${SYSTEM_INSTRUCTION}\n\nJoriy kontekst (foydalanuvchi hozir shu yerda): ${context.trim().slice(0, 300)}`
+        : SYSTEM_INSTRUCTION;
 
     const user = await User.findById(userId);
     if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
@@ -314,6 +325,7 @@ export async function POST(req) {
                     user,
                     state,
                     createdCategoryIds: attemptCreatedCategoryIds,
+                    systemInstruction,
                   })
                 : await runOpenAiProviderTurn({
                     provider,
@@ -324,6 +336,7 @@ export async function POST(req) {
                     user,
                     state,
                     createdCategoryIds: attemptCreatedCategoryIds,
+                    systemInstruction,
                   });
 
             finalText = outcome.assistantText;
