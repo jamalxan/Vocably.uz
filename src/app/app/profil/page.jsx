@@ -23,9 +23,14 @@ export default function ProfilPage() {
 
   useEffect(() => {
     let cancelled = false;
+    // MUHIM: `res.ok` tekshirilmasa, xato javobi ({error: '...'}, level/xp/badges'siz)
+    // to'g'ridan-to'g'ri gami'ga o'rnatilib, pastdagi gami.level.current kabi
+    // o'qishlar "Cannot read properties of undefined" bilan BUTUN sahifani
+    // qulatib qo'yardi (2026-09-10'da QA bypass orqali topilgan haqiqiy bug —
+    // dark-mode'ga aloqasi yo'q).
     fetch('/api/gamification/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((data) => !cancelled && setGami(data))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => !cancelled && data && setGami(data))
       .catch(() => {});
     return () => {
       cancelled = true;
