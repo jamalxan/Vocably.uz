@@ -41,7 +41,7 @@ export default function RangeSetupForm({
         {onQuickStart && quickStartCount > 0 && (
           <p className="text-[11px] text-muted mb-3 -mt-1">yoki qo'lda oraliq tanlang:</p>
         )}
-        <h3 className="font-bold text-primary mb-4 font-display">{title}</h3>
+        <h3 className="font-bold text-ink mb-4 font-display">{title}</h3>
         <div className="space-y-3 mb-2">
           <div className="flex items-center gap-4">
             <span className="text-xs font-semibold text-muted w-12">Dan:</span>
@@ -51,7 +51,7 @@ export default function RangeSetupForm({
               max={hasMax ? maxWords : undefined}
               value={range.from}
               onChange={(e) => onRangeChange({ ...range, from: parseInt(e.target.value) || 1 })}
-              className="flex-1 px-3 py-1.5 bg-bg border border-border rounded-lg text-sm text-primary outline-none focus:border-accent transition-colors"
+              className="flex-1 px-3 py-1.5 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent transition-colors"
             />
           </div>
           <div className="flex items-center gap-4">
@@ -62,7 +62,7 @@ export default function RangeSetupForm({
               max={hasMax ? maxWords : undefined}
               value={range.to}
               onChange={(e) => onRangeChange({ ...range, to: parseInt(e.target.value) || 1 })}
-              className="flex-1 px-3 py-1.5 bg-bg border border-border rounded-lg text-sm text-primary outline-none focus:border-accent transition-colors"
+              className="flex-1 px-3 py-1.5 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent transition-colors"
             />
           </div>
         </div>

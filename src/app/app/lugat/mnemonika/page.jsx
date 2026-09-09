@@ -79,7 +79,7 @@ export default function MnemonikaPage() {
             rows={4}
             maxLength={500}
             placeholder="Bu so'zni qanday eslab qolasiz? O'z assotsiatsiyangizni yozing..."
-            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm outline-none focus:border-accent resize-none mb-4"
+            className="w-full px-3 py-2.5 bg-bg text-ink border border-border rounded-lg text-sm outline-none focus:border-accent resize-none mb-4"
           />
 
           <Button onClick={save} disabled={saving} className="w-full">

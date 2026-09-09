@@ -6,8 +6,10 @@
 'use client';
 import { forwardRef } from 'react';
 
+// `ghost` hover foni --color-bg-sunken — Button.jsx'dagi bilan bir xil sabab
+// (--color-primary-soft dark-mode'da invert bo'lmaydi).
 const VARIANTS = {
-  ghost: 'text-muted hover:text-ink hover:bg-primary-soft/40',
+  ghost: 'text-muted hover:text-ink hover:bg-bg-sunken',
   'ghost-on-primary': 'text-on-primary/60 hover:text-on-primary hover:bg-primary-hover',
   accent: 'text-accent hover:bg-accent-soft',
   danger: 'text-danger hover:bg-danger-soft',

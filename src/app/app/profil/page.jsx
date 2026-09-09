@@ -94,7 +94,7 @@ export default function ProfilPage() {
               key={opt.value}
               onClick={() => setTheme(opt.value)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                theme === opt.value ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-primary-soft/40'
+                theme === opt.value ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
               }`}
             >
               <opt.icon size={15} />

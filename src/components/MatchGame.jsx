@@ -166,7 +166,7 @@ export default function MatchGame() {
                       ? 'border-green-100 bg-green-50 text-green-600 opacity-60 pointer-events-none'
                       : isSelected
                       ? 'border-accent bg-accent-soft text-accent ring-2 ring-accent/20'
-                      : 'border-border bg-surface hover:border-border text-primary'
+                      : 'border-border bg-surface hover:border-border text-ink'
                   }`}
                 >
                   {card.kind === 'audio' ? <Volume2 size={22} /> : card.text}

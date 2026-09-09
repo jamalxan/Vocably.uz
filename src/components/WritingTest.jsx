@@ -162,7 +162,7 @@ export default function WritingTest() {
           </div>
 
           <div className="flex items-center gap-2 mb-6">
-            <span className="text-xl sm:text-2xl font-bold text-primary font-word break-words">
+            <span className="text-xl sm:text-2xl font-bold text-ink font-word break-words">
               {writeWords[writeCurIdx]?.word}
             </span>
             <button
@@ -211,7 +211,7 @@ export default function WritingTest() {
                             ? 'border-orange-300 bg-orange-50 text-orange-700'
                             : tone === 'wrong'
                               ? 'border-red-300 bg-accent-soft text-red-700'
-                              : 'focus:border-accent'
+                              : 'bg-bg text-ink border-border focus:border-accent'
                       }`}
                     />
                   </div>

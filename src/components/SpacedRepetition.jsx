@@ -147,17 +147,17 @@ export default function SpacedRepetition({ active }) {
       <div className="w-full max-w-md grid grid-cols-3 gap-2 mb-6 text-center">
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
           <CalendarCheck className="mx-auto text-accent mb-1" size={16} />
-          <p className="text-lg font-bold text-primary">{todayCount}</p>
+          <p className="text-lg font-bold text-ink">{todayCount}</p>
           <p className="text-[10px] text-muted">Bugun ko'rildi</p>
         </div>
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
           <Flame className="mx-auto text-orange-500 mb-1" size={16} />
-          <p className="text-lg font-bold text-primary">{reviewStreak}</p>
+          <p className="text-lg font-bold text-ink">{reviewStreak}</p>
           <p className="text-[10px] text-muted">Kunlik ketma-ket</p>
         </div>
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
           <Trophy className="mx-auto text-accent mb-1" size={16} />
-          <p className="text-lg font-bold text-primary">{masteredCount}</p>
+          <p className="text-lg font-bold text-ink">{masteredCount}</p>
           <p className="text-[10px] text-muted">O'zlashtirilgan</p>
         </div>
       </div>
@@ -191,7 +191,7 @@ export default function SpacedRepetition({ active }) {
             >
               <Volume2 size={16} />
             </button>
-            <p className="text-2xl sm:text-3xl font-bold text-primary font-word text-center break-words">
+            <p className="text-2xl sm:text-3xl font-bold text-ink font-word text-center break-words">
               {current.word.word}
             </p>
             {current.word.pronunciation && (

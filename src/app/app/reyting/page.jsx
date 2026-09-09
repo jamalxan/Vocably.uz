@@ -50,7 +50,7 @@ export default function ReytingPage() {
             key={p.key}
             onClick={() => setPeriod(p.key)}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              period === p.key ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-primary-soft/40'
+              period === p.key ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
             }`}
           >
             {p.label}

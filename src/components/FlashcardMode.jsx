@@ -200,7 +200,7 @@ export default function FlashcardMode() {
               >
                 <Volume2 size={16} />
               </button>
-              <p className="text-2xl sm:text-3xl font-bold text-primary font-word text-center break-words">
+              <p className="text-2xl sm:text-3xl font-bold text-ink font-word text-center break-words">
                 {current?.word}
               </p>
               {current?.pronunciation && <p className="text-sm text-muted italic mt-1">{current.pronunciation}</p>}

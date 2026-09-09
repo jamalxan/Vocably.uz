@@ -115,7 +115,7 @@ export default function TinglashPage() {
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder="Masalan: sayohat e'loni..."
-            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm outline-none focus:border-accent mb-4"
+            className="w-full px-3 py-2.5 bg-bg text-ink border border-border rounded-lg text-sm outline-none focus:border-accent mb-4"
           />
           {error && <p className="text-xs text-danger font-medium mb-3">{error}</p>}
           <Button onClick={generate} disabled={loading} className="w-full">

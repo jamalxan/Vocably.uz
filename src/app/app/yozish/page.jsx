@@ -106,7 +106,7 @@ export default function YozishPage() {
                 onChange={(e) => setText(e.target.value)}
                 rows={12}
                 placeholder="Javobingizni shu yerga yozing..."
-                className="w-full px-4 py-3 border border-border rounded-2xl text-sm outline-none focus:border-accent resize-none mb-2"
+                className="w-full px-4 py-3 bg-bg text-ink border border-border rounded-2xl text-sm outline-none focus:border-accent resize-none mb-2"
               />
               <div className="flex justify-between items-center mb-4 text-xs">
                 <span className={wordCount < MIN_WORDS[task] ? 'text-warning' : 'text-success'}>

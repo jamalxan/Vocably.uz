@@ -79,7 +79,7 @@ export default function AdminLearningAnalytics({ token }) {
               <tbody>
                 {data.leechWords.map((w) => (
                   <tr key={w.word} className="border-t border-border">
-                    <td className="py-2.5 px-4 font-semibold text-primary font-word">{w.word}</td>
+                    <td className="py-2.5 px-4 font-semibold text-ink font-word">{w.word}</td>
                     <td className="py-2.5 px-4 text-muted">{w.userCount}</td>
                     <td className="py-2.5 px-4 flex items-center gap-1.5 text-warning">
                       <AlertTriangle size={13} /> {w.avgLapses}×
@@ -104,7 +104,7 @@ export default function AdminLearningAnalytics({ token }) {
                 <BarChart3 size={16} className="text-accent flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-sm font-medium text-primary">{MODE_LABEL[m.mode] || m.mode}</span>
+                    <span className="text-sm font-medium text-ink">{MODE_LABEL[m.mode] || m.mode}</span>
                     <span className="text-xs text-muted">{m.total} urinish</span>
                   </div>
                   <div className="h-1.5 bg-bg rounded-full overflow-hidden">

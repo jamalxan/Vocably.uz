@@ -316,7 +316,7 @@ function SectionBody({ section, content, answers, essays, practiceReveal, audioS
               onChange={(e) => onEssay(task, e.target.value)}
               rows={8}
               placeholder="Javobingizni shu yerga yozing..."
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm outline-none focus:border-accent resize-none"
+              className="w-full px-3 py-2.5 bg-bg text-ink border border-border rounded-lg text-sm outline-none focus:border-accent resize-none"
             />
             <p className="text-[11px] text-muted mt-1">
               {(essays[task] || '').trim() ? (essays[task] || '').trim().split(/\s+/).length : 0} so'z

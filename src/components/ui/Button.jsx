@@ -6,10 +6,14 @@
 'use client';
 import { forwardRef } from 'react';
 
+// MUHIM: hover foni --color-bg-sunken (dark-mode'da INVERT BO'LADI), --color-primary-soft
+// EMAS — ikkinchisi doim yengil pushti bo'lib qoladi (globals.css'dagi --color-primary
+// izohiga q.), text-ink (invert bo'ladigan) bilan hover paytida past kontrast beradi
+// (2026-09-10'da topilgan bug klassi — Badge.jsx'dagi bilan bir xil sabab).
 const VARIANTS = {
   primary: 'bg-accent text-on-accent hover:bg-accent-hover shadow-glow disabled:hover:bg-accent',
-  secondary: 'bg-surface text-ink border border-border hover:bg-primary-soft/40 disabled:hover:bg-surface',
-  ghost: 'bg-transparent text-ink hover:bg-primary-soft/40 disabled:hover:bg-transparent',
+  secondary: 'bg-surface text-ink border border-border hover:bg-bg-sunken disabled:hover:bg-surface',
+  ghost: 'bg-transparent text-ink hover:bg-bg-sunken disabled:hover:bg-transparent',
   danger: 'bg-danger text-white hover:bg-danger/90 disabled:hover:bg-danger',
 };
 

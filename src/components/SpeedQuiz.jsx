@@ -286,7 +286,7 @@ export default function SpeedQuiz() {
             <span className="flex items-center gap-1 font-semibold text-accent">
               <Zap size={13} /> {streak}x{comboMultiplier(streak) > 1 && ` (${comboMultiplier(streak)}× ball)`}
             </span>
-            <span className="font-bold text-primary">{points}</span>
+            <span className="font-bold text-ink">{points}</span>
           </span>
           <button onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
             Oraliqni o'zgartirish
@@ -302,7 +302,7 @@ export default function SpeedQuiz() {
           />
         </div>
 
-        <p className="text-xl font-bold text-primary font-word mb-6 text-center break-words">
+        <p className="text-xl font-bold text-ink font-word mb-6 text-center break-words">
           {question.target.word}
         </p>
 

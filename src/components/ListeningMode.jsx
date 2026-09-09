@@ -133,7 +133,7 @@ export default function ListeningMode() {
               key={l.key}
               onClick={() => setLevel(l.key)}
               className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                level === l.key ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-primary-soft/40'
+                level === l.key ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
               }`}
             >
               {l.label}
@@ -200,7 +200,7 @@ export default function ListeningMode() {
               ? isCorrect
                 ? 'border-green-300 bg-green-50 text-green-700'
                 : 'border-red-300 bg-accent-soft text-red-700'
-              : 'focus:border-accent'
+              : 'bg-bg text-ink border-border focus:border-accent'
           }`}
         />
 

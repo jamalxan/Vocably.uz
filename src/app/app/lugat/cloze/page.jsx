@@ -90,7 +90,7 @@ export default function ClozePage() {
               ? isCorrect
                 ? 'border-green-300 bg-green-50 text-green-700'
                 : 'border-red-300 bg-accent-soft text-red-700'
-              : 'border-border focus:border-accent'
+              : 'bg-bg text-ink border-border focus:border-accent'
           }`}
         />
         {checked && !isCorrect && (

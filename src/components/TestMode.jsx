@@ -191,7 +191,7 @@ export default function TestMode() {
           {DIRECTION_LABEL[question.direction]}
         </p>
         <p
-          className={`font-bold text-primary mb-6 text-center break-words ${
+          className={`font-bold text-ink mb-6 text-center break-words ${
             question.direction === 'definition' || question.direction === 'cloze' ? 'text-base' : 'text-xl font-word'
           }`}
         >
