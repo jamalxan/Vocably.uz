@@ -1,0 +1,100 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { ArrowLeft, Clock, Sparkles } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { BLOG_POSTS, getBlogPost } from '@/lib/blogPosts';
+
+export function generateStaticParams() {
+  return BLOG_POSTS.map((p) => ({ slug: p.slug }));
+}
+
+export function generateMetadata({ params }) {
+  const post = getBlogPost(params.slug);
+  if (!post) return {};
+  return {
+    title: `${post.title} — Vocably`,
+    description: post.excerpt,
+    alternates: { canonical: `/blog/${post.slug}` },
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      type: 'article',
+      publishedTime: post.date,
+      images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Vocably' }],
+    },
+  };
+}
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+// Tailwind typography plugin ulanmagan (loyihada yo'q) — shuning uchun har
+// markdown elementi uchun ochiq utility klasslar (ChatMessage.jsx'dagi
+// `prose` klassidan farqli, u yerda plugin bo'lmagani uchun amalda ta'sirsiz).
+const MD_COMPONENTS = {
+  h2: (props) => <h2 className="font-display text-xl font-bold text-ink mt-8 mb-3" {...props} />,
+  p: (props) => <p className="text-sm text-ink leading-relaxed mb-4" {...props} />,
+  strong: (props) => <strong className="font-semibold text-ink" {...props} />,
+  em: (props) => <em {...props} />,
+  ul: (props) => <ul className="list-disc list-inside text-sm text-ink space-y-1.5 mb-4" {...props} />,
+  li: (props) => <li {...props} />,
+  hr: () => <hr className="border-border my-8" />,
+};
+
+export default function BlogPostPage({ params }) {
+  const post = getBlogPost(params.slug);
+  if (!post) notFound();
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt,
+    datePublished: post.date,
+    author: { '@type': 'Organization', name: 'Vocably' },
+  };
+
+  return (
+    <div className="min-h-dvh bg-bg">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
+      <header className="px-4 sm:px-6 py-4 max-w-2xl mx-auto">
+        <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent transition-colors">
+          <ArrowLeft size={15} /> Blogga qaytish
+        </Link>
+      </header>
+
+      <main className="px-4 sm:px-6 py-6 max-w-2xl mx-auto">
+        <article>
+          <h1 className="font-luxury text-2xl sm:text-3xl font-bold text-ink mb-3">{post.title}</h1>
+          <div className="flex items-center gap-3 text-[11px] text-muted mb-8">
+            <span>{formatDate(post.date)}</span>
+            <span className="flex items-center gap-1">
+              <Clock size={11} /> {post.readMinutes} daq o'qish
+            </span>
+          </div>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
+            {post.content}
+          </ReactMarkdown>
+        </article>
+
+        <div className="mt-10 bg-primary text-on-primary rounded-3xl p-6 sm:p-8 text-center">
+          <Sparkles size={22} className="mx-auto mb-3 text-accent" />
+          <p className="font-display text-lg font-bold mb-1.5">So'z boyligingizni bugun boshlang</p>
+          <p className="text-sm text-on-primary/70 mb-5">Bepul, ro'yxatdan o'tish 1 daqiqa.</p>
+          <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+            <Link href="/demo" className="bg-on-primary/10 hover:bg-on-primary/15 text-on-primary font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+              Avval sinab ko'rish
+            </Link>
+            <Link href="/royxat" className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-glow">
+              Bepul boshlash
+            </Link>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

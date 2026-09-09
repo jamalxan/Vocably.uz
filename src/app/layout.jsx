@@ -50,10 +50,31 @@ const word = Source_Serif_4({
   display: 'swap',
 });
 
+// VOCABLY-TZ.md §17.3 (SEO). `metadataBase` — nisbiy OG-rasm/canonical
+// yo'llarni (masalan opengraph-image.tsx, har sahifadagi alternates.canonical)
+// mutlaq URL'ga aylantirish uchun shart — bo'lmasa Next ular uchun ogohlantirish
+// chiqaradi va ijtimoiy tarmoqlarda rasm ko'rinmasligi mumkin.
 export const metadata = {
-  title: "Vocably — Ingliz tili yordamchisi",
+  metadataBase: new URL('https://vocably.uz'),
+  title: {
+    default: "Vocably — Ingliz tili yordamchisi",
+    template: '%s',
+  },
   description: "Ingliz tilini o'rganish uchun AI yordamchili shaxsiy lug'at platformasi",
+  keywords: ["ingliz tili so'zlarini yodlash", 'IELTS mock test online', 'ingliz tili darslari onlayn', "ingliz tili so'z boyligi"],
   manifest: '/manifest.webmanifest',
+  // Statik OG-rasm (scripts/generate-og-image.mjs) — dinamik next/og ImageResponse
+  // shu loyihada Windows'da build vaqtida "Invalid URL" bilan yiqilgani uchun
+  // (Next 14.2.35'ning tanilgan Windows-xatosi) qasddan statik variant tanlandi.
+  openGraph: {
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Vocably' }],
+    locale: 'uz_UZ',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/og-image.png'],
+  },
   icons: {
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },

@@ -1,8 +1,14 @@
 // Kichik yorliq/belgi — SRS holati, CEFR daraja, status ko'rsatish uchun
 // (VOCABLY-TZ.md 14.4). `tone="srs-*"` FAZA 1'da kartalar holatini ko'rsatishda
 // ishlatiladi (globals.css'dagi --color-srs-* tokenlariga mos).
+// MUHIM: --color-primary-soft dark-mode'da INVERT BO'LMAYDI (globals.css'dagi
+// --color-primary izohiga q. — doim yengil pushti), shuning uchun ustiga faqat
+// --color-ink kabi INVERT BO'LADIGAN matn tokeni qo'yilsa, dark-mode'da deyarli
+// bir xil rangdagi matn-fon paydo bo'ladi (2026-09-10'da /lugat/[word] sahifasida
+// topilgan bug). `neutral` shuning uchun --color-ink emas, doim mos keladigan
+// --color-primary bilan juftlashtiriladi (ADJECTIVE/CEFR belgilaridagi kabi).
 const TONES = {
-  neutral: 'bg-primary-soft/60 text-ink-muted',
+  neutral: 'bg-primary-soft text-primary',
   accent: 'bg-accent-soft text-accent-hover',
   success: 'bg-success-soft text-success',
   warning: 'bg-warning-soft text-warning',

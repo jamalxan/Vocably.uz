@@ -17,7 +17,7 @@ export function AdminProvider({ children }) {
   useEffect(() => {
     const t = localStorage.getItem('token');
     if (!t) {
-      router.push('/');
+      router.push('/kirish');
       return;
     }
     fetch('/api/chat/me', { headers: { Authorization: `Bearer ${t}` } })

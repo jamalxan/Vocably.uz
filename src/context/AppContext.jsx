@@ -48,7 +48,9 @@ export function AppProvider({ children }) {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('phone');
-    router.push('/');
+    // '/' endi ochiq marketing landing (VOCABLY-TZ.md T3 tuzatildi) — chiqqan
+    // foydalanuvchi qayta kirish formasiga to'g'ridan-to'g'ri tushsin.
+    router.push('/kirish');
   }, [router]);
 
   const fetchUserData = useCallback(
@@ -225,7 +227,7 @@ export function AppProvider({ children }) {
     const savedUser = localStorage.getItem('username');
     const savedPhone = localStorage.getItem('phone');
     if (!savedToken) {
-      router.push('/');
+      router.push('/kirish');
     } else {
       setToken(savedToken);
       setUsername(savedUser || '');

@@ -1,529 +1,288 @@
-'use client';
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
-  BookOpen, Loader2, Send, ShieldCheck, ArrowLeft,
-  CheckCircle2, ExternalLink, Sparkles, Eye, EyeOff, KeyRound,
+  ArrowRight, Sparkles, RotateCw, BookOpenText, Ear, Mic, PenLine, Target,
+  Trophy, Layers, Zap, CheckCircle2, Globe, Palette,
 } from 'lucide-react';
+import LandingHeader from '@/components/landing/LandingHeader';
+import LandingFooter from '@/components/landing/LandingFooter';
 
-// Ekranlar: 'login' | 'register' | 'forgot'
-// register/forgot ichidagi bosqichlar: 'form' -> 'telegram' -> 'code' -> (forgot uchun) 'newPassword'
+// VOCABLY-TZ.md §3.1 (IA) — T3 muammosi tuzatildi: '/' endi ochiq marketing
+// landing (statik, SEO uchun server komponent), avvalgi to'g'ridan-to'g'ri
+// login formasi /kirish'ga ko'chdi (src/app/kirish, src/components/auth/AuthForm.jsx).
+//
+// Dizayn: TZ §14.6 "Landing — to'liq maksimalizm" yo'nalishi — katta Playfair
+// tipografika, merlot gradient blob'lar, kuchli kontrastli CTA'lar. LEKIN
+// react-three-fiber asosidagi 3D so'z buluti va magnit kursor QASDDAN
+// QO'SHILMADI — bular yangi og'ir dependency (paketda yo'q) va sezilarli
+// qo'shimcha xavf/hajm keltiradi; shu o'rniga CSS gradient/blur bilan bir xil
+// vizual "premium" hissi, yengilroq (LCP/bundle uchun xavfsizroq) yo'l bilan
+// olindi.
+export const metadata = {
+  title: 'Vocably — Ingliz tilini ilmiy asoslangan usulda o\'rganing',
+  description:
+    "Vocably — o'zbek tilida so'zlashuvchilar uchun ingliz tili platformasi. So'z boyligini ilmiy asoslangan takrorlash (SRS) tizimi bilan quring va Reading, Listening, Speaking, Writing mashqlarida darhol ishlating.",
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Vocably — Ingliz tilini ilmiy asoslangan usulda o\'rganing',
+    description: "So'z boyligini SRS tizimi bilan quring, Reading/Listening/Speaking/Writing'da darhol ishlating.",
+    type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Vocably' }],
+  },
+};
 
-export default function AuthPage() {
-  const router = useRouter();
-  const [mode, setMode] = useState('login');
-  const [step, setStep] = useState('form');
+const DIFFERENTIATORS = [
+  {
+    icon: Globe,
+    title: "O'zbek tili birinchi",
+    body: "Tarjima, izoh, AI yordamchi, butun interfeys — hammasi o'zbekcha. Boshqa tilni bilish shart emas.",
+  },
+  {
+    icon: RotateCw,
+    title: "So'z → ko'nikma zanjiri",
+    body: "Bugun o'rgangan so'zingiz 24 soat ichida Reading matnida, Listening dialogida va Speaking savolida qaytadan uchraydi.",
+  },
+  {
+    icon: Palette,
+    title: 'Boshqacha dizayn',
+    body: "Deep Merlot — issiq, premium palitra. Ko'k-yashil shablonlardan charchagan bo'lsangiz, bu sizga yoqadi.",
+  },
+];
 
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+const SKILL_CARDS = [
+  { icon: Layers, title: "Lug'at (14 rejim)", body: 'Kartochka, test, kollokatsiya, jumla quruvchi, mnemonika va boshqalar — bitta SRS tizimi asosida.' },
+  { icon: BookOpenText, title: 'Oqish', body: 'CEFR darajangizga mos matnlar va tushunish savollari, har javobga izoh bilan.' },
+  { icon: Ear, title: 'Tinglash', body: "Tabiiy nutq matnlari, tezlikni sozlash imkoniyati bilan." },
+  { icon: Mic, title: 'Gapirish', body: 'Ovozli javob bering — AI IELTS mezonlari bo\'yicha taxminiy baholaydi.' },
+  { icon: PenLine, title: 'Yozish', body: 'Task 1/2 topshiriqlar, band + mezon bo\'yicha AI tahlil va tuzatishlar.' },
+  { icon: Target, title: 'Mock imtihon', body: "4 bo'limli to'liq sinov — server taymeri, avtosaqlash, haqiqiy imtihon tajribasi." },
+];
 
-  const [sessionToken, setSessionToken] = useState('');
-  const [telegramLink, setTelegramLink] = useState('');
-  const [botUsername, setBotUsername] = useState('');
+const FAQS = [
+  { q: 'Vocably bepulmi?', a: "Ha, hozircha to'liq bepul. Pullik tariflar joriy etilganda mavjud foydalanuvchilar birinchi bo'lib xabardor qilinadi." },
+  { q: "Ro'yxatdan o'tmasdan sinab ko'ra olamanmi?", a: "Ha — /demo sahifasida 10 ta so'zni ro'yxatdan o'tmasdan sinab ko'rishingiz mumkin." },
+  { q: 'Telefonda ishlaydimi?', a: "Ha, Vocably to'liq mobil-moslashuvchan va PWA sifatida telefon ekraniga o'rnatilishi mumkin." },
+  { q: "So'z boyligim qanday oshadi?", a: "Ilmiy asoslangan takrorlash (SRS) tizimi har so'zni unutish arafasida qayta ko'rsatadi — natijada kamroq vaqt bilan ko'proq eslab qolasiz." },
+];
 
-  const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const pollRef = useRef(null);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('token')) {
-      router.push('/app');
-    }
-  }, [router]);
-
-  useEffect(() => () => clearInterval(pollRef.current), []);
-
-  const resetFlow = (nextMode) => {
-    clearInterval(pollRef.current);
-    setMode(nextMode);
-    setStep('form');
-    setPassword('');
-    setConfirmPassword('');
-    setName('');
-    setCode('');
-    setError('');
-    setInfo('');
-    setSessionToken('');
-    setTelegramLink('');
-  };
-
-  const startPolling = (token) => {
-    clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/auth/session-status?token=${token}`);
-        const data = await res.json();
-        if (data.status === 'code_sent') {
-          clearInterval(pollRef.current);
-          setStep('code');
-          setInfo('Kod Telegram orqali yuborildi. Pastga kiriting.');
-        } else if (data.status === 'expired') {
-          clearInterval(pollRef.current);
-          setError("Sessiya muddati tugadi. Iltimos, qaytadan boshlang.");
-        }
-      } catch {
-        // keyingi urinishda davom etamiz
-      }
-    }, 2500);
-  };
-
-  const handleRegisterInit = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (password !== confirmPassword) {
-      setError('Parollar mos kelmadi');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/register-init', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password, name }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
-
-      setSessionToken(data.sessionToken);
-      setTelegramLink(data.telegramLink);
-      setBotUsername(data.botUsername);
-      setStep('telegram');
-      startPolling(data.sessionToken);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleForgotInit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/reset-init', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
-
-      setSessionToken(data.sessionToken);
-      setTelegramLink(data.telegramLink);
-      setBotUsername(data.botUsername);
-      setStep('telegram');
-      startPolling(data.sessionToken);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionToken, code }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
-
-      if (mode === 'register') {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('username', data.name || '');
-        localStorage.setItem('phone', data.phone || phone);
-        router.push('/app');
-      } else {
-        setStep('newPassword');
-        setInfo('');
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSetNewPassword = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (password !== confirmPassword) {
-      setError('Parollar mos kelmadi');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionToken, newPassword: password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
-
-      resetFlow('login');
-      setInfo("Parol muvaffaqiyatli yangilandi. Endi tizimga kiring.");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
-
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('username', data.name || '');
-      localStorage.setItem('phone', data.phone || phone);
-      router.push('/app');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const titleMap = {
-    login: 'Tizimga kirish',
-    register: "Ro'yxatdan o'tish",
-    forgot: 'Parolni tiklash',
-  };
-
-  const stepLabels = ['info', 'telegram', 'code', ...(mode === 'forgot' ? ['newPassword'] : [])];
-  const stepIndexMap = { form: 0, telegram: 1, code: 2, newPassword: 3 };
-  const showStepper = mode !== 'login';
+export default function LandingPage() {
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Course',
+      name: 'Vocably — Ingliz tili',
+      description: "So'z boyligini SRS tizimi bilan quring, Reading/Listening/Speaking/Writing'da ishlating.",
+      provider: { '@type': 'Organization', name: 'Vocably', sameAs: 'https://vocably.uz' },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'EducationalOccupationalProgram',
+      name: 'Vocably ingliz tili dasturi',
+      description: "O'zbek tilida so'zlashuvchilar uchun ingliz tili o'rganish dasturi.",
+      provider: { '@type': 'Organization', name: 'Vocably' },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FAQS.map((f) => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    },
+  ];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-bg flex items-center justify-center px-4 py-10 sm:py-14">
-      {/* Fon: yumshoq gradient blob'lar */}
+    <div className="relative min-h-dvh bg-bg overflow-x-hidden">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
+      {/* Fon: gradient mesh — TZ §14.6 "merlot gradient meshlar" ruhida, CSS-only */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-24 w-72 h-72 sm:w-96 sm:h-96 bg-accent/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -right-24 w-72 h-72 sm:w-96 sm:h-96 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-64 h-64 bg-accent/5 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -left-32 w-[28rem] h-[28rem] bg-accent/10 rounded-full blur-3xl" />
+        <div className="absolute top-20 -right-32 w-[26rem] h-[26rem] bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute top-[60%] left-1/3 w-80 h-80 bg-accent/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-md">
-        {/* Brend */}
-        <div className="flex flex-col items-center mb-6 sm:mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-on-accent shadow-glow mb-4">
-            <BookOpen size={26} />
+      <LandingHeader />
+
+      {/* ============ HERO ============ */}
+      <section className="relative px-4 sm:px-6 pt-10 sm:pt-16 pb-20 sm:pb-28">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-1.5 bg-accent-soft text-accent text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
+            <Sparkles size={13} /> Ilmiy asoslangan takrorlash tizimi (SRS)
           </div>
-          <h1 className="font-luxury text-3xl font-bold text-primary tracking-tight">
-            Voc<span className="text-accent">ably</span>
+          <h1 className="font-luxury text-4xl sm:text-6xl font-bold text-ink leading-[1.1] tracking-tight mb-6">
+            Ingliz tilini <span className="text-accent">unutmaydigan</span> usulda o'rganing
           </h1>
-          <p className="text-xs text-muted mt-1">Ingliz tili yordamchisi</p>
-        </div>
-
-        {/* Karta */}
-        <div className="bg-surface border border-border rounded-3xl shadow-card p-6 sm:p-8">
-          <div className="mb-6">
-            <h2 className="font-display text-xl font-bold text-primary">{titleMap[mode]}</h2>
-            {mode === 'login' && <p className="text-xs text-muted mt-1">Davom etish uchun tizimga kiring</p>}
-            {mode === 'register' && step === 'form' && <p className="text-xs text-muted mt-1">Telefon raqamingiz Telegram orqali tasdiqlanadi</p>}
-            {mode === 'forgot' && step === 'form' && <p className="text-xs text-muted mt-1">Parolni tiklash uchun raqamingizni kiriting</p>}
+          <p className="text-base sm:text-lg text-muted max-w-xl mx-auto mb-9 leading-relaxed">
+            Vocably — so'z boyligingizni ilmiy asoslangan takrorlash tizimi bilan quradi va shu
+            so'zlarni Reading, Listening, Speaking, Writing mashqlarida darhol ishlatishga majbur qiladi.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/royxat"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold px-7 py-3.5 rounded-xl text-sm transition-colors shadow-glow"
+            >
+              Bepul boshlash <ArrowRight size={16} />
+            </Link>
+            <Link
+              href="/demo"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-surface border border-border hover:border-accent/40 text-ink font-semibold px-7 py-3.5 rounded-xl text-sm transition-colors"
+            >
+              Ro'yxatdan o'tmasdan sinash
+            </Link>
           </div>
-
-          {showStepper && (
-            <div className="flex items-center gap-1.5 mb-6">
-              {stepLabels.map((label) => (
-                <div
-                  key={label}
-                  className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-                    stepIndexMap[label] <= stepIndexMap[step] ? 'bg-accent' : 'bg-border'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-accent-soft text-accent border border-accent/20 p-3 rounded-xl text-sm mb-4">
-              {error}
-            </div>
-          )}
-          {info && !error && (
-            <div className="bg-primary-soft text-primary border border-primary/15 p-3 rounded-xl text-sm mb-4 flex items-center gap-2">
-              <CheckCircle2 size={15} className="flex-shrink-0" /> {info}
-            </div>
-          )}
-
-          {/* ---------- LOGIN ---------- */}
-          {mode === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <Field label="Telefon raqam">
-                <input
-                  type="tel"
-                  required
-                  placeholder="+998 90 123 45 67"
-                  className={inputClass}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </Field>
-              <Field label="Parol">
-                <PasswordInput value={password} onChange={setPassword} show={showPassword} setShow={setShowPassword} />
-              </Field>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => resetFlow('forgot')}
-                  className="text-xs text-accent hover:text-accent-hover font-medium"
-                >
-                  Parolni unutdingizmi?
-                </button>
-              </div>
-              <SubmitButton loading={loading}>Kirish</SubmitButton>
-            </form>
-          )}
-
-          {/* ---------- REGISTER: form ---------- */}
-          {mode === 'register' && step === 'form' && (
-            <form onSubmit={handleRegisterInit} className="space-y-4">
-              <Field label="Ismingiz (ixtiyoriy)">
-                <input
-                  type="text"
-                  placeholder="Masalan: Jamshid"
-                  className={inputClass}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </Field>
-              <Field label="Telefon raqam">
-                <input
-                  type="tel"
-                  required
-                  placeholder="+998 90 123 45 67"
-                  className={inputClass}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </Field>
-              <Field label="Parol">
-                <PasswordInput value={password} onChange={setPassword} show={showPassword} setShow={setShowPassword} minLength={6} />
-              </Field>
-              <Field label="Parolni tasdiqlang">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  className={inputClass}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </Field>
-              <SubmitButton loading={loading}>Davom etish</SubmitButton>
-            </form>
-          )}
-
-          {/* ---------- FORGOT: form ---------- */}
-          {mode === 'forgot' && step === 'form' && (
-            <form onSubmit={handleForgotInit} className="space-y-4">
-              <Field label="Telefon raqam">
-                <input
-                  type="tel"
-                  required
-                  placeholder="+998 90 123 45 67"
-                  className={inputClass}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </Field>
-              <SubmitButton loading={loading}>Kodni olish</SubmitButton>
-            </form>
-          )}
-
-          {/* ---------- TELEGRAM: kutish bosqichi (register + forgot umumiy) ---------- */}
-          {(mode === 'register' || mode === 'forgot') && step === 'telegram' && (
-            <div className="flex flex-col items-center text-center py-2">
-              <div className="w-16 h-16 rounded-2xl bg-primary-soft border border-primary/15 flex items-center justify-center mb-4">
-                <Send size={26} className="text-primary" />
-              </div>
-              <p className="text-sm text-primary font-medium mb-1.5">Telegram botga o'ting</p>
-              <p className="text-xs text-muted mb-6 leading-relaxed">
-                Pastdagi tugma orqali botni oching va telefon raqamingizni ulashing.
-                Raqam siz kiritgan <span className="text-primary font-semibold">{phone}</span> bilan mos bo'lishi kerak.
-                Tasdiqlangach, kod avtomatik shu yerga o'tkaziladi.
-              </p>
-              <a
-                href={telegramLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-3 rounded-xl text-sm transition-all shadow-glow"
-              >
-                @{botUsername} ni ochish <ExternalLink size={15} />
-              </a>
-              <div className="flex items-center gap-2 mt-5 text-xs text-muted">
-                <Loader2 size={13} className="animate-spin" /> Tasdiqlanishi kutilmoqda...
-              </div>
-              <button
-                type="button"
-                onClick={() => { clearInterval(pollRef.current); setStep('form'); setError(''); }}
-                className="mt-4 text-xs text-muted hover:text-primary flex items-center gap-1"
-              >
-                <ArrowLeft size={12} /> Orqaga
-              </button>
-            </div>
-          )}
-
-          {/* ---------- CODE: kod kiritish (register + forgot umumiy) ---------- */}
-          {(mode === 'register' || mode === 'forgot') && step === 'code' && (
-            <form onSubmit={handleVerifyCode} className="space-y-4">
-              <div className="flex flex-col items-center text-center mb-2">
-                <div className="w-14 h-14 rounded-2xl bg-accent-soft border border-accent/20 flex items-center justify-center mb-3">
-                  <ShieldCheck size={24} className="text-accent" />
-                </div>
-                <p className="text-xs text-muted">Telegram'da yuborilgan 6 xonali kodni kiriting</p>
-              </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                required
-                autoFocus
-                placeholder="••••••"
-                className={`${inputClass} text-center text-2xl tracking-[0.5em] font-bold py-3`}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              />
-              <SubmitButton loading={loading}>Tasdiqlash</SubmitButton>
-              <button
-                type="button"
-                onClick={() => { setStep('telegram'); setError(''); startPolling(sessionToken); }}
-                className="w-full text-xs text-muted hover:text-primary flex items-center justify-center gap-1"
-              >
-                <ArrowLeft size={12} /> Telegramga qaytish
-              </button>
-            </form>
-          )}
-
-          {/* ---------- FORGOT: yangi parol ---------- */}
-          {mode === 'forgot' && step === 'newPassword' && (
-            <form onSubmit={handleSetNewPassword} className="space-y-4">
-              <div className="flex flex-col items-center text-center mb-2">
-                <div className="w-14 h-14 rounded-2xl bg-primary-soft border border-primary/15 flex items-center justify-center mb-3">
-                  <KeyRound size={24} className="text-primary" />
-                </div>
-                <p className="text-xs text-muted">Raqam tasdiqlandi. Endi yangi parol o'rnating</p>
-              </div>
-              <Field label="Yangi parol">
-                <PasswordInput value={password} onChange={setPassword} show={showPassword} setShow={setShowPassword} minLength={6} />
-              </Field>
-              <Field label="Yangi parolni tasdiqlang">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  className={inputClass}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </Field>
-              <SubmitButton loading={loading}>Parolni saqlash</SubmitButton>
-            </form>
-          )}
-
-          {/* Rejim almashtirish */}
-          {step === 'form' && (
-            <p className="text-center text-xs text-muted mt-6">
-              {mode === 'login' && (
-                <>
-                  Hisobingiz yo'qmi?{' '}
-                  <button onClick={() => resetFlow('register')} className="text-accent font-semibold hover:text-accent-hover">
-                    Ro'yxatdan o'ting
-                  </button>
-                </>
-              )}
-              {mode === 'register' && (
-                <>
-                  Hisobingiz bormi?{' '}
-                  <button onClick={() => resetFlow('login')} className="text-accent font-semibold hover:text-accent-hover">
-                    Kirish oynasiga o'ting
-                  </button>
-                </>
-              )}
-              {mode === 'forgot' && (
-                <button onClick={() => resetFlow('login')} className="text-accent font-semibold hover:text-accent-hover flex items-center gap-1 mx-auto">
-                  <ArrowLeft size={12} /> Kirish oynasiga qaytish
-                </button>
-              )}
-            </p>
-          )}
+          <p className="text-xs text-muted mt-5">Kredit karta talab qilinmaydi · 1 daqiqada boshlanadi</p>
         </div>
+      </section>
 
-        <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted mt-6">
-          <Sparkles size={12} /> Sun'iy intellekt asosida ishlaydi
-        </p>
-      </div>
+      {/* ============ FARQLANISH ============ */}
+      <section className="relative px-4 sm:px-6 py-16 sm:py-20 bg-surface border-y border-border">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink text-center mb-3">
+            Nega Vocably boshqacha
+          </h2>
+          <p className="text-sm text-muted text-center max-w-lg mx-auto mb-12">
+            Ko'p ilova so'z yodlashni "o'yin" qiladi. Biz uni <strong className="text-ink">tizim</strong> qildik.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-5">
+            {DIFFERENTIATORS.map((d) => (
+              <div key={d.title} className="bg-bg border border-border rounded-2xl p-6 shadow-card">
+                <div className="w-11 h-11 rounded-xl bg-accent-soft text-accent flex items-center justify-center mb-4">
+                  <d.icon size={20} />
+                </div>
+                <h3 className="font-display text-base font-bold text-ink mb-1.5">{d.title}</h3>
+                <p className="text-sm text-muted leading-relaxed">{d.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ ZANJIR MEXANIZMI ============ */}
+      <section className="relative px-4 sm:px-6 py-16 sm:py-20">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink mb-3">
+            Bir so'z — to'rt marta ishlatiladi
+          </h2>
+          <p className="text-sm text-muted max-w-lg mx-auto mb-10">
+            O'rgangan so'zingiz izolyatsiyalangan holda qolmaydi — bir necha kun ichida boshqa
+            ko'nikmalarda tabiiy ravishda qaytib chiqadi.
+          </p>
+          <div className="flex flex-col sm:flex-row items-stretch gap-3 text-left">
+            {[
+              { step: 'T+0', label: 'Kartochka / Test', body: "So'zni birinchi marta o'rganasiz" },
+              { step: 'T+1 kun', label: 'Reading', body: 'So\'z ishlatilgan qisqa matnda uchraydi' },
+              { step: 'T+2 kun', label: 'Listening', body: "So'z bor dialogda tinglaysiz" },
+              { step: 'T+3 kun', label: 'Speaking / Writing', body: "So'zni o'zingiz ishlatib gapirasiz yoki yozasiz" },
+            ].map((s, i) => (
+              <div key={s.step} className="flex-1 bg-surface border border-border rounded-2xl p-4 relative">
+                <span className="text-[10px] font-bold text-accent uppercase tracking-wider">{s.step}</span>
+                <p className="text-sm font-semibold text-ink mt-1">{s.label}</p>
+                <p className="text-xs text-muted mt-1">{s.body}</p>
+                {i < 3 && (
+                  <ArrowRight size={14} className="hidden sm:block absolute top-1/2 -right-2 -translate-y-1/2 text-border" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ KO'NIKMALAR ============ */}
+      <section className="relative px-4 sm:px-6 py-16 sm:py-20 bg-surface border-y border-border">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink text-center mb-12">
+            Bitta platforma, to'rtta ko'nikma
+          </h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {SKILL_CARDS.map((s) => (
+              <div key={s.title} className="bg-bg border border-border rounded-2xl p-6 hover:border-accent/30 hover:-translate-y-0.5 transition-all duration-200">
+                <div className="w-11 h-11 rounded-xl bg-primary-soft text-primary flex items-center justify-center mb-4">
+                  <s.icon size={20} />
+                </div>
+                <h3 className="font-display text-base font-bold text-ink mb-1.5">{s.title}</h3>
+                <p className="text-sm text-muted leading-relaxed">{s.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ GAMIFIKATSIYA / ILMIY ASOS ============ */}
+      <section className="relative px-4 sm:px-6 py-16 sm:py-20">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Zap size={18} className="text-accent" />
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">Nega ishlaydi</h2>
+          </div>
+          <p className="text-sm text-muted max-w-xl mx-auto mb-6 leading-relaxed">
+            Hermann Ebbinghaus'ning "unutish egri chizig'i" bo'yicha, yangi ma'lumotning katta
+            qismi bir hafta ichida esdan chiqadi — agar to'g'ri vaqtda takrorlanmasa. Vocably har
+            so'zni <strong className="text-ink">aynan unutish arafasida</strong> qayta ko'rsatadi — natijada
+            bir xil bilim darajasiga sezilarli darajada kamroq vaqt bilan erishasiz.
+          </p>
+          <Link href="/blog/spaced-repetition-fsrs-nima" className="text-sm text-accent font-semibold hover:text-accent-hover inline-flex items-center gap-1">
+            To'liq tushuntirishni o'qing <ArrowRight size={14} />
+          </Link>
+
+          <div className="grid sm:grid-cols-3 gap-4 mt-12 text-left">
+            <div className="bg-surface border border-border rounded-2xl p-5">
+              <Trophy size={18} className="text-accent mb-2" />
+              <p className="text-sm font-semibold text-ink mb-1">XP va darajalar</p>
+              <p className="text-xs text-muted">Har mashq XP beradi, A1'dan C2'gacha daraja bosib o'tasiz.</p>
+            </div>
+            <div className="bg-surface border border-border rounded-2xl p-5">
+              <CheckCircle2 size={18} className="text-accent mb-2" />
+              <p className="text-sm font-semibold text-ink mb-1">Kunlik alanga</p>
+              <p className="text-xs text-muted">Ketma-ket kunlar streak sifatida saqlanadi va sizni izchil bo'lishga undaydi.</p>
+            </div>
+            <div className="bg-surface border border-border rounded-2xl p-5">
+              <Sparkles size={18} className="text-accent mb-2" />
+              <p className="text-sm font-semibold text-ink mb-1">AI yordamchi</p>
+              <p className="text-xs text-muted">Istalgan sahifadan bir tugma bosib AI'dan tushuntirish so'rashingiz mumkin.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ FAQ ============ */}
+      <section className="relative px-4 sm:px-6 py-16 sm:py-20 bg-surface border-y border-border">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink text-center mb-10">
+            Ko'p beriladigan savollar
+          </h2>
+          <div className="space-y-3">
+            {FAQS.map((f) => (
+              <details key={f.q} className="group bg-bg border border-border rounded-2xl p-5">
+                <summary className="text-sm font-semibold text-ink cursor-pointer list-none flex items-center justify-between gap-3">
+                  {f.q}
+                  <ArrowRight size={14} className="text-muted group-open:rotate-90 transition-transform flex-shrink-0" />
+                </summary>
+                <p className="text-sm text-muted mt-3 leading-relaxed">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ YAKUNIY CTA ============ */}
+      <section className="relative px-4 sm:px-6 py-20 sm:py-28">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="font-luxury text-3xl sm:text-4xl font-bold text-ink mb-4">
+            Bugun boshlang, ertaga eslang
+          </h2>
+          <p className="text-sm text-muted mb-8">Ro'yxatdan o'tish 1 daqiqa, kredit karta shart emas.</p>
+          <Link
+            href="/royxat"
+            className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold px-8 py-4 rounded-xl text-sm transition-colors shadow-glow"
+          >
+            Bepul boshlash <ArrowRight size={16} />
+          </Link>
+        </div>
+      </section>
+
+      <LandingFooter />
     </div>
-  );
-}
-
-const inputClass =
-  'w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm text-primary placeholder-muted/60 outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition-colors';
-
-function Field({ label, children }) {
-  return (
-    <div>
-      <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function PasswordInput({ value, onChange, show, setShow, minLength = 6 }) {
-  return (
-    <div className="relative">
-      <input
-        type={show ? 'text' : 'password'}
-        required
-        minLength={minLength}
-        className={`${inputClass} pr-10`}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <button
-        type="button"
-        onClick={() => setShow(!show)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
-        tabIndex={-1}
-      >
-        {show ? <EyeOff size={16} /> : <Eye size={16} />}
-      </button>
-    </div>
-  );
-}
-
-function SubmitButton({ loading, children }) {
-  return (
-    <button
-      type="submit"
-      disabled={loading}
-      className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-3 rounded-xl text-sm transition-all disabled:opacity-50 shadow-glow"
-    >
-      {loading ? <Loader2 size={16} className="animate-spin" /> : children}
-    </button>
   );
 }
