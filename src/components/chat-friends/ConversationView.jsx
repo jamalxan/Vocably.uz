@@ -151,7 +151,7 @@ export default function ConversationView({ onBack }) {
   return (
     <div className="flex-1 flex flex-col h-full min-w-0">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
-        <button onClick={onBack} className="lg:hidden p-1 text-muted hover:text-primary">
+        <button onClick={onBack} aria-label="Suhbatlar ro'yxatiga qaytish" className="lg:hidden p-1 text-muted hover:text-primary">
           <ArrowLeft size={18} />
         </button>
         <div className="relative flex-shrink-0">
@@ -183,6 +183,11 @@ export default function ConversationView({ onBack }) {
               ? "Onlayn bo'lganda Telegram orqali xabar berishni o'chirish"
               : "Onlayn bo'lganda Telegram bot orqali xabar ber"
           }
+          aria-label={
+            activeConversation.notifyOnline
+              ? "Onlayn bo'lganda Telegram orqali xabar berishni o'chirish"
+              : "Onlayn bo'lganda Telegram bot orqali xabar ber"
+          }
           className={`p-1.5 transition-colors flex-shrink-0 ${
             activeConversation.notifyOnline ? 'text-accent' : 'text-muted hover:text-accent'
           }`}
@@ -192,11 +197,12 @@ export default function ConversationView({ onBack }) {
         <button
           onClick={handleToggleMute}
           title={activeConversation.muted ? 'Bildirishnomani yoqish' : 'Bildirishnomani o\'chirish'}
+          aria-label={activeConversation.muted ? 'Bildirishnomani yoqish' : 'Bildirishnomani o\'chirish'}
           className="p-1.5 text-muted hover:text-accent transition-colors flex-shrink-0"
         >
           {activeConversation.muted ? <BellOff size={16} /> : <Bell size={16} />}
         </button>
-        <button onClick={handleBlock} title="Bloklash" className="p-1.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+        <button onClick={handleBlock} title="Bloklash" aria-label="Foydalanuvchini bloklash" className="p-1.5 text-muted hover:text-accent transition-colors flex-shrink-0">
           <ShieldOff size={16} />
         </button>
       </div>
@@ -230,6 +236,7 @@ export default function ConversationView({ onBack }) {
           <button
             onClick={() => scrollToBottom('smooth')}
             title="Pastga tushish"
+            aria-label="Suhbat oxiriga tushish"
             className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-surface border border-border shadow-card flex items-center justify-center text-primary hover:text-accent hover:border-accent/40 transition-colors"
           >
             <ArrowDown size={18} />

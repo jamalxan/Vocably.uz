@@ -5,10 +5,11 @@ import { useApp } from '@/context/AppContext';
 import ConfirmModal from '../ConfirmModal';
 import AllChatSessionsModal from './AllChatSessionsModal';
 
-// Sidebar (asosiy navigatsiya) o'rniga chiqadigan mustaqil panel — ChatGPT-uslubidagi
-// suhbatlar ro'yxati. Ikkalasi yonma-yon emas, bitta chap ustunda almashadi: AI Chat'ga
-// o'tilganda asosiy navigatsiya yashirinib, shu panel uning o'rnini bosadi; sarlavhadagi
-// strelka bosilsa, asosiy navigatsiya (Sidebar) qaytadi (onBack — dashboard/page.jsx).
+// AI Chat sahifasining (src/app/app/ai/page.jsx) o'z ichidagi suhbatlar ro'yxati —
+// ChatGPT-uslubida. AppShell'ning asosiy navigatsiyasidan mustaqil: endi har bir
+// bo'lim haqiqiy URL'ga ega bo'lgani uchun (U3 tuzatildi) bu panel navigatsiyani
+// almashtirmaydi, faqat sahifa ichidagi ikkinchi ustun. `onBack` shu sabab endi
+// ixtiyoriy — berilmasa strelka ko'rsatilmaydi.
 const VISIBLE_LIMIT = 20;
 
 export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBack }) {
@@ -72,13 +73,15 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
         } lg:translate-x-0`}
       >
         <div className="p-3.5 border-b border-on-primary/10 flex items-center gap-2">
-          <button
-            onClick={onBack}
-            title="Asosiy menyuga qaytish"
-            className="p-1.5 -ml-1.5 text-on-primary/60 hover:text-on-primary hover:bg-primary-hover rounded-lg transition-colors flex-shrink-0"
-          >
-            <ArrowLeft size={16} />
-          </button>
+          {onBack && (
+            <button
+              onClick={onBack}
+              title="Orqaga"
+              className="p-1.5 -ml-1.5 text-on-primary/60 hover:text-on-primary hover:bg-primary-hover rounded-lg transition-colors flex-shrink-0"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          )}
           <Sparkles size={15} className="text-accent flex-shrink-0" />
           <h2 className="text-sm font-semibold flex-1">Suhbatlar</h2>
         </div>
@@ -146,6 +149,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                   onClick={() => setMenuOpenId(menuOpenId === s.id ? null : s.id)}
                   className="absolute top-1/2 -translate-y-1/2 right-1.5 p-1 rounded text-on-primary/40 hover:text-on-primary hover:bg-primary-hover opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                   title="Amallar"
+                  aria-label="Suhbat amallari"
                 >
                   <MoreHorizontal size={13} />
                 </button>

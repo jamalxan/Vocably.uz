@@ -1,15 +1,17 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { Volume2, Trash2, Search } from 'lucide-react';
+import Link from 'next/link';
+import { Volume2, Trash2, Search, Sparkles } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
+import Badge from './ui/Badge';
 import ConfirmModal from './ConfirmModal';
 import UndoToast from './UndoToast';
 
 const UNDO_MS = 5000;
 
 export default function WordTable() {
-  const { activeCategory, handleAddWord, deleteWords, restoreWords } = useApp();
+  const { activeCategory, handleAddWord, deleteWords, restoreWords, enrichWord } = useApp();
   const [newWord, setNewWord] = useState('');
   const [newSyns, setNewSyns] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +20,11 @@ export default function WordTable() {
   const [undoState, setUndoState] = useState(null); // { categoryId, words }
   const [addError, setAddError] = useState('');
   const [adding, setAdding] = useState(false);
+  // VOCABLY-TZ.md §19 (FAZA 1): "mavjud 215+ so'zni AI bilan boyitish" — { done, total }
+  // yoki null (ishlamayotgan bo'lsa). Bittalab (ketma-ket) yuboriladi — bepul AI
+  // provayderlarning daqiqalik so'rov chegarasiga tegib qolmaslik uchun (src/app/api/words/enrich).
+  const [bulkEnrich, setBulkEnrich] = useState(null);
+  const bulkCancelRef = useRef(false);
   const undoTimerRef = useRef(null);
 
   const words = activeCategory.words || [];
@@ -35,6 +42,29 @@ export default function WordTable() {
   }, [activeCategory._id]);
 
   useEffect(() => () => clearTimeout(undoTimerRef.current), []);
+  useEffect(() => () => { bulkCancelRef.current = true; }, []);
+
+  const unenrichedWords = words.filter((w) => w._id && !w.enrichment?.aiEnrichedAt);
+
+  const startBulkEnrich = async () => {
+    const targets = unenrichedWords;
+    if (targets.length === 0) return;
+    const categoryId = activeCategory._id;
+    bulkCancelRef.current = false;
+    setBulkEnrich({ done: 0, total: targets.length });
+    for (let i = 0; i < targets.length; i++) {
+      if (bulkCancelRef.current) break;
+      // eslint-disable-next-line no-await-in-loop
+      await enrichWord(categoryId, targets[i]._id);
+      setBulkEnrich({ done: i + 1, total: targets.length });
+    }
+    setBulkEnrich(null);
+  };
+
+  const stopBulkEnrich = () => {
+    bulkCancelRef.current = true;
+    setBulkEnrich(null);
+  };
 
   const onAddWord = async (e) => {
     e?.preventDefault();
@@ -146,17 +176,38 @@ export default function WordTable() {
         {addError && <p className="text-xs text-red-600 font-medium">{addError}</p>}
       </form>
 
-      {/* Qidiruv jonli filtrlaydi — Enter bosilganda sahifa yangilanib ketmasligi kerak. */}
-      <form onSubmit={(e) => e.preventDefault()} className="relative">
-        <Search className="absolute left-3 top-3 text-muted" size={16} />
-        <input
-          type="search"
-          placeholder="So'z yoki tarjimalar bo'yicha qidirish..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-surface text-sm outline-none focus:border-accent"
-        />
-      </form>
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* Qidiruv jonli filtrlaydi — Enter bosilganda sahifa yangilanib ketmasligi kerak. */}
+        <form onSubmit={(e) => e.preventDefault()} className="relative flex-1">
+          <Search className="absolute left-3 top-3 text-muted" size={16} />
+          <input
+            type="search"
+            placeholder="So'z yoki tarjimalar bo'yicha qidirish..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-surface text-sm outline-none focus:border-accent"
+          />
+        </form>
+
+        {unenrichedWords.length > 0 && (
+          bulkEnrich ? (
+            <button
+              onClick={stopBulkEnrich}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-accent-soft text-accent border border-accent/25 rounded-xl text-sm font-semibold whitespace-nowrap"
+            >
+              <Sparkles size={14} className="animate-pulse" /> Boyitilmoqda {bulkEnrich.done}/{bulkEnrich.total} — to'xtatish
+            </button>
+          ) : (
+            <button
+              onClick={startBulkEnrich}
+              title="Kategoriyadagi hali boyitilmagan so'zlarni birma-bir AI bilan to'ldiradi"
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-surface hover:bg-accent-soft border border-border hover:border-accent/40 text-muted hover:text-accent rounded-xl text-sm font-semibold transition-colors whitespace-nowrap"
+            >
+              <Sparkles size={14} /> Barchasini boyitish ({unenrichedWords.length})
+            </button>
+          )
+        )}
+      </div>
 
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between bg-accent-soft border border-accent/15 rounded-xl px-4 py-3 text-sm">
@@ -210,13 +261,25 @@ export default function WordTable() {
                     />
                   </td>
                   <td className="py-3.5 px-4 sm:px-6 text-muted font-mono text-xs">{w.idx + 1}</td>
-                  <td className="py-3.5 px-4 sm:px-6 font-semibold text-primary">{w.word}</td>
+                  <td className="py-3.5 px-4 sm:px-6">
+                    <Link
+                      href={`/app/lugat/soz/${w._id}`}
+                      className="font-semibold text-primary hover:text-accent hover:underline inline-flex items-center gap-1.5"
+                    >
+                      {w.word}
+                      {w.enrichment?.aiEnrichedAt && (
+                        <Sparkles size={11} className="text-accent flex-shrink-0" aria-label="AI bilan boyitilgan" />
+                      )}
+                      {w.enrichment?.cefr && <Badge tone="accent">{w.enrichment.cefr}</Badge>}
+                    </Link>
+                  </td>
                   <td className="py-3.5 px-4 sm:px-6 text-muted">{w.syns.join(', ')}</td>
                   <td className="py-3.5 px-4 sm:px-6 flex gap-2">
                     <button
                       onClick={() => speakText(w.word)}
                       className="p-1.5 bg-accent-soft hover:bg-accent/20 text-accent rounded transition-colors"
                       title="Eshitish"
+                      aria-label={`"${w.word}" so'zini eshitish`}
                     >
                       <Volume2 size={14} />
                     </button>
@@ -225,6 +288,7 @@ export default function WordTable() {
                       disabled={!w._id}
                       className="p-1.5 bg-accent-soft hover:bg-red-100 text-accent rounded transition-colors disabled:opacity-40"
                       title="O'chirish"
+                      aria-label={`"${w.word}" so'zini o'chirish`}
                     >
                       <Trash2 size={14} />
                     </button>

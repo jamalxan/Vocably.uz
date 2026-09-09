@@ -117,12 +117,13 @@ export default function CategorySwitcher() {
                     onKeyDown={(e) => e.key === 'Escape' && setEditingIdx(null)}
                     className="flex-1 min-w-0 px-2 py-1 bg-bg border border-accent/60 rounded text-xs text-primary outline-none"
                   />
-                  <button type="submit" className="p-1 bg-accent hover:bg-accent-hover rounded text-on-accent transition-colors flex-shrink-0">
+                  <button type="submit" aria-label="Yangi nomni saqlash" className="p-1 bg-accent hover:bg-accent-hover rounded text-on-accent transition-colors flex-shrink-0">
                     <Check size={12} />
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingIdx(null)}
+                    aria-label="Nomini o'zgartirishni bekor qilish"
                     className="p-1 bg-bg hover:bg-primary-soft rounded text-muted transition-colors flex-shrink-0"
                   >
                     <X size={12} />
@@ -137,6 +138,7 @@ export default function CategorySwitcher() {
                   <button
                     onClick={() => startEdit(c.i, c.name)}
                     title="Nomini o'zgartirish"
+                    aria-label={`"${c.name}" nomini o'zgartirish`}
                     className="p-1 text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                   >
                     <Pencil size={12} />
@@ -147,6 +149,7 @@ export default function CategorySwitcher() {
                       handleDeleteCategory(c.i);
                     }}
                     title="O'chirish"
+                    aria-label={`"${c.name}" kategoriyasini o'chirish`}
                     className="p-1 text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                   >
                     <Trash2 size={12} />

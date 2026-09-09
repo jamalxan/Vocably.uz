@@ -158,7 +158,7 @@ export default function UserProfileModal({ open, onClose }) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-primary truncate">@{activeConversation.otherUser?.username}</p>
           </div>
-          <button onClick={onClose} className="p-1 text-muted hover:text-primary transition-colors flex-shrink-0">
+          <button onClick={onClose} aria-label="Yopish" className="p-1 text-muted hover:text-primary transition-colors flex-shrink-0">
             <X size={18} />
           </button>
         </div>

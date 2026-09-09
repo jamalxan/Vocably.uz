@@ -457,6 +457,7 @@ export default function AiChat() {
               <button
                 type="button"
                 onClick={() => setMicError('')}
+                aria-label="Xatoni yopish"
                 className="flex-shrink-0 text-red-600/70 hover:text-red-600"
               >
                 <X size={12} />
@@ -471,6 +472,7 @@ export default function AiChat() {
                   <img src={img} alt="Yuklanadigan rasm" className="h-16 rounded-lg border border-border" />
                   <button
                     onClick={() => removeAttachedImage(i)}
+                    aria-label="Rasmni olib tashlash"
                     className="absolute -top-1.5 -right-1.5 bg-primary-hover text-white rounded-full p-0.5"
                   >
                     <X size={11} />
@@ -497,6 +499,7 @@ export default function AiChat() {
               disabled={attachedImages.length >= MAX_ATTACHED_IMAGES}
               className="p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors flex-shrink-0 disabled:opacity-30"
               title={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
+              aria-label={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
             >
               <Paperclip size={18} />
             </button>
@@ -511,6 +514,7 @@ export default function AiChat() {
                       : 'text-muted hover:text-accent hover:bg-accent-soft'
                   }`}
                   title="Ovozli kiritish"
+                  aria-label={micListening ? "Ovozli kiritishni to'xtatish" : 'Ovozli kiritishni boshlash'}
                 >
                   <Mic size={18} />
                 </button>
@@ -564,6 +568,7 @@ export default function AiChat() {
             <button
               type="submit"
               disabled={chatLoading || (!chatInput.trim() && attachedImages.length === 0)}
+              aria-label="Xabarni yuborish"
               className="px-4 sm:px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
             >
               <Send size={16} />

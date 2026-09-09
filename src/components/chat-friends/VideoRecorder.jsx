@@ -256,6 +256,7 @@ export default function VideoRecorderButton({ onRecorded }) {
       <button
         onClick={() => setActive(true)}
         title="Video xabar"
+        aria-label="Video xabar yozish"
         className="p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
       >
         <Video size={18} />

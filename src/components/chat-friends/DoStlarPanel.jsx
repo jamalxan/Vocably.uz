@@ -11,14 +11,15 @@ function DoStlarShell({ onActiveChange }) {
   const params = useParams();
   const router = useRouter();
 
-  // /dashboard/friends/[username] — chatAccess'i bor HAR QANDAY (mavjud username'li)
+  // /app/dostlar/[username] — chatAccess'i bor HAR QANDAY (mavjud username'li)
   // foydalanuvchi uchun to'g'ridan-to'g'ri havola: /api/chat/conversations POST
   // username bo'yicha suhbatni topadi yoki yaratadi, shuning uchun bu username
   // qidiruv orqali "Yozish"ni bosishning aynan o'zi — faqat URL orqali ham
-  // ishga tushiriladi.
-  const segments = Array.isArray(params?.segments) ? params.segments : [];
-  const onFriendsRoute = segments[0] === 'friends';
-  const routeUsername = onFriendsRoute ? segments[1] || null : null;
+  // ishga tushiriladi. Ilgari (yagona catch-all route paytida) bu qiymat
+  // params.segments'dan ajratib olinardi; endi haqiqiy dinamik route bor
+  // (src/app/app/dostlar/[username]/page.jsx), shuning uchun to'g'ridan-to'g'ri
+  // params.username.
+  const routeUsername = params?.username || null;
   const prevActiveUsernameRef = useRef(null);
 
   // URL -> holat: to'g'ridan-to'g'ri havola, sahifa yangilash yoki brauzer
@@ -30,7 +31,7 @@ function DoStlarShell({ onActiveChange }) {
     openConversationByUsername(routeUsername).then((res) => {
       if (!cancelled && res?.error) {
         alert(res.error);
-        router.replace('/dashboard/friends');
+        router.replace('/app/dostlar');
       }
     });
     return () => {
@@ -40,9 +41,7 @@ function DoStlarShell({ onActiveChange }) {
   }, [routeUsername]);
 
   // Holat -> URL: ro'yxatdan bosish yoki username qidiruvi orqali suhbat
-  // ochilganda/yopilganda URL'ni shunga moslaymiz. Faqat Do'stlar bo'limida
-  // ekanimizda (panel boshqa bo'limga o'tilganda ham mount holida qolaveradi,
-  // shunda socket qayta ulanmaydi — o'sha holatda URL'ga tegmaymiz).
+  // ochilganda/yopilganda URL'ni shunga moslaymiz.
   //
   // MUHIM (avvalgi xato manbai): ro'yxatdan ketma-ket ikkita (yoki undan ko'p)
   // suhbatga TEZ bosilsa, har bir bosish shu effektni qayta ishga tushirib,
@@ -56,22 +55,18 @@ function DoStlarShell({ onActiveChange }) {
   // turgandan keyingina (debounce) bitta marta yo'naltiramiz — tez-tez
   // almashtirishlar bitta, oxirgi navigatsiyaga birlashtiriladi.
   useEffect(() => {
-    if (!onFriendsRoute) {
-      prevActiveUsernameRef.current = activeConversation?.otherUser?.username || null;
-      return undefined;
-    }
     const uname = activeConversation?.otherUser?.username || null;
     const timer = setTimeout(() => {
       if (uname) {
-        if (uname !== routeUsername) router.replace(`/dashboard/friends/${uname}`);
+        if (uname !== routeUsername) router.replace(`/app/dostlar/${uname}`);
       } else if (prevActiveUsernameRef.current && routeUsername) {
-        router.replace('/dashboard/friends');
+        router.replace('/app/dostlar');
       }
       prevActiveUsernameRef.current = uname;
     }, 150);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConversation, onFriendsRoute]);
+  }, [activeConversation]);
 
   // Ota komponentga (dashboard/page.jsx) qaysi suhbat ochiqligini bildiradi — mobil
   // ekranda tashqi sahifa header'ini yashirish uchun ishlatiladi (ConversationView'ning
@@ -96,8 +91,9 @@ function DoStlarShell({ onActiveChange }) {
   );
 }
 
-// Do'stlar bo'limi — faqat chatAccess=true bo'lganda mount qilinadi (Sidebar shu
-// tekshiruvni allaqachon qiladi, bu yerda yana bir marta — himoyaning ikkinchi qatlami).
+// Do'stlar bo'limi — faqat chatAccess=true bo'lganda mount qilinadi (AppShell
+// chatAccess=false bo'lganda nav elementini umuman ko'rsatmaydi, bu yerdagi
+// tekshiruv — himoyaning ikkinchi qatlami, to'g'ridan-to'g'ri URL kiritilsa ham ishlaydi).
 export default function DoStlarPanel({ onActiveChange }) {
   const { token, chatAccess } = useApp();
 

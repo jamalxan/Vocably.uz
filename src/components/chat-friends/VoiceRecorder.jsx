@@ -77,10 +77,10 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
       <span className="text-sm font-mono text-muted tabular-nums">
         {mm}:{ss}
       </span>
-      <button onClick={cancel} className="p-1.5 text-muted hover:text-accent transition-colors">
+      <button onClick={cancel} aria-label="Ovozli xabarni bekor qilish" title="Bekor qilish" className="p-1.5 text-muted hover:text-accent transition-colors">
         <X size={16} />
       </button>
-      <button onClick={stop} className="p-1.5 bg-accent hover:bg-accent-hover text-white rounded-full transition-colors">
+      <button onClick={stop} aria-label="Yozishni tugatib yuborish" title="Yuborish" className="p-1.5 bg-accent hover:bg-accent-hover text-white rounded-full transition-colors">
         <Square size={14} />
       </button>
     </div>
@@ -94,6 +94,7 @@ export function VoiceRecorderButton({ onRecorded }) {
       <button
         onClick={() => setActive(true)}
         title="Ovozli xabar"
+        aria-label="Ovozli xabar yozish"
         className="p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
       >
         <Mic size={18} />

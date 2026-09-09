@@ -105,6 +105,7 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
           onDeleteRequest(c);
         }}
         title="Suhbatni tozalash"
+        aria-label="Suhbatni tozalash"
         className="p-1 text-muted hover:text-accent transition-colors flex-shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
       >
         <Trash2 size={14} />

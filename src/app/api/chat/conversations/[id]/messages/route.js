@@ -222,7 +222,7 @@ export async function POST(req, { params }) {
     const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
     const recipientMuted = (convo.mutedBy || []).some((id) => String(id) === String(otherId));
     if (!recipientMuted) {
-      const pushUrl = user.username ? `/dashboard/friends/${user.username}` : '/dashboard/friends';
+      const pushUrl = user.username ? `/app/dostlar/${user.username}` : '/app/dostlar';
       sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }).catch(() => {});
     }
 

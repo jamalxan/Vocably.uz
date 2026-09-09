@@ -398,12 +398,69 @@ export function AppProvider({ children }) {
     [token, refreshCategories]
   );
 
+  // VOCABLY-TZ.md §4.1/FAZA 1 — bitta so'zni AI bilan boyitish (ta'rif, misollar,
+  // kollokatsiya, CEFR va h.k. — src/app/api/words/enrich). Muvaffaqiyatli bo'lsa
+  // qaytgan so'zni to'g'ridan-to'g'ri local state'ga qo'yamiz (refreshCategories
+  // shart emas — server allaqachon yangilangan so'zning o'zini qaytaradi).
+  const enrichWord = useCallback(
+    async (categoryId, wordId) => {
+      const res = await fetch('/api/words/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ categoryId, wordId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: data?.error || "Boyitib bo'lmadi" };
+
+      setCategories((prev) =>
+        prev.map((c) =>
+          c._id !== categoryId
+            ? c
+            : { ...c, words: c.words.map((w) => (w._id === wordId ? { ...w, enrichment: data.word.enrichment } : w)) }
+        )
+      );
+      return { word: data.word };
+    },
+    [token]
+  );
+
+  // V6 "Mnemonika ustaxonasi" — foydalanuvchining o'z mnemonikasini saqlaydi
+  // (src/app/api/words/mnemonic, models.js'dagi userMnemonicUz izohiga q.).
+  const saveMnemonic = useCallback(
+    async (categoryId, wordId, userMnemonicUz) => {
+      const res = await fetch('/api/words/mnemonic', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ categoryId, wordId, userMnemonicUz }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: data?.error || "Saqlab bo'lmadi" };
+
+      setCategories((prev) =>
+        prev.map((c) =>
+          c._id !== categoryId
+            ? c
+            : {
+                ...c,
+                words: c.words.map((w) =>
+                  w._id !== wordId ? w : { ...w, enrichment: { ...w.enrichment, userMnemonicUz: data.userMnemonicUz } }
+                ),
+              }
+        )
+      );
+      return { success: true };
+    },
+    [token]
+  );
+
   const value = {
     loadingApp,
     categories,
     setCategories,
     activeCatIndex,
     setActiveCatIndex,
+    enrichWord,
+    saveMnemonic,
     activeCategory,
     token,
     username,

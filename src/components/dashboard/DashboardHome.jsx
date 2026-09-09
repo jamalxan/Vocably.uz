@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import HeroCard from './HeroCard';
@@ -18,7 +19,8 @@ const ActivityChart = dynamic(() => import('./ActivityChart'), {
 });
 
 // spec §5.4: dashboard bitta so'rov bilan ochiladi — barcha bloklar shu bitta javobdan o'qiydi.
-export default function DashboardHome({ setView, setSidebarOpen }) {
+export default function DashboardHome() {
+  const router = useRouter();
   const { token, displayName, setActiveCatIndex, startPracticeQueue } = useApp();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
@@ -43,14 +45,12 @@ export default function DashboardHome({ setView, setSidebarOpen }) {
   }, [token, load]);
 
   const goToReview = () => {
-    setView('review');
-    setSidebarOpen?.(false);
+    router.push('/app/lugat/takrorlash');
   };
 
   const openCategory = (idx) => {
     setActiveCatIndex(idx);
-    setView('cards');
-    setSidebarOpen?.(false);
+    router.push('/app/lugat/kartochka');
   };
 
   const practiceLeeches = (leeches) => {

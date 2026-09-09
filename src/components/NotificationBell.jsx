@@ -104,6 +104,7 @@ export default function NotificationBell({ token, onOpenFriends }) {
         onClick={() => setOpen((v) => !v)}
         className="relative p-2 text-muted hover:text-accent hover:bg-surface rounded-lg transition-colors"
         title="Bildirishnomalar"
+        aria-label="Bildirishnomalar"
       >
         {unreadCount > 0 ? <BellRing size={18} /> : <Bell size={18} />}
         {unreadCount > 0 && (

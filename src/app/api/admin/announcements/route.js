@@ -65,7 +65,7 @@ export async function POST(req) {
 
     // Push — parallel, lekin bittasi muvaffaqiyatsiz bo'lsa boshqalarini bloklamaydi
     // (sendPushToUser o'zi ichida xatolarni yutadi).
-    await Promise.all(userIds.map((u) => sendPushToUser(u._id, { title: cleanTitle, body: cleanBody, url: '/dashboard' })));
+    await Promise.all(userIds.map((u) => sendPushToUser(u._id, { title: cleanTitle, body: cleanBody, url: '/app' })));
 
     await writeAuditLog(req, admin._id, 'announcement.create', 'Announcement', announcement._id, {
       title: cleanTitle,

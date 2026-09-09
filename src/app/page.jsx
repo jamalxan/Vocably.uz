@@ -33,7 +33,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('token')) {
-      router.push('/dashboard');
+      router.push('/app');
     }
   }, [router]);
 
@@ -144,7 +144,7 @@ export default function AuthPage() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', data.name || '');
         localStorage.setItem('phone', data.phone || phone);
-        router.push('/dashboard');
+        router.push('/app');
       } else {
         setStep('newPassword');
         setInfo('');
@@ -198,7 +198,7 @@ export default function AuthPage() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('username', data.name || '');
       localStorage.setItem('phone', data.phone || phone);
-      router.push('/dashboard');
+      router.push('/app');
     } catch (err) {
       setError(err.message);
     } finally {

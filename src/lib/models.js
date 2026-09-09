@@ -31,13 +31,58 @@ const WordStatsSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// So'zning lug'at-yozuvi maydonlari (VOCABLY-TZ.md §4.1'dan moslashtirilgan). TZ'dagi
+// asl model UMUMIY (global) `words` kolleksiyasini nazarda tutadi; bu loyihada so'zlar
+// har foydalanuvchida ALOHIDA-ALOHIDA saqlanadi (User.categories[].words[]) — shuning
+// uchun faqat leksik-mazmun maydonlari ko'chirildi, faqat global lug'atga tegishli
+// maydonlar (frequency_rank, source, created_by, admin verified/publish oqimi)
+// OLIB TASHLANDI. `audioUrl`/`imageUrl` — hozircha bo'sh qoladi: loyihada TTS audio
+// fayl yoki rasm generatsiya/CDN quvuri yo'q (T4), shuning uchun enrich endpoint
+// (POST /api/words/enrich) bu ikkalasini TO'LDIRMAYDI — faqat matn maydonlari.
+const WordEnrichmentSchema = new mongoose.Schema(
+  {
+    pos: {
+      type: String,
+      enum: ['noun', 'verb', 'adjective', 'adverb', 'phrase', 'idiom', 'phrasal_verb', ''],
+      default: '',
+    },
+    definitionEn: { type: String, trim: true, default: '' },
+    definitionUz: { type: String, trim: true, default: '' },
+    // Kamida 2 ta — kontekstsiz so'z yodlanmaydi (TZ §4.1 izohi).
+    examples: [{ en: { type: String, trim: true }, uz: { type: String, trim: true } }],
+    collocations: [{ type: String, trim: true }],
+    wordFamily: [{ form: { type: String, trim: true }, pos: { type: String, trim: true } }],
+    // Inglizcha yaqin ma'noli so'zlar (distraktor/"sinonim gradusi" rejimlari uchun) —
+    // mavjud `syns` maydonidan FARQLI: `syns` — o'zbekcha tarjima(lar), bu — inglizcha.
+    synonymsEn: [{ type: String, trim: true }],
+    antonyms: [{ type: String, trim: true }],
+    cefr: { type: String, enum: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', ''], default: '' },
+    register: { type: String, enum: ['formal', 'neutral', 'informal', 'academic', ''], default: '' },
+    topics: [{ type: String, trim: true }],
+    mnemonicUz: { type: String, trim: true, default: '' },
+    // Foydalanuvchining o'zi yozgan mnemonika (V6 — "Mnemonika ustaxonasi") — AI taklifidan
+    // (yuqoridagi mnemonicUz) ATAYLAB alohida: elaborative encoding eng kuchli o'zi
+    // ijod qilganda ishlaydi (TZ 6.2 V6 izohi), shuning uchun AI varianti faqat "ilhom"
+    // sifatida ko'rsatiladi, ustidan yozib qo'yilmaydi.
+    userMnemonicUz: { type: String, trim: true, default: '' },
+    commonMistakes: [{ type: String, trim: true }],
+    // Hozircha bo'sh — audio/rasm quvuri qo'shilganda to'ldiriladi (yuqoridagi izoh).
+    audioUrl: { uk: { type: String, default: '' }, us: { type: String, default: '' } },
+    imageUrl: { type: String, default: '' },
+    aiEnrichedAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const WordSchema = new mongoose.Schema({
   word: { type: String, required: true, trim: true },
   syns: [{ type: String, trim: true }],
   // AI orqali qo'shilgan so'zlar uchun talaffuz transkripsiyasi (masalan "/əˈraɪz/") —
-  // ixtiyoriy, qo'lda qo'shilgan eski so'zlarda bo'sh qoladi.
+  // ixtiyoriy, qo'lda qo'shilgan eski so'zlarda bo'sh qoladi. Bu maydon TZ §4.1'dagi
+  // `ipa`ning aynan o'zi — ikkinchi nom bilan dublikat qilinmadi.
   pronunciation: { type: String, trim: true, default: '' },
   stats: { type: WordStatsSchema, default: () => ({}) },
+  enrichment: { type: WordEnrichmentSchema, default: () => ({}) },
 });
 
 const CategorySchema = new mongoose.Schema({

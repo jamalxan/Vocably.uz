@@ -235,7 +235,7 @@ export default function Composer() {
         <div className="flex items-center gap-2 px-3.5 pt-2 text-xs text-accent">
           <Pencil size={12} className="flex-shrink-0" />
           <span className="flex-1 min-w-0 truncate">Xabarni tahrirlash</span>
-          <button onClick={handleCancelEdit} className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+          <button onClick={handleCancelEdit} aria-label="Tahrirlashni bekor qilish" className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -247,7 +247,7 @@ export default function Composer() {
             <p className="font-semibold text-accent truncate">{replySenderLabel}ga javob</p>
             <p className="text-muted truncate">{replyPreview || '…'}</p>
           </div>
-          <button onClick={cancelReply} className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+          <button onClick={cancelReply} aria-label="Javob berishni bekor qilish" className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -270,7 +270,7 @@ export default function Composer() {
             </p>
             <p className="text-muted">{(pendingAttachment.file.size / 1024 / 1024).toFixed(1)} MB</p>
           </div>
-          <button onClick={clearPendingAttachment} className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+          <button onClick={clearPendingAttachment} aria-label="Biriktirilgan faylni olib tashlash" className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -286,6 +286,7 @@ export default function Composer() {
               type="button"
               onClick={() => setEmojiOpen((v) => !v)}
               title="Emoji"
+              aria-label="Emoji tanlash"
               className="w-8 h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors emoji font-chat"
             >
               🙂
@@ -328,6 +329,7 @@ export default function Composer() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 title="Fayl biriktirish"
+                aria-label="Fayl biriktirish"
                 className="w-8 h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors flex-shrink-0"
               >
                 <Paperclip size={17} />
@@ -346,6 +348,7 @@ export default function Composer() {
         <button
           type="submit"
           disabled={(!text.trim() && !pendingAttachment) || sending}
+          aria-label={editingMessage ? "Tahrirni saqlash" : 'Xabarni yuborish'}
           className="p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-on-accent rounded-full transition-colors flex-shrink-0"
         >
           {sending ? <Loader2 size={16} className="animate-spin" /> : editingMessage ? <Pencil size={16} /> : <Send size={16} />}

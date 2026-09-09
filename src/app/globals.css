@@ -12,23 +12,93 @@
  * ========================================================================== */
 :root {
   --color-bg: 243 237 230;             /* #F3EDE6 — sahifa foni */
+  --color-bg-sunken: 235 227 218;      /* #EBE3DA — chuqurroq zona (masalan AppShell fon ostki qatlami) */
   --color-surface: 250 246 242;        /* #FAF6F2 — karta foni */
-  --color-primary: 74 18 38;           /* #4A1226 — matn/header/sidebar */
+  --color-surface-2: 255 255 255;      /* #FFFFFF — ko'tarilgan karta / modal / popover */
+  --color-primary: 74 18 38;           /* #4A1226 — DOIM to'q "brend yuzasi": sidebar, modal parda,
+                                           toast, tooltip fon. ~40 joyda bg-primary/bg-primary-hover/
+                                           bg-primary-soft shu maqsadda ishlatiladi — shuning uchun bu
+                                           token dark-mode'da HAM invert qilinmaydi (pastga q.),
+                                           faqat --color-ink matn/sarlavha rangi uchun invert bo'ladi. */
   --color-primary-hover: 85 21 44;     /* #55152C — sidebar elementi hover (primary fonda) */
   --color-primary-soft: 243 216 226;   /* #F3D8E2 — primary'ning yengil foni (badge va h.k.) */
   --color-accent: 184 57 74;           /* #B8394A — tugmalar, CTA, aktiv holat */
   --color-accent-hover: 144 44 58;     /* #902C3A — accent'ning to'qroq varianti (hover/active) */
   --color-accent-soft: 246 229 231;    /* #F6E5E7 — accent'ning yengil foni */
+  --color-ink: 74 18 38;               /* #4A1226 — sarlavha/matn rangi. Light'da --color-primary bilan
+                                           bir xil qiymatdan boshlanadi (hozircha vizual farq yo'q), lekin
+                                           MUSTAQIL token: dark-mode'da (pastga q.) och rangga inverts
+                                           bo'ladi, --color-primary esa o'zgarmaydi. Yangi kod sarlavha/
+                                           matn uchun har doim shu tokendan (text-ink) foydalansin;
+                                           text-primary eski komponentlarda qoladi va hozircha faqat
+                                           light temada to'g'ri ko'rinadi (pastga, dark blokidagi izohga q.). */
+  --color-ink-muted: 107 91 84;        /* #6B5B54 — --color-ink'ning bosilgan/subtitle varianti */
   --color-muted: 107 91 84;            /* #6B5B54 — subtitle, ikonka, o'chirilgan matn */
   --color-border: 214 207 204;         /* #D6CFCC — chegaralar */
   --color-on-accent: 255 255 255;      /* accent fon ustidagi matn */
   --color-on-primary: 250 246 242;     /* primary (to'q) fon ustidagi matn */
+
+  /* Semantik ranglar — muvaffaqiyat/ogohlantirish/xato/ma'lumot. Merlot palitrasi bilan
+     uyg'un (neon emas), VOCABLY-TZ.md 14.1. SRS holat ranglari alohida — pastga q. */
+  --color-success: 46 125 91;          --color-success-soft: 227 240 233;   /* #2E7D5B / #E3F0E9 */
+  --color-warning: 184 128 42;         --color-warning-soft: 247 237 217;   /* #B8802A / #F7EDD9 */
+  --color-danger: 192 57 43;           --color-danger-soft: 249 228 225;    /* #C0392B / #F9E4E1 */
+  --color-info: 59 110 143;            --color-info-soft: 227 237 243;      /* #3B6E8F / #E3EDF3 */
+
+  /* SRS (FSRS) karta holatlari — Kartochka/Jadval/Statistikada holat belgilash uchun (FAZA 1+). */
+  --color-srs-new: 156 139 132;        /* #9C8B84 */
+  --color-srs-learning: 184 128 42;    /* #B8802A */
+  --color-srs-review: 59 110 143;      /* #3B6E8F */
+  --color-srs-mastered: 46 125 91;     /* #2E7D5B */
 
   /* Emoji-safe shrift stack — brauzer platformasining o'z emoji shriftini render
      qiladi (iPhone/Mac'da Apple emoji, xuddi Telegramdagidek). Hech qanday rasm/asset
      yuklanmaydi. Har doim matn shriftidan KEYIN qo'llaniladi — Composer.jsx (font-chat
      Tailwind klassi), MessageBubble.jsx va EmojiPicker.jsx shu tartibda ishlatadi. */
   --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", sans-serif;
+}
+
+/* ============================================================================
+ * DARK MODE — ThemeProvider (src/context/ThemeContext.jsx) `<html>`ga
+ * data-theme="light"|"dark" qo'yadi; hech narsa qo'yilmasa (theme="system")
+ * OS afzalligiga (prefers-color-scheme) qaraladi. Faqat FON/CHEGARA/MATN
+ * tokenlari invert bo'ladi — --color-primary va undan hosila bg-primary*
+ * (sidebar, modal parda, toast, tooltip) ONGLI ravishda o'zgarmaydi, chunki
+ * ular "doim to'q brend yuzasi" sifatida ~40 komponentda ishlatilgan (yuqoridagi
+ * izohga q.) va ularni invert qilish sidebar/modallarni yorug', mos kelmaydigan
+ * holga keltirar edi. AppShell va yangi UI komponentlari (FAZA 0) shu tokenlarda
+ * to'liq tekshirilgan; eski komponentlar (quiz rejimlari, chat, admin) hali
+ * text-primary/bg-*-soft ishlatadi va keyingi bosqichda text-ink'ga
+ * ko'chiriladi — o'shanlargacha ular dark rejimda ham light rang bilan
+ * ko'rinadi (funksional, lekin hali brendga to'liq mos emas).
+ * ========================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: 23 9 14;                 /* #17090E */
+    --color-bg-sunken: 18 6 9;           /* #120609 */
+    --color-surface: 33 15 22;           /* #210F16 */
+    --color-surface-2: 44 21 30;         /* #2C151E */
+    --color-ink: 245 233 236;            /* #F5E9EC */
+    --color-ink-muted: 184 163 169;      /* #B8A3A9 */
+    --color-muted: 184 163 169;          /* #B8A3A9 */
+    --color-border: 58 34 43;            /* #3A222B */
+    --color-accent: 224 90 109;          /* #E05A6D — qorong'ida kontrast uchun yorug'roq */
+    --color-accent-hover: 235 118 135;   /* #EB7687 */
+    --color-accent-soft: 58 22 32;       /* #3A1620 */
+  }
+}
+:root[data-theme="dark"] {
+  --color-bg: 23 9 14;
+  --color-bg-sunken: 18 6 9;
+  --color-surface: 33 15 22;
+  --color-surface-2: 44 21 30;
+  --color-ink: 245 233 236;
+  --color-ink-muted: 184 163 169;
+  --color-muted: 184 163 169;
+  --color-border: 58 34 43;
+  --color-accent: 224 90 109;
+  --color-accent-hover: 235 118 135;
+  --color-accent-soft: 58 22 32;
 }
 
 /* Emojini kattaroq ko'rsatish uchun (masalan faqat-emoji xabarlar, picker katakchalari) */

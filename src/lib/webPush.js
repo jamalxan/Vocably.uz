@@ -24,7 +24,7 @@ export async function sendPushToUser(userId, { title, body, url }) {
   const subs = await PushSubscription.find({ userId }).lean();
   if (subs.length === 0) return;
 
-  const payload = JSON.stringify({ title, body, url: url || '/dashboard' });
+  const payload = JSON.stringify({ title, body, url: url || '/app' });
 
   await Promise.all(
     subs.map(async (sub) => {

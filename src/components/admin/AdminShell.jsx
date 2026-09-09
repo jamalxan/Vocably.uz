@@ -61,7 +61,7 @@ export default function AdminShell({ children }) {
                 <p className="text-[10px] uppercase tracking-[0.2em] text-accent mt-1">Admin Suite</p>
               </div>
             </div>
-            <button onClick={() => setMobileOpen(false)} className="md:hidden p-1.5 text-on-primary/60 hover:text-on-primary">
+            <button onClick={() => setMobileOpen(false)} aria-label="Menyuni yopish" className="md:hidden p-1.5 text-on-primary/60 hover:text-on-primary">
               <X size={18} />
             </button>
           </div>
@@ -84,7 +84,7 @@ export default function AdminShell({ children }) {
             </div>
           </div>
           <a
-            href="/dashboard"
+            href="/app"
             className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-on-primary/60 hover:text-on-primary hover:bg-primary-hover transition-colors"
           >
             <LogOut size={15} /> Ilovaga qaytish
@@ -96,6 +96,7 @@ export default function AdminShell({ children }) {
         <header className="sticky top-0 z-30 flex items-center gap-3 px-5 sm:px-8 py-5 bg-bg/90 backdrop-blur-md border-b border-border">
           <button
             onClick={() => setMobileOpen(true)}
+            aria-label="Menyuni ochish"
             className="md:hidden p-2 -ml-1 text-muted hover:text-primary rounded-lg"
           >
             <Menu size={20} />

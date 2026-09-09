@@ -1,5 +1,7 @@
 import '@/app/globals.css';
 import { Plus_Jakarta_Sans, Inter, Playfair_Display, IBM_Plex_Mono, Source_Serif_4 } from 'next/font/google';
+import { ThemeProvider, themeInitScript } from '@/context/ThemeContext';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 
 const display = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -51,6 +53,14 @@ const word = Source_Serif_4({
 export const metadata = {
   title: "Vocably — Ingliz tili yordamchisi",
   description: "Ingliz tilini o'rganish uchun AI yordamchili shaxsiy lug'at platformasi",
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+  },
 };
 
 // A1 (docs/AUDIT_FINDINGS.md): maximumScale bloklangan bo'lsa pinch-zoom butunlay ishlamay
@@ -60,13 +70,22 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#F3EDE6' },
+    { media: '(prefers-color-scheme: dark)', color: '#17090E' },
+  ],
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable} ${mono.variable} ${word.variable}`}>
-      <body className="bg-bg text-primary min-h-screen antialiased font-body">
-        {children}
+    // suppressHydrationWarning: <body> boshidagi bloklovchi skript hydration'dan oldin
+    // data-theme atributini o'rnatishi mumkin — bu server/klient farqi kutilgan va
+    // zararsiz, React shu haqidagi ogohlantirishni shu yerda bosib qo'ymasa bo'ladi.
+    <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable} ${mono.variable} ${word.variable}`} suppressHydrationWarning>
+      <body className="bg-bg text-primary min-h-screen antialiased font-body" suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <ThemeProvider>{children}</ThemeProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

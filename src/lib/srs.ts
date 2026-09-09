@@ -263,6 +263,19 @@ export function localDateWithCutoff(date: Date, timeZone: string, cutoffHour = 4
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+/**
+ * Berilgan kategoriyadagi so'zlardan hozir due bo'lganlarini ajratadi — RangeSetupForm'ning
+ * "Bugungi so'zlar bilan boshlash" tezkor tugmasi (U1) barcha rejimlarda shu bitta funksiyadan
+ * foydalanadi, har birida alohida-alohida filter yozilmasin deb.
+ */
+export function dueWordsInCategory(words: Array<{ stats?: { nextReview?: string | Date } }>, now: Date = new Date()) {
+  const nowMs = now.getTime();
+  return words.filter((w) => {
+    const next = w.stats?.nextReview ? new Date(w.stats.nextReview).getTime() : 0;
+    return next <= nowMs;
+  });
+}
+
 export interface StreakUpdate {
   streak: number;
   lastReviewDate: string;

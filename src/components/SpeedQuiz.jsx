@@ -1,14 +1,41 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, Flame, Zap } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Heart, Flame, Zap, Trophy } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
 
-const TIME_PER_QUESTION_MS = 8000;
+const START_TIME_MS = 8000;
+const MIN_TIME_MS = 3000;
+const TIME_STEP_MS = 300; // har savoldan keyin shuncha tezlashadi (6.1.5: "tezlik oshib boradi")
 const TICK_MS = 100;
 const START_LIVES = 3;
 const ADVANCE_DELAY_MS = 700;
+const BEST_SCORE_KEY_PREFIX = 'vocably-speedquiz-best-';
+
+// 6.1.5 — 3 ta ketma-ket to'g'ri javobdan keyin ball 2×, 6 tadan keyin 3× (kombo tizimi).
+function comboMultiplier(streak) {
+  if (streak >= 6) return 3;
+  if (streak >= 3) return 2;
+  return 1;
+}
+
+function readBestScore(categoryId) {
+  try {
+    return Number(localStorage.getItem(BEST_SCORE_KEY_PREFIX + categoryId)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeBestScore(categoryId, points) {
+  try {
+    localStorage.setItem(BEST_SCORE_KEY_PREFIX + categoryId, String(points));
+  } catch {
+    // localStorage yopiq bo'lsa ham o'yin davom etadi — shaxsiy rekord shu sessiyada saqlanmaydi
+  }
+}
 
 function buildQuestion(words) {
   const idx = Math.floor(Math.random() * words.length);
@@ -32,15 +59,26 @@ export default function SpeedQuiz() {
   const [active, setActive] = useState(false);
   const [words, setWords] = useState([]);
   const [question, setQuestion] = useState(null);
+  const [questionStartedAt, setQuestionStartedAt] = useState(0);
   const [selected, setSelected] = useState(null);
   const [lives, setLives] = useState(START_LIVES);
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [score, setScore] = useState({ correct: 0, total: 0 });
-  const [timeLeft, setTimeLeft] = useState(TIME_PER_QUESTION_MS);
+  // 6.1.5 kombo tizimi — har to'g'ri javob 10 ball, streak≥3 →2×, streak≥6 →3×.
+  const [points, setPoints] = useState(0);
+  const [bestPoints, setBestPoints] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(START_TIME_MS);
   const [finished, setFinished] = useState(false);
 
   const advanceTimeoutRef = useRef(null);
+  const timePerQuestion = Math.max(MIN_TIME_MS, START_TIME_MS - score.total * TIME_STEP_MS);
+
+  const dueWords = useMemo(
+    () => dueWordsInCategory(activeCategory.words || []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeCategory.words, activeCatIndex]
+  );
 
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda oraliq tanlashga qaytamiz.
   useEffect(() => {
@@ -49,31 +87,40 @@ export default function SpeedQuiz() {
 
   useEffect(() => () => clearTimeout(advanceTimeoutRef.current), []);
 
-  const startGame = (e) => {
-    e?.preventDefault();
-    const all = activeCategory.words || [];
-    if (all.length === 0) return alert("Avval so'z qo'shing");
-
-    const sliceFrom = Math.max(1, range.from) - 1;
-    const sliceTo = Math.min(all.length, range.to);
-    const selectedWords = all.slice(sliceFrom, sliceTo);
+  const beginSession = (selectedWords) => {
     if (selectedWords.length < 4) return alert("O'yin uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
-
     setWords(selectedWords);
     setLives(START_LIVES);
     setStreak(0);
     setBestStreak(0);
     setScore({ correct: 0, total: 0 });
+    setPoints(0);
+    setBestPoints(readBestScore(activeCategory._id));
     setSelected(null);
     setFinished(false);
     setQuestion(buildQuestion(selectedWords));
+    setQuestionStartedAt(Date.now());
     setActive(true);
+  };
+
+  const startGame = (e) => {
+    e?.preventDefault();
+    const all = activeCategory.words || [];
+    if (all.length === 0) return alert("Avval so'z qo'shing");
+    const sliceFrom = Math.max(1, range.from) - 1;
+    const sliceTo = Math.min(all.length, range.to);
+    beginSession(all.slice(sliceFrom, sliceTo));
   };
 
   const endGame = useCallback(() => {
     clearTimeout(advanceTimeoutRef.current);
     setFinished(true);
-  }, []);
+    setPoints((p) => {
+      if (p > readBestScore(activeCategory._id)) writeBestScore(activeCategory._id, p);
+      return p;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory._id]);
 
   const goNextQuestion = useCallback(
     (livesNow) => {
@@ -83,6 +130,7 @@ export default function SpeedQuiz() {
       }
       setSelected(null);
       setQuestion(buildQuestion(words));
+      setQuestionStartedAt(Date.now());
     },
     [words, endGame]
   );
@@ -93,7 +141,11 @@ export default function SpeedQuiz() {
       setScore((s) => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
 
       if (question?.target?._id && activeCategory._id) {
-        reviewWord(activeCategory._id, question.target._id, isCorrect);
+        const responseMs = Date.now() - questionStartedAt;
+        // MUHIM (6.1.5): rating aniq berilmaydi — server ratingFromOutcome() orqali hisoblaydi,
+        // u hech qachon 4 (Juda oson) qaytarmaydi (maks. 3) — "tezlik ≠ chuqur bilim" TZ qoidasi
+        // shu tufayli avtomatik ta'minlanadi, alohida cheklov yozish shart emas.
+        reviewWord(activeCategory._id, question.target._id, isCorrect, { responseMs, mode: 'speed' });
       }
 
       let livesNow = lives;
@@ -101,6 +153,7 @@ export default function SpeedQuiz() {
         setStreak((s) => {
           const next = s + 1;
           setBestStreak((b) => Math.max(b, next));
+          setPoints((p) => p + 10 * comboMultiplier(next));
           return next;
         });
       } else {
@@ -111,7 +164,7 @@ export default function SpeedQuiz() {
 
       advanceTimeoutRef.current = setTimeout(() => goNextQuestion(livesNow), ADVANCE_DELAY_MS);
     },
-    [question, activeCategory._id, reviewWord, lives, goNextQuestion]
+    [question, activeCategory._id, reviewWord, lives, goNextQuestion, questionStartedAt]
   );
 
   const choose = (option) => {
@@ -123,7 +176,7 @@ export default function SpeedQuiz() {
   // darrov to'xtaydi — aks holda eski taymer fon rejimida ishlab, ikkinchi marta javob "yozib
   // qo'yishi" mumkin edi.
   //
-  // MUHIM: avval "start = Date.now()" bitta marta yozib olinib, har tikda "TIME_PER_QUESTION_MS -
+  // MUHIM: avval "start = Date.now()" bitta marta yozib olinib, har tikda "timePerQuestion -
   // (Date.now() - start)" hisoblanardi. Brauzer tab fon rejimida (foydalanuvchi boshqa oyna/
   // tab'ga o'tsa) setInterval'ni cheklaydi yoki butunlay to'xtatadi — lekin Date.now() farqi
   // haqiqiy (soat bo'yicha) vaqtni ko'rsataveradi. Natijada tab qayta faollashganda "remaining"
@@ -133,8 +186,8 @@ export default function SpeedQuiz() {
   // vaqt qo'shiladi, va tab yashirin bo'lgan payt bu farq 0 deb olinadi.
   useEffect(() => {
     if (!active || !question || selected || finished) return;
-    setTimeLeft(TIME_PER_QUESTION_MS);
-    let remaining = TIME_PER_QUESTION_MS;
+    setTimeLeft(timePerQuestion);
+    let remaining = timePerQuestion;
     let lastTick = Date.now();
 
     // Tab yashirin↔ko'rinadigan holatga o'tgan zahoti "lastTick"ni yangilaymiz — shunda
@@ -169,7 +222,7 @@ export default function SpeedQuiz() {
 
   const restartGame = () => {
     setFinished(false);
-    startGame();
+    beginSession(words);
   };
 
   const closeFinished = () => {
@@ -186,26 +239,35 @@ export default function SpeedQuiz() {
         onSubmit={startGame}
         buttonLabel="O'yinni boshlash"
         maxWords={activeCategory.words?.length || 0}
+        onQuickStart={() => beginSession(dueWords)}
+        quickStartCount={dueWords.length}
       />
     );
   }
 
   if (!question) return null;
 
-  const timePct = Math.max(0, Math.min(100, (timeLeft / TIME_PER_QUESTION_MS) * 100));
+  const timePct = Math.max(0, Math.min(100, (timeLeft / timePerQuestion) * 100));
+  const isNewBest = finished && points > bestPoints;
 
   return (
     <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
-        title="O'yin tugadi!"
+        title={isNewBest ? 'Yangi rekord!' : "O'yin tugadi!"}
         score={score.correct}
         total={score.total}
         onRestart={restartGame}
         onClose={closeFinished}
       >
-        <div className="flex items-center justify-center gap-1.5 text-xs text-accent font-semibold mb-5">
-          <Flame size={14} /> Eng uzun ketma-ketlik: {bestStreak}
+        <div className="flex flex-col items-center gap-1.5 text-xs mb-5">
+          <div className={`flex items-center gap-1.5 font-bold text-base ${isNewBest ? 'text-warning' : 'text-accent'}`}>
+            <Trophy size={16} /> {points} ball {isNewBest && '🎉'}
+          </div>
+          <p className="text-muted">Shaxsiy rekord: {Math.max(points, bestPoints)}</p>
+          <div className="flex items-center gap-1.5 text-accent font-semibold">
+            <Flame size={14} /> Eng uzun ketma-ketlik: {bestStreak}
+          </div>
         </div>
       </SessionCompleteCard>
 
@@ -220,8 +282,11 @@ export default function SpeedQuiz() {
               />
             ))}
           </div>
-          <span className="flex items-center gap-1 font-semibold text-accent">
-            <Zap size={13} /> {streak}x
+          <span className="flex items-center gap-2.5">
+            <span className="flex items-center gap-1 font-semibold text-accent">
+              <Zap size={13} /> {streak}x{comboMultiplier(streak) > 1 && ` (${comboMultiplier(streak)}× ball)`}
+            </span>
+            <span className="font-bold text-primary">{points}</span>
           </span>
           <button onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
             Oraliqni o'zgartirish

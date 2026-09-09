@@ -62,7 +62,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
             <h3 className="font-bold text-primary font-display flex-1">
               Barcha suhbatlar <span className="text-muted font-normal text-sm">({chatSessions.length})</span>
             </h3>
-            <button onClick={onClose} className="p-1.5 text-muted hover:text-primary hover:bg-bg rounded-lg">
+            <button onClick={onClose} aria-label="Yopish" className="p-1.5 text-muted hover:text-primary hover:bg-bg rounded-lg">
               <X size={16} />
             </button>
           </div>
@@ -124,6 +124,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                       }}
                       className="p-1.5 text-muted hover:text-accent hover:bg-surface rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                       title="Nomini o'zgartirish"
+                      aria-label="Suhbat nomini o'zgartirish"
                     >
                       <Pencil size={13} />
                     </button>
@@ -131,6 +132,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                       onClick={() => setConfirmDeleteId(s.id)}
                       className="p-1.5 text-muted hover:text-accent hover:bg-surface rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                       title="O'chirish"
+                      aria-label="Suhbatni o'chirish"
                     >
                       <Trash2 size={13} />
                     </button>

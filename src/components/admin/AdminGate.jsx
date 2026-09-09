@@ -22,7 +22,7 @@ export default function AdminGate({ children }) {
         </div>
         <p className="font-luxury text-2xl text-primary">Ruxsat berilmagan</p>
         <p className="text-sm text-muted">Bu sahifa uchun admin huquqi kerak.</p>
-        <a href="/dashboard" className="text-accent text-sm font-medium hover:text-accent-hover hover:underline">
+        <a href="/app" className="text-accent text-sm font-medium hover:text-accent-hover hover:underline">
           Bosh sahifaga qaytish
         </a>
       </div>

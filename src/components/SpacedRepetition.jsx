@@ -187,6 +187,7 @@ export default function SpacedRepetition({ active }) {
               }}
               className="absolute top-4 right-4 p-2 bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors"
               title="Talaffuzni eshitish"
+              aria-label="Talaffuzni eshitish"
             >
               <Volume2 size={16} />
             </button>
@@ -196,10 +197,22 @@ export default function SpacedRepetition({ active }) {
             {current.word.pronunciation && (
               <p className="text-sm text-muted italic mt-1">{current.word.pronunciation}</p>
             )}
+            {current.word.enrichment?.cefr && (
+              <span className="mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-accent-soft text-accent">
+                {current.word.enrichment.cefr}
+              </span>
+            )}
             {showAnswer ? (
-              <p className="text-lg sm:text-xl font-medium text-accent mt-6 text-center">
-                {current.word.syns.join(', ')}
-              </p>
+              <>
+                <p className="text-lg sm:text-xl font-medium text-accent mt-6 text-center">
+                  {current.word.syns.join(', ')}
+                </p>
+                {current.word.enrichment?.examples?.[0] && (
+                  <p className="text-xs text-muted mt-3 text-center italic px-4">
+                    "{current.word.enrichment.examples[0].en}"
+                  </p>
+                )}
+              </>
             ) : (
               <p className="text-xs text-muted mt-6 font-semibold">
                 Ko'rish uchun bosing <span className="hidden sm:inline">(yoki Space)</span>

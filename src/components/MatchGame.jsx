@@ -1,10 +1,33 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Volume2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { speakText } from '@/lib/speech';
+import { dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
+import SessionCompleteCard from './shared/SessionCompleteCard';
+
+// 6.1.4 (VOCABLY-TZ.md) — 5 xil juftlik turi. Har so'z uchun mavjud enrichment
+// ma'lumotiga qarab tasodifiy tanlanadi (bo'lmasa — tarjima yoki audio, ikkalasi ham
+// har doim mavjud). Aralash turlar bitta seansda birga chiqishi mumkin — bu qasddan,
+// har xillik uchun.
+function pickPairType(w) {
+  const available = ['translation', 'audio'];
+  if (w.enrichment?.definitionEn) available.push('definition');
+  if (w.enrichment?.collocations?.[0]) available.push('collocation');
+  if (w.enrichment?.antonyms?.[0]) available.push('antonym');
+  return available[Math.floor(Math.random() * available.length)];
+}
+
+function partnerText(w, type) {
+  if (type === 'definition') return w.enrichment.definitionEn;
+  if (type === 'collocation') return w.enrichment.collocations[0];
+  if (type === 'antonym') return w.enrichment.antonyms[0];
+  return w.syns[0]; // translation
+}
 
 export default function MatchGame() {
-  const { activeCategory, activeCatIndex, categories, matchGameNonce } = useApp();
+  const { activeCategory, activeCatIndex, categories, matchGameNonce, reviewWord } = useApp();
 
   const [range, setRange] = useState({ from: 1, to: 10 });
   const [active, setActive] = useState(false);
@@ -12,6 +35,14 @@ export default function MatchGame() {
   const [matchPairs, setMatchPairs] = useState([]);
   const [selectedCards, setSelectedCards] = useState([]);
   const [matchedIds, setMatchedIds] = useState([]);
+  const [rounds, setRounds] = useState(0);
+  const [complete, setComplete] = useState(false);
+
+  const dueWords = useMemo(
+    () => dueWordsInCategory(activeCategory.words || []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeCategory.words, activeCatIndex]
+  );
 
   // "Juftlikni topish" nav tugmasi bosilganda (Sidebar orqali) oraliq tanlashga qaytamiz.
   useEffect(() => {
@@ -29,12 +60,19 @@ export default function MatchGame() {
       const chosen = [...words].sort(() => Math.random() - 0.5).slice(0, count);
       const cardList = [];
       chosen.forEach((w, i) => {
-        cardList.push({ id: `w-${i}`, text: w.word, type: 'word', matchId: i });
-        cardList.push({ id: `s-${i}`, text: w.syns[0], type: 'syn', matchId: i });
+        const type = pickPairType(w);
+        cardList.push({ id: `w-${i}`, text: w.word, kind: 'word', matchId: i, wordId: w._id });
+        if (type === 'audio') {
+          cardList.push({ id: `a-${i}`, kind: 'audio', matchId: i, audioText: w.word });
+        } else {
+          cardList.push({ id: `s-${i}`, text: partnerText(w, type), kind: 'partner', matchId: i });
+        }
       });
       setMatchPairs(cardList.sort(() => Math.random() - 0.5));
       setSelectedCards([]);
       setMatchedIds([]);
+      setRounds((n) => n + 1);
+      setComplete(false);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [categories]
@@ -55,15 +93,31 @@ export default function MatchGame() {
     setActive(true);
   };
 
+  const startDueQueue = () => {
+    if (dueWords.length < 4) return alert("Bugungi navbatda kamida 4 ta so'z kerak.");
+    setRangeWords(dueWords);
+    initMatchGame(dueWords);
+    setActive(true);
+  };
+
   const handleMatchCardClick = (card) => {
+    if (card.kind === 'audio') speakText(card.audioText);
     if (selectedCards.length === 2 || matchedIds.includes(card.matchId)) return;
     const currentSelected = [...selectedCards, card];
     setSelectedCards(currentSelected);
 
     if (currentSelected.length === 2) {
       const [first, second] = currentSelected;
-      if (first.matchId === second.matchId && first.type !== second.type) {
-        setMatchedIds((prev) => [...prev, first.matchId]);
+      if (first.matchId === second.matchId && first.kind !== second.kind) {
+        setMatchedIds((prev) => {
+          const next = [...prev, first.matchId];
+          if (next.length === matchPairs.length / 2) setComplete(true);
+          return next;
+        });
+        const wordCard = first.kind === 'word' ? first : second;
+        if (wordCard.wordId && activeCategory._id) {
+          reviewWord(activeCategory._id, wordCard.wordId, true, { rating: 3, mode: 'matching' });
+        }
         setSelectedCards([]);
       } else {
         setTimeout(() => setSelectedCards([]), 800);
@@ -79,6 +133,8 @@ export default function MatchGame() {
         onRangeChange={setRange}
         onSubmit={startMatchGame}
         maxWords={activeCategory.words?.length || 0}
+        onQuickStart={startDueQueue}
+        quickStartCount={dueWords.length}
       />
     );
   }
@@ -90,7 +146,6 @@ export default function MatchGame() {
       ) : (
         <>
           <div className="flex justify-between items-center text-xs text-muted w-full max-w-md mb-2.5">
-            {/* A13 (docs/AUDIT_FINDINGS.md): ilgari bu joyda hech qanday progress ko'rsatilmasdi. */}
             <span>
               {matchedIds.length} / {matchPairs.length / 2} juftlik
             </span>
@@ -114,23 +169,21 @@ export default function MatchGame() {
                       : 'border-border bg-surface hover:border-border text-primary'
                   }`}
                 >
-                  {card.text}
+                  {card.kind === 'audio' ? <Volume2 size={22} /> : card.text}
                 </div>
               );
             })}
           </div>
 
-          {matchPairs.length > 0 && matchedIds.length === matchPairs.length / 2 && (
-            <div className="mt-6 text-center">
-              <p className="text-green-600 font-bold text-sm mb-2">Barcha juftliklar topildi!</p>
-              <button
-                onClick={() => initMatchGame(rangeWords)}
-                className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg transition-colors"
-              >
-                Yana o'ynash
-              </button>
-            </div>
-          )}
+          <SessionCompleteCard
+            key={rounds}
+            open={complete}
+            title="Barcha juftliklar topildi!"
+            score={matchPairs.length / 2}
+            total={matchPairs.length / 2}
+            onClose={() => setActive(false)}
+            onRestart={() => initMatchGame(rangeWords)}
+          />
         </>
       )}
     </div>

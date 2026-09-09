@@ -235,6 +235,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
             <button
               onClick={() => startReply(message)}
               title="Javob berish"
+              aria-label="Xabarga javob berish"
               className="p-2 -m-1 text-muted hover:text-accent transition-colors touch-manipulation"
             >
               <Reply size={13} />
@@ -243,6 +244,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
               <button
                 onClick={() => startEditMessage(message)}
                 title="Tahrirlash"
+                aria-label="Xabarni tahrirlash"
                 className="p-2 -m-1 text-muted hover:text-accent transition-colors touch-manipulation"
               >
                 <Pencil size={13} />
@@ -251,6 +253,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
             <button
               onClick={() => setDeleteOpen(true)}
               title="O'chirish"
+              aria-label="Xabarni o'chirish"
               className="p-2 -m-1 text-muted hover:text-accent transition-colors touch-manipulation"
             >
               <Trash2 size={13} />
@@ -259,6 +262,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
               <button
                 onClick={handleReport}
                 title="Shikoyat qilish"
+                aria-label="Xabar haqida shikoyat qilish"
                 className="p-2 -m-1 text-muted hover:text-accent transition-colors touch-manipulation"
               >
                 <Flag size={13} />
