@@ -445,3 +445,112 @@ const PushSubscriptionSchema = new mongoose.Schema({
 
 export const PushSubscription =
   mongoose.models.PushSubscription || mongoose.model('PushSubscription', PushSubscriptionSchema);
+
+// ============================================================================
+// FAZA 3 (VOCABLY-TZ.md 7-10) — Reading/Listening/Speaking/Writing ko'nikma
+// modullari. TZ asl modeli admin tomonidan oldindan tayyorlanadigan, tasdiqdan
+// o'tgan KONTENT BANKINI (passages/listening_items/speaking_prompts/mocks,
+// alohida verified/publish oqimi bilan) nazarda tutadi — bu FAZA 5'dagi admin
+// CMS'ga bog'liq, hali qurilmagan. Shuning uchun bu yerda: har mashq AI orqali
+// SO'ROV PAYTIDA generatsiya qilinadi (bank emas) va natija shu bitta hujjatda
+// saqlanadi — ham "javob kaliti"ni generate/submit orasida saqlash usuli, ham
+// foydalanuvchi uchun tabiiy tarixni beradi. `correctAnswer`/`explanation`
+// maydonlari generatsiyadan keyin CLIENTGA YUBORILMAYDI (faqat submit
+// javobida) — Everest-Mock'dagi "correct javoblar clientga yubormaslik"
+// qoidasi shu yerda ham qo'llanadi (11.2-bo'lim).
+const ReadingQuestionSchema = new mongoose.Schema(
+  {
+    type: { type: String, enum: ['mcq', 'tfng'], required: true },
+    prompt: { type: String, required: true },
+    options: [{ type: String }],
+    correctAnswer: { type: String, required: true }, // mcq: option matni; tfng: 'True'|'False'|'Not Given'
+    explanation: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const ReadingAttemptSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  cefr: { type: String, required: true },
+  topic: { type: String, default: '' },
+  targetWords: [{ type: String }], // Zanjir mexanizmi (6.3) — so'nggi o'rganilgan so'zlar shu yerda
+  passage: { type: String, required: true },
+  questions: [ReadingQuestionSchema],
+  answers: [{ type: String, default: null }],
+  score: { type: Number, default: null },
+  status: { type: String, enum: ['in_progress', 'completed'], default: 'in_progress' },
+  createdAt: { type: Date, default: Date.now },
+  completedAt: { type: Date, default: null },
+});
+ReadingAttemptSchema.index({ userId: 1, createdAt: -1 });
+
+export const ReadingAttempt = mongoose.models.ReadingAttempt || mongoose.model('ReadingAttempt', ReadingAttemptSchema);
+
+const ListeningAttemptSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  cefr: { type: String, required: true },
+  topic: { type: String, default: '' },
+  targetWords: [{ type: String }],
+  transcript: { type: String, required: true },
+  questions: [ReadingQuestionSchema],
+  answers: [{ type: String, default: null }],
+  score: { type: Number, default: null },
+  status: { type: String, enum: ['in_progress', 'completed'], default: 'in_progress' },
+  createdAt: { type: Date, default: Date.now },
+  completedAt: { type: Date, default: null },
+});
+ListeningAttemptSchema.index({ userId: 1, createdAt: -1 });
+
+export const ListeningAttempt =
+  mongoose.models.ListeningAttempt || mongoose.model('ListeningAttempt', ListeningAttemptSchema);
+
+const WritingAttemptSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  task: { type: Number, enum: [1, 2], required: true },
+  prompt: { type: String, required: true },
+  text: { type: String, required: true },
+  wordCount: { type: Number, default: 0 },
+  feedback: {
+    band: Number,
+    criteria: {
+      taskAchievement: { band: Number, note: String },
+      coherenceCohesion: { band: Number, note: String },
+      lexicalResource: { band: Number, note: String },
+      grammaticalRange: { band: Number, note: String },
+    },
+    inlineCorrections: [{ original: String, suggestion: String, reason: String }],
+    vocabularyUpgrades: [{ original: String, better: [String] }],
+    nextStepsUz: [String],
+  },
+  createdAt: { type: Date, default: Date.now },
+});
+WritingAttemptSchema.index({ userId: 1, createdAt: -1 });
+
+export const WritingAttempt = mongoose.models.WritingAttempt || mongoose.model('WritingAttempt', WritingAttemptSchema);
+
+// Audio fayl (blob) SAQLANMAYDI — faqat transkripsiya + AI tahlili. Sabab: media
+// yuklash/saqlash (S3 presign) qo'shimcha infratuzilma, bu FAZA doirasida
+// ataylab qoldirilmadi (TZ 9.3'dagi "Yozuvni tinglash" tugmasi shuning uchun yo'q).
+const SpeakingAttemptSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  part: { type: Number, enum: [1, 2, 3], required: true },
+  prompt: { type: String, required: true },
+  transcript: { type: String, default: '' },
+  feedback: {
+    band: Number,
+    criteria: {
+      fluencyCoherence: { band: Number, note: String },
+      lexicalResource: { band: Number, note: String },
+      grammaticalRange: { band: Number, note: String },
+      pronunciation: { band: Number, note: String },
+    },
+    strengths: [String],
+    corrections: [{ original: String, suggestion: String }],
+    nextStepsUz: [String],
+  },
+  createdAt: { type: Date, default: Date.now },
+});
+SpeakingAttemptSchema.index({ userId: 1, createdAt: -1 });
+
+export const SpeakingAttempt =
+  mongoose.models.SpeakingAttempt || mongoose.model('SpeakingAttempt', SpeakingAttemptSchema);

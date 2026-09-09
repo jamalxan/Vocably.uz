@@ -6,7 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import IconButton from '@/components/ui/IconButton';
 import NotificationBell from '@/components/NotificationBell';
-import { PRIMARY_NAV, LUGAT_MODES, isNavActive } from './navConfig';
+import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
 
 // AppShell — VOCABLY-TZ.md 3.2 (navigatsiya modeli) va R1 (planshet layout yo'q)
 // muammosini yopadi: UCHTA holat, hammasi shu bitta komponentda, JS breakpoint
@@ -25,7 +25,8 @@ export default function AppShell({ children }) {
   const router = useRouter();
   const { displayName, logout, chatAccess, chatRole, token } = useApp();
 
-  const visiblePrimaryNav = PRIMARY_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
+  const visibleSidebarNav = SIDEBAR_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
+  const visibleBottomNav = BOTTOM_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
   const onLugat = pathname.startsWith('/app/lugat');
 
   return (
@@ -46,7 +47,7 @@ export default function AppShell({ children }) {
           </Link>
 
           <nav className="space-y-1">
-            {visiblePrimaryNav.map((item) => {
+            {visibleSidebarNav.map((item) => {
               const active = isNavActive(item, pathname);
               return (
                 <div key={item.key}>
@@ -104,7 +105,7 @@ export default function AppShell({ children }) {
             </span>
           </Link>
           <nav className="space-y-1">
-            {visiblePrimaryNav.map((item) => {
+            {visibleSidebarNav.map((item) => {
               const active = isNavActive(item, pathname);
               return (
                 <Link key={item.key} href={item.href} className={navItemClass(active)} title={item.label}>
@@ -131,7 +132,7 @@ export default function AppShell({ children }) {
         className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-primary text-on-primary flex items-stretch border-t border-on-primary/10"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        {visiblePrimaryNav.map((item) => {
+        {visibleBottomNav.map((item) => {
           const active = isNavActive(item, pathname);
           return (
             <Link

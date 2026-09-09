@@ -1,8 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
-import { getGeminiClient } from '@/lib/gemini';
-import { streamOpenAiCompatible } from '@/lib/providers/openaiCompatible';
+import { generateJson, friendlyAiError } from '@/lib/aiJson';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -62,66 +61,6 @@ Shu so'z uchun o'quv lug'ati yozuvini tayyorla (JSON sxemaga qat'iy mos):
 - commonMistakes: o'zbek tilida so'zlashuvchilar ko'p qiladigan 1-3 ta xato (bo'lmasa bo'sh massiv)`;
 }
 
-// chat/route.js'dagi bilan bir xil chidamlilik naqshi (o'sha yerdagi izohga q.): Groq (eng
-// tez/bepul) -> OpenRouter -> Gemini (oxirgi zaxira). Gemini structured-output (responseSchema)
-// bergani uchun eng ishonchli, lekin GEMINI_API_KEY har doim ham sozlanmagan bo'lishi mumkin —
-// shu sabab birinchi EMAS, oxirgi urinish sifatida qoldirildi (agar ikkalasi ham sozlangan bo'lsa,
-// avval tezroq/bepul Groq sinaladi).
-const JSON_INSTRUCTION =
-  '\n\nJAVOBNI FAQAT xom JSON obyekti sifatida qaytar — hech qanday izoh, markdown yoki ```json bloki bo\'lmasin.';
-
-function extractJson(text) {
-  const match = /\{[\s\S]*\}/.exec(text || '');
-  if (!match) throw new Error("Javobda JSON topilmadi");
-  return JSON.parse(match[0]);
-}
-
-async function enrichWithGroq(word, translations) {
-  if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY yo\'q');
-  const { text } = await streamOpenAiCompatible({
-    baseUrl: 'https://api.groq.com/openai/v1',
-    apiKey: process.env.GROQ_API_KEY,
-    model: 'llama-3.3-70b-versatile',
-    messages: [{ role: 'user', content: buildPrompt(word, translations) + JSON_INSTRUCTION }],
-  });
-  return extractJson(text);
-}
-
-async function enrichWithOpenRouter(word, translations) {
-  if (!process.env.OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY yo\'q');
-  const { text } = await streamOpenAiCompatible({
-    baseUrl: 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPENROUTER_API_KEY,
-    model: 'meta-llama/llama-3.3-70b-instruct:free',
-    extraHeaders: { 'HTTP-Referer': process.env.APP_URL || 'https://vocably.app', 'X-Title': 'Vocably' },
-    messages: [{ role: 'user', content: buildPrompt(word, translations) + JSON_INSTRUCTION }],
-  });
-  return extractJson(text);
-}
-
-async function enrichWithGemini(word, translations) {
-  const genAI = getGeminiClient();
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: buildPrompt(word, translations) }] }],
-    generationConfig: { responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
-  });
-  return JSON.parse(result.response.text());
-}
-
-async function enrichWord(word, translations) {
-  const attempts = [enrichWithGroq, enrichWithOpenRouter, enrichWithGemini];
-  let lastErr;
-  for (const attempt of attempts) {
-    try {
-      return await attempt(word, translations);
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr;
-}
-
 export async function POST(req) {
   try {
     const userId = getUserIdFromRequest(req);
@@ -142,13 +81,9 @@ export async function POST(req) {
 
     let data;
     try {
-      data = await enrichWord(word.word, word.syns || []);
+      data = await generateJson(buildPrompt(word.word, word.syns || []), RESPONSE_SCHEMA);
     } catch (aiErr) {
-      const msg = aiErr?.message || "Noma'lum xatolik";
-      const friendly = /quota|rate limit|429/i.test(msg)
-        ? "AI xizmati hozir band (so'rovlar chegarasi to'ldi). Bir necha daqiqadan keyin qayta urinib ko'ring."
-        : `AI bilan boyitib bo'lmadi: ${msg}`;
-      return NextResponse.json({ error: friendly }, { status: 502 });
+      return NextResponse.json({ error: friendlyAiError(aiErr) }, { status: 502 });
     }
 
     word.enrichment = {
