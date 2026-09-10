@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Loader2, Paperclip, X, Send, Mic } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ChatMessage from './chat/ChatMessage';
-import EmojiPicker from './chat-friends/EmojiPicker';
 
 // Bu til FAQAT mikrofon (SpeechRecognition, ovozli kiritish) uchun — matn yozishga ta'sir
 // qilmaydi, tanlagich faqat mikrofon yoqilganda ko'rinadi.
@@ -91,7 +90,6 @@ export default function AiChat({ contextHint } = {}) {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [attachedImages, setAttachedImages] = useState([]);
-  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [recognitionLang, setRecognitionLang] = useState(DEFAULT_RECOGNITION_LANG);
@@ -104,7 +102,6 @@ export default function AiChat({ contextHint } = {}) {
   const stickToBottomRef = useRef(true);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
-  const emojiButtonRef = useRef(null);
   const langMenuRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -374,22 +371,6 @@ export default function AiChat({ contextHint } = {}) {
     handleSend();
   };
 
-  // Tanlangan emoji xabar oxiriga emas, aynan kursor turgan joyga qo'shiladi —
-  // Composer.jsx (Do'stlar chati)dagi bilan bir xil naqsh.
-  const handleEmojiPick = (emoji) => {
-    const input = textareaRef.current;
-    const start = input?.selectionStart ?? chatInput.length;
-    const end = input?.selectionEnd ?? chatInput.length;
-    const next = chatInput.slice(0, start) + emoji + chatInput.slice(end);
-    setChatInput(next);
-    requestAnimationFrame(() => {
-      if (!input) return;
-      input.focus();
-      const pos = start + emoji.length;
-      input.setSelectionRange(pos, pos);
-    });
-  };
-
   // Enter — yuborish, Shift+Enter — yangi qator.
   // IME (koreys/xitoy/yapon klaviaturasi) kompozitsiyasi paytida Enter xabarni yubormasligi kerak.
   const handleTextareaKeyDown = (e) => {
@@ -507,27 +488,13 @@ export default function AiChat({ contextHint } = {}) {
               </button>
             </p>
           )}
-          {attachedImages.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2">
-              {attachedImages.map((img, i) => (
-                <div key={i} className="relative inline-block">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt="Yuklanadigan rasm" className="h-16 rounded-lg border border-border" />
-                  <button
-                    onClick={() => removeAttachedImage(i)}
-                    aria-label="Rasmni olib tashlash"
-                    className="absolute -top-1.5 -right-1.5 bg-primary-hover text-white rounded-full p-0.5"
-                  >
-                    <X size={11} />
-                  </button>
-                </div>
-              ))}
-              <span className="self-center text-[10px] text-muted">
-                {attachedImages.length}/{MAX_ATTACHED_IMAGES}
-              </span>
-            </div>
-          )}
-          <form onSubmit={handleFormSubmit} className="flex gap-2 items-end">
+          {/* Yagona "quti" — matn, rasm oldindan ko'rish va tugmalar (rasm/ovoz/yuborish)
+              HAMMASI shu bitta chegara ichida (2026-09-10 so'rovi: "yozadigan qism to'liq
+              chapga-o'ngga borsin, tugmalar ichida tursin"). Stiker/emoji ATAYLAB yo'q. */}
+          <form
+            onSubmit={handleFormSubmit}
+            className="w-full border border-border rounded-2xl bg-surface focus-within:border-accent transition-colors overflow-hidden"
+          >
             <input
               type="file"
               accept="image/*"
@@ -536,80 +503,24 @@ export default function AiChat({ contextHint } = {}) {
               className="hidden"
               onChange={handleFileInputChange}
             />
-            <div ref={emojiButtonRef} className="relative flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setEmojiOpen((v) => !v)}
-                title="Emoji"
-                aria-label="Emoji tanlash"
-                className="p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors emoji font-chat"
-              >
-                🙂
-              </button>
-              {emojiOpen && (
-                <EmojiPicker triggerRef={emojiButtonRef} onPick={handleEmojiPick} onClose={() => setEmojiOpen(false)} />
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={attachedImages.length >= MAX_ATTACHED_IMAGES}
-              className="p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors flex-shrink-0 disabled:opacity-30"
-              title={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
-              aria-label={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
-            >
-              <Paperclip size={18} />
-            </button>
-            {voiceSupported && (
-              <div ref={langMenuRef} className="relative flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={toggleMic}
-                  className={`p-2.5 rounded-xl transition-colors ${
-                    micListening
-                      ? 'text-accent bg-accent-soft animate-pulse'
-                      : 'text-muted hover:text-accent hover:bg-accent-soft'
-                  }`}
-                  title="Ovozli kiritish"
-                  aria-label={micListening ? "Ovozli kiritishni to'xtatish" : 'Ovozli kiritishni boshlash'}
-                >
-                  <Mic size={18} />
-                </button>
-
-                {/* Nutq tili faqat mikrofon yoqilganda ko'rinadi */}
-                {micListening && (
-                  <button
-                    type="button"
-                    onClick={() => setLangMenuOpen((v) => !v)}
-                    className="absolute -top-1 -right-1 px-1 py-px rounded bg-accent hover:bg-accent-hover text-white text-[9px] font-bold leading-tight shadow"
-                    title="Mikrofon tili"
-                  >
-                    {activeLang.label}
-                  </button>
-                )}
-
-                {langMenuOpen && (
-                  <div className="absolute bottom-full mb-2 left-0 z-30 w-40 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
-                    <p className="px-3 py-1.5 text-[9px] font-semibold text-muted uppercase tracking-wider bg-bg">
-                      Mikrofon tili
-                    </p>
-                    {RECOGNITION_LANGS.map((l) => (
-                      <button
-                        key={l.code}
-                        type="button"
-                        onClick={() => changeRecognitionLang(l.code)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
-                          recognitionLang === l.code
-                            ? 'bg-accent-soft text-accent font-semibold'
-                            : 'text-muted hover:bg-bg'
-                        }`}
-                      >
-                        <span className="w-6 font-bold">{l.label}</span>
-                        <span className="text-[11px] text-muted">{l.name}</span>
-                      </button>
-                    ))}
+            {attachedImages.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-3 pt-3">
+                {attachedImages.map((img, i) => (
+                  <div key={i} className="relative inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt="Yuklanadigan rasm" className="h-16 rounded-lg border border-border" />
+                    <button
+                      onClick={() => removeAttachedImage(i)}
+                      aria-label="Rasmni olib tashlash"
+                      className="absolute -top-1.5 -right-1.5 bg-primary-hover text-white rounded-full p-0.5"
+                    >
+                      <X size={11} />
+                    </button>
                   </div>
-                )}
+                ))}
+                <span className="self-center text-[10px] text-muted">
+                  {attachedImages.length}/{MAX_ATTACHED_IMAGES}
+                </span>
               </div>
             )}
             <textarea
@@ -620,16 +531,82 @@ export default function AiChat({ contextHint } = {}) {
               onChange={(e) => setChatInput(e.target.value)}
               onPaste={handlePaste}
               onKeyDown={handleTextareaKeyDown}
-              className="flex-1 min-w-0 px-4 py-2.5 border border-border rounded-xl text-sm leading-5 outline-none focus:border-accent resize-none"
+              className="w-full px-4 pt-3 pb-1 bg-transparent text-sm leading-5 outline-none resize-none"
             />
-            <button
-              type="submit"
-              disabled={chatLoading || (!chatInput.trim() && attachedImages.length === 0)}
-              aria-label="Xabarni yuborish"
-              className="px-4 sm:px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
-            >
-              <Send size={16} />
-            </button>
+            <div className="flex items-center justify-between gap-2 px-2 pb-2">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={attachedImages.length >= MAX_ATTACHED_IMAGES}
+                  className="p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors disabled:opacity-30"
+                  title={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
+                  aria-label={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
+                >
+                  <Paperclip size={18} />
+                </button>
+                {voiceSupported && (
+                  <div ref={langMenuRef} className="relative flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={toggleMic}
+                      className={`p-2.5 rounded-xl transition-colors ${
+                        micListening
+                          ? 'text-accent bg-accent-soft animate-pulse'
+                          : 'text-muted hover:text-accent hover:bg-accent-soft'
+                      }`}
+                      title="Ovozli kiritish"
+                      aria-label={micListening ? "Ovozli kiritishni to'xtatish" : 'Ovozli kiritishni boshlash'}
+                    >
+                      <Mic size={18} />
+                    </button>
+
+                    {/* Nutq tili faqat mikrofon yoqilganda ko'rinadi */}
+                    {micListening && (
+                      <button
+                        type="button"
+                        onClick={() => setLangMenuOpen((v) => !v)}
+                        className="absolute -top-1 -right-1 px-1 py-px rounded bg-accent hover:bg-accent-hover text-white text-[9px] font-bold leading-tight shadow"
+                        title="Mikrofon tili"
+                      >
+                        {activeLang.label}
+                      </button>
+                    )}
+
+                    {langMenuOpen && (
+                      <div className="absolute bottom-full mb-2 left-0 z-30 w-40 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
+                        <p className="px-3 py-1.5 text-[9px] font-semibold text-muted uppercase tracking-wider bg-bg">
+                          Mikrofon tili
+                        </p>
+                        {RECOGNITION_LANGS.map((l) => (
+                          <button
+                            key={l.code}
+                            type="button"
+                            onClick={() => changeRecognitionLang(l.code)}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                              recognitionLang === l.code
+                                ? 'bg-accent-soft text-accent font-semibold'
+                                : 'text-muted hover:bg-bg'
+                            }`}
+                          >
+                            <span className="w-6 font-bold">{l.label}</span>
+                            <span className="text-[11px] text-muted">{l.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={chatLoading || (!chatInput.trim() && attachedImages.length === 0)}
+                aria-label="Xabarni yuborish"
+                className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
+              >
+                <Send size={16} />
+              </button>
+            </div>
           </form>
         </div>
       </div>

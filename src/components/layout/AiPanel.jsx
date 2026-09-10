@@ -1,8 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles, X, Maximize2 } from 'lucide-react';
+import { Sparkles, X, Maximize2, Minimize2 } from 'lucide-react';
 import AiChat from '@/components/AiChat';
 import IconButton from '@/components/ui/IconButton';
 
@@ -11,7 +10,8 @@ import IconButton from '@/components/ui/IconButton';
 // to'liq ekran). /app/ai to'liq sahifasi ALOHIDA qoladi (suhbatlar ro'yxati +
 // tarix boshqaruvi kerak bo'lganda) — bu panel esa tezkor, kontekstli yordam
 // uchun (faqat joriy suhbat, sessiya boshqaruvsiz — "Kengaytirish" tugmasi
-// to'liq sahifaga olib o'tadi).
+// ENDI sahifadan chiqmasdan shu panelni to'liq ekranga yoyadi, ostidagi sahifa
+// o'zgarmaydi).
 function contextHintForPath(pathname) {
   if (pathname.startsWith('/app/lugat')) return "Lug'at bo'limida, so'z mashq qilmoqda";
   if (pathname.startsWith('/app/oqish')) return 'Reading (Oqish) bo\'limida';
@@ -26,6 +26,18 @@ function contextHintForPath(pathname) {
 export default function AiPanel() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Kengaytirish ENDI sahifa navigatsiyasi EMAS (eski "To'liq sahifa" havolasi
+  // /app/ai'ga olib ketardi — orqaga qaytilganda foydalanuvchi qaysi sahifada
+  // bo'lgani yo'qolardi). Endi shu panelning o'zi to'liq ekranga sig'adi;
+  // "Kichiklashtirish" bosilsa oddiy sirg'aluvchi o'lchamga qaytadi — ostidagi
+  // sahifa hech qachon o'zgarmagani uchun "qaysi oynada bo'lsa shunga qaytish"
+  // avtomatik ta'minlanadi (2026-09-10 so'rovi).
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const closePanel = () => {
+    setOpen(false);
+    setFullscreen(false);
+  };
 
   // ⌘K / Ctrl+K — istalgan sahifadan.
   useEffect(() => {
@@ -34,7 +46,7 @@ export default function AiPanel() {
         e.preventDefault();
         setOpen((v) => !v);
       }
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') closePanel();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -42,7 +54,11 @@ export default function AiPanel() {
 
   // /app/ai'ning o'zida (to'liq sahifa) qo'shimcha suzuvchi tugma/panel keraksiz —
   // ikkalasi bir vaqtda ustma-ust chiqmasin.
-  if (pathname.startsWith('/app/ai')) return null;
+  // Mock imtihon FAOL sessiyasida (masalan /app/mock/<id>, lekin natija sahifasi
+  // EMAS) AI yordamchi ko'rinmasligi kerak — haqiqiy imtihonda tashqi yordam
+  // yo'q, bu suzuvchi tugma ham "imtihon vibe"ni buzardi (2026-09-10 so'rovi).
+  const inMockSession = /^\/app\/mock\/[^/]+$/.test(pathname);
+  if (pathname.startsWith('/app/ai') || inMockSession) return null;
 
   return (
     <>
@@ -57,17 +73,28 @@ export default function AiPanel() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative w-full sm:w-[420px] h-full bg-bg shadow-2xl flex flex-col animate-[slideIn_200ms_ease-out]">
+          {!fullscreen && <div className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={closePanel} />}
+          <div
+            className={`relative h-full bg-bg shadow-2xl flex flex-col ${
+              fullscreen ? 'w-full' : 'w-full sm:w-[420px] animate-[slideIn_200ms_ease-out]'
+            }`}
+          >
             <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
-              <Link
-                href="/app/ai"
-                onClick={() => setOpen(false)}
+              <button
+                onClick={() => setFullscreen((v) => !v)}
                 className="flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors"
               >
-                <Maximize2 size={13} /> To'liq sahifa
-              </Link>
-              <IconButton icon={X} label="Yopish" size="sm" onClick={() => setOpen(false)} />
+                {fullscreen ? (
+                  <>
+                    <Minimize2 size={13} /> Kichiklashtirish
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 size={13} /> Kengaytirish
+                  </>
+                )}
+              </button>
+              <IconButton icon={X} label="Yopish" size="sm" onClick={closePanel} />
             </div>
             <div className="flex-1 min-h-0">
               <AiChat contextHint={contextHintForPath(pathname)} />

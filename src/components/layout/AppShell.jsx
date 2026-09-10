@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sun, Moon, Monitor, ShieldCheck, ChevronRight, LogOut } from 'lucide-react';
@@ -30,6 +31,16 @@ export default function AppShell({ children }) {
   const visibleBottomNav = BOTTOM_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
   const onLugat = pathname.startsWith('/app/lugat');
 
+  // Lug'at submenu ATAYLAB alohida holatga ega (faqat marshrutdan kelib
+  // chiqmaydi) — 2026-09-10 so'rovi: "ustiga bosilganda kengayadi, yana ustiga
+  // bosilsa yopiladi". Boshqa joydan /app/lugat'ga o'tilganda avtomatik ochiladi
+  // (quyidagi effekt), lekin Lug'at allaqachon faol bo'lganda tugma navigatsiya
+  // qilmaydi — faqat ochiq/yopiqni almashtiradi.
+  const [lugatOpen, setLugatOpen] = useState(onLugat);
+  useEffect(() => {
+    if (onLugat) setLugatOpen(true);
+  }, [onLugat]);
+
   return (
     <div className="min-h-dvh bg-bg">
       {/* ============ DESKTOP — to'liq sidebar (1280px+) ============ */}
@@ -52,12 +63,25 @@ export default function AppShell({ children }) {
               const active = isNavActive(item, pathname);
               return (
                 <div key={item.key}>
-                  <Link href={item.href} className={navItemClass(active)}>
+                  <Link
+                    href={item.href}
+                    className={navItemClass(active)}
+                    onClick={(e) => {
+                      // Lug'at allaqachon faol bo'lsa, bosish faqat ochiq/yopiqni
+                      // almashtiradi — qayta navigatsiya qilmaydi.
+                      if (item.key === 'lugat' && onLugat) {
+                        e.preventDefault();
+                        setLugatOpen((o) => !o);
+                      }
+                    }}
+                  >
                     <item.icon size={16} />
                     <span className="flex-1 text-left">{item.label}</span>
-                    {item.key === 'lugat' && <ChevronRight size={14} className={`transition-transform ${onLugat ? 'rotate-90' : ''}`} />}
+                    {item.key === 'lugat' && (
+                      <ChevronRight size={14} className={`transition-transform ${onLugat && lugatOpen ? 'rotate-90' : ''}`} />
+                    )}
                   </Link>
-                  {item.key === 'lugat' && onLugat && (
+                  {item.key === 'lugat' && onLugat && lugatOpen && (
                     <div className="mt-1 ml-4 pl-3 border-l border-on-primary/10 space-y-0.5">
                       {LUGAT_MODES.map((mode) => (
                         <Link key={mode.key} href={mode.href} className={navItemClass(pathname === mode.href, true)}>

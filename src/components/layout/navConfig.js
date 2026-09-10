@@ -49,7 +49,8 @@ export const SKILL_SECTIONS = [
 export const SIDEBAR_NAV = [
   { key: 'home', label: 'Bugun', href: '/app', icon: Home },
   ...SKILL_SECTIONS,
-  { key: 'ai', label: 'AI', href: '/app/ai', icon: Sparkles },
+  // "AI" ATAYLAB yo'q — o'ng-pastdagi suzuvchi AI tugmasi (AppShell) yetarli,
+  // ikkalasi bir vaqtda bo'lishi ortiqcha edi (2026-09-10 foydalanuvchi so'rovi).
   { key: 'reyting', label: 'Reyting', href: '/app/reyting', icon: Trophy },
   { key: 'dostlar', label: "Do'stlar", href: '/app/dostlar', icon: Users, matchPrefix: true, requiresChatAccess: true },
   { key: 'profil', label: 'Profil', href: '/app/profil', icon: User },

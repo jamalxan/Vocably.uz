@@ -6,3 +6,10 @@ node_modules
 .DS_Store
 npm-debug.log*
 *.tsbuildinfo
+backups/
+.vercel
+.env*
+
+# Vaqtinchalik havola materiallar (dizayn/kontent uchun) — hech qachon commit
+# qilinmasin (mualliflik huquqi bilan himoyalangan fayllar bo'lishi mumkin).
+memory/
