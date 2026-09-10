@@ -93,7 +93,7 @@ function MediaGallery({ conversationId, type, token }) {
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="px-3 py-1.5 bg-bg border border-border rounded-lg text-[11px] font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-bg border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
           >
             {loadingMore && <Loader2 size={12} className="animate-spin" />} Eskisini yuklash
           </button>
@@ -156,9 +156,9 @@ export default function UserProfileModal({ open, onClose }) {
             {(activeConversation.otherUser?.username || '?')[0]?.toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-primary truncate">@{activeConversation.otherUser?.username}</p>
+            <p className="text-sm font-bold text-ink truncate">@{activeConversation.otherUser?.username}</p>
           </div>
-          <button onClick={onClose} aria-label="Yopish" className="p-1 text-muted hover:text-primary transition-colors flex-shrink-0">
+          <button onClick={onClose} aria-label="Yopish" className="p-1 text-muted hover:text-ink transition-colors flex-shrink-0">
             <X size={18} />
           </button>
         </div>
@@ -186,7 +186,7 @@ export default function UserProfileModal({ open, onClose }) {
               key={key}
               onClick={() => setTab(key)}
               className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors flex items-center gap-1 ${
-                tab === key ? 'bg-accent text-on-accent' : 'bg-bg text-muted hover:text-primary'
+                tab === key ? 'bg-accent text-on-accent' : 'bg-bg text-muted hover:text-ink'
               }`}
             >
               <Icon size={12} /> {label}

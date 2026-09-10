@@ -46,7 +46,7 @@ export default function DeleteConversationModal({ open, otherUsername, onConfirm
           <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
             <Trash2 size={18} />
           </div>
-          <h3 className="font-bold text-primary font-display">Suhbatni tozalash</h3>
+          <h3 className="font-bold text-ink font-display">Suhbatni tozalash</h3>
         </div>
 
         <p className="text-sm text-muted mb-3">
@@ -61,7 +61,7 @@ export default function DeleteConversationModal({ open, otherUsername, onConfirm
             onChange={(e) => setForEveryone(e.target.checked)}
             className="w-4 h-4 accent-accent flex-shrink-0"
           />
-          <span className="text-sm text-primary">
+          <span className="text-sm text-ink">
             @{otherUsername || 'foydalanuvchi'} uchun ham o'chirilsinmi? (ikkala tomondan)
           </span>
         </label>

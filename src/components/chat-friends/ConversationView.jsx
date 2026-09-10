@@ -151,7 +151,7 @@ export default function ConversationView({ onBack }) {
   return (
     <div className="flex-1 flex flex-col h-full min-w-0">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
-        <button onClick={onBack} aria-label="Suhbatlar ro'yxatiga qaytish" className="lg:hidden p-1 text-muted hover:text-primary">
+        <button onClick={onBack} aria-label="Suhbatlar ro'yxatiga qaytish" className="lg:hidden p-1 text-muted hover:text-ink">
           <ArrowLeft size={18} />
         </button>
         <div className="relative flex-shrink-0">
@@ -159,7 +159,7 @@ export default function ConversationView({ onBack }) {
             {(activeConversation.otherUser?.username || '?')[0]?.toUpperCase()}
           </div>
           {online && (
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-surface" />
+            <span title="Onlayn" className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-bg" />
           )}
         </div>
         <button
@@ -167,7 +167,7 @@ export default function ConversationView({ onBack }) {
           className="min-w-0 flex-1 text-left"
           title="Foydalanuvchi haqida (taxallus, media)"
         >
-          <p className="text-sm font-semibold text-primary truncate hover:underline">
+          <p className="text-sm font-semibold text-ink truncate hover:underline">
             {activeConversation.otherUser?.nickname || `@${activeConversation.otherUser?.username}`}
           </p>
           {isTyping ? (
@@ -237,7 +237,7 @@ export default function ConversationView({ onBack }) {
             onClick={() => scrollToBottom('smooth')}
             title="Pastga tushish"
             aria-label="Suhbat oxiriga tushish"
-            className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-surface border border-border shadow-card flex items-center justify-center text-primary hover:text-accent hover:border-accent/40 transition-colors"
+            className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-surface border border-border shadow-card flex items-center justify-center text-ink hover:text-accent hover:border-accent/40 transition-colors"
           >
             <ArrowDown size={18} />
             {newMessageCount > 0 && (

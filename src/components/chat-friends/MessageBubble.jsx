@@ -75,7 +75,7 @@ function FileBubble({ media }) {
       download
       target="_blank"
       rel="noreferrer"
-      className="flex items-center gap-2 px-3 py-2 bg-surface/70 rounded-lg text-sm text-primary hover:bg-surface"
+      className="flex items-center gap-2 px-3 py-2 bg-surface/70 rounded-lg text-sm text-ink hover:bg-surface"
     >
       <FileText size={16} />
       <span className="truncate max-w-[160px]">Fayl</span>
@@ -183,7 +183,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
                     ? 'bg-transparent border border-dashed border-border text-muted italic'
                     : isMine
                       ? 'bg-accent text-white rounded-br-md'
-                      : 'bg-bg text-primary rounded-bl-md'
+                      : 'bg-bg text-ink rounded-bl-md'
                 }`
           }
         >

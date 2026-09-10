@@ -43,7 +43,7 @@ export default function DeleteMessageModal({ open, canDeleteForEveryone, otherUs
           <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
             <Trash2 size={18} />
           </div>
-          <h3 className="font-bold text-primary font-display">Xabarni o'chirish</h3>
+          <h3 className="font-bold text-ink font-display">Xabarni o'chirish</h3>
         </div>
 
         {canDeleteForEveryone && (
@@ -54,7 +54,7 @@ export default function DeleteMessageModal({ open, canDeleteForEveryone, otherUs
               onChange={(e) => setForEveryone(e.target.checked)}
               className="w-4 h-4 accent-accent flex-shrink-0"
             />
-            <span className="text-sm text-primary">
+            <span className="text-sm text-ink">
               @{otherUsername || 'foydalanuvchi'} uchun ham o'chirilsinmi?
             </span>
           </label>

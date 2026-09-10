@@ -265,7 +265,7 @@ export default function Composer() {
             {pendingAttachment.type === 'file' && <FileText size={18} className="text-muted" />}
           </div>
           <div className="flex-1 min-w-0 text-xs">
-            <p className="font-semibold text-primary truncate">
+            <p className="font-semibold text-ink truncate">
               {pendingAttachment.type === 'image' ? 'Rasm' : pendingAttachment.type === 'video' ? 'Video' : pendingAttachment.file.name}
             </p>
             <p className="text-muted">{(pendingAttachment.file.size / 1024 / 1024).toFixed(1)} MB</p>

@@ -149,7 +149,7 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
           <Frimousse.Search
             ref={searchInputRef}
             placeholder="Emoji qidirish..."
-            className="w-full pl-8 pr-2.5 py-1.5 bg-bg border border-border rounded-lg text-sm text-primary placeholder:text-muted/70 outline-none focus:border-accent transition-colors"
+            className="w-full pl-8 pr-2.5 py-1.5 bg-bg border border-border rounded-lg text-sm text-ink placeholder:text-muted/70 outline-none focus:border-accent transition-colors"
           />
         </div>
         <Frimousse.SkinToneSelector className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-bg transition-colors emoji" />

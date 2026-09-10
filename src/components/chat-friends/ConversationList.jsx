@@ -70,14 +70,21 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
         <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">
           {(c.otherUser?.username || '?')[0]?.toUpperCase()}
         </div>
+        {/* Onlayn belgisi — 2026-09-10 so'rovi: avval `border-surface` edi, lekin bu
+            qator haqiqatda `bg-bg` fonida turadi (ConversationList'ning o'zi alohida
+            fon bermaydi) — mos kelmagan ramka nuqtani "kesib olingan" his qildirmay,
+            xira ko'rsatardi. Endi to'g'ri fon (`border-bg`) + semantik `success` rang. */}
         {online && (
-          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-surface" />
+          <span
+            title="Onlayn"
+            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-bg"
+          />
         )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-1 min-w-0">
-            <p className={`text-sm truncate ${c.unreadCount > 0 ? 'font-bold text-primary' : 'font-medium text-primary'}`}>
+            <p className={`text-sm truncate ${c.unreadCount > 0 ? 'font-bold text-ink' : 'font-medium text-ink'}`}>
               {c.otherUser?.nickname || `@${c.otherUser?.username || 'noma\'lum'}`}
             </p>
             {c.muted && <BellOff size={11} className="text-muted flex-shrink-0" />}
@@ -88,7 +95,7 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
           {typing ? (
             <p className="text-xs text-accent italic truncate">{TYPING_LABEL[typing] || TYPING_LABEL.text}</p>
           ) : (
-            <p className={`text-xs truncate ${c.unreadCount > 0 ? 'text-primary font-semibold' : 'text-muted'}`}>
+            <p className={`text-xs truncate ${c.unreadCount > 0 ? 'text-ink font-semibold' : 'text-muted'}`}>
               {c.lastMessagePreview || ''}
             </p>
           )}
@@ -133,7 +140,7 @@ export default function ConversationList({ onSelect, selectedId }) {
   return (
     <div className="w-full lg:w-72 flex-shrink-0 border-r border-border flex flex-col h-full">
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        <h3 className="text-sm font-bold text-primary">Do'stlar</h3>
+        <h3 className="text-sm font-bold text-ink">Do'stlar</h3>
         <span title={socketConnected ? 'Onlayn' : 'Oflayn (yangilanish bilan)'} className="text-muted">
           {socketConnected ? <Wifi size={13} className="text-emerald-500" /> : <WifiOff size={13} />}
         </span>

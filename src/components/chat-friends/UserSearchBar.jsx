@@ -66,7 +66,7 @@ export default function UserSearchBar({ onOpen }) {
                 {result.username[0]?.toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-primary truncate">@{result.username}</p>
+                <p className="text-sm font-medium text-ink truncate">@{result.username}</p>
                 {result.name && <p className="text-xs text-muted truncate">{result.name}</p>}
               </div>
               {opening ? <Loader2 size={14} className="animate-spin text-accent" /> : (
