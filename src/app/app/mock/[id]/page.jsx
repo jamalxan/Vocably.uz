@@ -358,7 +358,11 @@ function QuestionList({ questions, answers, reveal, onAnswer }) {
             </p>
             <div className="space-y-1.5">
               {q.options.map((opt, oi) => {
-                const selected = answers[q.id] === oi;
+                // `answers` server'dan undefined kelishi mumkin edi (eski
+                // hujjatlarda) — himoya sifatida optional chaining (asosiy
+                // tuzatish: lib/models.js'dagi minimize:false + engine.ts'dagi
+                // `|| {}`, lekin bu yerda ham ehtiyot chorasi).
+                const selected = answers?.[q.id] === oi;
                 let style = 'border-border hover:border-accent/30';
                 if (r) {
                   if (oi === r.correct) style = 'border-green-300 bg-green-50 text-green-700';

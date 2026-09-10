@@ -97,8 +97,12 @@ export function publicState(doc: ExamDoc, now: Date = new Date()) {
     status: doc.status,
     serverNow: now,
     sections,
-    audio: doc.audio,
-    answers: doc.answers,
+    // Mongoose'ning minimize:true (eski hujjatlarda, modelSchema tuzatilishidan
+    // oldin yaratilgan) bo'sh {} maydonlarni saqlamay tashlab yuborishi mumkin edi —
+    // shuning uchun bu yerda ham `|| {}` bilan himoyalanadi (schema'dagi
+    // minimize:false yangi hujjatlar uchun ildiz sababni tuzatadi).
+    audio: doc.audio || {},
+    answers: doc.answers || {},
     essays: doc.essays,
     result: doc.result,
   };

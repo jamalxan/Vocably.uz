@@ -604,6 +604,15 @@ const ExamSessionSchema = new mongoose.Schema({
   submittedAt: { type: Date, default: null },
   submitReason: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
+}, {
+  // MUHIM: Mongoose standart holatda ({ minimize: true }) saqlashdan oldin BO'SH
+  // obyektlarni ({}) hujjatdan butunlay olib tashlaydi. `answers`/`audio` yangi
+  // sessiyada aynan {} bo'lib boshlanadi — shuning uchun minimize yoqilgan bo'lsa,
+  // bu maydonlar bazada umuman yo'q bo'lib qoladi, keyin publicState() `undefined`
+  // qaytaradi va client `answers[q.id]`ni o'qiganda qulaydi (2026-09-10'da topilgan
+  // haqiqiy production bug — /app/mock/[id]'da bo'lim boshlanganda "Application
+  // error"). minimize: false shu bo'sh obyektlarni ham saqlab qoladi.
+  minimize: false,
 });
 // start'dagi "davom ettirish" so'rovi shu bo'yicha (userId+mockId+status) — exam.py'dagi
 // server.py'dan portlangan indeks bilan bir xil.
