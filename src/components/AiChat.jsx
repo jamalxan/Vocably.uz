@@ -28,6 +28,27 @@ const MAX_TEXTAREA_HEIGHT = 142;
 const PENDING_MARK_START = '\n[[PENDING_ADD_WORDS]]';
 const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]';
 
+// TZ-vocably-v2.md §D1.5/H3 — server barcha provayderlar tugagach shu markerni oqimga
+// qo'shadi (src/app/api/ai/chat/route.js). Avval xato matni oddiy proza sifatida kelib,
+// AI javobidan farqlanmas edi; endi strukturali JSON (o'zbekcha xabar + requestId) —
+// shu yerda ajratib olinadi va ChatMessage'da alohida "Qayta urinish" kartasi sifatida
+// ko'rsatiladi (xom AI matni bilan aralashmaydi).
+const AI_ERROR_MARK_START = '\n[[AI_ERROR]]';
+const AI_ERROR_MARK_END = '[[/AI_ERROR]]';
+
+function extractAiError(fullText) {
+  const startIdx = fullText.indexOf(AI_ERROR_MARK_START);
+  if (startIdx === -1) return { visibleText: fullText, aiError: null };
+  const endIdx = fullText.indexOf(AI_ERROR_MARK_END, startIdx);
+  if (endIdx === -1) return { visibleText: fullText.slice(0, startIdx), aiError: null };
+  const jsonStr = fullText.slice(startIdx + AI_ERROR_MARK_START.length, endIdx);
+  try {
+    return { visibleText: fullText.slice(0, startIdx), aiError: JSON.parse(jsonStr) };
+  } catch {
+    return { visibleText: fullText.slice(0, startIdx), aiError: null };
+  }
+}
+
 // SpeechRecognition xatolari getUserMedia'dan farqli ismlar ishlatadi (masalan
 // "not-allowed", DOMException.name emas) — shuning uchun lib/mediaError.js dagi
 // mapping bu yerga to'g'ri kelmaydi, alohida xabar kerak.
@@ -285,6 +306,78 @@ export default function AiChat({ contextHint } = {}) {
     recognition.start();
   };
 
+  // So'nggi so'ralgan xabar — "Qayta urinish" bosilganda foydalanuvchi xabarini
+  // takrorlamasdan, faqat so'rovni qaytadan yuborish uchun (TZ-vocably-v2.md §D1.5).
+  const lastRequestRef = useRef(null);
+
+  const runAiRequest = async (text, imagesToSend) => {
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sessionId: currentSessionId, message: text, imagesBase64: imagesToSend, context: contextHint }),
+      });
+
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({}));
+        throw Object.assign(new Error(data.error || 'Xatolik yuz berdi'), { requestId: data.requestId || null });
+      }
+
+      const newSessionId = res.headers.get('X-Session-Id');
+      if (newSessionId && newSessionId !== currentSessionId) {
+        setCurrentSessionId(newSessionId);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+        const { visibleText: afterPending } = extractPendingAction(fullText);
+        const { visibleText } = extractAiError(afterPending);
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], parts: [{ text: visibleText }] };
+          return updated;
+        });
+      }
+
+      const { visibleText: afterPending, pendingAction } = extractPendingAction(fullText);
+      const { visibleText, aiError } = extractAiError(afterPending);
+
+      // AI shu javob davomida yangi kategoriya yaratgan bo'lishi mumkin (create_category darhol
+      // saqlanadi) — tasdiqlash kartasi ko'rsatilishidan oldin kategoriyalar ro'yxatini yangilab
+      // olamiz, aks holda yangi kategoriya hali eskirgan ro'yxatda yo'q bo'lib, tanlab bo'lmay qoladi.
+      if (pendingAction) await refreshCategories();
+
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = aiError
+          ? { role: 'model', parts: [{ text: visibleText }], aiError }
+          : { role: 'model', parts: [{ text: visibleText }], pendingAction: pendingAction || null };
+        return updated;
+      });
+
+      // Sidebar'dagi ro'yxat yangilansin (sarlavha/tartib o'zgargan bo'lishi mumkin).
+      loadChatSessions();
+    } catch (err) {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: 'model',
+          parts: [{ text: '' }],
+          aiError: { message: err.message, requestId: err.requestId || null },
+        };
+        return updated;
+      });
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   const handleSend = async (overrideText) => {
     const text = (overrideText ?? chatInput).trim();
     if ((!text && attachedImages.length === 0) || chatLoading) return;
@@ -302,68 +395,23 @@ export default function AiChat({ contextHint } = {}) {
     setAttachedImages([]);
     setChatLoading(true);
     stickToBottomRef.current = true;
+    lastRequestRef.current = { text, images: imagesToSend };
 
-    try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ sessionId: currentSessionId, message: text, imagesBase64: imagesToSend, context: contextHint }),
-      });
+    await runAiRequest(text, imagesToSend);
+  };
 
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Xatolik yuz berdi');
-      }
-
-      const newSessionId = res.headers.get('X-Session-Id');
-      if (newSessionId && newSessionId !== currentSessionId) {
-        setCurrentSessionId(newSessionId);
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let fullText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        fullText += decoder.decode(value, { stream: true });
-        const { visibleText } = extractPendingAction(fullText);
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { ...updated[updated.length - 1], parts: [{ text: visibleText }] };
-          return updated;
-        });
-      }
-
-      const { visibleText, pendingAction } = extractPendingAction(fullText);
-
-      // AI shu javob davomida yangi kategoriya yaratgan bo'lishi mumkin (create_category darhol
-      // saqlanadi) — tasdiqlash kartasi ko'rsatilishidan oldin kategoriyalar ro'yxatini yangilab
-      // olamiz, aks holda yangi kategoriya hali eskirgan ro'yxatda yo'q bo'lib, tanlab bo'lmay qoladi.
-      if (pendingAction) await refreshCategories();
-
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          role: 'model',
-          parts: [{ text: visibleText }],
-          pendingAction: pendingAction || null,
-        };
-        return updated;
-      });
-
-      // Sidebar'dagi ro'yxat yangilansin (sarlavha/tartib o'zgargan bo'lishi mumkin).
-      loadChatSessions();
-    } catch (err) {
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = { role: 'model', parts: [{ text: `⚠️ Xatolik: ${err.message}` }] };
-        return updated;
-      });
-    } finally {
-      setChatLoading(false);
-    }
+  // Xato kartasidagi "Qayta urinish" — foydalanuvchi xabarini takrorlamaydi, faqat
+  // muvaffaqiyatsiz model javobini qayta so'raydi (bir xil sessionId/matn/rasm bilan).
+  const handleRetry = () => {
+    if (!lastRequestRef.current || chatLoading) return;
+    setMessages((prev) => {
+      const updated = [...prev];
+      updated[updated.length - 1] = { role: 'model', parts: [{ text: '' }], _streaming: true };
+      return updated;
+    });
+    setChatLoading(true);
+    stickToBottomRef.current = true;
+    runAiRequest(lastRequestRef.current.text, lastRequestRef.current.images);
   };
 
   const handleFormSubmit = (e) => {
@@ -417,7 +465,7 @@ export default function AiChat({ contextHint } = {}) {
               <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-accent to-primary flex items-center justify-center shadow-glow">
                 <Sparkles className="text-on-accent" size={24} />
               </div>
-              <p className="text-base font-semibold text-primary font-display">
+              <p className="text-base font-semibold text-ink font-display">
                 Assalomu alaykum{firstName ? `, ${firstName}` : ''}!
               </p>
               <p className="text-sm text-muted mt-1.5 max-w-sm mx-auto">
@@ -454,6 +502,7 @@ export default function AiChat({ contextHint } = {}) {
               sessionId={currentSessionId}
               onResolvedAdd={handleResolvedAdd}
               onEdit={msg.role === 'user' ? handleEditMessage : null}
+              onRetry={msg.aiError ? handleRetry : null}
             />
           ))}
           {isTyping && (
@@ -476,13 +525,13 @@ export default function AiChat({ contextHint } = {}) {
             </p>
           )}
           {micError && (
-            <p className="flex items-start gap-1.5 text-[11px] text-red-600 mb-2">
+            <p className="flex items-start gap-1.5 text-[11px] text-danger mb-2">
               <span className="flex-1">{micError}</span>
               <button
                 type="button"
                 onClick={() => setMicError('')}
                 aria-label="Xatoni yopish"
-                className="flex-shrink-0 text-red-600/70 hover:text-red-600"
+                className="flex-shrink-0 text-danger/70 hover:text-danger"
               >
                 <X size={12} />
               </button>

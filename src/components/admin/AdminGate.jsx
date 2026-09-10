@@ -20,7 +20,7 @@ export default function AdminGate({ children }) {
         <div className="w-14 h-14 rounded-full bg-accent-soft border border-accent/30 flex items-center justify-center">
           <ShieldAlert size={26} className="text-accent" />
         </div>
-        <p className="font-luxury text-2xl text-primary">Ruxsat berilmagan</p>
+        <p className="font-luxury text-2xl text-ink">Ruxsat berilmagan</p>
         <p className="text-sm text-muted">Bu sahifa uchun admin huquqi kerak.</p>
         <a href="/app" className="text-accent text-sm font-medium hover:text-accent-hover hover:underline">
           Bosh sahifaga qaytish

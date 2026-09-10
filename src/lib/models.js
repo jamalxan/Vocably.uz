@@ -274,6 +274,16 @@ const ConversationSchema = new mongoose.Schema({
   // ko'rinadi) — kalit shu userning id'si (String), qiymat esa u ko'rgan taxallus.
   // .lean() bilan oddiy JS obyektiga aylanadi (src/app/api/chat/conversations/[id]/nickname).
   nicknames: { type: Map, of: String, default: {} },
+  // TZ-vocably-v2.md BUG-024 tuzatilishi: har bir tomon suhbatni qachon "tozalagani"
+  // (hiddenFor'ga qo'shilgan payt — [id] DELETE). `lastMessageAt`/`lastMessagePreview`
+  // IKKALA tomon uchun UMUMIY (bitta xabar ikkalasiga ham tegishli), shuning uchun
+  // ularni bitta tomon tozalasa ham o'zgartirib bo'lmaydi (ikkinchi tomonning haqiqiy
+  // tarixini buzib qo'yardi). Buning o'rniga GET /conversations HAR BIR foydalanuvchi
+  // uchun alohida: agar shu userning clearedAt'i lastMessageAt'dan keyin bo'lsa,
+  // preview'ni ko'rsatmaydi (chunki u xabarlar allaqachon shu user uchun deletedFor
+  // orqali yashirilgan) — aks holda "oke · 2kun" kabi eski preview ko'rinib, lekin
+  // suhbat ochilganda "Hali xabar yo'q" chiqib, foydalanuvchini chalg'itardi.
+  clearedAt: { type: Map, of: Date, default: {} },
 });
 // Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
 // yangisi birinchi (src/app/api/chat/conversations); (2) admin panelning BARCHA
@@ -399,6 +409,21 @@ const RateLimitHitSchema = new mongoose.Schema({
 
 export const RateLimitHit = mongoose.models.RateLimitHit || mongoose.model('RateLimitHit', RateLimitHitSchema);
 
+// TZ-vocably-v2.md §D1.6 — soatlik AI generatsiya limiti (src/lib/ai/client.js
+// checkAndIncrementAiRateLimit). RateLimitHit'dan farqli o'laroq bucket kaliti
+// (userId, hourBucket) juftligi — bir soat davomida bitta hujjat, TTL orqali
+// 2 soatdan keyin avtomatik o'chadi (`expiresAt` alohida maydon, chunki bucket
+// boshlanishi emas, tugashi bo'yicha muddat kerak).
+const AiUsageSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  hourBucket: { type: String, required: true }, // "YYYY-M-D-H" (UTC)
+  count: { type: Number, default: 0 },
+  expiresAt: { type: Date, required: true, expires: 0 },
+});
+AiUsageSchema.index({ userId: 1, hourBucket: 1 }, { unique: true });
+
+export const AiUsage = mongoose.models.AiUsage || mongoose.model('AiUsage', AiUsageSchema);
+
 // ============================================================================
 // Bildirishnomalar — ilova ichidagi (qo'ng'iroq belgisi) va brauzer push
 // bildirishnomalari. Ikkalasi ham shu bitta manbadan ishlaydi: har hodisa
@@ -518,6 +543,11 @@ const WritingAttemptSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   task: { type: Number, enum: [1, 2], required: true },
   prompt: { type: String, required: true },
+  // TZ-vocably-v2.md §C3 F-W1 (BUG-014) — Task 1 uchun: AI'ning struktura ma'lumoti
+  // (chartType/title/categories/series) va undan renderChartSvg() bilan chizilgan
+  // SVG/jadval matni. Task 2 uchun ikkalasi ham null — grafik shart emas.
+  chart: { type: mongoose.Schema.Types.Mixed, default: null },
+  chartSvg: { type: String, default: '' },
   text: { type: String, required: true },
   wordCount: { type: Number, default: 0 },
   feedback: {

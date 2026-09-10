@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { mediaErrorMessage } from '@/lib/mediaError';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import AiErrorNotice from '@/components/ui/AiErrorNotice';
 
 // VOCABLY-TZ.md §9 (Speaking moduli). MUHIM CHEKLOV (UI'da ham ko'rsatiladi):
 // Azure Speech Pronunciation Assessment (fonema darajasidagi baho, TZ 9.1'dagi asosiy
@@ -27,6 +28,10 @@ export default function GapirishPage() {
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
   const timerRef = useRef(null);
+  // Joriy xatoni keltirib chiqargan amalni eslab qoladi, shunda "Qayta urinish" tugmasi
+  // xato mikrofon ruxsatidanmi yoki AI baholashdanmi ekaniga qarab to'g'ri amalni qayta
+  // ishga tushiradi (mikrofon uchun qaytadan yozdirish, AI uchun mavjud yozuvni qayta yuborish).
+  const retryActionRef = useRef(null);
 
   useEffect(() => () => {
     clearInterval(timerRef.current);
@@ -44,10 +49,11 @@ export default function GapirishPage() {
         body: JSON.stringify({ part }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Yaratib bo'lmadi");
+      if (!res.ok) throw Object.assign(new Error(data?.error || "Yaratib bo'lmadi"), { requestId: data?.requestId });
       setPromptState(data);
     } catch (err) {
-      setError(err.message);
+      retryActionRef.current = getPrompt;
+      setError({ message: err.message, requestId: err.requestId });
     } finally {
       setLoadingPrompt(false);
     }
@@ -72,6 +78,7 @@ export default function GapirishPage() {
       setSeconds(0);
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
     } catch (err) {
+      retryActionRef.current = startRecording;
       setError(mediaErrorMessage(err, 'Mikrofon'));
     }
   };
@@ -96,10 +103,11 @@ export default function GapirishPage() {
         body: form,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Tekshirib bo'lmadi");
+      if (!res.ok) throw Object.assign(new Error(data?.error || "Tekshirib bo'lmadi"), { requestId: data?.requestId });
       setResult(data);
     } catch (err) {
-      setError(err.message);
+      retryActionRef.current = () => submit(blob);
+      setError({ message: err.message, requestId: err.requestId });
     } finally {
       setSubmitting(false);
     }
@@ -135,6 +143,7 @@ export default function GapirishPage() {
 
       {!promptState ? (
         <div className="bg-surface border border-border rounded-2xl p-6 text-center shadow-card">
+          <AiErrorNotice error={error} onRetry={() => retryActionRef.current?.()} className="mb-4 text-left" />
           <Button onClick={getPrompt} disabled={loadingPrompt}>
             {loadingPrompt ? <Loader2 size={16} className="animate-spin" /> : null}
             {loadingPrompt ? 'Tayyorlanmoqda...' : 'Savol olish'}
@@ -177,7 +186,7 @@ export default function GapirishPage() {
             </div>
           )}
 
-          {error && <p className="text-xs text-danger font-medium mb-3 text-center">{error}</p>}
+          <AiErrorNotice error={error} onRetry={() => retryActionRef.current?.()} className="mb-3" />
 
           {result && (
             <div className="space-y-4">

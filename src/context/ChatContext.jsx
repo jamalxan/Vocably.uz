@@ -14,6 +14,10 @@ export function ChatProvider({ token, children }) {
   const [activeConversation, setActiveConversation] = useState(null); // { id, otherUser }
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  // TZ-vocably-v2.md §E3 — xabarlar yuklanmasa avval jimgina yutilib ketardi
+  // (foydalanuvchi doim "Hali xabar yo'q" deb o'ylardi, hatto tarmoq xatosi bo'lsa
+  // ham). Endi xato holati saqlanadi, ConversationView "Qayta yuklash" ko'rsatadi.
+  const [messagesError, setMessagesError] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   // Composer'da "tahrirlash rejimi" — xabar matni inputga qaytariladi, yuborish
   // o'rniga saqlash (PATCH) chaqiriladi. Faqat o'z matnli xabarlariga tegishli.
@@ -78,20 +82,34 @@ export function ChatProvider({ token, children }) {
   // turganini tekshirgandan keyin belgilaymiz).
   const loadMessages = useCallback(
     async (conversationId, { silent = false, noRead = false } = {}) => {
-      if (!silent) setLoadingMessages(true);
+      if (!silent) {
+        setLoadingMessages(true);
+        setMessagesError(false);
+      }
       try {
         const url = `/api/chat/conversations/${conversationId}/messages${noRead ? '?noRead=1' : ''}`;
         const res = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
-        if (res.ok) setMessages(data.messages || []);
+        if (res.ok) {
+          setMessages(data.messages || []);
+          if (!silent) setMessagesError(false);
+        } else if (!silent) {
+          setMessagesError(true);
+        }
       } catch {
-        // jimgina
+        if (!silent) setMessagesError(true);
       } finally {
         if (!silent) setLoadingMessages(false);
       }
     },
     [authHeaders]
   );
+
+  // ConversationView'dagi "Qayta yuklash" tugmasi — keshni chetlab, joriy suhbatni
+  // qaytadan (spinner bilan) yuklaydi.
+  const retryLoadMessages = useCallback(() => {
+    if (activeIdRef.current) loadMessages(activeIdRef.current);
+  }, [loadMessages]);
 
   const loadOlderMessages = useCallback(async () => {
     if (!activeConversation || messages.length === 0) return;
@@ -624,6 +642,8 @@ export function ChatProvider({ token, children }) {
     activeConversation,
     messages,
     loadingMessages,
+    messagesError,
+    retryLoadMessages,
     socketConnected,
     loadConversations,
     selectConversation,

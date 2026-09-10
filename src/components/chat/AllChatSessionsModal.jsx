@@ -59,10 +59,10 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary/60 backdrop-blur-sm">
         <div className="bg-surface rounded-2xl shadow-premium border border-border w-full max-w-lg flex flex-col max-h-[80vh]">
           <div className="flex items-center gap-3 p-4 border-b border-border flex-shrink-0">
-            <h3 className="font-bold text-primary font-display flex-1">
+            <h3 className="font-bold text-ink font-display flex-1">
               Barcha suhbatlar <span className="text-muted font-normal text-sm">({chatSessions.length})</span>
             </h3>
-            <button onClick={onClose} aria-label="Yopish" className="p-1.5 text-muted hover:text-primary hover:bg-bg rounded-lg">
+            <button onClick={onClose} aria-label="Yopish" className="p-1.5 text-muted hover:text-ink hover:bg-bg rounded-lg">
               <X size={16} />
             </button>
           </div>
@@ -108,7 +108,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                     <button onClick={() => onSelect?.(s.id)} className="flex-1 min-w-0 text-left">
                       <p
                         className={`truncate text-sm ${
-                          currentSessionId === s.id ? 'text-accent font-semibold' : 'text-primary'
+                          currentSessionId === s.id ? 'text-accent font-semibold' : 'text-ink'
                         }`}
                       >
                         {s.title}

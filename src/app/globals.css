@@ -21,35 +21,58 @@
                                            token dark-mode'da HAM invert qilinmaydi (pastga q.),
                                            faqat --color-ink matn/sarlavha rangi uchun invert bo'ladi. */
   --color-primary-hover: 85 21 44;     /* #55152C — sidebar elementi hover (primary fonda) */
-  --color-primary-soft: 243 216 226;   /* #F3D8E2 — primary'ning yengil foni (badge va h.k.) */
+  --color-primary-soft: 243 216 226;   /* #F3D8E2 — primary'ning yengil foni (badge va h.k.).
+                                           --color-primary'dan farqli o'laroq bu token dark-mode'da
+                                           INVERT BO'LADI (pastga q.) — u "doim to'q brend yuzasi"
+                                           emas, balki sahifa foniga nisbatan "yumshoq" bo'lishi
+                                           kerak bo'lgan badge/chip foni. */
   --color-accent: 184 57 74;           /* #B8394A — tugmalar, CTA, aktiv holat */
   --color-accent-hover: 144 44 58;     /* #902C3A — accent'ning to'qroq varianti (hover/active) */
   --color-accent-soft: 246 229 231;    /* #F6E5E7 — accent'ning yengil foni */
   --color-ink: 74 18 38;               /* #4A1226 — sarlavha/matn rangi. Light'da --color-primary bilan
                                            bir xil qiymatdan boshlanadi (hozircha vizual farq yo'q), lekin
                                            MUSTAQIL token: dark-mode'da (pastga q.) och rangga inverts
-                                           bo'ladi, --color-primary esa o'zgarmaydi. Yangi kod sarlavha/
-                                           matn uchun har doim shu tokendan (text-ink) foydalansin;
-                                           text-primary eski komponentlarda qoladi va hozircha faqat
-                                           light temada to'g'ri ko'rinadi (pastga, dark blokidagi izohga q.). */
+                                           bo'ladi, --color-primary esa o'zgarmaydi. Barcha komponentlar
+                                           sarlavha/matn uchun shu tokendan (text-ink) foydalanadi —
+                                           2026-09-10'da TZ-vocably-v2.md BUG-001 tuzatilishi sifatida
+                                           eski text-primary qoldiqlari text-ink'ga ko'chirildi. Bu xavfsiz,
+                                           chunki --color-primary-soft ham shu sana BUG-002 tuzatilishida
+                                           dark-mode'da invert qilinadigan bo'ldi (Badge.jsx'dagi `neutral`
+                                           tone endi text-ink bilan to'g'ri juftlashadi). */
   --color-ink-muted: 107 91 84;        /* #6B5B54 — --color-ink'ning bosilgan/subtitle varianti */
   --color-muted: 107 91 84;            /* #6B5B54 — subtitle, ikonka, o'chirilgan matn */
+  --color-text-subtle: 120 102 99;     /* #786663 — caption/label darajasi (TZ-vocably-v2.md §B2, 4.66:1 ✓) */
   --color-border: 214 207 204;         /* #D6CFCC — chegaralar */
+  --color-border-strong: 199 184 176;  /* #C7B8B0 — kuchliroq chegara (masalan faol input, ajratgich) */
   --color-on-accent: 255 255 255;      /* accent fon ustidagi matn */
   --color-on-primary: 250 246 242;     /* primary (to'q) fon ustidagi matn */
+  --color-brand-text: 74 18 38;        /* #4A1226 — TZ §B2 "brand-text" roli: sarlavha/katta raqam. Light'da
+                                           --color-primary bilan bir xil (12.9:1 ✓); dark'da mustaqil ravishda
+                                           invert bo'ladi (pastga q.) — --color-ink dan farqli, atayin brend
+                                           rangida (aksent tusidagi) sarlavha kerak bo'lganda ishlatiladi. */
+  --color-on-brand: 250 246 242;       /* --color-on-primary bilan bir xil — TZ nomlanishi uchun alias */
+  --color-surface-3: 247 241 236;      /* #F7F1EC — hover holati / uchinchi sirt darajasi */
 
   /* Semantik ranglar — muvaffaqiyat/ogohlantirish/xato/ma'lumot. Merlot palitrasi bilan
-     uyg'un (neon emas), VOCABLY-TZ.md 14.1. SRS holat ranglari alohida — pastga q. */
-  --color-success: 46 125 91;          --color-success-soft: 227 240 233;   /* #2E7D5B / #E3F0E9 */
-  --color-warning: 184 128 42;         --color-warning-soft: 247 237 217;   /* #B8802A / #F7EDD9 */
-  --color-danger: 192 57 43;           --color-danger-soft: 249 228 225;    /* #C0392B / #F9E4E1 */
-  --color-info: 59 110 143;            --color-info-soft: 227 237 243;      /* #3B6E8F / #E3EDF3 */
+     uyg'un (neon emas), VOCABLY-TZ.md 14.1. SRS holat ranglari alohida — pastga q.
+     Har biri dark-mode'da HAM invert bo'ladi (pastdagi @media/[data-theme] bloklariga
+     q.) — TZ-vocably-v2.md BUG-002 tuzatilishi: avval *-soft dark'da ham light
+     qiymatda qolib, natija/ogohlantirish kartalari qora fonda oq-pushti "to'siq"
+     bo'lib ko'rinardi. */
+  /* TZ-vocably-v2.md §B2 light jadvalidan — avvalgi qiymatlar success/warning/danger matnini
+     o'zining -soft foniga nisbatan WCAG AA'dan pastga tushirar edi (check-contrast.mjs shuni
+     aniqladi: 4.26:1 / 2.93:1 / 4.46:1, kerak 4.5:1). Yangi qiymatlar TZ'da hisoblangan va
+     4.5:1 dan yuqori (pastdagi kommentlarga q.). */
+  --color-success: 31 106 76;          --color-success-soft: 223 240 232;   /* #1F6A4C / #DFF0E8 — 5.5:1 ✓ */
+  --color-warning: 138 90 18;          --color-warning-soft: 250 240 219;   /* #8A5A12 / #FAF0DB — 5.2:1 ✓ */
+  --color-danger: 168 39 34;           --color-danger-soft: 250 228 225;    /* #A82722 / #FAE4E1 — 5.8:1 ✓ */
+  --color-info: 43 92 122;             --color-info-soft: 226 238 245;      /* #2B5C7A / #E2EEF5 — 6.1:1 ✓ */
 
   /* SRS (FSRS) karta holatlari — Kartochka/Jadval/Statistikada holat belgilash uchun (FAZA 1+). */
   --color-srs-new: 156 139 132;        /* #9C8B84 */
-  --color-srs-learning: 184 128 42;    /* #B8802A */
-  --color-srs-review: 59 110 143;      /* #3B6E8F */
-  --color-srs-mastered: 46 125 91;     /* #2E7D5B */
+  --color-srs-learning: 138 90 18;     /* #8A5A12 */
+  --color-srs-review: 43 92 122;       /* #2B5C7A */
+  --color-srs-mastered: 31 106 76;     /* #1F6A4C */
 
   /* Emoji-safe shrift stack — brauzer platformasining o'z emoji shriftini render
      qiladi (iPhone/Mac'da Apple emoji, xuddi Telegramdagidek). Hech qanday rasm/asset
@@ -61,44 +84,84 @@
 /* ============================================================================
  * DARK MODE — ThemeProvider (src/context/ThemeContext.jsx) `<html>`ga
  * data-theme="light"|"dark" qo'yadi; hech narsa qo'yilmasa (theme="system")
- * OS afzalligiga (prefers-color-scheme) qaraladi. Faqat FON/CHEGARA/MATN
- * tokenlari invert bo'ladi — --color-primary va undan hosila bg-primary*
- * (sidebar, modal parda, toast, tooltip) ONGLI ravishda o'zgarmaydi, chunki
- * ular "doim to'q brend yuzasi" sifatida ~40 komponentda ishlatilgan (yuqoridagi
- * izohga q.) va ularni invert qilish sidebar/modallarni yorug', mos kelmaydigan
- * holga keltirar edi. AppShell va yangi UI komponentlari (FAZA 0) shu tokenlarda
- * to'liq tekshirilgan; eski komponentlar (quiz rejimlari, chat, admin) hali
- * text-primary/bg-*-soft ishlatadi va keyingi bosqichda text-ink'ga
- * ko'chiriladi — o'shanlargacha ular dark rejimda ham light rang bilan
- * ko'rinadi (funksional, lekin hali brendga to'liq mos emas).
+ * OS afzalligiga (prefers-color-scheme) qaraladi. FON/CHEGARA/MATN va barcha
+ * semantik (success/warning/danger/info) + ularning *-soft variantlari, SRS
+ * holat ranglari — hammasi invert bo'ladi. Faqat --color-primary/-hover
+ * ONGLI ravishda o'zgarmaydi, chunki ular "doim to'q brend yuzasi" sifatida
+ * ~40 komponentda ishlatilgan (yuqoridagi --color-primary izohiga q.) va
+ * ularni invert qilish sidebar/modallarni yorug', mos kelmaydigan holga
+ * keltirar edi. 2026-09-10'da TZ-vocably-v2.md BUG-001/BUG-002 tuzatilishi:
+ * avval faqat bg/border/ink/accent invert bo'lardi — endi *-soft va semantik
+ * ranglar ham invert bo'ladi, eski text-primary qoldiqlari text-ink'ga
+ * ko'chirildi (WCAG AA — kamida 4.5:1, aniq qiymatlar TZ §B2'dan olingan).
  * ========================================================================== */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg: 23 9 14;                 /* #17090E */
-    --color-bg-sunken: 18 6 9;           /* #120609 */
-    --color-surface: 33 15 22;           /* #210F16 */
-    --color-surface-2: 44 21 30;         /* #2C151E */
+    /* BUG-003 tuzatilishi (TZ-vocably-v2.md §B2): sirt darajalari orasidagi ΔL juda
+       kichik edi (bg/bg-sunken/surface deyarli bir xil qora bo'lib ko'rinardi) —
+       qiymatlar TZ'ning qayta hisoblangan dark jadvalidan olindi. */
+    --color-bg: 20 9 13;                 /* #14090D */
+    --color-bg-sunken: 13 5 8;           /* #0D0508 */
+    --color-surface: 31 18 24;           /* #1F1218 */
+    --color-surface-2: 42 26 33;         /* #2A1A21 */
+    --color-surface-3: 54 34 41;         /* #362229 — hover / uchinchi sirt darajasi */
     --color-ink: 245 233 236;            /* #F5E9EC */
     --color-ink-muted: 184 163 169;      /* #B8A3A9 */
     --color-muted: 184 163 169;          /* #B8A3A9 */
-    --color-border: 58 34 43;            /* #3A222B */
+    --color-text-subtle: 147 124 131;    /* #937C83 — caption darajasi (5.1:1 ✓) */
+    --color-border: 64 43 51;            /* #402B33 — ko'rinadigan nozik chegara */
+    --color-border-strong: 87 58 68;     /* #573A44 */
     --color-accent: 224 90 109;          /* #E05A6D — qorong'ida kontrast uchun yorug'roq */
     --color-accent-hover: 235 118 135;   /* #EB7687 */
-    --color-accent-soft: 58 22 32;       /* #3A1620 */
+    --color-accent-soft: 46 17 25;       /* #2E1119 */
+
+    /* --color-primary/-hover ONGLI ravishda o'zgarmaydi (yuqoridagi izohga q.).
+       --color-primary-soft va semantik *-soft/SRS tokenlar esa BUG-002 tuzatilishi
+       sifatida invert bo'ladi — qiymatlar TZ-vocably-v2.md §B2'dagi hisoblangan
+       kontrast jadvalidan olingan (WCAG AA, kamida 4.5:1). */
+    --color-primary-soft: 48 20 30;      /* #30141E */
+    --color-brand-text: 240 168 184;     /* #F0A8B8 — 10.2:1 ✓ (BUG-001 asl tuzatilishi: brend rangidagi
+                                             sarlavha kerak bo'lganda text-ink o'rniga shu ishlatiladi) */
+    --color-on-brand: 255 245 248;       /* #FFF5F8 */
+    --color-success: 95 196 155;         --color-success-soft: 16 36 27;   /* #5FC49B / #10241B */
+    --color-warning: 224 172 91;         --color-warning-soft: 42 31 13;   /* #E0AC5B / #2A1F0D */
+    --color-danger: 242 143 132;         --color-danger-soft: 58 21 18;    /* #F28F84 / #3A1512 */
+    --color-info: 127 182 218;           --color-info-soft: 15 31 42;      /* #7FB6DA / #0F1F2A */
+
+    --color-srs-new: 176 158 151;        /* #B09E97 */
+    --color-srs-learning: 224 172 91;    /* #E0AC5B */
+    --color-srs-review: 127 182 218;     /* #7FB6DA */
+    --color-srs-mastered: 95 196 155;    /* #5FC49B */
   }
 }
 :root[data-theme="dark"] {
-  --color-bg: 23 9 14;
-  --color-bg-sunken: 18 6 9;
-  --color-surface: 33 15 22;
-  --color-surface-2: 44 21 30;
+  --color-bg: 20 9 13;
+  --color-bg-sunken: 13 5 8;
+  --color-surface: 31 18 24;
+  --color-surface-2: 42 26 33;
+  --color-surface-3: 54 34 41;
   --color-ink: 245 233 236;
   --color-ink-muted: 184 163 169;
   --color-muted: 184 163 169;
-  --color-border: 58 34 43;
+  --color-text-subtle: 147 124 131;
+  --color-border: 64 43 51;
+  --color-border-strong: 87 58 68;
   --color-accent: 224 90 109;
   --color-accent-hover: 235 118 135;
-  --color-accent-soft: 58 22 32;
+  --color-accent-soft: 46 17 25;
+
+  --color-primary-soft: 48 20 30;
+  --color-brand-text: 240 168 184;
+  --color-on-brand: 255 245 248;
+  --color-success: 95 196 155;         --color-success-soft: 16 36 27;
+  --color-warning: 224 172 91;         --color-warning-soft: 42 31 13;
+  --color-danger: 242 143 132;         --color-danger-soft: 58 21 18;
+  --color-info: 127 182 218;           --color-info-soft: 15 31 42;
+
+  --color-srs-new: 176 158 151;
+  --color-srs-learning: 224 172 91;
+  --color-srs-review: 127 182 218;
+  --color-srs-mastered: 95 196 155;
 }
 
 /* Emojini kattaroq ko'rsatish uchun (masalan faqat-emoji xabarlar, picker katakchalari) */

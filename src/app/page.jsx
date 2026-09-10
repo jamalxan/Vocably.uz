@@ -198,7 +198,7 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {SKILL_CARDS.map((s) => (
               <div key={s.title} className="bg-bg border border-border rounded-2xl p-6 hover:border-accent/30 hover:-translate-y-0.5 transition-all duration-200">
-                <div className="w-11 h-11 rounded-xl bg-primary-soft text-primary flex items-center justify-center mb-4">
+                <div className="w-11 h-11 rounded-xl bg-primary-soft text-ink flex items-center justify-center mb-4">
                   <s.icon size={20} />
                 </div>
                 <h3 className="font-display text-base font-bold text-ink mb-1.5">{s.title}</h3>

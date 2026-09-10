@@ -1,7 +1,8 @@
 import { connectToDatabase } from '@/lib/db';
 import { SpeakingAttempt } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
-import { generateJson, friendlyAiError } from '@/lib/aiJson';
+import { generateJson } from '@/lib/aiJson';
+import { aiErrorResponse, checkAndIncrementAiRateLimit, rateLimitMessage } from '@/lib/ai/client';
 import { transcribeAudio } from '@/lib/transcribe';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
@@ -78,11 +79,16 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Yozuv juda qisqa — qaytadan urinib ko\'ring' }, { status: 400 });
     }
 
+    const rl = await checkAndIncrementAiRateLimit(userId);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: rateLimitMessage(rl.retryAfterMinutes) }, { status: 429 });
+    }
+
     let transcript;
     try {
       transcript = await transcribeAudio(buffer, audio.name, audio.type);
     } catch (err) {
-      return NextResponse.json({ error: friendlyAiError(err) }, { status: 502 });
+      return aiErrorResponse(err, { endpoint: 'speaking/submit:transcribe', userId });
     }
     if (!transcript.trim()) {
       return NextResponse.json({ error: "Ovoz tanilmadi — aniqroq gapirib qaytadan urinib ko'ring" }, { status: 422 });
@@ -92,7 +98,7 @@ export async function POST(req) {
     try {
       data = await generateJson(buildPrompt(part, prompt, transcript), RESPONSE_SCHEMA);
     } catch (aiErr) {
-      return NextResponse.json({ error: friendlyAiError(aiErr) }, { status: 502 });
+      return aiErrorResponse(aiErr, { endpoint: 'speaking/submit:grade', userId });
     }
 
     await connectToDatabase();

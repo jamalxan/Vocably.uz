@@ -179,11 +179,11 @@ export default function ConversationViewer({ token }) {
       <div>
         <button
           onClick={() => setActive(null)}
-          className="flex items-center gap-1.5 text-sm text-muted hover:text-primary mb-4 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-4 transition-colors"
         >
           <ArrowLeft size={15} /> Suhbatlar ro'yxati
         </button>
-        <p className="font-luxury text-lg text-primary mb-1.5">
+        <p className="font-luxury text-lg text-ink mb-1.5">
           @{active.participants[0]?.username || active.participants[0]?.name || '?'}
           <span className="text-muted mx-2">↔</span>
           @{active.participants[1]?.username || active.participants[1]?.name || '?'}
@@ -194,14 +194,14 @@ export default function ConversationViewer({ token }) {
               <p className="flex items-center gap-1.5">
                 <Tag size={12} />
                 @{active.participants[0]?.username} → @{active.participants[1]?.username}ni{' '}
-                <span className="text-primary font-medium">"{active.participants[1].savedAsByOther}"</span> deb saqlagan
+                <span className="text-ink font-medium">"{active.participants[1].savedAsByOther}"</span> deb saqlagan
               </p>
             )}
             {active.participants[0]?.savedAsByOther && (
               <p className="flex items-center gap-1.5">
                 <Tag size={12} />
                 @{active.participants[1]?.username} → @{active.participants[0]?.username}ni{' '}
-                <span className="text-primary font-medium">"{active.participants[0].savedAsByOther}"</span> deb saqlagan
+                <span className="text-ink font-medium">"{active.participants[0].savedAsByOther}"</span> deb saqlagan
               </p>
             )}
           </div>
@@ -218,7 +218,7 @@ export default function ConversationViewer({ token }) {
           <button
             onClick={() => setViewMode('chat')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              viewMode === 'chat' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
+              viewMode === 'chat' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
             <MessageSquareText size={13} /> Suhbat
@@ -226,7 +226,7 @@ export default function ConversationViewer({ token }) {
           <button
             onClick={() => openGalleryTab('image')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              viewMode === 'image' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
+              viewMode === 'image' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
             <ImageIcon size={13} /> Rasmlar
@@ -234,7 +234,7 @@ export default function ConversationViewer({ token }) {
           <button
             onClick={() => openGalleryTab('video')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              viewMode === 'video' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
+              viewMode === 'video' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
             <Video size={13} /> Videolar
@@ -242,7 +242,7 @@ export default function ConversationViewer({ token }) {
           <button
             onClick={() => openGalleryTab('voice')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              viewMode === 'voice' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-primary'
+              viewMode === 'voice' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
             <Mic size={13} /> Ovozli xabarlar
@@ -283,7 +283,7 @@ export default function ConversationViewer({ token }) {
                   <button
                     onClick={loadMoreGallery}
                     disabled={loadingMoreGallery}
-                    className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
                   >
                     {loadingMoreGallery && <Loader2 size={12} className="animate-spin" />} Eskisini yuklash
                   </button>
@@ -300,7 +300,7 @@ export default function ConversationViewer({ token }) {
                 <button
                   onClick={loadOlderMessages}
                   disabled={loadingMoreMsgs}
-                  className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
                   {loadingMoreMsgs && <Loader2 size={12} className="animate-spin" />} Eski xabarlarni yuklash
                 </button>
@@ -314,7 +314,7 @@ export default function ConversationViewer({ token }) {
                   <div
                     className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm relative ${
                       mine
-                        ? 'bg-surface border border-border text-primary rounded-bl-md'
+                        ? 'bg-surface border border-border text-ink rounded-bl-md'
                         : 'bg-accent text-on-accent rounded-br-md'
                     }`}
                   >
@@ -367,7 +367,7 @@ export default function ConversationViewer({ token }) {
             onClick={() => openConversation(c)}
             className="w-full text-left px-5 py-4 hover:bg-bg/60 flex items-center justify-between gap-3 transition-colors"
           >
-            <span className="text-sm font-medium text-primary flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-ink flex items-center gap-2 flex-wrap">
               @{c.participants[0]?.username || c.participants[0]?.name || '?'}
               <span className="text-muted mx-0.5">↔</span>
               @{c.participants[1]?.username || c.participants[1]?.name || '?'}
@@ -392,7 +392,7 @@ export default function ConversationViewer({ token }) {
           <button
             onClick={loadMoreConversations}
             disabled={loadingMoreConvos}
-            className="px-4 py-2 bg-surface border border-border rounded-lg text-xs font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+            className="px-4 py-2 bg-surface border border-border rounded-lg text-xs font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
           >
             {loadingMoreConvos && <Loader2 size={13} className="animate-spin" />} Yana yuklash
           </button>

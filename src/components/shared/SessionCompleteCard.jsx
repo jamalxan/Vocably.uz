@@ -24,7 +24,7 @@ export default function SessionCompleteCard({ open, title = 'Yakunlandi!', score
         <div className="w-14 h-14 mx-auto rounded-full bg-accent-soft text-accent flex items-center justify-center mb-4">
           <Trophy size={26} />
         </div>
-        <h3 className="font-bold text-primary font-display text-lg mb-1">{title}</h3>
+        <h3 className="font-bold text-ink font-display text-lg mb-1">{title}</h3>
         <p className="text-sm text-muted mb-5">
           Natija: <span className="font-bold text-accent">{score}</span>/{total}{' '}
           <span className="text-muted">({pct}%)</span>

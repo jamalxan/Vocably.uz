@@ -85,7 +85,7 @@ export default function DashboardHome() {
   return (
     <div className="space-y-5 max-w-none">
       <div>
-        <h2 className="text-lg sm:text-xl font-bold text-primary font-luxury">
+        <h2 className="text-lg sm:text-xl font-bold text-ink font-luxury">
           Xush kelibsiz, {displayName}
         </h2>
       </div>

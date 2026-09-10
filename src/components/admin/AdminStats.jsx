@@ -10,7 +10,7 @@ function StatCard({ icon: Icon, label, value }) {
       <div className="w-11 h-11 rounded-xl bg-accent-soft border border-accent/20 text-accent flex items-center justify-center mb-4">
         <Icon size={19} strokeWidth={2} />
       </div>
-      <p className="font-luxury text-3xl text-primary tabular-nums leading-none">{value}</p>
+      <p className="font-luxury text-3xl text-ink tabular-nums leading-none">{value}</p>
       <p className="text-xs text-muted mt-2 tracking-wide">{label}</p>
     </div>
   );
@@ -73,7 +73,7 @@ export default function AdminStats({ token }) {
           <div className="flex flex-wrap gap-2.5">
             {Object.entries(stats.typeBreakdown).map(([type, count]) => (
               <span key={type} className="px-4 py-2 bg-surface border border-border rounded-xl text-xs text-muted">
-                {TYPE_LABELS[type] || type}: <span className="font-bold text-primary">{count}</span>
+                {TYPE_LABELS[type] || type}: <span className="font-bold text-ink">{count}</span>
               </span>
             ))}
           </div>

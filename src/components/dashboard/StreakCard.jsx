@@ -11,7 +11,7 @@ export default function StreakCard({ current, longest, last7Days }) {
       <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-3 flex items-center gap-1.5">
         <Flame size={13} className="text-accent" /> Alanga
       </p>
-      <p className="text-3xl font-bold text-primary font-mono tabular-nums leading-none">{current}</p>
+      <p className="text-3xl font-bold text-ink font-mono tabular-nums leading-none">{current}</p>
       <p className="text-xs text-muted mt-1 mb-4">kun ketma-ket</p>
 
       <div className="flex gap-1.5 mb-3">
@@ -27,7 +27,7 @@ export default function StreakCard({ current, longest, last7Days }) {
       </div>
 
       <p className="text-xs text-muted">
-        Rekord: <span className="font-semibold text-primary">{longest}</span> kun
+        Rekord: <span className="font-semibold text-ink">{longest}</span> kun
       </p>
     </div>
   );

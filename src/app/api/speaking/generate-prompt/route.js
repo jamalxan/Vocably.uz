@@ -1,5 +1,6 @@
 import { getUserIdFromRequest } from '@/lib/auth';
-import { generateJson, friendlyAiError } from '@/lib/aiJson';
+import { generateJson } from '@/lib/aiJson';
+import { aiErrorResponse, checkAndIncrementAiRateLimit, rateLimitMessage } from '@/lib/ai/client';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -16,6 +17,11 @@ export async function POST(req) {
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
+    const rl = await checkAndIncrementAiRateLimit(userId);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: rateLimitMessage(rl.retryAfterMinutes) }, { status: 429 });
+    }
+
     const { part = 1 } = await req.json().catch(() => ({}));
     const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
 
@@ -31,7 +37,7 @@ export async function POST(req) {
         RESPONSE_SCHEMA
       );
     } catch (aiErr) {
-      return NextResponse.json({ error: friendlyAiError(aiErr) }, { status: 502 });
+      return aiErrorResponse(aiErr, { endpoint: 'speaking/generate-prompt', userId });
     }
 
     return NextResponse.json({ part, prompt: data.prompt || '', cueCardPoints: data.cueCardPoints || [] });

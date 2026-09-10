@@ -15,7 +15,7 @@ function StatCard({ icon: Icon, label, value, sub }) {
       <div className="w-11 h-11 rounded-xl bg-accent-soft border border-accent/20 text-accent flex items-center justify-center mb-4">
         <Icon size={19} strokeWidth={2} />
       </div>
-      <p className="font-luxury text-3xl text-primary tabular-nums leading-none">{value}</p>
+      <p className="font-luxury text-3xl text-ink tabular-nums leading-none">{value}</p>
       <p className="text-xs text-muted mt-2 tracking-wide">{label}</p>
       {sub && <p className="text-[11px] text-muted/70 mt-1">{sub}</p>}
     </div>
@@ -67,7 +67,7 @@ export default function AdminActivity({ token }) {
 
   return (
     <div className="space-y-9">
-      <div className="flex items-start gap-3 rounded-2xl bg-accent-soft border border-accent/20 p-4 text-xs text-primary/80 leading-relaxed">
+      <div className="flex items-start gap-3 rounded-2xl bg-accent-soft border border-accent/20 p-4 text-xs text-ink/80 leading-relaxed">
         <Info size={16} className="text-accent shrink-0 mt-0.5" />
         <p>
           Saytda sahifa ko'rish/heartbeat kuzatuvi hozircha yo'q, shuning uchun "sarflangan vaqt" — so'z takrorlash va
@@ -121,7 +121,7 @@ export default function AdminActivity({ token }) {
               <tbody>
                 {stats.topUsers.map((u, i) => (
                   <tr key={u.userId} className="border-b border-border last:border-0">
-                    <td className="px-5 py-3 text-primary font-medium">
+                    <td className="px-5 py-3 text-ink font-medium">
                       <span className="text-muted mr-2 tabular-nums">{i + 1}.</span>
                       {u.name}
                     </td>

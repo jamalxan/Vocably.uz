@@ -16,11 +16,11 @@ function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
       type="button"
       onClick={onClick}
       className={`block w-full text-left mb-1.5 pl-2 border-l-2 rounded-sm ${
-        isMine ? 'border-white/50 hover:bg-white/10' : 'border-accent hover:bg-primary-soft/40'
+        isMine ? 'border-on-accent/50 hover:bg-on-accent/10' : 'border-accent hover:bg-primary-soft/40'
       } transition-colors`}
     >
-      <p className={`text-xs font-semibold truncate ${isMine ? 'text-white/90' : 'text-accent'}`}>{senderLabel}</p>
-      <p className={`text-xs truncate ${isMine ? 'text-white/70' : 'text-muted'}`}>{preview || '…'}</p>
+      <p className={`text-xs font-semibold truncate ${isMine ? 'text-on-accent/90' : 'text-accent'}`}>{senderLabel}</p>
+      <p className={`text-xs truncate ${isMine ? 'text-on-accent/70' : 'text-muted'}`}>{preview || '…'}</p>
     </button>
   );
 }
@@ -182,8 +182,11 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
                   deleted
                     ? 'bg-transparent border border-dashed border-border text-muted italic'
                     : isMine
-                      ? 'bg-accent text-white rounded-br-md'
-                      : 'bg-bg text-ink rounded-bl-md'
+                      ? 'bg-accent text-on-accent rounded-br-md'
+                      // TZ-vocably-v2.md BUG-026 — avval bg-bg (sahifa foni bilan bir xil,
+                      // dark rejimda pufak "yo'qolib" ko'rinardi) — endi bir daraja
+                      // ko'tarilgan sirt (§E2).
+                      : 'bg-surface-2 text-ink rounded-bl-md'
                 }`
           }
         >
@@ -219,7 +222,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
                 <p className="whitespace-pre-wrap break-words font-chat mt-1.5">{linkifyText(message.text)}</p>
               )}
               {message.edited && (
-                <span className={`block text-[10px] mt-0.5 ${isMine ? 'text-white/60' : 'text-muted'}`}>
+                <span className={`block text-[10px] mt-0.5 ${isMine ? 'text-on-accent/60' : 'text-muted'}`}>
                   tahrirlangan
                 </span>
               )}

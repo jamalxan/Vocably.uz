@@ -66,7 +66,7 @@ export default function ReportsQueue({ token }) {
             key={value}
             onClick={() => setStatusFilter(value)}
             className={`px-4 py-2 rounded-xl text-xs font-medium tracking-wide transition-colors ${
-              statusFilter === value ? 'bg-accent text-on-accent shadow-glow' : 'bg-surface border border-border text-muted hover:text-primary'
+              statusFilter === value ? 'bg-accent text-on-accent shadow-glow' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
             {label}
@@ -88,7 +88,7 @@ export default function ReportsQueue({ token }) {
                   <Flag size={15} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-primary">
+                  <p className="text-sm text-ink">
                     <span className="font-semibold">@{r.reporter?.username || '?'}</span>
                     <span className="text-muted"> — {r.targetType}: </span>
                     <span className="font-mono text-xs text-muted">{r.targetId}</span>
@@ -101,7 +101,7 @@ export default function ReportsQueue({ token }) {
                 {r.status !== 'reviewed' && (
                   <button
                     onClick={() => updateStatus(r._id, 'reviewed')}
-                    className="px-3 py-1.5 bg-primary-soft border border-primary/15 text-primary rounded-lg text-xs font-medium hover:bg-primary/10 transition-colors"
+                    className="px-3 py-1.5 bg-primary-soft border border-primary/15 text-ink rounded-lg text-xs font-medium hover:bg-primary/10 transition-colors"
                   >
                     Ko'rildi
                   </button>
@@ -123,7 +123,7 @@ export default function ReportsQueue({ token }) {
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="px-4 py-2 bg-surface border border-border rounded-lg text-xs font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                className="px-4 py-2 bg-surface border border-border rounded-lg text-xs font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
               >
                 {loadingMore && <Loader2 size={13} className="animate-spin" />} Yana yuklash
               </button>

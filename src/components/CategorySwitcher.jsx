@@ -100,7 +100,7 @@ export default function CategorySwitcher() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Kategoriya qidirish..."
-              className="w-full pl-7 pr-2 py-1.5 bg-bg border border-border rounded-lg text-xs text-primary outline-none focus:border-accent transition-colors"
+              className="w-full pl-7 pr-2 py-1.5 bg-bg border border-border rounded-lg text-xs text-ink outline-none focus:border-accent transition-colors"
             />
           </div>
 
@@ -115,7 +115,7 @@ export default function CategorySwitcher() {
                     value={editingName}
                     onChange={(e) => setEditingName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Escape' && setEditingIdx(null)}
-                    className="flex-1 min-w-0 px-2 py-1 bg-bg border border-accent/60 rounded text-xs text-primary outline-none"
+                    className="flex-1 min-w-0 px-2 py-1 bg-bg border border-accent/60 rounded text-xs text-ink outline-none"
                   />
                   <button type="submit" aria-label="Yangi nomni saqlash" className="p-1 bg-accent hover:bg-accent-hover rounded text-on-accent transition-colors flex-shrink-0">
                     <Check size={12} />
@@ -132,7 +132,7 @@ export default function CategorySwitcher() {
               ) : (
                 <div key={c._id || c.i} className={`flex items-center gap-1 px-2 py-1 group ${c.i === activeCatIndex ? 'bg-accent-soft' : 'hover:bg-bg'}`}>
                   <button onClick={() => selectCategory(c.i)} className="flex-1 min-w-0 flex items-center justify-between gap-2 py-1 text-left">
-                    <span className="text-sm text-primary truncate">{c.name}</span>
+                    <span className="text-sm text-ink truncate">{c.name}</span>
                     <span className="text-[10px] text-muted flex-shrink-0">{c.words.length}</span>
                   </button>
                   <button
@@ -165,7 +165,7 @@ export default function CategorySwitcher() {
               value={addingName}
               onChange={(e) => setAddingName(e.target.value)}
               placeholder="Yangi kategoriya nomi"
-              className="flex-1 min-w-0 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-primary outline-none focus:border-accent transition-colors"
+              className="flex-1 min-w-0 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-ink outline-none focus:border-accent transition-colors"
             />
             <button
               type="submit"
