@@ -1,8 +1,8 @@
 import { connectToDatabase } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getOwnedSession, ExamError } from '@/lib/exam/server';
-import { sectionOfQuestion, answerKey } from '@/lib/exam/content';
-import { sectionRemaining } from '@/lib/exam/engine';
+import { sectionOfQuestion, gradingInfo } from '@/lib/exam/content';
+import { sectionRemaining, isAnswerCorrect } from '@/lib/exam/engine';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -37,9 +37,11 @@ export async function POST(req, { params }) {
 
     const body = { ok: true, saved: questionId };
     if (doc.mode === 'practice' && section) {
-      const correct = answerKey(doc.mockId, section)[questionId];
-      body.correct = correct;
-      body.isCorrect = value === correct;
+      const meta = gradingInfo(doc.mockId, section)[questionId];
+      if (meta) {
+        body.correct = meta.correct;
+        body.isCorrect = isAnswerCorrect(value, meta);
+      }
     }
     return NextResponse.json(body);
   } catch (err) {

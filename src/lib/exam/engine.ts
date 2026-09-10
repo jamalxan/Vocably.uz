@@ -20,8 +20,23 @@
 // cheklovi olib tashlanadi. Bu — mavjud mantiqni buzish emas, ustiga qo'shilgan
 // shart (mode === 'exam' bo'lganda ikkalasi ham asl fayldagidek ishlaydi).
 
-import { answerKey, sectionOfQuestion as contentSectionOfQuestion } from './content';
+import { gradingInfo, sectionOfQuestion as contentSectionOfQuestion } from './content';
 import { listeningBand, readingBand, overallBand } from './scoring';
+import { normalizeForCompare } from '../textCompare';
+
+// 'mcq' — bir nechta to'g'ri variant "1,3" kabi vergul bilan yozilgan bo'lishi
+// mumkin (masalan "TWO letters" turidagi savollar, tartib muhim emas) — shu holda
+// tanlangan variant to'plamda bo'lsa yetarli. 'gap' — matn solishtirish, katta-kichik
+// harf va apostrofga sezgir emas, `acceptable` muqobil variantlarni ham qabul qiladi.
+export function isAnswerCorrect(given: unknown, meta: { type: 'mcq' | 'gap'; correct: number | string; acceptable?: string[] }): boolean {
+  if (given == null || given === '') return false;
+  if (meta.type === 'gap') {
+    const candidates = [meta.correct, ...(meta.acceptable || [])].map((c) => normalizeForCompare(String(c)));
+    return candidates.includes(normalizeForCompare(String(given)));
+  }
+  const accepted = String(meta.correct).split(',').map((s) => s.trim());
+  return accepted.includes(String(given));
+}
 
 export type SectionKey = 'listening' | 'reading' | 'writing' | 'speaking';
 
@@ -121,18 +136,18 @@ export function scoreExam(doc: ExamDoc) {
   const sectionBands: Record<string, number | null> = {};
 
   for (const section of ['listening', 'reading'] as const) {
-    const key = answerKey(doc.mockId, section);
+    const info = gradingInfo(doc.mockId, section);
     let raw = 0;
     const items: unknown[] = [];
-    for (const [qid, correct] of Object.entries(key)) {
+    for (const [qid, meta] of Object.entries(info)) {
       const given = doc.answers[qid];
-      const ok = given === correct;
+      const ok = isAnswerCorrect(given, meta);
       if (ok) raw += 1;
-      items.push({ id: qid, given, correct, ok });
+      items.push({ id: qid, given, correct: meta.correct, ok });
     }
     const band = section === 'listening' ? listeningBand(raw) : readingBand(raw);
     sectionBands[section] = band;
-    review[section] = { raw, total: Object.keys(key).length, band, items };
+    review[section] = { raw, total: Object.keys(info).length, band, items };
   }
 
   sectionBands.writing = null;

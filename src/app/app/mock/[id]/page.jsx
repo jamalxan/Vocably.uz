@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2, Play, Clock, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { speakText } from '@/lib/speech';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import SplitPane from '@/components/exam/SplitPane';
@@ -209,14 +210,21 @@ export default function MockSessionPage() {
     });
   };
 
-  const playAudio = async () => {
+  // `transcript` — Cambridge'dan import qilingan testlarda haqiqiy audio fayl yo'q,
+  // shuning uchun brauzer TTS orqali audioscript o'qib beriladi (2026-09-10 so'rovi).
+  // Server baribir /audio/start orqali play-once holatini kuzatib boradi (eski AI-demo
+  // mock'lar uchun ham, kelgusida haqiqiy audio fayl qo'shilganda ham ishlayveradi).
+  const playAudio = async (transcript) => {
     const res = await fetch(`/api/exam/${id}/audio/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ section: 'listening' }),
     });
     const data = await res.json();
-    if (res.ok) setAudioState(data);
+    if (res.ok) {
+      setAudioState(data);
+      if (transcript) speakText(transcript, { rate: 1 });
+    }
   };
 
   const goToNextSection = async () => {
@@ -362,7 +370,7 @@ function SectionBody({
           <div className="p-4 sm:p-6 h-full flex flex-col items-center justify-center text-center">
             <p className="text-xs text-muted mb-4 max-w-xs">{content.audioLabel}</p>
             <button
-              onClick={onPlayAudio}
+              onClick={() => onPlayAudio(content.transcript)}
               className="w-20 h-20 rounded-full bg-accent hover:bg-accent-hover text-on-accent flex items-center justify-center shadow-glow"
               aria-label="Tinglash"
             >
@@ -374,7 +382,9 @@ function SectionBody({
               </p>
             )}
             <p className="text-[10px] text-muted mt-4 max-w-xs">
-              (Audio fayl hali yuklanmagan — mashq uchun savollarni matn asosida yeching)
+              {content.transcript
+                ? "Brauzer ovozda o'qib beradi (haqiqiy diktor audiosi emas)."
+                : "(Audio fayl hali yuklanmagan — mashq uchun savollarni matn asosida yeching)"}
             </p>
           </div>
         }
@@ -461,34 +471,82 @@ function QuestionList({ section, questions, answers, reveal, onAnswer, highlight
               {i + 1}.{' '}
               <HighlightableText text={q.text} section={section} highlights={highlights} onAdd={onAdd} onRemove={onRemove} onNote={onNote} />
             </p>
-            <div className="space-y-1.5">
-              {q.options.map((opt, oi) => {
-                // `answers` server'dan undefined kelishi mumkin edi (eski
-                // hujjatlarda) — himoya sifatida optional chaining (asosiy
-                // tuzatish: lib/models.js'dagi minimize:false + engine.ts'dagi
-                // `|| {}`, lekin bu yerda ham ehtiyot chorasi).
-                const selected = answers?.[q.id] === oi;
-                let style = 'border-border hover:border-accent/30';
-                if (r) {
-                  if (oi === r.correct) style = 'border-green-300 bg-green-50 text-green-700';
-                  else if (selected) style = 'border-red-300 bg-accent-soft text-red-700';
-                } else if (selected) {
-                  style = 'border-accent bg-accent-soft text-accent';
-                }
-                return (
-                  <button
-                    key={oi}
-                    onClick={() => onAnswer(q.id, oi)}
-                    className={`w-full text-left px-3 py-2 border rounded-lg text-xs transition-colors ${style}`}
-                  >
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
+            {q.type === 'gap' ? (
+              <GapAnswer questionId={q.id} value={answers?.[q.id]} reveal={r} onAnswer={onAnswer} />
+            ) : (
+              <div className="space-y-1.5">
+                {q.options.map((opt, oi) => {
+                  // `answers` server'dan undefined kelishi mumkin edi (eski
+                  // hujjatlarda) — himoya sifatida optional chaining (asosiy
+                  // tuzatish: lib/models.js'dagi minimize:false + engine.ts'dagi
+                  // `|| {}`, lekin bu yerda ham ehtiyot chorasi).
+                  const selected = answers?.[q.id] === oi;
+                  // `r.correct` ba'zan "1,3" kabi vergul bilan yozilgan bo'lishi mumkin
+                  // (Cambridge'dagi "TWO letters" turidagi savollar) — shu holda
+                  // to'plamdagi HAR BIR indeks "to'g'ri" deb belgilanadi.
+                  const correctSet = r ? String(r.correct).split(',').map((s) => s.trim()) : [];
+                  let style = 'border-border hover:border-accent/30';
+                  if (r) {
+                    if (correctSet.includes(String(oi))) style = 'border-green-300 bg-green-50 text-green-700';
+                    else if (selected) style = 'border-red-300 bg-accent-soft text-red-700';
+                  } else if (selected) {
+                    style = 'border-accent bg-accent-soft text-accent';
+                  }
+                  return (
+                    <button
+                      key={oi}
+                      onClick={() => onAnswer(q.id, oi)}
+                      className={`w-full text-left px-3 py-2 border rounded-lg text-xs transition-colors ${style}`}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Gap-fill (note/table/summary completion) — Cambridge'dagi haqiqiy testlar uchun.
+// Mahalliy holat blur/Enter'da autosave qiladi (har harfda so'rov yubormaslik uchun).
+function GapAnswer({ questionId, value, reveal, onAnswer }) {
+  const [draft, setDraft] = useState(value || '');
+
+  useEffect(() => {
+    setDraft(value || '');
+  }, [questionId, value]);
+
+  const commit = () => {
+    if (draft.trim() && draft !== value) onAnswer(questionId, draft.trim());
+  };
+
+  const style = reveal
+    ? reveal.isCorrect
+      ? 'border-green-300 bg-green-50 text-green-700'
+      : 'border-red-300 bg-accent-soft text-red-700'
+    : 'bg-bg text-ink border-border focus:border-accent';
+
+  return (
+    <div>
+      <input
+        type="text"
+        value={draft}
+        disabled={!!reveal}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && commit()}
+        placeholder="Javobingiz..."
+        className={`w-full px-3 py-2 border rounded-lg text-xs outline-none transition-colors ${style}`}
+      />
+      {reveal && !reveal.isCorrect && (
+        <p className="text-[11px] text-muted mt-1.5">
+          To'g'ri javob: <span className="font-semibold text-ink">{String(reveal.correct)}</span>
+        </p>
+      )}
     </div>
   );
 }
