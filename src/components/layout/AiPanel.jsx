@@ -58,7 +58,11 @@ export default function AiPanel() {
   // EMAS) AI yordamchi ko'rinmasligi kerak — haqiqiy imtihonda tashqi yordam
   // yo'q, bu suzuvchi tugma ham "imtihon vibe"ni buzardi (2026-09-10 so'rovi).
   const inMockSession = /^\/app\/mock\/[^/]+$/.test(pathname);
-  if (pathname.startsWith('/app/ai') || inMockSession) return null;
+  // TZ-vocably-v2.md BUG-027 — Do'stlar (chat) sahifasida bu suzuvchi tugma
+  // composer'ning o'ng tarafidagi tugmalari (emoji/fayl/mikrofon/yuborish) ustiga
+  // tushib qolardi. §E4: "AI FAB pozitsiyasi: chat sahifalarida yashiriladi".
+  const inDostlar = pathname.startsWith('/app/dostlar');
+  if (pathname.startsWith('/app/ai') || inMockSession || inDostlar) return null;
 
   return (
     <>

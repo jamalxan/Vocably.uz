@@ -214,27 +214,6 @@ export default function ConversationView({ onBack }) {
           bir xil ko'rinardi. */}
       <div className="relative flex-1 min-h-0 bg-bg-sunken">
         <div ref={listRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 py-3 space-y-2.5">
-          {/* TZ-vocably-v2.md §E3/BUG-029 — oddiy spinner o'rniga xabar pufakchasi shaklidagi
-              skeleton, va tarmoq xatosida "Qayta yuklash" (avval xato jimgina yutilib,
-              foydalanuvchi doim "hali xabar yo'q" deb o'ylardi). */}
-          {loadingMessages && (
-            <div className="space-y-2.5 animate-pulse" aria-label="Yuklanmoqda">
-              <div className="h-10 w-2/3 rounded-2xl bg-surface-2" />
-              <div className="h-10 w-1/2 rounded-2xl bg-accent-soft ml-auto" />
-              <div className="h-10 w-3/5 rounded-2xl bg-surface-2" />
-            </div>
-          )}
-          {!loadingMessages && messagesError && (
-            <div className="text-center py-8">
-              <p className="text-sm text-danger font-medium mb-2">Xabarlarni yuklab bo'lmadi.</p>
-              <button onClick={retryLoadMessages} className="text-xs font-semibold text-accent hover:underline">
-                Qayta yuklash
-              </button>
-            </div>
-          )}
-          {!loadingMessages && !messagesError && messages.length === 0 && (
-            <p className="text-center text-sm text-muted py-8">Hali xabar yo'q. Birinchi xabarni yozing!</p>
-          )}
           {messages.map((m) => (
             <MessageBubble
               key={m.id || m._id}
@@ -246,6 +225,34 @@ export default function ConversationView({ onBack }) {
           ))}
           <div ref={bottomRef} />
         </div>
+
+        {/* TZ-vocably-v2.md §E3/BUG-029 + BUG-4 (chat UI audit) — skeleton/xato/bo'sh
+            holatlar endi scroll konteyneri ICHIDA emas (avval tepada "osilib" qolardi,
+            ko'p xabar bo'lganda hech qachon ko'rinmasdi ham) — mutlaq joylashuv bilan
+            markazga olib chiqilgan, `messages` bo'sh bo'lganda (yoki hali yuklanayotganda/
+            xato bo'lganda) ko'rinadi. */}
+        {(loadingMessages || messagesError || messages.length === 0) && (
+          <div className="absolute inset-0 flex items-center justify-center px-6">
+            {loadingMessages && (
+              <div className="w-full max-w-xs space-y-2.5 animate-pulse" aria-label="Yuklanmoqda">
+                <div className="h-10 w-2/3 rounded-2xl bg-surface-2" />
+                <div className="h-10 w-1/2 rounded-2xl bg-accent-soft ml-auto" />
+                <div className="h-10 w-3/5 rounded-2xl bg-surface-2" />
+              </div>
+            )}
+            {!loadingMessages && messagesError && (
+              <div className="text-center">
+                <p className="text-sm text-danger font-medium mb-2">Xabarlarni yuklab bo'lmadi.</p>
+                <button onClick={retryLoadMessages} className="text-xs font-semibold text-accent hover:underline">
+                  Qayta yuklash
+                </button>
+              </div>
+            )}
+            {!loadingMessages && !messagesError && messages.length === 0 && (
+              <p className="text-center text-sm text-muted">Hali xabar yo'q. Birinchi xabarni yozing!</p>
+            )}
+          </div>
+        )}
 
         {/* Pastga tushish strelkasi — foydalanuvchi eski xabarlarni o'qish uchun
             yuqoriga sirg'algan bo'lsa chiqadi (pastda bo'lsa umuman ko'rinmaydi).

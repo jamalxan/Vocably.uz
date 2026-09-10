@@ -2,20 +2,10 @@
 import { useRef, useState } from 'react';
 import { Loader2, Wifi, WifiOff, BellOff, Trash2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
-import { isOnline, useLiveClock } from '@/lib/presence';
+import { isOnline, useLiveClock, formatRelativeTime } from '@/lib/presence';
 import { TYPING_LABEL } from '@/lib/chatConstants';
 import UserSearchBar from './UserSearchBar';
 import DeleteConversationModal from './DeleteConversationModal';
-
-function timeAgo(dateStr) {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'hozir';
-  if (mins < 60) return `${mins}d`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}s`;
-  return `${Math.floor(hours / 24)}kun`;
-}
 
 // Uzoq bosish (long-press) uchun chegara — bundan qisqarog'i oddiy bosish
 // (suhbatni ochish) hisoblanadi, uzunrog'i esa o'chirish menyusini chiqaradi
@@ -92,7 +82,7 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
           {/* BUG-024: backend `lastMessageAt: null` qaytarishi mumkin (foydalanuvchi
               suhbatni tozalagan, hali yangi xabar kelmagan) — bunday holatda vaqt
               yorlig'i umuman ko'rsatilmaydi. */}
-          {c.lastMessageAt && <span className="text-[10px] text-muted flex-shrink-0">{timeAgo(c.lastMessageAt)}</span>}
+          {c.lastMessageAt && <span className="text-[10px] text-muted flex-shrink-0">{formatRelativeTime(c.lastMessageAt)}</span>}
         </div>
         <div className="flex items-center justify-between gap-2">
           {typing ? (
