@@ -482,6 +482,10 @@ const ReadingAttemptSchema = new mongoose.Schema({
   passage: { type: String, required: true },
   questions: [ReadingQuestionSchema],
   answers: [{ type: String, default: null }],
+  // Mock imtihondagi bilan bir xil highlight+note funksiyasi (ExamSession.highlights'ga
+  // qarang) — bu yerda esa sahifa arxitekturasiga mos ravishda (javoblar ham faqat
+  // /submit'da saqlanadi, autosave yo'q) faqat submit paytida backend'ga yuboriladi.
+  highlights: [{ text: String, note: { type: String, default: '' }, color: { type: String, default: 'yellow' } }],
   score: { type: Number, default: null },
   status: { type: String, enum: ['in_progress', 'completed'], default: 'in_progress' },
   createdAt: { type: Date, default: Date.now },
@@ -499,6 +503,7 @@ const ListeningAttemptSchema = new mongoose.Schema({
   transcript: { type: String, required: true },
   questions: [ReadingQuestionSchema],
   answers: [{ type: String, default: null }],
+  highlights: [{ text: String, note: { type: String, default: '' }, color: { type: String, default: 'yellow' } }],
   score: { type: Number, default: null },
   status: { type: String, enum: ['in_progress', 'completed'], default: 'in_progress' },
   createdAt: { type: Date, default: Date.now },
