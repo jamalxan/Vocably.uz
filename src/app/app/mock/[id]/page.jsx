@@ -5,6 +5,8 @@ import { Loader2, Play, Clock, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import SplitPane from '@/components/exam/SplitPane';
+import HighlightableText from '@/components/exam/HighlightableText';
 
 const SECTION_ORDER = ['listening', 'reading', 'writing', 'speaking'];
 const SECTION_LABEL = { listening: 'Listening', reading: 'Reading', writing: 'Writing', speaking: 'Speaking' };
@@ -161,6 +163,52 @@ export default function MockSessionPage() {
     }, AUTOSAVE_DEBOUNCE_MS);
   };
 
+  // Highlight/note — haqiqiy IELTS dasturidagi kabi, backend'da saqlanadi
+  // (lib/models.js'dagi ExamSession.highlights). Optimistik yangilanadi, keyin
+  // serverdan qaytgan ID bilan almashtiriladi (remove/note aniq ID kerak bo'lgani
+  // uchun).
+  const addHighlight = async (section, text) => {
+    const tempId = `temp-${Date.now()}`;
+    setState((s) => ({ ...s, highlights: [...(s.highlights || []), { _id: tempId, section, text, note: '' }] }));
+    try {
+      const res = await fetch(`/api/exam/${id}/highlight`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'add', section, text }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setState((s) => ({
+          ...s,
+          highlights: (s.highlights || []).map((h) => (h._id === tempId ? data.highlight : h)),
+        }));
+      }
+    } catch {
+      // tarmoq xatosi — optimistik holat vizual qoladi, keyingi /state sinxronida to'g'irlanadi
+    }
+  };
+
+  const removeHighlight = async (highlightId) => {
+    setState((s) => ({ ...s, highlights: (s.highlights || []).filter((h) => h._id !== highlightId) }));
+    await fetch(`/api/exam/${id}/highlight`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'remove', highlightId }),
+    });
+  };
+
+  const noteHighlight = async (highlightId, note) => {
+    setState((s) => ({
+      ...s,
+      highlights: (s.highlights || []).map((h) => (h._id === highlightId ? { ...h, note } : h)),
+    }));
+    await fetch(`/api/exam/${id}/highlight`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'note', highlightId, note }),
+    });
+  };
+
   const playAudio = async () => {
     const res = await fetch(`/api/exam/${id}/audio/start`, {
       method: 'POST',
@@ -208,29 +256,47 @@ export default function MockSessionPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Fokus rejimi — asosiy navigatsiya AppShell'da baribir turadi, lekin bu
-          sahifa o'zi minimal, chalg'ituvchi elementlarsiz. */}
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-surface border-b border-border">
-        <div className="flex items-center gap-2">
+          sahifa o'zi minimal, chalg'ituvchi elementlarsiz (real IELTS dasturi
+          kabi rasmiy, "beg'ubor" ko'rinish — 2026-09-10 so'rovi). */}
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 sm:px-6 py-2.5 bg-primary text-on-primary border-b border-on-primary/10">
+        <div className="flex items-center gap-2 min-w-0 overflow-x-auto">
           {SECTION_ORDER.map((s) => (
-            <Badge key={s} tone={s === activeSection ? 'accent' : state.sections[s].locked ? 'success' : 'neutral'}>
+            <span
+              key={s}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide flex-shrink-0 ${
+                s === activeSection
+                  ? 'bg-accent text-on-accent'
+                  : state.sections[s].locked
+                    ? 'text-on-primary/30 line-through'
+                    : 'text-on-primary/55'
+              }`}
+            >
               {SECTION_LABEL[s]}
-            </Badge>
+            </span>
           ))}
         </div>
-        <div className="flex items-center gap-3">
-          {saving && <span className="text-[11px] text-muted flex items-center gap-1"><Check size={11} /> Saqlanmoqda...</span>}
-          {secStarted && (
-            <span className={`flex items-center gap-1.5 font-mono text-sm font-semibold ${localRemaining < 60 ? 'text-danger' : 'text-ink'}`}>
-              <Clock size={14} /> {formatTime(localRemaining)}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {saving && (
+            <span className="text-[11px] text-on-primary/50 flex items-center gap-1 hidden sm:flex">
+              <Check size={11} /> Saqlanmoqda...
             </span>
           )}
           {state.mode === 'practice' && <Badge tone="warning">Mashq rejimi</Badge>}
+          {secStarted && (
+            <span
+              className={`flex items-center gap-1.5 font-mono text-base font-bold px-2.5 py-1 rounded-lg bg-primary-hover ${
+                localRemaining < 60 ? 'text-danger' : 'text-on-primary'
+              }`}
+            >
+              <Clock size={15} /> {formatTime(localRemaining)}
+            </span>
+          )}
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 min-h-0 overflow-hidden">
         {!secStarted ? (
-          <div className="max-w-md mx-auto text-center py-16">
+          <div className="max-w-md mx-auto text-center py-16 px-4">
             <p className="text-lg font-bold text-ink font-display mb-2">{SECTION_LABEL[activeSection]} bo'limi</p>
             <p className="text-sm text-muted mb-6">
               Boshlagach {Math.round(sec.duration / 60)} daqiqa vaqtingiz bo'ladi. Taymer to'xtamaydi.
@@ -245,9 +311,13 @@ export default function MockSessionPage() {
             essays={state.essays}
             practiceReveal={state._practiceReveal}
             audioState={audioState}
+            highlights={state.highlights}
             onAnswer={saveAnswer}
             onEssay={saveEssay}
             onPlayAudio={playAudio}
+            onAddHighlight={addHighlight}
+            onRemoveHighlight={removeHighlight}
+            onNoteHighlight={noteHighlight}
           />
         )}
       </main>
@@ -267,40 +337,74 @@ export default function MockSessionPage() {
   );
 }
 
-function SectionBody({ section, content, answers, essays, practiceReveal, audioState, onAnswer, onEssay, onPlayAudio }) {
+function SectionBody({
+  section,
+  content,
+  answers,
+  essays,
+  practiceReveal,
+  audioState,
+  highlights,
+  onAnswer,
+  onEssay,
+  onPlayAudio,
+  onAddHighlight,
+  onRemoveHighlight,
+  onNoteHighlight,
+}) {
+  const hlProps = { highlights, onAdd: (t) => onAddHighlight(section, t), onRemove: onRemoveHighlight, onNote: onNoteHighlight };
+
   if (section === 'listening') {
     return (
-      <div className="max-w-xl mx-auto space-y-5">
-        <div className="bg-surface border border-border rounded-2xl p-5 text-center">
-          <p className="text-xs text-muted mb-3">{content.audioLabel}</p>
-          <button
-            onClick={onPlayAudio}
-            className="w-16 h-16 mx-auto rounded-full bg-accent hover:bg-accent-hover text-on-accent flex items-center justify-center shadow-glow"
-            aria-label="Tinglash"
-          >
-            <Play size={26} className="ml-1" />
-          </button>
-          {audioState?.replaysBlocked && (
-            <p className="text-[11px] text-warning mt-2">Bir marta ijro etiladi — {audioState.offset}s joydan davom etyapti</p>
-          )}
-          <p className="text-[10px] text-muted mt-3">
-            (Audio fayl hali yuklanmagan — mashq uchun savollarni matn asosida yeching)
-          </p>
-        </div>
-        <QuestionList questions={content.questions} answers={answers} reveal={practiceReveal} onAnswer={onAnswer} />
-      </div>
+      <SplitPane
+        initialLeftPercent={40}
+        left={
+          <div className="p-4 sm:p-6 h-full flex flex-col items-center justify-center text-center">
+            <p className="text-xs text-muted mb-4 max-w-xs">{content.audioLabel}</p>
+            <button
+              onClick={onPlayAudio}
+              className="w-20 h-20 rounded-full bg-accent hover:bg-accent-hover text-on-accent flex items-center justify-center shadow-glow"
+              aria-label="Tinglash"
+            >
+              <Play size={30} className="ml-1" />
+            </button>
+            {audioState?.replaysBlocked && (
+              <p className="text-[11px] text-warning mt-3 max-w-xs">
+                Bir marta ijro etiladi — {audioState.offset}s joydan davom etyapti
+              </p>
+            )}
+            <p className="text-[10px] text-muted mt-4 max-w-xs">
+              (Audio fayl hali yuklanmagan — mashq uchun savollarni matn asosida yeching)
+            </p>
+          </div>
+        }
+        right={
+          <div className="p-4 sm:p-6">
+            <QuestionList section="listening" questions={content.questions} answers={answers} reveal={practiceReveal} onAnswer={onAnswer} {...hlProps} />
+          </div>
+        }
+      />
     );
   }
 
   if (section === 'reading') {
     return (
-      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-        <div className="bg-surface border border-border rounded-2xl p-5">
-          <h3 className="font-bold text-ink font-display mb-3">{content.passageTitle}</h3>
-          <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">{content.passage}</p>
-        </div>
-        <QuestionList questions={content.questions} answers={answers} reveal={practiceReveal} onAnswer={onAnswer} />
-      </div>
+      <SplitPane
+        initialLeftPercent={55}
+        left={
+          <div className="p-4 sm:p-6">
+            <h3 className="font-bold text-ink font-display mb-3">{content.passageTitle}</h3>
+            <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap select-text">
+              <HighlightableText text={content.passage} section="reading" {...hlProps} />
+            </p>
+          </div>
+        }
+        right={
+          <div className="p-4 sm:p-6">
+            <QuestionList section="reading" questions={content.questions} answers={answers} reveal={practiceReveal} onAnswer={onAnswer} {...hlProps} />
+          </div>
+        }
+      />
     );
   }
 
@@ -346,15 +450,16 @@ function SectionBody({ section, content, answers, essays, practiceReveal, audioS
   );
 }
 
-function QuestionList({ questions, answers, reveal, onAnswer }) {
+function QuestionList({ section, questions, answers, reveal, onAnswer, highlights, onAdd, onRemove, onNote }) {
   return (
     <div className="space-y-3">
       {questions.map((q, i) => {
         const r = reveal?.[q.id];
         return (
           <div key={q.id} className="bg-surface border border-border rounded-2xl p-4">
-            <p className="text-sm font-medium text-ink mb-2.5">
-              {i + 1}. {q.text}
+            <p className="text-sm font-medium text-ink mb-2.5 select-text">
+              {i + 1}.{' '}
+              <HighlightableText text={q.text} section={section} highlights={highlights} onAdd={onAdd} onRemove={onRemove} onNote={onNote} />
             </p>
             <div className="space-y-1.5">
               {q.options.map((opt, oi) => {

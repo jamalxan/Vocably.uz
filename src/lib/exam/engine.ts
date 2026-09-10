@@ -42,6 +42,7 @@ export interface ExamDoc {
   answers: Record<string, unknown>;
   essays: { task1: string; task2: string };
   audio: Record<string, { startedAt: Date; plays: number }>;
+  highlights?: unknown[];
   result: unknown;
 }
 
@@ -104,6 +105,7 @@ export function publicState(doc: ExamDoc, now: Date = new Date()) {
     audio: doc.audio || {},
     answers: doc.answers || {},
     essays: doc.essays,
+    highlights: doc.highlights || [],
     result: doc.result,
   };
 }

@@ -600,6 +600,21 @@ const ExamSessionSchema = new mongoose.Schema({
     task2: { type: String, default: '' },
   },
   audio: { type: mongoose.Schema.Types.Mixed, default: {} }, // {sectionKey: {startedAt, plays}}
+  // Haqiqiy IELTS interfeysidagi kabi — o'quvchi passage/savol matnidagi istalgan
+  // qismni belgilab (highlight) qoldirishi va unga eslatma (note) yozishi mumkin.
+  // `text` — belgilangan matnning o'zi (aniq offset emas, chunki kontent AI orqali
+  // generatsiya qilingan bo'lsa ham sessiya davomida o'zgarmaydi — matnni qidirib
+  // topish yetarli, murakkab offset-tracking shart emas). Backend'da saqlanadi
+  // (frontend state emas) — 2026-09-10 so'rovi: "javoblar frontda emas backendda".
+  highlights: [
+    {
+      section: { type: String, enum: ['reading', 'listening'], required: true },
+      text: { type: String, required: true },
+      note: { type: String, default: '' },
+      color: { type: String, default: 'yellow' },
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
   result: { type: mongoose.Schema.Types.Mixed, default: null },
   submittedAt: { type: Date, default: null },
   submitReason: { type: String, default: null },
