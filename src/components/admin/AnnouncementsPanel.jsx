@@ -55,21 +55,21 @@ export default function AnnouncementsPanel({ token }) {
   return (
     <div className="space-y-6">
       <form onSubmit={send} className="rounded-2xl border border-border bg-surface shadow-card p-5 space-y-3">
-        <p className="text-sm font-bold text-primary flex items-center gap-2">
+        <p className="text-sm font-bold text-ink flex items-center gap-2">
           <Megaphone size={16} className="text-accent" /> Yangi e'lon
         </p>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Sarlavha"
-          className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-primary outline-none focus:border-accent transition-colors"
+          className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink outline-none focus:border-accent transition-colors"
         />
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Matn (ixtiyoriy)"
           rows={3}
-          className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-primary outline-none focus:border-accent transition-colors resize-none"
+          className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink outline-none focus:border-accent transition-colors resize-none"
         />
         {error && <p className="text-xs text-accent">{error}</p>}
         <button
@@ -91,7 +91,7 @@ export default function AnnouncementsPanel({ token }) {
           {announcements.map((a) => (
             <div key={a._id} className="px-5 py-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-primary">{a.title}</p>
+                <p className="text-sm font-semibold text-ink">{a.title}</p>
                 <span className="text-[11px] text-muted flex-shrink-0">{new Date(a.createdAt).toLocaleString('uz-UZ')}</span>
               </div>
               {a.body && <p className="text-xs text-muted mt-1">{a.body}</p>}

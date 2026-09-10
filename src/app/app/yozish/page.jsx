@@ -4,6 +4,7 @@ import { PenLine, Loader2, RotateCcw } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import AiErrorNotice from '@/components/ui/AiErrorNotice';
 
 const MIN_WORDS = { 1: 150, 2: 250 };
 
@@ -33,10 +34,10 @@ export default function YozishPage() {
         body: JSON.stringify({ task: t }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Yaratib bo'lmadi");
+      if (!res.ok) throw Object.assign(new Error(data?.error || "Yaratib bo'lmadi"), { requestId: data?.requestId });
       setPromptState(data);
     } catch (err) {
-      setError(err.message);
+      setError({ message: err.message, requestId: err.requestId });
     } finally {
       setLoadingPrompt(false);
     }
@@ -49,13 +50,13 @@ export default function YozishPage() {
       const res = await fetch('/api/writing/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ task, prompt: promptState.prompt, text }),
+        body: JSON.stringify({ task, prompt: promptState.prompt, text, chart: promptState.chart, chartSvg: promptState.chartSvg }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Tekshirib bo'lmadi");
+      if (!res.ok) throw Object.assign(new Error(data?.error || "Tekshirib bo'lmadi"), { requestId: data?.requestId });
       setResult(data);
     } catch (err) {
-      setError(err.message);
+      setError({ message: err.message, requestId: err.requestId });
     } finally {
       setSubmitting(false);
     }
@@ -88,6 +89,7 @@ export default function YozishPage() {
 
       {!promptState ? (
         <div className="bg-surface border border-border rounded-2xl p-6 text-center shadow-card">
+          <AiErrorNotice error={error} onRetry={() => getPrompt(task)} className="mb-4 text-left" />
           <Button onClick={() => getPrompt(task)} disabled={loadingPrompt}>
             {loadingPrompt ? <Loader2 size={16} className="animate-spin" /> : null}
             {loadingPrompt ? 'Tayyorlanmoqda...' : 'Topshiriq olish'}
@@ -98,6 +100,15 @@ export default function YozishPage() {
           <div className="bg-accent-soft rounded-2xl p-4 mb-4">
             <p className="text-sm text-ink">{promptState.prompt}</p>
           </div>
+
+          {/* TZ-vocably-v2.md §C3 F-W1 (BUG-014) — Task 1 grafik: neytral (oq fon,
+              brendsiz) uslubda, real imtihondagidek. Task 2'da chartSvg yo'q. */}
+          {task === 1 && promptState.chartSvg && (
+            <div
+              className="bg-white border border-border rounded-2xl p-3 mb-4 overflow-x-auto"
+              dangerouslySetInnerHTML={{ __html: promptState.chartSvg }}
+            />
+          )}
 
           {!result ? (
             <>
@@ -116,7 +127,7 @@ export default function YozishPage() {
                   Boshqa topshiriq
                 </button>
               </div>
-              {error && <p className="text-xs text-danger font-medium mb-3">{error}</p>}
+              <AiErrorNotice error={error} onRetry={submit} className="mb-3" />
               <Button onClick={submit} disabled={submitting || wordCount < 20} className="w-full">
                 {submitting ? 'Baholanmoqda...' : 'Tekshirish'}
               </Button>

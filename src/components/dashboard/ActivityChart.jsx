@@ -39,7 +39,7 @@ export default function ActivityChart({ activity7, activity30 }) {
               key={key}
               onClick={() => setRange(key)}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                range === key ? 'bg-accent text-on-accent' : 'text-muted hover:text-primary'
+                range === key ? 'bg-accent text-on-accent' : 'text-muted hover:text-ink'
               }`}
             >
               {label}
@@ -51,17 +51,19 @@ export default function ActivityChart({ activity7, activity30 }) {
       <div style={{ width: '100%', height: 200 }}>
         <ResponsiveContainer>
           <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <CartesianGrid vertical={false} stroke="#D6CFCC" />
+            {/* rgb(var(--color-x)) — globals.css tokenlariga ishora, hardcode-hex emas (§B2).
+                CSS custom property bo'lgani uchun tema almashganda avtomatik yangilanadi. */}
+            <CartesianGrid vertical={false} stroke="rgb(var(--color-border))" />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 10, fill: '#6B5B54' }}
+              tick={{ fontSize: 10, fill: 'rgb(var(--color-muted))' }}
               axisLine={false}
               tickLine={false}
               interval={range === '30d' ? 3 : 0}
             />
-            <YAxis tick={{ fontSize: 10, fill: '#6B5B54' }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(184,57,74,0.08)' }} />
-            <Bar dataKey="reviews" fill="#B8394A" radius={[4, 4, 0, 0]} />
+            <YAxis tick={{ fontSize: 10, fill: 'rgb(var(--color-muted))' }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgb(var(--color-accent) / 0.08)' }} />
+            <Bar dataKey="reviews" fill="rgb(var(--color-accent))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -1,11 +1,17 @@
 import { getGeminiClient } from '@/lib/gemini';
 import { streamOpenAiCompatible } from '@/lib/providers/openaiCompatible';
+import { withRetry, resolveModelChainOrder, aiErrorResponse } from '@/lib/ai/client';
 
 // src/app/api/words/enrich/route.js'da ishlab chiqilgan Groq -> OpenRouter -> Gemini
 // zaxira zanjirini umumlashtiradi — FAZA 3'ning Reading/Listening/Writing/Speaking
 // generatsiya va baholash endpoint'lari ham xuddi shu naqshga muhtoj edi. Gemini
 // structured-output (responseSchema) bergani uchun eng ishonchli, lekin oxirgi
 // zaxira sifatida qoldiriladi (GEMINI_API_KEY har doim sozlanmagan bo'lishi mumkin).
+//
+// TZ-vocably-v2.md §D1 (BUG-006): har provayder endi 3 marta eksponensial backoff bilan
+// qayta uriniladi (src/lib/ai/client.js withRetry) — avval bitta muvaffaqiyatsiz urinish
+// darhol keyingi provayderga o'tkazib yuborardi, hatto vaqtinchalik (429/503) xato
+// bo'lsa ham. Zanjir tartibi `AI_MODEL_CHAIN` env orqali sozlanishi mumkin.
 const JSON_INSTRUCTION =
   '\n\nJAVOBNI FAQAT xom JSON obyekti sifatida qaytar — hech qanday izoh, markdown yoki ```json bloki bo\'lmasin.';
 
@@ -48,14 +54,20 @@ async function viaGemini(prompt, schema) {
   return JSON.parse(result.response.text());
 }
 
+const PROVIDER_FNS = {
+  groq: (prompt) => viaGroq(prompt),
+  openrouter: (prompt) => viaOpenRouter(prompt),
+  gemini: (prompt, schema) => viaGemini(prompt, schema),
+};
+
 /** `prompt` — to'liq matn (kutilgan JSON tuzilma tavsifi bilan). `schema` — faqat
  * Gemini uchun (responseSchema); Groq/OpenRouter'da prompt ichidagi tavsifga tayaniladi. */
 export async function generateJson(prompt, schema) {
-  const attempts = [() => viaGroq(prompt), () => viaOpenRouter(prompt), () => viaGemini(prompt, schema)];
+  const order = resolveModelChainOrder(['groq', 'openrouter', 'gemini']);
   let lastErr;
-  for (const attempt of attempts) {
+  for (const name of order) {
     try {
-      return await attempt();
+      return await withRetry(() => PROVIDER_FNS[name](prompt, schema));
     } catch (err) {
       lastErr = err;
     }
@@ -63,10 +75,8 @@ export async function generateJson(prompt, schema) {
   throw lastErr;
 }
 
-export function friendlyAiError(err) {
-  const msg = err?.message || "Noma'lum xatolik";
-  if (/quota|rate limit|429/i.test(msg)) {
-    return "AI xizmati hozir band (so'rovlar chegarasi to'ldi). Bir necha daqiqadan keyin qayta urinib ko'ring.";
-  }
-  return `AI bilan bog'lanib bo'lmadi: ${msg}`;
-}
+/** @deprecated `aiErrorResponse(err, meta)` dan foydalaning — u log (requestId bilan) +
+ * o'zbekcha xabarni bitta NextResponse'da birlashtiradi. Eski chaqiruvchilar buzilmasligi
+ * uchun saqlab qolindi. */
+export { toUserMessage as friendlyAiError } from '@/lib/ai/client';
+export { aiErrorResponse };

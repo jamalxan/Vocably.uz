@@ -2,20 +2,10 @@
 import { useRef, useState } from 'react';
 import { Loader2, Wifi, WifiOff, BellOff, Trash2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
-import { isOnline, useLiveClock } from '@/lib/presence';
+import { isOnline, useLiveClock, formatRelativeTime } from '@/lib/presence';
 import { TYPING_LABEL } from '@/lib/chatConstants';
 import UserSearchBar from './UserSearchBar';
 import DeleteConversationModal from './DeleteConversationModal';
-
-function timeAgo(dateStr) {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'hozir';
-  if (mins < 60) return `${mins}d`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}s`;
-  return `${Math.floor(hours / 24)}kun`;
-}
 
 // Uzoq bosish (long-press) uchun chegara — bundan qisqarog'i oddiy bosish
 // (suhbatni ochish) hisoblanadi, uzunrog'i esa o'chirish menyusini chiqaradi
@@ -89,7 +79,10 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
             </p>
             {c.muted && <BellOff size={11} className="text-muted flex-shrink-0" />}
           </span>
-          <span className="text-[10px] text-muted flex-shrink-0">{timeAgo(c.lastMessageAt)}</span>
+          {/* BUG-024: backend `lastMessageAt: null` qaytarishi mumkin (foydalanuvchi
+              suhbatni tozalagan, hali yangi xabar kelmagan) — bunday holatda vaqt
+              yorlig'i umuman ko'rsatilmaydi. */}
+          {c.lastMessageAt && <span className="text-[10px] text-muted flex-shrink-0">{formatRelativeTime(c.lastMessageAt)}</span>}
         </div>
         <div className="flex items-center justify-between gap-2">
           {typing ? (
@@ -138,17 +131,20 @@ export default function ConversationList({ onSelect, selectedId }) {
   };
 
   return (
-    <div className="w-full lg:w-72 flex-shrink-0 border-r border-border flex flex-col h-full">
+    <div className="w-full lg:w-72 flex-shrink-0 border-r border-border flex flex-col h-full bg-surface">
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <h3 className="text-sm font-bold text-ink">Do'stlar</h3>
         <span title={socketConnected ? 'Onlayn' : 'Oflayn (yangilanish bilan)'} className="text-muted">
-          {socketConnected ? <Wifi size={13} className="text-emerald-500" /> : <WifiOff size={13} />}
+          {socketConnected ? <Wifi size={13} className="text-success" /> : <WifiOff size={13} />}
         </span>
       </div>
 
       <UserSearchBar onOpen={() => {}} />
 
-      <div className="flex-1 overflow-y-auto px-2 pb-3">
+      {/* TZ-vocably-v2.md BUG-023 — `min-h-0` yo'q edi: flex-item standart bo'yicha
+          o'z kontentidan qisqarmaydi (min-height:auto), shuning uchun ko'p suhbatli
+          ro'yxat panelni majburan cho'zib yuborishi mumkin edi. */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-3">
         {loadingConversations && (
           <div className="flex justify-center py-6">
             <Loader2 size={18} className="animate-spin text-muted" />

@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Loader2, Play, Clock, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
+import { renderChartSvg } from '@/lib/chartSvg';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import SplitPane from '@/components/exam/SplitPane';
@@ -13,6 +14,20 @@ const SECTION_ORDER = ['listening', 'reading', 'writing', 'speaking'];
 const SECTION_LABEL = { listening: 'Listening', reading: 'Reading', writing: 'Writing', speaking: 'Speaking' };
 const RESYNC_MS = 20_000;
 const AUTOSAVE_DEBOUNCE_MS = 1200;
+
+// BUG-012 fallback (izoh pastdagi ishlatilgan joyda) — `transcript`siz kontent uchun
+// savol matnlaridan tabiiy o'qiladigan matn yasaydi (to'g'ri javobni oshkor qilmaydi,
+// faqat savol + variantlar ro'yxati — MCQ variantlarining o'zi javobni bildirmaydi).
+function buildFallbackListeningScript(content) {
+  // `speakText()` (lib/speech.js) fixed `lang: 'en-US'` bilan ishlaydi — shuning uchun
+  // bu matn ham inglizcha (aralash til noto'g'ri talaffuz qilinardi).
+  const intro = content.audioLabel ? `${content.audioLabel}. ` : '';
+  const parts = (content.questions || []).map((q, i) => {
+    const opts = q.options?.length ? ` Options: ${q.options.join(', ')}.` : '';
+    return `Question ${i + 1}. ${q.text}${opts}`;
+  });
+  return `${intro}${parts.join(' ')}`;
+}
 
 function formatTime(sec) {
   if (sec == null) return '--:--';
@@ -363,6 +378,14 @@ function SectionBody({
   const hlProps = { highlights, onAdd: (t) => onAddHighlight(section, t), onRemove: onRemoveHighlight, onNote: onNoteHighlight };
 
   if (section === 'listening') {
+    // TZ-vocably-v2.md BUG-012 — interim tuzatish: to'liq server-tomonidagi TTS
+    // pipeline (ko'p ovoz, ffmpeg, S3 keshlash — §C1) tashqi TTS provayder tanlash va
+    // API kalitini talab qiladi, hozircha yo'q. Shuning uchun TZ'ning o'zi ko'rsatgan
+    // muqobil yo'l: brauzer TTS HAR BIR mock uchun ishlaydigan qilindi — `transcript`
+    // yo'q content (kelajakda qo'shilishi mumkin) uchun ham savol matnlaridan tabiiy
+    // o'qiladigan xulosa yasaladi, shunda "audio fayl yuklanmagan" o'lik xabar hech
+    // qachon chiqmaydi.
+    const spokenText = content.transcript || buildFallbackListeningScript(content);
     return (
       <SplitPane
         initialLeftPercent={40}
@@ -370,7 +393,7 @@ function SectionBody({
           <div className="p-4 sm:p-6 h-full flex flex-col items-center justify-center text-center">
             <p className="text-xs text-muted mb-4 max-w-xs">{content.audioLabel}</p>
             <button
-              onClick={() => onPlayAudio(content.transcript)}
+              onClick={() => onPlayAudio(spokenText)}
               className="w-20 h-20 rounded-full bg-accent hover:bg-accent-hover text-on-accent flex items-center justify-center shadow-glow"
               aria-label="Tinglash"
             >
@@ -382,9 +405,7 @@ function SectionBody({
               </p>
             )}
             <p className="text-[10px] text-muted mt-4 max-w-xs">
-              {content.transcript
-                ? "Brauzer ovozda o'qib beradi (haqiqiy diktor audiosi emas)."
-                : "(Audio fayl hali yuklanmagan — mashq uchun savollarni matn asosida yeching)"}
+              Brauzer ovozda o'qib beradi (haqiqiy diktor audiosi emas).
             </p>
           </div>
         }
@@ -425,6 +446,13 @@ function SectionBody({
           <div key={task} className="bg-surface border border-border rounded-2xl p-5">
             <p className="text-xs font-semibold text-accent uppercase mb-1.5">{task === 'task1' ? 'Task 1' : 'Task 2'}</p>
             <p className="text-sm text-ink mb-3">{content[task]}</p>
+            {/* TZ-vocably-v2.md §C3 F-W1 (BUG-014) — Task 1 grafik, neytral uslubda. */}
+            {task === 'task1' && content.chart && (
+              <div
+                className="bg-white border border-border rounded-2xl p-3 mb-3 overflow-x-auto"
+                dangerouslySetInnerHTML={{ __html: renderChartSvg(content.chart) }}
+              />
+            )}
             <textarea
               value={essays[task] || ''}
               onChange={(e) => onEssay(task, e.target.value)}

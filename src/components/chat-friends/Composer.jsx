@@ -313,7 +313,12 @@ export default function Composer() {
             onKeyDown={handleTextareaKeyDown}
             onPaste={handlePaste}
             placeholder={pendingAttachment ? "Izoh qo'shing (ixtiyoriy)..." : 'Xabar yozing...'}
-            className="flex-1 min-w-0 px-1.5 py-1.5 bg-transparent text-sm leading-5 outline-none font-chat resize-none"
+            // TZ-vocably-v2.md BUG-2 (chat UI audit) — placeholder rangi hech qachon
+            // aniq belgilanmagan edi (brauzer standarti/meros olingan rangga qolib
+            // ketardi); endi to'g'ridan-to'g'ri `--color-muted` tokeniga bog'langan,
+            // ikkala rejimda ham kontrasti tekshirilgan (check-contrast.mjs'dagi
+            // "ikkinchi darajali matn" juftligi bilan bir xil token).
+            className="flex-1 min-w-0 px-1.5 py-1.5 bg-transparent text-ink placeholder:text-muted text-sm leading-5 outline-none font-chat resize-none"
           />
 
           {!editingMessage && (

@@ -3,9 +3,9 @@ import { createContext, useContext, useCallback, useEffect, useState } from 'rea
 
 // Uch holatli tema: 'light' | 'dark' | 'system'. localStorage'da saqlanadi va
 // <html data-theme="..."> ga qo'yiladi — haqiqiy rang qiymatlari globals.css'dagi
-// [data-theme="dark"] / @media(prefers-color-scheme: dark) bloklarida (faqat
-// --color-bg/--color-surface/--color-ink/--color-border/--color-accent invert
-// bo'ladi, --color-primary emas — sabab shu faylning yonidagi globals.css izohida).
+// [data-theme="dark"] / @media(prefers-color-scheme: dark) bloklarida (deyarli
+// barcha tokenlar invert bo'ladi, faqat --color-primary/-hover emas — sabab shu
+// faylning yonidagi globals.css izohida).
 // 'system' tanlanganda <html> ga data-theme atributi umuman qo'yilmaydi — CSS'dagi
 // @media bloki OS afzalligiga qarab o'zi hal qiladi.
 const STORAGE_KEY = 'vocably-theme';

@@ -52,6 +52,10 @@ export async function DELETE(req, { params }) {
     const hidden = new Set((convo.hiddenFor || []).map((id) => String(id)));
     targets.forEach((id) => hidden.add(String(id)));
     convo.hiddenFor = Array.from(hidden);
+    // BUG-024: shu tomon(lar) uchun "qachon tozalandi" belgisi — GET /conversations
+    // shu vaqtdan oldingi umumiy lastMessageAt/lastMessagePreview'ni ularga ko'rsatmaydi.
+    const now = new Date();
+    targets.forEach((id) => convo.clearedAt.set(String(id), now));
     await convo.save();
 
     return NextResponse.json({ success: true });

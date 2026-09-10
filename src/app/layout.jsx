@@ -103,7 +103,7 @@ export default function RootLayout({ children }) {
     // data-theme atributini o'rnatishi mumkin — bu server/klient farqi kutilgan va
     // zararsiz, React shu haqidagi ogohlantirishni shu yerda bosib qo'ymasa bo'ladi.
     <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable} ${mono.variable} ${word.variable}`} suppressHydrationWarning>
-      <body className="bg-bg text-primary min-h-screen antialiased font-body" suppressHydrationWarning>
+      <body className="bg-bg text-ink min-h-screen antialiased font-body" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>{children}</ThemeProvider>
         <ServiceWorkerRegister />

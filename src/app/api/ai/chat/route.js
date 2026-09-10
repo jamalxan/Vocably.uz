@@ -6,6 +6,15 @@ import { buildGeminiHistory, buildOpenAiHistory } from '@/lib/chatRoles';
 import { toGeminiTools, toOpenAiTools, runToolCall } from '@/lib/aiTools';
 import { streamOpenAiCompatible } from '@/lib/providers/openaiCompatible';
 import { serverError } from '@/lib/apiError';
+import {
+  withRetry,
+  isRetryableAiError,
+  toUserMessage,
+  logAiError,
+  resolveModelChainOrder,
+  checkAndIncrementAiRateLimit,
+  rateLimitMessage,
+} from '@/lib/ai/client';
 import { NextResponse } from 'next/server';
 
 const SYSTEM_INSTRUCTION = `Siz Vocably — ingliz tili o'rganish platformasidagi yordamchisiz. Sizning vazifangiz FAQAT ingliz tilini o'rganayotgan o'zbek foydalanuvchilarga yordam berish:
@@ -56,20 +65,16 @@ const PROVIDERS = {
   },
 };
 
-// Gemini/Groq/OpenRouter xatoliklarini foydalanuvchi tushunadigan matnga aylantiradi.
-function friendlyError(err) {
-  const msg = err?.message || "Noma'lum xatolik";
-  if (err?.status === 429 || /quota|rate limit|429/i.test(msg)) {
-    return "AI xizmatlari hozir band (so'rovlar chegarasi to'lib qoldi). Bir necha daqiqadan keyin qayta urinib ko'ring.";
-  }
-  if (err?.status === 503 || /overloaded|unavailable/i.test(msg)) {
-    return "AI xizmati hozir band. Bir necha soniyadan keyin qayta urinib ko'ring.";
-  }
-  return `Xatolik: ${msg}`;
-}
-
 const PENDING_MARK_START = '\n[[PENDING_ADD_WORDS]]';
 const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]\n';
+
+// TZ-vocably-v2.md §D1.5 — barcha provayderlar muvaffaqiyatsiz bo'lganda, oldingi kod
+// oddiy prozani ("\n⚠️ Xatolik: ...") oqimga qo'shib, uni chat matnidan farqlab
+// bo'lmaydigan qilib qo'yardi. Endi strukturali marker yuboriladi (klient AiChat.jsx
+// shu markerni parse qiladi) — o'zbekcha xabar + requestId (support uchun), hech qanday
+// provayder/model nomi emas.
+const AI_ERROR_MARK_START = '\n[[AI_ERROR]]';
+const AI_ERROR_MARK_END = '[[/AI_ERROR]]\n';
 
 // Gemini SDK orqali bir "navbat"ni funksiya-chaqiruv sikli bilan bajaradi va oqim davomida
 // matnni to'g'ridan-to'g'ri controller'ga yuboradi.
@@ -234,6 +239,12 @@ export async function POST(req) {
       return NextResponse.json({ error: "Xabar bo'sh bo'lmasin" }, { status: 400 });
     }
 
+    // TZ-vocably-v2.md §D1.6 — foydalanuvchi boshiga soatlik generatsiya limiti.
+    const rl = await checkAndIncrementAiRateLimit(userId);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: rateLimitMessage(rl.retryAfterMinutes) }, { status: 429 });
+    }
+
     // VOCABLY-TZ.md §12.1 — kontekstli AI panel: chaqiruvchi sahifa qayerda
     // ekanini (masalan "Reading bo'limida, shu matn ustida") qisqa matn sifatida
     // yuboradi (AiPanel.jsx), shu tur bir martalik qo'shimcha ko'rsatma sifatida
@@ -285,13 +296,17 @@ export async function POST(req) {
     }
 
     // Rasm bo'lsa Groq'da bepul vision modeli yo'q — to'g'ridan-to'g'ri vision zaxiraga o'tamiz.
+    // TZ-vocably-v2.md §D1.2 — matn zanjirining tartibi `AI_MODEL_CHAIN` env orqali
+    // sozlanishi mumkin (masalan "gemini,groq,openrouterText"); sozlanmagan bo'lsa
+    // avvalgi standart tartib ishlatiladi.
+    const TEXT_CHAIN_ITEMS = {
+      groq: { ...PROVIDERS.groq, key: 'groq' },
+      openrouterText: { ...PROVIDERS.openrouterText, key: 'openrouterText' },
+      gemini: { key: 'gemini' },
+    };
     const chain = hasImages
       ? [{ ...PROVIDERS.openrouterVision, key: 'openrouterVision' }, { key: 'gemini' }]
-      : [
-          { ...PROVIDERS.groq, key: 'groq' },
-          { ...PROVIDERS.openrouterText, key: 'openrouterText' },
-          { key: 'gemini' },
-        ];
+      : resolveModelChainOrder(['groq', 'openrouterText', 'gemini']).map((name) => TEXT_CHAIN_ITEMS[name]);
 
     const encoder = new TextEncoder();
 
@@ -315,29 +330,36 @@ export async function POST(req) {
               throw Object.assign(new Error('API kalit sozlanmagan'), { status: 401 });
             }
 
-            const outcome =
-              provider.key === 'gemini'
-                ? await runGeminiProviderTurn({
-                    history: geminiHistory,
-                    userParts: geminiUserParts,
-                    controller,
-                    encoder,
-                    user,
-                    state,
-                    createdCategoryIds: attemptCreatedCategoryIds,
-                    systemInstruction,
-                  })
-                : await runOpenAiProviderTurn({
-                    provider,
-                    history: openAiHistory,
-                    currentMessage: openAiUserMessage,
-                    controller,
-                    encoder,
-                    user,
-                    state,
-                    createdCategoryIds: attemptCreatedCategoryIds,
-                    systemInstruction,
-                  });
+            // TZ-vocably-v2.md §D1.1 — shu provayderni 3 martagacha eksponensial backoff
+            // bilan qayta uramiz, LEKIN faqat `state.emitted` hali `false` bo'lsa (ya'ni
+            // foydalanuvchiga hali birorta token ko'rsatilmagan bo'lsa) — aks holda qayta
+            // urinish bir xil matnni ikki marta oqimga yuborgan bo'lardi.
+            const outcome = await withRetry(
+              () =>
+                provider.key === 'gemini'
+                  ? runGeminiProviderTurn({
+                      history: geminiHistory,
+                      userParts: geminiUserParts,
+                      controller,
+                      encoder,
+                      user,
+                      state,
+                      createdCategoryIds: attemptCreatedCategoryIds,
+                      systemInstruction,
+                    })
+                  : runOpenAiProviderTurn({
+                      provider,
+                      history: openAiHistory,
+                      currentMessage: openAiUserMessage,
+                      controller,
+                      encoder,
+                      user,
+                      state,
+                      createdCategoryIds: attemptCreatedCategoryIds,
+                      systemInstruction,
+                    }),
+              { isRetryable: (err) => !state.emitted && isRetryableAiError(err) }
+            );
 
             finalText = outcome.assistantText;
             pendingAction = outcome.pendingAction;
@@ -345,16 +367,22 @@ export async function POST(req) {
             break;
           } catch (err) {
             lastErr = err;
+            logAiError(err, { endpoint: 'ai/chat', model: provider.model || 'gemini-3.6-flash', userId });
             for (const catId of attemptCreatedCategoryIds) user.categories.pull(catId);
-            // Hech narsa oqimga chiqarilmagan bo'lsa (masalan 429 birinchi so'rovda) — keyingi
-            // provayderga o'tamiz. Aks holda foydalanuvchiga allaqachon matn ko'rsatilgan,
-            // uni almashtirib bo'lmaydi — shu bilan to'xtaymiz.
+            // Hech narsa oqimga chiqarilmagan bo'lsa (masalan 429 birinchi so'rovda, retry
+            // tugagandan keyin ham) — keyingi provayderga o'tamiz. Aks holda foydalanuvchiga
+            // allaqachon matn ko'rsatilgan, uni almashtirib bo'lmaydi — shu bilan to'xtaymiz.
             if (state.emitted) break;
           }
         }
 
         if (!succeeded) {
-          controller.enqueue(encoder.encode(`\n⚠️ ${friendlyError(lastErr)}`));
+          const requestId = logAiError(lastErr, { endpoint: 'ai/chat:exhausted', userId });
+          controller.enqueue(
+            encoder.encode(
+              `${AI_ERROR_MARK_START}${JSON.stringify({ message: toUserMessage(lastErr), requestId })}${AI_ERROR_MARK_END}`
+            )
+          );
           // Barcha provayderlar muvaffaqiyatsiz bo'lsa ham, foydalanuvchining o'zi
           // yozgan xabari (yuqorida qo'shilgan) saqlanib qolishi kerak — aks holda
           // u ekranda ko'rinib turadi (client optimistik qo'shgan), lekin sahifa
@@ -383,7 +411,12 @@ export async function POST(req) {
           try {
             await user.save();
           } catch (saveErr) {
-            controller.enqueue(encoder.encode(`\n⚠️ Saqlashda xatolik: ${saveErr.message}`));
+            const requestId = logAiError(saveErr, { endpoint: 'ai/chat:save', userId });
+            controller.enqueue(
+              encoder.encode(
+                `${AI_ERROR_MARK_START}${JSON.stringify({ message: 'Suhbatni saqlashda xatolik yuz berdi.', requestId })}${AI_ERROR_MARK_END}`
+              )
+            );
           }
         }
 

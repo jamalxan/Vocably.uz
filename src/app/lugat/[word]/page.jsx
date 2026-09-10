@@ -67,7 +67,7 @@ export default function SeoWordPage({ params }) {
           </div>
 
           <div className="flex flex-wrap gap-1.5 mt-3">
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase bg-primary-soft text-primary">{w.pos}</span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase bg-primary-soft text-ink">{w.pos}</span>
             <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase bg-accent-soft text-accent">{w.cefr}</span>
           </div>
 
@@ -98,7 +98,7 @@ export default function SeoWordPage({ params }) {
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted mb-1.5">Kollokatsiya</p>
             <div className="flex flex-wrap gap-1.5">
               {w.collocations.map((c, i) => (
-                <span key={i} className="px-2 py-0.5 rounded-full text-[11px] bg-primary-soft text-primary">
+                <span key={i} className="px-2 py-0.5 rounded-full text-[11px] bg-primary-soft text-ink">
                   {c}
                 </span>
               ))}

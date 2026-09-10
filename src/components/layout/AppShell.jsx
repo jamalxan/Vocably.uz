@@ -180,7 +180,15 @@ export default function AppShell({ children }) {
           <ThemeToggle />
           <NotificationBell token={token} onOpenFriends={() => router.push('/app/dostlar')} />
         </header>
-        <main className="flex-1 min-h-0">{children}</main>
+        {/* TZ-vocably-v2.md BUG-023: `flex flex-col` qo'shildi — muhim CSS nozikligi:
+            bir zveno o'zining `display`i flex bo'lmagan holda (faqat flex-1 orqali)
+            o'lchamga ega bo'lsa, uning bolasidagi foizli balandlik (h-full) HECH QACHON
+            to'g'ri hisoblanmaydi (real brauzerda tekshirilgan). `main` endi o'zi ham flex
+            konteyner bo'lgani uchun /app/dostlar kabi sahifalar o'z ildizida h-full/flex-1
+            bilan butun balandlikni to'g'ri egallay oladi; oddiy sahifalar (bitta bola,
+            aniq balandliksiz) uchun xatti-harakat o'zgarmaydi — ular avvalgidek butun oyna
+            darajasida scroll bo'lishda davom etadi. */}
+        <main className="flex-1 min-h-0 flex flex-col">{children}</main>
       </div>
       <AiPanel />
     </div>
@@ -193,18 +201,50 @@ function navItemClass(active, compact = false) {
   }`;
 }
 
-const THEME_CYCLE = { system: 'light', light: 'dark', dark: 'system' };
 const THEME_ICON = { system: Monitor, light: Sun, dark: Moon };
-const THEME_LABEL = { system: "Tizim mavzusi", light: "Yorug' mavzu", dark: 'Tungi mavzu' };
+const THEME_OPTIONS = [
+  { value: 'light', label: "Yorug'", icon: Sun },
+  { value: 'dark', label: 'Tungi', icon: Moon },
+  { value: 'system', label: 'Tizim', icon: Monitor },
+];
 
+// TZ-vocably-v2.md BUG-004: avval bitta ikonka tugma edi, bosilganda uchta
+// holat orasida yashirin tartibda sikllanardi — foydalanuvchi nima
+// bo'layotganini bilmasdi. Endi uchta aniq nomlangan variant bilan dropdown.
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
   const Icon = THEME_ICON[theme];
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [open]);
+
   return (
-    <IconButton
-      icon={Icon}
-      label={`${THEME_LABEL[theme]} — bosib almashtiring`}
-      onClick={() => setTheme(THEME_CYCLE[theme])}
-    />
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <IconButton icon={Icon} label="Mavzuni tanlash" onClick={() => setOpen((v) => !v)} />
+      {open && (
+        <div className="absolute right-0 top-full mt-2 z-40 w-40 bg-surface-2 border border-border rounded-xl shadow-premium overflow-hidden py-1">
+          {THEME_OPTIONS.map(({ value, label, icon: OptIcon }) => (
+            <button
+              key={value}
+              onClick={() => {
+                setTheme(value);
+                setOpen(false);
+              }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                theme === value ? 'text-accent font-semibold bg-accent-soft' : 'text-ink hover:bg-bg-sunken'
+              }`}
+            >
+              <OptIcon size={16} />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

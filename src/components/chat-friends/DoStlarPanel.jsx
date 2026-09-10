@@ -79,12 +79,19 @@ function DoStlarShell({ onActiveChange }) {
   // Ramka/karta yo'q — panel to'g'ridan-to'g'ri sahifaning o'zi (header ostida davom
   // etadi), WhatsApp Web/Telegram Web uslubida. Ro'yxat va suhbat orasidagi yagona
   // chegara — ConversationList'ning o'z border-r'i (pastda).
+  // TZ-vocably-v2.md BUG-023 — `h-full` zanjiri o'rniga `flex-1 min-h-0`: ota
+  // (dostlar/page.jsx) endi flex konteyner bo'lgani uchun bu div balandlikni
+  // foiz orqali emas, flex-item sifatida oladi. Ichkaridagi ikkita ustun (ro'yxat
+  // va suhbat) o'z balandligini shu qatorning "stretch" (standart) xatti-harakati
+  // orqali oladi — shuning uchun ularda alohida h-full/height kerak emas, faqat
+  // `min-h-0` (aks holda ichidagi uzun ro'yxat/xabarlar ustunni majburan cho'zib
+  // yuboradi).
   return (
-    <div className="flex h-full">
-      <div className={`${activeConversation ? 'hidden lg:flex' : 'flex'} flex-col h-full w-full lg:w-auto`}>
+    <div className="flex flex-1 min-h-0">
+      <div className={`${activeConversation ? 'hidden lg:flex' : 'flex'} flex-col min-h-0 w-full lg:w-auto`}>
         <ConversationList onSelect={selectConversation} selectedId={activeConversation?.id} />
       </div>
-      <div className={`${activeConversation ? 'flex' : 'hidden lg:flex'} flex-1 min-w-0`}>
+      <div className={`${activeConversation ? 'flex' : 'hidden lg:flex'} flex-1 min-w-0 min-h-0`}>
         <ConversationView onBack={closeConversation} />
       </div>
     </div>

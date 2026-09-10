@@ -412,7 +412,7 @@ export function AppProvider({ children }) {
         body: JSON.stringify({ categoryId, wordId }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) return { error: data?.error || "Boyitib bo'lmadi" };
+      if (!res.ok) return { error: data?.error || "Boyitib bo'lmadi", requestId: data?.requestId || null };
 
       setCategories((prev) =>
         prev.map((c) =>

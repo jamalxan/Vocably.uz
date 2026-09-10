@@ -7,6 +7,7 @@ import { speakText } from '@/lib/speech';
 import Badge from './ui/Badge';
 import ConfirmModal from './ConfirmModal';
 import UndoToast from './UndoToast';
+import AiErrorNotice from './ui/AiErrorNotice';
 
 const UNDO_MS = 5000;
 
@@ -24,6 +25,10 @@ export default function WordTable() {
   // yoki null (ishlamayotgan bo'lsa). Bittalab (ketma-ket) yuboriladi — bepul AI
   // provayderlarning daqiqalik so'rov chegarasiga tegib qolmaslik uchun (src/app/api/words/enrich).
   const [bulkEnrich, setBulkEnrich] = useState(null);
+  // TZ-vocably-v2.md §D1 — avval AI xatolari shu yerda jimgina yutilib ketardi (foydalanuvchi
+  // "ishlamayapti" deb o'ylardi, hech qanday izoh yo'q edi). Endi muvaffaqiyatsiz so'zlar
+  // ro'yxati saqlanadi va tugagach ko'rsatiladi, "faqat xatolarni qayta urinish" bilan.
+  const [bulkEnrichFailed, setBulkEnrichFailed] = useState([]); // [{ wordId, word, error, requestId }]
   const bulkCancelRef = useRef(false);
   const undoTimerRef = useRef(null);
 
@@ -39,6 +44,7 @@ export default function WordTable() {
   // Kategoriya almashganda tanlovni tozalaymiz.
   useEffect(() => {
     setSelectedIds([]);
+    setBulkEnrichFailed([]);
   }, [activeCategory._id]);
 
   useEffect(() => () => clearTimeout(undoTimerRef.current), []);
@@ -46,20 +52,26 @@ export default function WordTable() {
 
   const unenrichedWords = words.filter((w) => w._id && !w.enrichment?.aiEnrichedAt);
 
-  const startBulkEnrich = async () => {
-    const targets = unenrichedWords;
+  const runBulkEnrich = async (targets) => {
     if (targets.length === 0) return;
     const categoryId = activeCategory._id;
     bulkCancelRef.current = false;
+    const failed = [];
+    setBulkEnrichFailed([]);
     setBulkEnrich({ done: 0, total: targets.length });
     for (let i = 0; i < targets.length; i++) {
       if (bulkCancelRef.current) break;
       // eslint-disable-next-line no-await-in-loop
-      await enrichWord(categoryId, targets[i]._id);
+      const result = await enrichWord(categoryId, targets[i]._id);
+      if (result?.error) failed.push({ wordId: targets[i]._id, word: targets[i].word, error: result.error, requestId: result.requestId });
       setBulkEnrich({ done: i + 1, total: targets.length });
     }
     setBulkEnrich(null);
+    setBulkEnrichFailed(failed);
   };
+
+  const startBulkEnrich = () => runBulkEnrich(unenrichedWords);
+  const retryFailedEnrich = () => runBulkEnrich(words.filter((w) => bulkEnrichFailed.some((f) => f.wordId === w._id)));
 
   const stopBulkEnrich = () => {
     bulkCancelRef.current = true;
@@ -209,6 +221,14 @@ export default function WordTable() {
         )}
       </div>
 
+      {bulkEnrichFailed.length > 0 && (
+        <AiErrorNotice
+          error={`${bulkEnrichFailed.length} ta so'z boyitilmadi: ${bulkEnrichFailed[0].error}`}
+          onRetry={retryFailedEnrich}
+          className="mb-4"
+        />
+      )}
+
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between bg-accent-soft border border-accent/15 rounded-xl px-4 py-3 text-sm">
           <span className="font-semibold text-accent">{selectedIds.length} ta so'z tanlandi</span>
@@ -264,7 +284,7 @@ export default function WordTable() {
                   <td className="py-3.5 px-4 sm:px-6">
                     <Link
                       href={`/app/lugat/soz/${w._id}`}
-                      className="font-semibold text-primary hover:text-accent hover:underline inline-flex items-center gap-1.5"
+                      className="font-semibold text-ink hover:text-accent hover:underline inline-flex items-center gap-1.5"
                     >
                       {w.word}
                       {w.enrichment?.aiEnrichedAt && (

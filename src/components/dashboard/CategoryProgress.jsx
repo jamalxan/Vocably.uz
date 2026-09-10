@@ -13,7 +13,7 @@ export default function CategoryProgress({ byCategory, onOpenCategory }) {
             <div key={c.categoryId} className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-primary truncate">{c.name}</span>
+                  <span className="text-sm font-medium text-ink truncate">{c.name}</span>
                   <span className="text-xs text-muted flex-shrink-0 ml-2">
                     {c.mastered}/{c.total} · {c.masteryPct}%
                   </span>

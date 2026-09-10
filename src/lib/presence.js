@@ -40,6 +40,22 @@ export function isOnline(lastActiveAt, liveOnline) {
   return Date.now() - new Date(lastActiveAt).getTime() < ONLINE_THRESHOLD_MS;
 }
 
+// Suhbatlar ro'yxatidagi "oxirgi xabar qachon" vaqt yorlig'i uchun — TZ-vocably-v2.md
+// BUG-4 (chat UI audit): avval ConversationList o'zining qisqa, probelsiz formatini
+// ishlatardi ("3kun", "19s"), formatLastSeen esa to'liq so'zli format ("19 daqiqa
+// oldin") — ikkalasi bir ekranda ko'ringanda nomuvofiq edi. Endi ikkalasi ham shu
+// bitta formatga tayanadi.
+export function formatRelativeTime(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (diff < MINUTE_MS) return 'hozir';
+  if (diff < HOUR_MS) return `${Math.round(diff / MINUTE_MS)} daqiqa oldin`;
+  if (diff < DAY_MS) return `${Math.round(diff / HOUR_MS)} soat oldin`;
+  const days = Math.round(diff / DAY_MS);
+  if (days < 7) return `${days} kun oldin`;
+  return new Date(dateStr).toLocaleDateString('uz-UZ');
+}
+
 export function formatLastSeen(lastActiveAt, liveOnline) {
   if (isOnline(lastActiveAt, liveOnline)) return 'Onlayn';
   if (!lastActiveAt) return null;

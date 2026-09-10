@@ -12,13 +12,16 @@ export default function ProgressRing({ value, max, size = 128, strokeWidth = 10,
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#D6CFCC" strokeWidth={strokeWidth} />
+        {/* rgb(var(--color-x)) — globals.css'dagi tokenlarga to'g'ridan-to'g'ri ishora (BUG-005/§B2
+            hardcode-hex tuzatilishi). Bu CSS custom property, shuning uchun tema almashganda
+            hech qanday JS'siz avtomatik yangilanadi. */}
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgb(var(--color-border))" strokeWidth={strokeWidth} />
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={done ? '#4A1226' : '#B8394A'}
+          stroke={done ? 'rgb(var(--color-primary))' : 'rgb(var(--color-accent))'}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}

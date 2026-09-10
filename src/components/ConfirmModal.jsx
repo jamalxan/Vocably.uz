@@ -39,7 +39,7 @@ export default function ConfirmModal({ open, title, message, confirmLabel = "O'c
           <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
             <AlertTriangle size={18} />
           </div>
-          <h3 className="font-bold text-primary font-display">{title}</h3>
+          <h3 className="font-bold text-ink font-display">{title}</h3>
         </div>
         <p className="text-sm text-muted mb-5">{message}</p>
         <div className="flex gap-3">

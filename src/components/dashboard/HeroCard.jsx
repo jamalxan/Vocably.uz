@@ -13,7 +13,7 @@ export default function HeroCard({ due, newAvailable, reviews, goal, goalPct, on
     <div className="bg-surface rounded-2xl shadow-card border border-border p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-6">
       <ProgressRing value={reviews} max={goal}>
         <div className="text-center">
-          <p className="text-lg font-bold text-primary font-mono tabular-nums leading-none">
+          <p className="text-lg font-bold text-ink font-mono tabular-nums leading-none">
             {reviews}/{goal}
           </p>
           <p className="text-[10px] text-muted mt-1">bugungi maqsad</p>
@@ -25,7 +25,7 @@ export default function HeroCard({ due, newAvailable, reviews, goal, goalPct, on
 
         {allDone ? (
           <>
-            <p className="text-base font-semibold text-primary mb-3">Bugun hammasi bajarildi 🎉</p>
+            <p className="text-base font-semibold text-ink mb-3">Bugun hammasi bajarildi 🎉</p>
             <button
               onClick={onStart}
               className="px-4 py-2 bg-bg border border-border hover:bg-primary-soft text-muted rounded-lg text-sm font-medium transition-colors"
@@ -38,12 +38,12 @@ export default function HeroCard({ due, newAvailable, reviews, goal, goalPct, on
             <div className="space-y-1 mb-4 text-sm text-muted">
               {due > 0 && (
                 <p>
-                  <span className="font-bold text-primary">{due}</span> ta so'z takrorlashga tayyor
+                  <span className="font-bold text-ink">{due}</span> ta so'z takrorlashga tayyor
                 </p>
               )}
               {newAvailable > 0 && (
                 <p>
-                  <span className="font-bold text-primary">{newAvailable}</span> ta yangi so'z kutmoqda
+                  <span className="font-bold text-ink">{newAvailable}</span> ta yangi so'z kutmoqda
                 </p>
               )}
             </div>

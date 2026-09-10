@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ShieldOff, Loader2, Bell, BellOff, Wifi, WifiOff, ArrowDown } from 'lucide-react';
+import { ArrowLeft, ShieldOff, Bell, BellOff, Wifi, WifiOff, ArrowDown } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { formatLastSeen, isOnline, useLiveClock } from '@/lib/presence';
@@ -20,6 +20,8 @@ export default function ConversationView({ onBack }) {
     activeConversation,
     messages,
     loadingMessages,
+    messagesError,
+    retryLoadMessages,
     loadOlderMessages,
     blockUser,
     toggleMuteConversation,
@@ -149,7 +151,7 @@ export default function ConversationView({ onBack }) {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full min-w-0">
+    <div className="flex-1 flex flex-col h-full min-w-0 bg-surface">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
         <button onClick={onBack} aria-label="Suhbatlar ro'yxatiga qaytish" className="lg:hidden p-1 text-muted hover:text-ink">
           <ArrowLeft size={18} />
@@ -207,16 +209,11 @@ export default function ConversationView({ onBack }) {
         </button>
       </div>
 
-      <div className="relative flex-1 min-h-0">
+      {/* TZ-vocably-v2.md BUG-026 — dark rejimda xabarlar sohasi "ichkarida" hissini
+          berishi uchun bg-bg-sunken (§E2); avval alohida fon yo'q edi, sahifa foni bilan
+          bir xil ko'rinardi. */}
+      <div className="relative flex-1 min-h-0 bg-bg-sunken">
         <div ref={listRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 py-3 space-y-2.5">
-          {loadingMessages && (
-            <div className="flex justify-center py-4">
-              <Loader2 size={18} className="animate-spin text-muted" />
-            </div>
-          )}
-          {!loadingMessages && messages.length === 0 && (
-            <p className="text-center text-sm text-muted py-8">Hali xabar yo'q. Birinchi xabarni yozing!</p>
-          )}
           {messages.map((m) => (
             <MessageBubble
               key={m.id || m._id}
@@ -228,6 +225,34 @@ export default function ConversationView({ onBack }) {
           ))}
           <div ref={bottomRef} />
         </div>
+
+        {/* TZ-vocably-v2.md §E3/BUG-029 + BUG-4 (chat UI audit) — skeleton/xato/bo'sh
+            holatlar endi scroll konteyneri ICHIDA emas (avval tepada "osilib" qolardi,
+            ko'p xabar bo'lganda hech qachon ko'rinmasdi ham) — mutlaq joylashuv bilan
+            markazga olib chiqilgan, `messages` bo'sh bo'lganda (yoki hali yuklanayotganda/
+            xato bo'lganda) ko'rinadi. */}
+        {(loadingMessages || messagesError || messages.length === 0) && (
+          <div className="absolute inset-0 flex items-center justify-center px-6">
+            {loadingMessages && (
+              <div className="w-full max-w-xs space-y-2.5 animate-pulse" aria-label="Yuklanmoqda">
+                <div className="h-10 w-2/3 rounded-2xl bg-surface-2" />
+                <div className="h-10 w-1/2 rounded-2xl bg-accent-soft ml-auto" />
+                <div className="h-10 w-3/5 rounded-2xl bg-surface-2" />
+              </div>
+            )}
+            {!loadingMessages && messagesError && (
+              <div className="text-center">
+                <p className="text-sm text-danger font-medium mb-2">Xabarlarni yuklab bo'lmadi.</p>
+                <button onClick={retryLoadMessages} className="text-xs font-semibold text-accent hover:underline">
+                  Qayta yuklash
+                </button>
+              </div>
+            )}
+            {!loadingMessages && !messagesError && messages.length === 0 && (
+              <p className="text-center text-sm text-muted">Hali xabar yo'q. Birinchi xabarni yozing!</p>
+            )}
+          </div>
+        )}
 
         {/* Pastga tushish strelkasi — foydalanuvchi eski xabarlarni o'qish uchun
             yuqoriga sirg'algan bo'lsa chiqadi (pastda bo'lsa umuman ko'rinmaydi).

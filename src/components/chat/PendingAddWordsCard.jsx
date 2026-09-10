@@ -127,7 +127,7 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
           ) : (
             <div key={idx} className="border border-border rounded-lg px-3 py-2.5">
               <div className="flex items-baseline gap-2">
-                <p className="font-bold text-primary">{w.word || '—'}</p>
+                <p className="font-bold text-ink">{w.word || '—'}</p>
                 {w.pronunciation && <p className="text-xs text-muted italic">{w.pronunciation}</p>}
                 {selectMode && (
                   <div className="ml-auto flex gap-1 flex-shrink-0">

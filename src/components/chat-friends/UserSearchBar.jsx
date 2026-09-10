@@ -48,7 +48,9 @@ export default function UserSearchBar({ onOpen }) {
           type="text"
           value={q}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Do'stingizning username'ini kiriting"
+          // Panel torroq (masalan lg breakpoint atrofida) bo'lganda uzun matn
+          // kesilib "...kiriti" bo'lib chiqardi — qisqaroq, mazmuni bir xil matn.
+          placeholder="Username bo'yicha qidirish"
           className="w-full pl-9 pr-3 py-2 bg-bg rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
         />
         {searching && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted" />}

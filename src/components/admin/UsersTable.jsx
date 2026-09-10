@@ -83,7 +83,7 @@ export default function UsersTable({ token }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Telefon, ism yoki username qidirish..."
-          className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-primary placeholder:text-muted/70 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+          className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-ink placeholder:text-muted/70 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
         />
       </div>
 
@@ -110,11 +110,11 @@ export default function UsersTable({ token }) {
                   <tr key={u._id} className="border-t border-border hover:bg-bg/60 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-primary-soft border border-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-primary-soft border border-primary/10 flex items-center justify-center text-ink flex-shrink-0">
                           {u.role === 'admin' ? <Crown size={15} className="text-accent" /> : <UserIcon size={15} />}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-primary truncate">{u.name || '—'}</p>
+                          <p className="font-medium text-ink truncate">{u.name || '—'}</p>
                           <p className="text-xs text-muted">{u.phoneDisplay}</p>
                         </div>
                       </div>
@@ -127,7 +127,7 @@ export default function UsersTable({ token }) {
                         defaultValue={u.username || ''}
                         placeholder="username"
                         onChange={(e) => setUsernameDraft((d) => ({ ...d, [u._id]: e.target.value }))}
-                        className="w-32 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-primary outline-none focus:border-accent transition-colors"
+                        className="w-32 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-ink outline-none focus:border-accent transition-colors"
                       />
                     </td>
                     <td className="px-5 py-3.5">
@@ -168,7 +168,7 @@ export default function UsersTable({ token }) {
                           }
                           patchUser(u._id, { role: nextRole });
                         }}
-                        className="px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-primary outline-none focus:border-accent transition-colors"
+                        className="px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-ink outline-none focus:border-accent transition-colors"
                       >
                         <option value="user">user</option>
                         <option value="admin">admin</option>
@@ -181,7 +181,7 @@ export default function UsersTable({ token }) {
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
                           u.chatBanned
                             ? 'bg-accent/15 border border-accent/40 text-accent hover:bg-accent/25'
-                            : 'bg-bg border border-border text-muted hover:text-primary'
+                            : 'bg-bg border border-border text-muted hover:text-ink'
                         }`}
                       >
                         {u.chatBanned ? <Ban size={13} /> : <CheckCircle2 size={13} />}
@@ -199,7 +199,7 @@ export default function UsersTable({ token }) {
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="px-4 py-2 bg-bg border border-border rounded-lg text-xs font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                className="px-4 py-2 bg-bg border border-border rounded-lg text-xs font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
               >
                 {loadingMore && <Loader2 size={13} className="animate-spin" />} Yana yuklash
               </button>

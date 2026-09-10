@@ -42,6 +42,7 @@ module.exports = {
         surface: {
           DEFAULT: 'rgb(var(--color-surface) / <alpha-value>)',
           2: 'rgb(var(--color-surface-2) / <alpha-value>)',
+          3: 'rgb(var(--color-surface-3) / <alpha-value>)',
         },
         primary: {
           DEFAULT: 'rgb(var(--color-primary) / <alpha-value>)',
@@ -59,11 +60,20 @@ module.exports = {
         ink: {
           DEFAULT: 'rgb(var(--color-ink) / <alpha-value>)',
           muted: 'rgb(var(--color-ink-muted) / <alpha-value>)',
+          subtle: 'rgb(var(--color-text-subtle) / <alpha-value>)',
         },
         muted: 'rgb(var(--color-muted) / <alpha-value>)',
-        border: 'rgb(var(--color-border) / <alpha-value>)',
+        border: {
+          DEFAULT: 'rgb(var(--color-border) / <alpha-value>)',
+          strong: 'rgb(var(--color-border-strong) / <alpha-value>)',
+        },
         'on-accent': 'rgb(var(--color-on-accent) / <alpha-value>)',
         'on-primary': 'rgb(var(--color-on-primary) / <alpha-value>)',
+        // TZ-vocably-v2.md §B2 nomlanishi: brend rangidagi sarlavha/katta raqam uchun
+        // mustaqil token (text-ink'dan farqli — dark-mode'da atayin aksent tusiga
+        // inverts bo'ladi, BUG-001'ning asl tuzatilishi).
+        'brand-text': 'rgb(var(--color-brand-text) / <alpha-value>)',
+        'on-brand': 'rgb(var(--color-on-brand) / <alpha-value>)',
         success: {
           DEFAULT: 'rgb(var(--color-success) / <alpha-value>)',
           soft: 'rgb(var(--color-success-soft) / <alpha-value>)',

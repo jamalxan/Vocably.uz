@@ -15,7 +15,7 @@ export default function LeechList({ leeches, onPractice }) {
       <ul className="space-y-1.5 mb-4">
         {leeches.map((w) => (
           <li key={w.wordId} className="flex items-center justify-between text-sm py-1">
-            <span className="font-medium text-primary truncate">{w.word}</span>
+            <span className="font-medium text-ink truncate">{w.word}</span>
             <span className="text-xs text-accent font-mono tabular-nums flex-shrink-0 ml-3">{w.lapses} xato</span>
           </li>
         ))}

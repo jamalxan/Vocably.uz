@@ -1,7 +1,8 @@
 import { connectToDatabase } from '@/lib/db';
 import { WritingAttempt } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
-import { generateJson, friendlyAiError } from '@/lib/aiJson';
+import { generateJson } from '@/lib/aiJson';
+import { aiErrorResponse, checkAndIncrementAiRateLimit, rateLimitMessage } from '@/lib/ai/client';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -46,8 +47,20 @@ const RESPONSE_SCHEMA = {
   ],
 };
 
-function buildPrompt(task, prompt, text) {
-  return `Siz IELTS Writing baholovchisiz. Task ${task} topshirig'i: "${prompt}"
+// TZ-vocably-v2.md §C3 F-W1 — Task 1 uchun baholovchi AI'ga chart'ning STRUKTURALI
+// ma'lumotini ham (sarlavha + qator/ustun qiymatlari) beramiz, aks holda Task
+// Achievement bahosi faqat prompt matniga qarab, grafikning haqiqiy mazmunidan
+// bexabar chiqarilardi.
+function summarizeChart(chart) {
+  if (!chart) return '';
+  const rows = (chart.categories || [])
+    .map((cat, i) => `${cat}: ${(chart.series || []).map((s) => `${s.name}=${s.data?.[i]}`).join(', ')}`)
+    .join('\n');
+  return `\n\nGrafik ma'lumoti ("${chart.title}", turi: ${chart.chartType}):\n${rows}`;
+}
+
+function buildPrompt(task, prompt, text, chart) {
+  return `Siz IELTS Writing baholovchisiz. Task ${task} topshirig'i: "${prompt}"${task === 1 ? summarizeChart(chart) : ''}
 
 Foydalanuvchi javobi:
 """
@@ -68,16 +81,21 @@ export async function POST(req) {
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
-    const { task, prompt, text } = await req.json();
+    const { task, prompt, text, chart, chartSvg } = await req.json();
     if (![1, 2].includes(task) || !prompt || !text || text.trim().length < 20) {
       return NextResponse.json({ error: "Matn juda qisqa yoki noto'g'ri format" }, { status: 400 });
     }
 
+    const rl = await checkAndIncrementAiRateLimit(userId);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: rateLimitMessage(rl.retryAfterMinutes) }, { status: 429 });
+    }
+
     let data;
     try {
-      data = await generateJson(buildPrompt(task, prompt, text), RESPONSE_SCHEMA);
+      data = await generateJson(buildPrompt(task, prompt, text, chart), RESPONSE_SCHEMA);
     } catch (aiErr) {
-      return NextResponse.json({ error: friendlyAiError(aiErr) }, { status: 502 });
+      return aiErrorResponse(aiErr, { endpoint: 'writing/submit', userId });
     }
 
     await connectToDatabase();
@@ -85,6 +103,8 @@ export async function POST(req) {
       userId,
       task,
       prompt,
+      chart: task === 1 ? chart || null : null,
+      chartSvg: task === 1 ? chartSvg || '' : '',
       text,
       wordCount: text.trim().split(/\s+/).length,
       feedback: {
@@ -101,7 +121,7 @@ export async function POST(req) {
       },
     });
 
-    return NextResponse.json({ id: attempt._id, feedback: attempt.feedback, wordCount: attempt.wordCount });
+    return NextResponse.json({ id: attempt._id, feedback: attempt.feedback, wordCount: attempt.wordCount, chartSvg: attempt.chartSvg });
   } catch (err) {
     return serverError(err, 'writing/submit');
   }

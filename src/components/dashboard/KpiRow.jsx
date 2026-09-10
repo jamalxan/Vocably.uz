@@ -17,7 +17,7 @@ function KpiCard({ label, value, sub, delta }) {
     <div className="bg-surface rounded-xl border border-border p-4">
       <p className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">{label}</p>
       <div className="flex items-baseline gap-2 flex-wrap">
-        <p className="text-2xl font-bold text-primary font-mono tabular-nums leading-none">{value}</p>
+        <p className="text-2xl font-bold text-ink font-mono tabular-nums leading-none">{value}</p>
         <DeltaBadge pct={delta} />
       </div>
       {sub && <p className="text-xs text-muted mt-1">{sub}</p>}

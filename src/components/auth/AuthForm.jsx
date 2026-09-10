@@ -271,7 +271,7 @@ export default function AuthForm({ initialMode = 'login' }) {
             </div>
           )}
           {info && !error && (
-            <div className="bg-primary-soft text-primary border border-primary/15 p-3 rounded-xl text-sm mb-4 flex items-center gap-2">
+            <div className="bg-primary-soft text-ink border border-primary/15 p-3 rounded-xl text-sm mb-4 flex items-center gap-2">
               <CheckCircle2 size={15} className="flex-shrink-0" /> {info}
             </div>
           )}
@@ -365,7 +365,7 @@ export default function AuthForm({ initialMode = 'login' }) {
           {(mode === 'register' || mode === 'forgot') && step === 'telegram' && (
             <div className="flex flex-col items-center text-center py-2">
               <div className="w-16 h-16 rounded-2xl bg-primary-soft border border-primary/15 flex items-center justify-center mb-4">
-                <Send size={26} className="text-primary" />
+                <Send size={26} className="text-ink" />
               </div>
               <p className="text-sm text-ink font-medium mb-1.5">Telegram botga o'ting</p>
               <p className="text-xs text-muted mb-6 leading-relaxed">
@@ -430,7 +430,7 @@ export default function AuthForm({ initialMode = 'login' }) {
             <form onSubmit={handleSetNewPassword} className="space-y-4">
               <div className="flex flex-col items-center text-center mb-2">
                 <div className="w-14 h-14 rounded-2xl bg-primary-soft border border-primary/15 flex items-center justify-center mb-3">
-                  <KeyRound size={24} className="text-primary" />
+                  <KeyRound size={24} className="text-ink" />
                 </div>
                 <p className="text-xs text-muted">Raqam tasdiqlandi. Endi yangi parol o'rnating</p>
               </div>

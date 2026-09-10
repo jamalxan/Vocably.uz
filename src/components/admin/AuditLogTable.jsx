@@ -46,7 +46,7 @@ export default function AuditLogTable({ token }) {
       {logs.map((l) => (
         <div key={l._id} className="px-5 py-3.5">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-primary flex items-center gap-2">
+            <span className="text-sm font-medium text-ink flex items-center gap-2">
               <ScrollText size={13} className="text-accent flex-shrink-0" />
               @{l.actor?.username || '?'} <span className="text-muted font-normal">— {l.action}</span>
             </span>
@@ -68,7 +68,7 @@ export default function AuditLogTable({ token }) {
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="px-4 py-2 bg-bg border border-border rounded-lg text-xs font-medium text-muted hover:text-primary hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+            className="px-4 py-2 bg-bg border border-border rounded-lg text-xs font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
           >
             {loadingMore && <Loader2 size={13} className="animate-spin" />} Yana yuklash
           </button>

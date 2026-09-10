@@ -117,7 +117,7 @@ export default function NotificationBell({ token, onOpenFriends }) {
       {open && (
         <div className="absolute right-0 top-full mt-2 z-40 w-80 max-w-[90vw] bg-surface border border-border rounded-xl shadow-premium overflow-hidden">
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border">
-            <p className="text-sm font-bold text-primary">Bildirishnomalar</p>
+            <p className="text-sm font-bold text-ink">Bildirishnomalar</p>
             {unreadCount > 0 && (
               <button onClick={markAllRead} className="text-[11px] font-semibold text-accent hover:text-accent-hover">
                 Hammasini o'qilgan qilish
@@ -152,7 +152,7 @@ export default function NotificationBell({ token, onOpenFriends }) {
                   {n.type === 'chat_message' ? <MessageCircle size={13} /> : <Megaphone size={13} />}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className={`text-xs truncate ${n.read ? 'text-primary/80' : 'text-primary font-semibold'}`}>
+                  <p className={`text-xs truncate ${n.read ? 'text-ink/80' : 'text-ink font-semibold'}`}>
                     {n.title}
                   </p>
                   {n.body && <p className="text-[11px] text-muted truncate mt-0.5">{n.body}</p>}

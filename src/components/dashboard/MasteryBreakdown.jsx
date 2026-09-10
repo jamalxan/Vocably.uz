@@ -38,7 +38,7 @@ export default function MasteryBreakdown({ mastery }) {
               <div key={s.key} className="flex items-center gap-2 px-1.5 py-1 -mx-1.5">
                 <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.color}`} />
                 <span className="text-xs text-muted flex-1 min-w-0 truncate">{s.label}</span>
-                <span className="text-xs font-semibold text-primary font-mono tabular-nums">{mastery[s.key] || 0}</span>
+                <span className="text-xs font-semibold text-ink font-mono tabular-nums">{mastery[s.key] || 0}</span>
               </div>
             ))}
           </div>

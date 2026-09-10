@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import SplitPane from '@/components/exam/SplitPane';
 import HighlightableText from '@/components/exam/HighlightableText';
+import AiErrorNotice from '@/components/ui/AiErrorNotice';
 
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 const SPEEDS = [
@@ -53,12 +54,12 @@ export default function TinglashPage() {
         body: JSON.stringify({ cefr, topic }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Yaratib bo'lmadi");
+      if (!res.ok) throw Object.assign(new Error(data?.error || "Yaratib bo'lmadi"), { requestId: data?.requestId });
       setSession(data);
       setAnswers(Array(data.questions.length).fill(null));
       setPlayCount(0);
     } catch (err) {
-      setError(err.message);
+      setError({ message: err.message, requestId: err.requestId });
     } finally {
       setLoading(false);
     }
@@ -80,10 +81,10 @@ export default function TinglashPage() {
         body: JSON.stringify({ answers, highlights }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Tekshirib bo'lmadi");
+      if (!res.ok) throw Object.assign(new Error(data?.error || "Tekshirib bo'lmadi"), { requestId: data?.requestId });
       setResult(data);
     } catch (err) {
-      setError(err.message);
+      setError({ message: err.message, requestId: err.requestId });
     } finally {
       setSubmitting(false);
     }
@@ -130,7 +131,7 @@ export default function TinglashPage() {
             placeholder="Masalan: sayohat e'loni..."
             className="w-full px-3 py-2.5 bg-bg text-ink border border-border rounded-lg text-sm outline-none focus:border-accent mb-4"
           />
-          {error && <p className="text-xs text-danger font-medium mb-3">{error}</p>}
+          <AiErrorNotice error={error} onRetry={generate} className="mb-3" />
           <Button onClick={generate} disabled={loading} className="w-full">
             {loading ? <Loader2 size={16} className="animate-spin" /> : null}
             {loading ? 'Tayyorlanmoqda...' : 'Boshlash'}
@@ -206,7 +207,7 @@ export default function TinglashPage() {
               </div>
             ))}
 
-            {error && <p className="text-xs text-danger font-medium">{error}</p>}
+            <AiErrorNotice error={error} onRetry={submit} />
 
             {!result ? (
               <Button onClick={submit} disabled={submitting} className="w-full">

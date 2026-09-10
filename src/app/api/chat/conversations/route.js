@@ -59,13 +59,20 @@ export async function GET(req) {
       // Men shu boshqa foydalanuvchiga qo'ygan taxallus (faqat menda ko'rinadi) —
       // src/app/api/chat/conversations/[id]/nickname PATCH orqali o'rnatiladi.
       const nickname = c.nicknames?.[String(user._id)] || '';
+      // BUG-024: shu userning eng oxirgi "tozalash" vaqtidan keyin haqiqatan yangi
+      // xabar kelmagan bo'lsa (lastMessageAt hali ham tozalashdan oldingi/teng),
+      // umumiy preview'ni ko'rsatmaymiz — aks holda ro'yxatda eski xabar ko'rinib,
+      // suhbat ochilganda "Hali xabar yo'q" chiqib chalkashlik tug'dirardi (bu
+      // userning barcha eski xabarlari allaqachon deletedFor orqali yashirilgan).
+      const clearedAt = c.clearedAt?.[String(user._id)] || null;
+      const clearedAfterLastMessage = clearedAt && new Date(clearedAt) >= new Date(c.lastMessageAt);
       return {
         id: c._id,
         otherUser: other
           ? { id: other._id, username: other.username, name: other.name || '', lastActiveAt: other.lastActiveAt || null, nickname }
           : null,
-        lastMessageAt: c.lastMessageAt,
-        lastMessagePreview: c.lastMessagePreview || '',
+        lastMessageAt: clearedAfterLastMessage ? null : c.lastMessageAt,
+        lastMessagePreview: clearedAfterLastMessage ? '' : c.lastMessagePreview || '',
         muted: (c.mutedBy || []).some((id) => String(id) === String(user._id)),
         notifyOnline: (c.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
         unreadCount: unreadById.get(String(c._id)) || 0,
@@ -128,6 +135,16 @@ export async function POST(req) {
       await Conversation.updateOne({ _id: convo._id }, { $pull: { hiddenFor: user._id } });
     }
 
+    // BUG-024 — GET /conversations'dagi bilan bir xil mantiq (izoh o'sha yerda):
+    // shu userning tozalash vaqtidan keyin haqiqiy yangi xabar bo'lmasa, umumiy
+    // preview'ni ko'rsatmaymiz. `convo` yuqorida yo `.create()` (mongoose hujjat,
+    // Map'ning o'zi) yo `.lean()` (oddiy obyekt) bo'lishi mumkin — ikkalasini ham
+    // qo'llab-quvvatlaymiz (nicknames'dagi mavjud naqshga o'xshab).
+    const clearedAtRaw = convo.clearedAt?.get
+      ? convo.clearedAt.get(String(user._id))
+      : convo.clearedAt?.[String(user._id)];
+    const clearedAfterLastMessage = clearedAtRaw && new Date(clearedAtRaw) >= new Date(convo.lastMessageAt);
+
     return NextResponse.json({
       conversation: {
         id: convo._id,
@@ -138,8 +155,8 @@ export async function POST(req) {
           lastActiveAt: target.lastActiveAt || null,
           nickname: convo.nicknames?.get ? convo.nicknames.get(String(user._id)) || '' : convo.nicknames?.[String(user._id)] || '',
         },
-        lastMessageAt: convo.lastMessageAt,
-        lastMessagePreview: convo.lastMessagePreview || '',
+        lastMessageAt: clearedAfterLastMessage ? null : convo.lastMessageAt,
+        lastMessagePreview: clearedAfterLastMessage ? '' : convo.lastMessagePreview || '',
         muted: (convo.mutedBy || []).some((id) => String(id) === String(user._id)),
         notifyOnline: (convo.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
       },

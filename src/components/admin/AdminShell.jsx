@@ -41,7 +41,7 @@ export default function AdminShell({ children }) {
   const pageTitle = NAV.find((n) => (n.exact ? pathname === n.href : pathname.startsWith(n.href)))?.label || 'Admin';
 
   return (
-    <div className="flex min-h-screen bg-bg text-primary font-body relative">
+    <div className="flex min-h-screen bg-bg text-ink font-body relative">
       {mobileOpen && (
         <div onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-primary/40 backdrop-blur-sm z-40 md:hidden" />
       )}
@@ -98,11 +98,11 @@ export default function AdminShell({ children }) {
           <button
             onClick={() => setMobileOpen(true)}
             aria-label="Menyuni ochish"
-            className="md:hidden p-2 -ml-1 text-muted hover:text-primary rounded-lg"
+            className="md:hidden p-2 -ml-1 text-muted hover:text-ink rounded-lg"
           >
             <Menu size={20} />
           </button>
-          <h1 className="font-luxury text-2xl sm:text-3xl text-primary tracking-wide">{pageTitle}</h1>
+          <h1 className="font-luxury text-2xl sm:text-3xl text-ink tracking-wide">{pageTitle}</h1>
         </header>
 
         <main className="px-5 sm:px-8 py-7 max-w-7xl">{children}</main>

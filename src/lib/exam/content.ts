@@ -56,7 +56,20 @@ type Mock = {
     // client shuni ishlatadi; bo'lmasa eski "audio fayl yo'q" ogohlantirishi qoladi.
     listening: { audioLabel: string; audioUrl: string; transcript?: string; questions: Question[] };
     reading: { passageTitle: string; passage: string; questions: Question[] };
-    writing: { task1: string; task2: string };
+    // `chart` — TZ-vocably-v2.md §C3 F-W1 (BUG-014): Task 1 matni "The chart below
+    // shows..." deydi, lekin grafikning o'zi yo'q edi. Endi shu struktura ma'lumoti
+    // src/lib/chartSvg.js#renderChartSvg orqali chizib ko'rsatiladi (mock/[id]/page.jsx).
+    writing: {
+      task1: string;
+      task2: string;
+      chart?: {
+        chartType: 'bar' | 'line' | 'pie' | 'table';
+        title: string;
+        unit?: string;
+        categories: string[];
+        series: { name: string; data: number[] }[];
+      };
+    };
     speaking: { parts: { id: string; label: string; question: string }[] };
   };
 };
@@ -71,6 +84,12 @@ export const MOCKS: Record<string, Mock> = {
       listening: {
         audioLabel: 'Section 1 — A conversation about a community center membership',
         audioUrl: '/audio/full-8/listening.mp3',
+        // BUG-012 interim tuzatish — bu mock'da avval `transcript` umuman yo'q edi
+        // (faqat mavjud bo'lmagan `audioUrl`), shuning uchun Play tugmasi hech narsa
+        // qilmasdi. Endi brauzer TTS shu matnni o'qiydi — barcha savollarga javob
+        // matnda mavjud.
+        transcript:
+          "Welcome to the Riverside Community Center. Let me tell you about our opening hours and membership options. The center is open from seven in the morning until nine p.m. on weekdays, and from nine a.m. until six p.m. on weekends. For membership, we offer a few different plans. The standard annual membership fee for adults is sixty dollars, which gives you full access to the gym, the library, and most classes. Please note that our swimming pool is closed every Monday for routine maintenance and cleaning, but it's open every other day of the week. As a member, you can borrow up to five items from our library at any one time, including books, magazines, and DVDs. If you have any other questions about the facilities, feel free to ask at the front desk.",
         questions: [
           { id: 'l1', type: 'mcq', text: 'The community center is open until ______ on weekdays.', options: ['8 pm', '9 pm', '10 pm', '11 pm'], correct: 1 },
           { id: 'l2', type: 'mcq', text: 'The annual membership fee for adults is ______.', options: ['$40', '$50', '$60', '$75'], correct: 2 },
@@ -91,8 +110,17 @@ export const MOCKS: Record<string, Mock> = {
         ],
       },
       writing: {
-        task1: 'The chart below shows the number of students who took the IELTS mock exam at EVEREST centers over six months. Summarise the information by selecting and reporting the main features, and make comparisons where relevant. Write at least 150 words.',
+        // BUG-014 parentetik eslatmasi: asl matnda "EVEREST centers" (boshqa loyihaning
+        // nomi, portlash paytida qolib ketgan) bor edi — olib tashlandi.
+        task1: 'The chart below shows the number of students who took an IELTS mock exam over a six-month period. Summarise the information by selecting and reporting the main features, and make comparisons where relevant. Write at least 150 words.',
         task2: 'Some people believe that practising under exam conditions is the best way to prepare for a test, while others think that relaxed, untimed study is more effective. Discuss both views and give your own opinion. Write at least 250 words.',
+        chart: {
+          chartType: 'bar',
+          title: 'Number of students taking the mock exam (Jan–Jun)',
+          unit: 'students',
+          categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+          series: [{ name: 'Students', data: [120, 145, 160, 150, 190, 210] }],
+        },
       },
       speaking: {
         parts: [
@@ -440,10 +468,23 @@ export const MOCKS: Record<string, Mock> = {
         ],
       },
       writing: {
+        // BUG-014: son jadvali endi matn ichiga qotib qolgan holda emas, alohida
+        // `chart` (pastga q.) sifatida — vizual grafik shu ma'lumotdan chiziladi.
         task1:
-          'You should spend about 20 minutes on this task.\n\nThe chart below shows the results of a survey about people\'s coffee and tea buying and drinking habits in five Australian cities. Summarise the information by selecting and reporting the main features, and make comparisons where relevant. Write at least 150 words.\n\nCoffee and tea buying and drinking habits in five cities in Australia (% of city residents in the last 4 weeks):\n\nCity | Bought fresh coffee | Bought instant coffee | Went to a café for coffee or tea\nSydney | 44% | 46% | 61%\nMelbourne | 42% | 48% | 64%\nBrisbane | 34% | 53% | 55%\nAdelaide | 34% | 50% | 49%\nHobart | 38% | 54% | 62%',
+          'You should spend about 20 minutes on this task.\n\nThe chart below shows the results of a survey about people\'s coffee and tea buying and drinking habits in five Australian cities. Summarise the information by selecting and reporting the main features, and make comparisons where relevant. Write at least 150 words.',
         task2:
           'You should spend about 40 minutes on this task.\n\nWrite about the following topic:\n\nIn some countries, owning a home rather than renting one is very important for people.\n\nWhy might this be the case?\n\nDo you think this is a positive or negative situation?\n\nGive reasons for your answer and include any relevant examples from your own knowledge or experience.\n\nWrite at least 250 words.',
+        chart: {
+          chartType: 'bar',
+          title: "Coffee and tea buying/drinking habits in five Australian cities (last 4 weeks)",
+          unit: '%',
+          categories: ['Sydney', 'Melbourne', 'Brisbane', 'Adelaide', 'Hobart'],
+          series: [
+            { name: 'Bought fresh coffee', data: [44, 42, 34, 34, 38] },
+            { name: 'Bought instant coffee', data: [46, 48, 53, 50, 54] },
+            { name: 'Went to a café', data: [61, 64, 55, 49, 62] },
+          ],
+        },
       },
       speaking: {
         parts: [
