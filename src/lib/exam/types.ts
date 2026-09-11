@@ -107,13 +107,36 @@ export interface WritingTask {
 }
 
 // ============================================================================
-// §3 (Faza 3 uchun joy tutuvchi) — Speaking
+// §3 / §19 Faza 4 item 23 — Speaking
 // ============================================================================
 
 export interface SpeakingSection {
+  // Butun bo'lim uchun server taymeri (attempts/route.js'dagi umumiy
+  // `durationSec * 1000` naqshi — Reading/Listening/Writing bilan bir xil).
+  // Haqiqiy IELTS 11-14 daq (§C0) — har alohida javob o'zi cheklanmaydi
+  // (Part1/3 — GapInput'dagi so'z limiti kabi, faqat yo'naltiruvchi; Part2
+  // esa `speakSec`gacha), lekin butun bo'lim shu umumiy byudjetdan
+  // oshmasligi kerak.
+  durationSec: number;
   part1Questions: string[];
   part2CueCard: { topic: string; bulletPoints: string[]; prepSec: number; speakSec: number };
   part3Questions: string[];
+}
+
+// Attempt tarafida bitta yozib olingan javobga havola — `part`+`questionIndex`
+// juftligi shu javob QAYSI savolga tegishli ekanini bildiradi (Part 2'da
+// har doim questionIndex=0, chunki bitta cue card). `transcript` yozuv
+// yuklangan ZAHOTI (Whisper orqali, §13 real-time emas) to'ldiriladi — AI
+// baholash (gradeSpeakingAttempt) qayta transkripsiya qilmaydi, faqat mavjud
+// matnlarni yig'ib bitta so'rovda baholaydi (audio fayllarni ketma-ket qayta
+// yuklab-transkripsiya qilish sekinroq va serverless timeout xavfini oshiradi).
+export interface SpeakingRecording {
+  part: 1 | 2 | 3;
+  questionIndex: number; // part1Questions/part3Questions'dagi index, Part 2'da 0
+  audioFileId: string; // GridFS (audioStorage.ts, Listening bilan bir xil bucket)
+  transcript: string;
+  durationSec: number;
+  recordedAt: string; // ISO
 }
 
 // ============================================================================
@@ -258,6 +281,12 @@ export interface Attempt {
   // Reading — matn belgilash + eslatma (§6.3, faqat Reading)
   highlights: Highlight[];
 
+  // Speaking — yozib olingan javoblar (§19 Faza 4 item 23). `essays`dan farqli
+  // ravishda ro'yxat (array), chunki bitta bo'lim ichida bir nechta alohida
+  // javob bor (Part 1: bir necha savol, Part 2: bitta, Part 3: bir necha) —
+  // sobit `task1`/`task2` kalitlar Writing'ga xos, Speaking'da mos kelmaydi.
+  speaking: { recordings: SpeakingRecording[] };
+
   // Integrity
   events: { type: string; at: string; meta?: Record<string, unknown> }[];
   tabSwitchCount: number;
@@ -279,7 +308,7 @@ export interface AttemptResult {
     task2: WritingScore;
     band: number; // (task1 + task2*2) / 3, 0.5 ga yaxlitlanadi
   };
-  speaking?: { band: number; criteria: Record<string, number> };
+  speaking?: SpeakingScore;
   overall?: number;
   timeSpentSec: number;
   // `type` — TZ §19 Faza 3 item 17 ("natija analitikasi... zaif savol
@@ -306,6 +335,25 @@ export interface WritingScore {
   };
   corrections: { original: string; suggested: string; reason: string }[];
   improvedVersion?: string;
+}
+
+// Eski (pre-exam-engine) `/api/speaking/submit`dagi javob shakli bilan ATAYLAB
+// bir xil (src/app/api/speaking/submit/route.js) — o'sha yerdagi Whisper+LLM
+// pipeline shu yerga ham qayta ishlatiladi (speakingGrader.ts), faqat endi
+// bitta javob emas, butun Speaking bo'lim (3 part) uchun BITTA umumiy band —
+// haqiqiy IELTS'da ham Speaking alohida-alohida emas, yaxlit baholanadi.
+export interface SpeakingScore {
+  band: number;
+  fluencyCoherence: { band: number; note: string };
+  lexicalResource: { band: number; note: string };
+  grammaticalRange: { band: number; note: string };
+  // Fonema darajasidagi talaffuz bahosi YO'Q (Azure Pronunciation Assessment
+  // ulanmagan, §20.1'dagi "bepul tarif" zaxirasi) — shuning uchun ball emas,
+  // faqat matn asosidagi kuzatuv.
+  pronunciationNote: string;
+  strengths: string[];
+  corrections: { original: string; suggestion: string }[];
+  nextStepsUz: string[];
 }
 
 // ============================================================================
@@ -385,6 +433,14 @@ export interface AttemptHistoryEntry {
   writing: number | null;
 }
 
+export interface ReviewSpeakingRecording {
+  part: 1 | 2 | 3;
+  questionIndex: number;
+  promptText: string; // part1Questions[i] / part2CueCard.topic / part3Questions[i]
+  audioFileId: string;
+  transcript: string;
+}
+
 export interface AttemptReviewDetail {
   overall?: number;
   reading?: { band: number; raw: number; passages: ReviewPassage[] };
@@ -395,4 +451,5 @@ export interface AttemptReviewDetail {
     band: number;
     essays: { task1: string; task2: string };
   };
+  speaking?: SpeakingScore & { recordings: ReviewSpeakingRecording[] };
 }

@@ -119,6 +119,31 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
     }
   }
 
+  if (sections.speaking) {
+    const s = sections.speaking;
+    if (!s.durationSec || s.durationSec <= 0) {
+      issues.push({ severity: 'error', path: 'speaking', message: "'durationSec' 0dan katta bo'lishi kerak" });
+    }
+    if (!s.part1Questions || s.part1Questions.length === 0) {
+      issues.push({ severity: 'error', path: 'speaking.part1Questions', message: 'Kamida 1 ta Part 1 savoli kerak' });
+    }
+    if (!s.part2CueCard?.topic?.trim()) {
+      issues.push({ severity: 'error', path: 'speaking.part2CueCard', message: "Cue card mavzusi ('topic') bo'sh" });
+    }
+    if (!s.part2CueCard?.bulletPoints || s.part2CueCard.bulletPoints.length === 0) {
+      issues.push({ severity: 'warning', path: 'speaking.part2CueCard', message: "'bulletPoints' bo'sh — foydalanuvchiga tayyorgarlik uchun yo'l-yo'riq bo'lmaydi" });
+    }
+    if (!s.part2CueCard?.prepSec || s.part2CueCard.prepSec <= 0) {
+      issues.push({ severity: 'error', path: 'speaking.part2CueCard', message: "'prepSec' 0dan katta bo'lishi kerak" });
+    }
+    if (!s.part2CueCard?.speakSec || s.part2CueCard.speakSec <= 0) {
+      issues.push({ severity: 'error', path: 'speaking.part2CueCard', message: "'speakSec' 0dan katta bo'lishi kerak" });
+    }
+    if (!s.part3Questions || s.part3Questions.length === 0) {
+      issues.push({ severity: 'error', path: 'speaking.part3Questions', message: 'Kamida 1 ta Part 3 savoli kerak' });
+    }
+  }
+
   return issues;
 }
 

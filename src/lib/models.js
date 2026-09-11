@@ -752,6 +752,23 @@ const ExamAttemptSchema = new mongoose.Schema(
     ],
     tabSwitchCount: { type: Number, default: 0 },
 
+    // TZ §19 Faza 4 item 23 — Speaking: yozib olingan javoblar ro'yxati.
+    // `essays` kabi sobit task1/task2 kalitlar EMAS (Speaking'da bir nechta
+    // alohida javob bor) — part+questionIndex juftligi bo'yicha upsert
+    // qilinadi (speaking-recording route.js).
+    speaking: {
+      recordings: [
+        {
+          part: { type: Number, enum: [1, 2, 3], required: true },
+          questionIndex: { type: Number, required: true },
+          audioFileId: { type: String, required: true },
+          transcript: { type: String, default: '' },
+          durationSec: { type: Number, default: 0 },
+          recordedAt: { type: Date, default: Date.now },
+        },
+      ],
+    },
+
     // TZ §6.3 / §19 Faza 3 item 19 — Reading passage'da matn belgilash +
     // eslatma. Faqat Reading (§6 butunlay Reading UI'siga bag'ishlangan —
     // Listening'da imtihon paytida transkript ko'rsatilmaydi, belgilaydigan
