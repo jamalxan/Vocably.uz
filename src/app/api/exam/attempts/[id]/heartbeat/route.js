@@ -10,6 +10,12 @@ import { NextResponse } from 'next/server';
 // klient farqni ≥3s bo'lsa tuzatadi") va Listening audio pozitsiyasini
 // (refresh'dan keyin qayta tinglab bo'lmasligi uchun, TZ §7.1) saqlash ishini
 // birlashtiradi — ikkalasi ham "hayotdaligini bildirish" signali bilan birga keladi.
+//
+// `partIndex`/`partEnded` — TZ §7.1 "playedParts[] ga qo'shilgan part qayta
+// tinglanmaydi" qoidasini SERVERDA saqlash uchun (jadval §4 body'sida aniq
+// sanalmagan, lekin `Attempt.audio.playedParts` maydoni shu maqsadda,
+// TZ §3.7 — shu yerdan boshqa yozadigan joy yo'q). `partEnded: true` kelsa
+// `partIndex` `playedParts`ga qo'shiladi va keyingi partga o'tkaziladi.
 export async function POST(req, { params }) {
   try {
     const userId = getUserIdFromRequest(req);
@@ -19,7 +25,7 @@ export async function POST(req, { params }) {
     let attempt = await getOwnedAttempt(params.id, userId);
 
     if (attempt.status === 'in_progress') {
-      const { audioPositionSec, currentQuestion } = await req.json().catch(() => ({}));
+      const { audioPositionSec, currentQuestion, partIndex, partEnded, volume } = await req.json().catch(() => ({}));
       let dirty = false;
       if (typeof audioPositionSec === 'number') {
         attempt.audio.positionSec = audioPositionSec;
@@ -27,6 +33,18 @@ export async function POST(req, { params }) {
       }
       if (typeof currentQuestion === 'number') {
         attempt.lastQuestion = currentQuestion;
+        dirty = true;
+      }
+      if (typeof partIndex === 'number') {
+        attempt.audio.partIndex = partIndex;
+        dirty = true;
+      }
+      if (typeof volume === 'number') {
+        attempt.audio.volume = volume;
+        dirty = true;
+      }
+      if (partEnded && typeof partIndex === 'number' && !attempt.audio.playedParts.includes(partIndex)) {
+        attempt.audio.playedParts.push(partIndex);
         dirty = true;
       }
       if (dirty) await attempt.save();

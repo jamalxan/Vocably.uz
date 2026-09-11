@@ -21,6 +21,13 @@ export interface AttemptEssaysResponse {
   task2?: { text: string; wordCount: number; updatedAt?: string };
 }
 
+export interface AttemptAudioResponse {
+  partIndex: number;
+  positionSec: number;
+  playedParts: number[];
+  volume: number;
+}
+
 export interface AttemptStateResponse {
   serverNow: string;
   endsAt: string;
@@ -36,6 +43,7 @@ export interface AttemptStateResponse {
     flagged: number[];
     lastQuestion: number;
     essays: AttemptEssaysResponse;
+    audio: AttemptAudioResponse;
     result: AttemptResult | null;
   };
   test: SanitizedTest;
@@ -58,7 +66,7 @@ export async function fetchAttempt(attemptId: string): Promise<AttemptStateRespo
 
 export async function sendHeartbeat(
   attemptId: string,
-  body: { audioPositionSec?: number; currentQuestion?: number }
+  body: { audioPositionSec?: number; currentQuestion?: number; partIndex?: number; partEnded?: boolean; volume?: number }
 ): Promise<{ remainingSec: number; status: string } | null> {
   const res = await authedFetch(`/api/exam/attempts/${attemptId}/heartbeat`, {
     method: 'POST',

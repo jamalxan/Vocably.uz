@@ -6,12 +6,13 @@
 //
 // Content is ORIGINAL (written for this script, not copied from any real
 // IELTS test — TZ-vocably-v2.md old-TZ BUG-021 flagged reusing real Cambridge
-// material as a copyright risk). Only 10 questions, one short passage — this
-// is for exercising the Reading UI plumbing (all 6 Faza-1 question types),
-// NOT a realistic full 40-question/3-passage exam, and the band table lookup
-// (calibrated for 40 questions) will report a low, MEANINGLESS band no matter
-// how many of these 10 you get right. Faza 3's real content pipeline replaces
-// this entirely.
+// material as a copyright risk). One small Reading passage (10 questions,
+// all 6 Faza-1 types), one small Writing section (2 tasks), one small
+// Listening section (2 parts, placeholder sine-tone audio — see the comment
+// above generateSineWav) — NOT a realistic 40-question/3-passage/4-part exam,
+// and the band table lookups (calibrated for 40 questions) will report a
+// low, MEANINGLESS band no matter how many questions you get right. Faza 3's
+// real content pipeline replaces this entirely.
 //
 // Run manually:
 //   node --env-file=.env.local scripts/seed-exam-test.mjs
@@ -21,8 +22,60 @@
 // plain `node` can't resolve this app's `@/` path alias.
 
 import { MongoClient } from 'mongodb';
+import { Readable } from 'node:stream';
 
 const SLUG = 'demo-reading-bicycle';
+
+// TZ-vocably-v2.md §23 open question #1 answer (MongoDB/GridFS, no external
+// Blob/S3/R2) + Faza 2 item 10 (AudioEngine) — there is no TTS/ffmpeg
+// synthesis pipeline yet (that's a separate, much larger piece of work the
+// old TZ already deferred), so this generates a PLAIN SINE TONE as a stand-in
+// "audio file" purely to exercise AudioEngine's mechanics (play-once,
+// position tracking, part auto-advance) end to end. It is NOT listening
+// content — nobody could answer these demo questions by ear; they exist only
+// to prove the player works.
+function generateSineWav({ seconds, freq, sampleRate = 8000 }) {
+  const numSamples = Math.round(seconds * sampleRate);
+  const dataSize = numSamples * 2; // 16-bit mono PCM
+  const buffer = Buffer.alloc(44 + dataSize);
+
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    // Boshi/oxirida qisqa fade — tovushning "click" bilan kesilib
+    // qolmasligi uchun (faqat eshitish qulayligi, funksional emas).
+    const fadeSec = 0.05;
+    const fade = Math.min(1, t / fadeSec, (seconds - t) / fadeSec);
+    const sample = Math.sin(2 * Math.PI * freq * t) * 0.25 * fade * 32767;
+    buffer.writeInt16LE(Math.round(sample), 44 + i * 2);
+  }
+
+  return buffer;
+}
+
+async function uploadAudio(db, buffer, filename) {
+  const { GridFSBucket } = await import('mongodb');
+  const bucket = new GridFSBucket(db, { bucketName: 'examAudio' });
+  return new Promise((resolve, reject) => {
+    const uploadStream = bucket.openUploadStream(filename, { contentType: 'audio/wav' });
+    uploadStream.on('error', reject);
+    uploadStream.on('finish', () => resolve(String(uploadStream.id)));
+    Readable.from(buffer).pipe(uploadStream);
+  });
+}
 
 const PASSAGE = {
   order: 1,
@@ -160,6 +213,12 @@ async function main() {
     const user = await db.collection('users').findOne({}, { projection: { _id: 1 } });
     if (!user) throw new Error("'users' kolleksiyasida hech kim topilmadi — avval hisob yarating.");
 
+    // Faza 2 item 10 (AudioEngine) sinovi uchun — ikkita qisqa sinus-ton,
+    // §7.1 dagi "part tugagach keyingisiga avtomatik o'tish" mexanizmini
+    // sinash uchun ikkita alohida part sifatida yetarli.
+    const part1AudioId = await uploadAudio(db, generateSineWav({ seconds: 6, freq: 440 }), 'demo-part1.wav');
+    const part2AudioId = await uploadAudio(db, generateSineWav({ seconds: 6, freq: 660 }), 'demo-part2.wav');
+
     const doc = {
       slug: SLUG,
       title: 'Demo — The Evolution of the Bicycle',
@@ -167,6 +226,62 @@ async function main() {
       difficulty: 'easy',
       sections: {
         reading: { durationSec: 600, passages: [PASSAGE] },
+        // Faza 2 item 10 sinovi — audio ATAYLAB haqiqiy nutq emas (yuqoridagi
+        // izohga q.), shuning uchun savollar ham "eshitib javob berish" emas,
+        // faqat pleer mexanizmini (part almashinuvi, pozitsiya saqlash)
+        // sinash uchun.
+        listening: {
+          durationSec: 900,
+          checkTimeSec: 120,
+          parts: [
+            {
+              order: 1,
+              audioUrl: `/api/exam/audio/${part1AudioId}`,
+              durationSec: 6,
+              contextText: '(Demo audio — 440Hz ton, haqiqiy nutq emas)',
+              gapAfterSec: 5,
+              questionGroups: [
+                {
+                  id: 'l1-form',
+                  type: 'form_completion',
+                  instructionHtml: 'Complete the form below. Write <strong>ONE WORD ONLY</strong>.',
+                  wordLimit: { maxWords: 1, label: 'ONE WORD ONLY' },
+                  stemHtml: '<p>Name: {{q1}}<br/>City: {{q2}}</p>',
+                  questions: [
+                    { number: 1, answer: { accepted: ['demo'] }, explanationHtml: 'Demo audio uchun namunaviy javob.' },
+                    { number: 2, answer: { accepted: ['tashkent'] }, explanationHtml: 'Demo audio uchun namunaviy javob.' },
+                  ],
+                },
+              ],
+            },
+            {
+              order: 2,
+              audioUrl: `/api/exam/audio/${part2AudioId}`,
+              durationSec: 6,
+              contextText: '(Demo audio — 660Hz ton, haqiqiy nutq emas)',
+              questionGroups: [
+                {
+                  id: 'l2-mc',
+                  type: 'multiple_choice_single',
+                  instructionHtml: 'Choose the correct letter, A, B or C.',
+                  questions: [
+                    {
+                      number: 3,
+                      promptHtml: '(Demo savol — istalgan javobni tanlang)',
+                      options: [
+                        { key: 'A', text: 'Variant A' },
+                        { key: 'B', text: 'Variant B' },
+                        { key: 'C', text: 'Variant C' },
+                      ],
+                      answer: { accepted: ['A'] },
+                      explanationHtml: 'Demo audio uchun namunaviy javob.',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
         // Faza 2 item 12 (WritingSection) sinovi uchun — original, kichik
         // topshiriqlar. Real IELTS band jadvali AI grader hali yo'q (Faza 2
         // item 13) shuning uchun `result.writing` submit'dan keyin ham `null`
@@ -203,6 +318,7 @@ async function main() {
     console.log(`Tayyor. Test ID: ${testId}`);
     console.log(`Reading sinovi: /app/oqish-beta?testId=${testId}`);
     console.log(`Writing sinovi: /app/yozish-beta?testId=${testId}`);
+    console.log(`Listening sinovi: /app/tinglash-beta?testId=${testId}`);
   } finally {
     await client.close();
   }
