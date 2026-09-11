@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
@@ -10,6 +11,17 @@ import react from '@vitejs/plugin-react';
 // e'tiborsiz qoldirdi. `@vitejs/plugin-react` — rasmiy, versiyaga bog'liq
 // bo'lmagan yechim. Bu FAQAT test yugurtirish uchun — production build
 // (Next/SWC) ga hech qanday ta'siri yo'q.
+//
+// `@/*` alias — tsconfig.json'dagi bilan bir xil (`"@/*": ["./src/*"]").
+// Ilgari kerak bo'lmagan edi, chunki bu vaqtgacha testdan turib import
+// qilingan `@/`-yo'lli narsalarning barchasi `import type` edi (kompilyatsiya
+// vaqtida o'chib ketadi, runtime'da hal qilinishi shart emas) — writingGrader.ts
+// birinchi bo'lib HAQIQIY (runtime) `@/`-import qildi.
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
 });
