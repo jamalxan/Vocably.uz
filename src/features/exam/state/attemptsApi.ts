@@ -1,5 +1,13 @@
 import { getStoredAuthToken } from './examStore';
-import type { AnswerValue, AttemptResult, AttemptReviewDetail, AttemptHistoryEntry, Highlight, SanitizedTest } from '@/lib/exam/types';
+import type {
+  AnswerValue,
+  AttemptResult,
+  AttemptReviewDetail,
+  AttemptHistoryEntry,
+  Highlight,
+  SanitizedTest,
+  SpeakingRecording,
+} from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §4 — `/api/exam/attempts/*` uchun yupqa klient. Barcha
 // bo'lim modullari (Reading — allaqachon, Listening/Writing Faza 2'da) shu bir
@@ -44,6 +52,7 @@ export interface AttemptStateResponse {
     lastQuestion: number;
     essays: AttemptEssaysResponse;
     audio: AttemptAudioResponse;
+    speaking: { recordings: SpeakingRecording[] };
     highlights: Highlight[];
     result: AttemptResult | null;
   };
@@ -139,6 +148,43 @@ export async function fetchAttemptResult(attemptId: string): Promise<{ detail: A
  * ko'rsatishi kerak, submit natijasining o'zi baribir saqlangan bo'ladi. */
 export async function gradeWriting(attemptId: string): Promise<{ result: AttemptResult | null }> {
   const res = await authedFetch(`/api/exam/attempts/${attemptId}/grade-writing`, { method: 'POST' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || "Baholab bo'lmadi");
+  }
+  return res.json();
+}
+
+/** TZ §19 Faza 4 item 23 — bitta Speaking javobi yozib olingandan keyin
+ * yuklaydi. `authedFetch` ishlatilmaydi — u har doim `Content-Type:
+ * application/json` qo'yadi, FormData esa brauzerning o'ziga xos
+ * multipart boundary sarlavhasini talab qiladi (qo'lda qo'yilsa buziladi). */
+export async function uploadSpeakingRecording(
+  attemptId: string,
+  args: { part: 1 | 2 | 3; questionIndex: number; blob: Blob; durationSec: number }
+): Promise<{ audioFileId: string; transcript: string }> {
+  const token = getStoredAuthToken();
+  const form = new FormData();
+  form.append('part', String(args.part));
+  form.append('questionIndex', String(args.questionIndex));
+  form.append('durationSec', String(Math.round(args.durationSec)));
+  form.append('audio', new File([args.blob], `speaking-${Date.now()}.webm`, { type: args.blob.type || 'audio/webm' }));
+
+  const res = await fetch(`/api/exam/attempts/${attemptId}/speaking-recording`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Yozuvni yuklab bo'lmadi");
+  return data;
+}
+
+/** TZ §19 Faza 4 item 23 — Speaking bo'limi submit qilingandan keyin (Writing'ning
+ * gradeWriting'iga o'xshab) darhol chaqiriladi — yig'ilgan barcha transkriptlarni
+ * bitta yaxlit AI so'roviga jamlab baholaydi. */
+export async function gradeSpeaking(attemptId: string): Promise<{ result: AttemptResult | null }> {
+  const res = await authedFetch(`/api/exam/attempts/${attemptId}/grade-speaking`, { method: 'POST' });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data?.error || "Baholab bo'lmadi");
