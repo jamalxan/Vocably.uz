@@ -305,6 +305,34 @@ async function main() {
             },
           ],
         },
+        // Faza 4 item 23 (SpeakingSection) sinovi uchun — kichik, tezkor
+        // sinash mumkin bo'lgan 3 ta Part 1 savoli + 1 ta cue card + 2 ta
+        // Part 3 savoli (haqiqiy IELTS'dagi 4-5/1/4-5 emas — demo tezroq
+        // o'tishi uchun qisqartirilgan, xuddi Writing'ning kichik minWords'i
+        // kabi).
+        speaking: {
+          durationSec: 420,
+          part1Questions: [
+            'Can you tell me your full name, please?',
+            'Do you work or are you a student?',
+            'What do you like to do in your free time?',
+          ],
+          part2CueCard: {
+            topic: 'Describe a place you like to visit in your free time.',
+            bulletPoints: [
+              'Where it is',
+              'How often you go there',
+              'What you do there',
+              'And explain why you like this place',
+            ],
+            prepSec: 15,
+            speakSec: 60,
+          },
+          part3Questions: [
+            'Do you think public places have changed much in the last 10 years?',
+            'How important is it for cities to have free public spaces?',
+          ],
+        },
       },
       bandTable: null,
       isPublished: true,
@@ -319,6 +347,7 @@ async function main() {
     console.log(`Reading sinovi: /app/oqish-beta?testId=${testId}`);
     console.log(`Writing sinovi: /app/yozish-beta?testId=${testId}`);
     console.log(`Listening sinovi: /app/tinglash-beta?testId=${testId}`);
+    console.log(`Speaking sinovi: /app/gapirish-beta?testId=${testId}`);
   } finally {
     await client.close();
   }

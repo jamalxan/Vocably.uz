@@ -39,6 +39,16 @@ export async function GET(req, { params }) {
         lastQuestion: attempt.lastQuestion || 0,
         audio: attempt.audio,
         essays: attempt.essays,
+        speaking: {
+          recordings: (attempt.speaking?.recordings || []).map((r) => ({
+            part: r.part,
+            questionIndex: r.questionIndex,
+            audioFileId: r.audioFileId,
+            transcript: r.transcript,
+            durationSec: r.durationSec,
+            recordedAt: r.recordedAt,
+          })),
+        },
         highlights: (attempt.highlights || []).map((h) => ({
           id: String(h._id),
           passageOrder: h.passageOrder,

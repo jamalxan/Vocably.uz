@@ -7,6 +7,9 @@ import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel } from '@/li
 import { isCorrect, isSetCorrect, listeningBand, readingBand, overallBand } from './scoring';
 import { sanitizeForExam } from './sanitize';
 import { gradeEssay, combineWritingBand } from './writingGrader';
+import { gradeSpeaking } from './speakingGrader';
+import { uploadAudioBuffer } from './audioStorage';
+import { transcribeAudio } from '@/lib/transcribe';
 import type {
   AnswerKey,
   AnswerValue,
@@ -253,11 +256,62 @@ export async function submitAttempt(attemptId: string, userId: string, reason: s
   result.perQuestion = perQuestion;
   result.overall = overallBand(sectionBands) ?? undefined;
 
+  // Writing va Speaking ikkalasi ham AI orqali (submitAttempt'dan TASHQARIDA,
+  // grade-writing/grade-speaking endpoint'lari orqali) baholanadi — shuning
+  // uchun ikkalasi ham kutilmagan bo'lsa status 'submitted'da qoladi. Amalda
+  // bitta urinish ikkalasini birga o'z ichiga olmaydi (MOCK_SECTION_ORDER
+  // Speaking'ni o'z ichiga olmaydi, §9.1 — Speaking mock'dan tashqari, alohida
+  // mode:'section' urinish), lekin kelajakda birlashtirilsa ham to'g'ri
+  // ishlashi uchun ikkalasi ham tekshiriladi.
   const hasPendingWriting = attemptSections.includes('writing');
-  const status = hasPendingWriting ? 'submitted' : 'graded';
+  const hasPendingSpeaking = attemptSections.includes('speaking');
+  const status = hasPendingWriting || hasPendingSpeaking ? 'submitted' : 'graded';
 
   await ExamAttempt.updateOne({ _id: attemptId }, { $set: { result, status } });
   return result;
+}
+
+/** TZ §19 Faza 4 item 23 — bitta Speaking javobini (Part 1/3'ning bitta
+ * savoli yoki Part 2'ning cue card javobi) yozib olingandan keyin yuklaydi:
+ * GridFS'ga saqlaydi (audioStorage.ts, Listening bilan bir xil bucket) va
+ * DARHOL transkripsiya qiladi (transcribe.js) — final baholash (gradeSpeaking)
+ * keyinroq faqat matn bilan ishlaydi, audio bilan qayta gaplashmaydi.
+ * Bir xil part+questionIndex qayta yozib olinsa (foydalanuvchi "qayta
+ * urinish" bossa) ESKI yozuv ALMASHTIRILADI — ikkita nusxa saqlanmaydi. */
+export async function addSpeakingRecording(
+  attemptId: string,
+  userId: string,
+  args: { part: 1 | 2 | 3; questionIndex: number; buffer: Buffer; filename: string; mimeType: string; durationSec: number }
+): Promise<{ audioFileId: string; transcript: string }> {
+  const attempt = await getOwnedAttempt(attemptId, userId);
+  if (attempt.status !== 'in_progress') {
+    throw new ExamAttemptError('Urinish allaqachon yakunlangan', 409);
+  }
+  if (!(attempt.sections || []).includes('speaking')) {
+    throw new ExamAttemptError("Bu urinishda Speaking bo'limi yo'q", 400);
+  }
+
+  const [audioFileId, transcript] = await Promise.all([
+    uploadAudioBuffer(args.buffer, args.filename, args.mimeType),
+    transcribeAudio(args.buffer, args.filename, args.mimeType),
+  ]);
+
+  const recordings = (attempt.speaking?.recordings || []).filter(
+    (r: any) => !(r.part === args.part && r.questionIndex === args.questionIndex)
+  );
+  recordings.push({
+    part: args.part,
+    questionIndex: args.questionIndex,
+    audioFileId,
+    transcript,
+    durationSec: args.durationSec,
+    recordedAt: new Date(),
+  });
+  attempt.speaking = { recordings };
+  attempt.markModified('speaking');
+  await attempt.save();
+
+  return { audioFileId, transcript };
 }
 
 /** TZ §4/§8.5 — "POST /attempts/:id/grade-writing" ishi. Idempotent (§8.5:
@@ -286,18 +340,55 @@ export async function gradeWritingAttempt(attemptId: string, userId: string): Pr
   const writing = { task1: score1, task2: score2, band: combineWritingBand(score1, score2) };
   const result: AttemptResult = { ...(attempt.result || {}), writing };
 
-  // Writing yagona baholanadigan bo'lim bo'lgan `mode:'section'` urinishlarda
-  // (Faza 2'ning yagona holati) `overall` xuddi shu Writing bandiga teng —
-  // Mock (bir nechta bo'lim) qo'shilganda bu yerga reading/listening
-  // bandlarini ham qo'shib hisoblash kerak bo'ladi (Faza 3).
   result.overall = overallBand({
     reading: result.reading?.band ?? null,
     listening: result.listening?.band ?? null,
     writing: writing.band,
-    speaking: null,
+    speaking: result.speaking?.band ?? null,
   });
 
-  await ExamAttempt.updateOne({ _id: attemptId }, { $set: { result, status: 'graded' } });
+  // §9.1 — amalda Writing va Speaking bitta urinishda birga bo'lmaydi (q.
+  // submitAttempt'dagi izoh), lekin status shu qoidaga qat'iy rioya qiladi:
+  // boshqa AI-navbatdagi bo'lim hali natija bermagan bo'lsa 'submitted'da qoladi.
+  const stillPendingSpeaking = (attempt.sections || []).includes('speaking') && !result.speaking;
+  const status = stillPendingSpeaking ? 'submitted' : 'graded';
+
+  await ExamAttempt.updateOne({ _id: attemptId }, { $set: { result, status } });
+  return result;
+}
+
+/** TZ §19 Faza 4 item 23 — "POST /attempts/:id/grade-speaking". `gradeWritingAttempt`
+ * bilan bir xil naqsh (idempotent, AI sinxron chaqiriladi — navbat infratuzilmasi
+ * yo'q). Farqi: baholanadigan "matn" avvaldan yig'ilgan (attempt.speaking.recordings,
+ * har biri yuklangan paytda allaqachon transkripsiya qilingan — speaking-recording
+ * route.js), shuning uchun bu yerda audio bilan ishlash yo'q, faqat mavjud
+ * transkriptlarni bitta yaxlit AI so'rovida baholash (speakingGrader.ts). */
+export async function gradeSpeakingAttempt(attemptId: string, userId: string): Promise<AttemptResult | null> {
+  const attempt = await getOwnedAttempt(attemptId, userId);
+  if (attempt.status === 'graded') return attempt.result;
+  if (attempt.status !== 'submitted') {
+    throw new ExamAttemptError('Urinish hali yakunlanmagan yoki holati mos emas', 409);
+  }
+
+  const test: Test | null = await ExamTest.findById(attempt.testId).lean();
+  const section = test?.sections.speaking;
+  if (!section) throw new ExamAttemptError("Testda Speaking bo'limi yo'q", 400);
+
+  const recordings = attempt.speaking?.recordings || [];
+  const speaking = await gradeSpeaking(section, recordings);
+  const result: AttemptResult = { ...(attempt.result || {}), speaking };
+
+  result.overall = overallBand({
+    reading: result.reading?.band ?? null,
+    listening: result.listening?.band ?? null,
+    writing: result.writing?.band ?? null,
+    speaking: speaking.band,
+  });
+
+  const stillPendingWriting = (attempt.sections || []).includes('writing') && !result.writing;
+  const status = stillPendingWriting ? 'submitted' : 'graded';
+
+  await ExamAttempt.updateOne({ _id: attemptId }, { $set: { result, status } });
   return result;
 }
 
@@ -376,6 +467,29 @@ export async function getAttemptReviewDetail(attemptId: string, userId: string):
       task2: result.writing.task2,
       band: result.writing.band,
       essays: { task1: attempt.essays?.task1?.text || '', task2: attempt.essays?.task2?.text || '' },
+    };
+  }
+
+  if (test.sections.speaking && result.speaking) {
+    const speakingSection = test.sections.speaking;
+    const recordings = (attempt.speaking?.recordings || []) as { part: 1 | 2 | 3; questionIndex: number; audioFileId: string; transcript: string }[];
+    const promptFor = (part: 1 | 2 | 3, questionIndex: number): string => {
+      if (part === 1) return speakingSection.part1Questions[questionIndex] || '';
+      if (part === 3) return speakingSection.part3Questions[questionIndex] || '';
+      return speakingSection.part2CueCard.topic;
+    };
+    detail.speaking = {
+      ...result.speaking,
+      recordings: recordings
+        .slice()
+        .sort((a, b) => a.part - b.part || a.questionIndex - b.questionIndex)
+        .map((r) => ({
+          part: r.part,
+          questionIndex: r.questionIndex,
+          promptText: promptFor(r.part, r.questionIndex),
+          audioFileId: r.audioFileId,
+          transcript: r.transcript,
+        })),
     };
   }
 
