@@ -8,8 +8,10 @@ import type { AnswerValue } from '@/lib/exam/types';
 // └──────────────────────────────────────────────────────────────────┘
 //
 // "Boshqa bo'limda (mock)" holati (40% opacity, bosilmaydi) BU YERDA YO'Q —
-// Faza 1 faqat `mode:'section'` (bitta bo'lim) bilan ishlaydi, bir nechta
-// bo'limli Mock orkestratsiyasi Faza 3 ishi (TZ §19 item 15).
+// bir nechta bo'limli Mock'da ekranda bir vaqtning o'zida faqat JORIY
+// bo'limning savollari ko'rsatiladi (ReadingSection/ListeningSection/
+// WritingSection navbati bilan almashadi), shuning uchun "boshqa bo'lim"
+// tugmasi umuman render qilinmaydi — buni ko'rsatishga hojat qolmagan.
 export interface QuestionGroupNav {
   label: string; // "Part 1", "Passage 1"
   questions: number[]; // global savol raqamlari
@@ -21,7 +23,11 @@ export interface ExamFooterNavProps {
   flagged: Set<number>;
   currentQuestion: number;
   onGoTo: (qNum: number) => void;
-  onSubmit: () => void;
+  // §5.5 — "✓ tugmasi: mock'da faqat oxirgi bo'limda 'Yakunlash', practice'da
+  // doim." `undefined` bo'lsa tugma umuman ko'rinmaydi (mock'ning oxirgi
+  // bo'limidan boshqa har qanday bo'limi — bo'lim vaqt tugashi bilan
+  // AVTOMATIK almashadi, foydalanuvchi tugma bosishi shart emas).
+  onSubmit?: () => void;
   submitLabel?: string;
 }
 
@@ -119,14 +125,16 @@ export default function ExamFooterNav({
         >
           <ChevronRight size={18} />
         </button>
-        <button
-          type="button"
-          onClick={onSubmit}
-          className="ml-1 h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold"
-          style={{ background: 'var(--exam-accent)' }}
-        >
-          <Check size={15} /> {submitLabel}
-        </button>
+        {onSubmit && (
+          <button
+            type="button"
+            onClick={onSubmit}
+            className="ml-1 h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold"
+            style={{ background: 'var(--exam-accent)' }}
+          >
+            <Check size={15} /> {submitLabel}
+          </button>
+        )}
       </div>
     </nav>
   );

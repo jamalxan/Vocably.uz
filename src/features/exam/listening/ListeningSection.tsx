@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useExamStore } from '../state/examStore';
 import { useExamTimer } from '../state/useExamTimer';
 import { useAutosave } from '../state/useAutosave';
-import { fetchAttempt, sendHeartbeat, submitAttempt } from '../state/attemptsApi';
+import { fetchAttempt, sendHeartbeat, submitAttempt, advanceMockSection } from '../state/attemptsApi';
 import ExamShell from '../shell/ExamShell';
 import QuestionGroupBlock from '../questions/QuestionGroupBlock';
 import AudioEngine from './AudioEngine';
@@ -35,9 +35,20 @@ export interface ListeningSectionProps {
   candidateName: string;
   candidateId: string;
   onSubmitted: (result: AttemptResult | null) => void;
+  // TZ §9.1 — Mock'da Listening HAR DOIM birinchi bo'lim (hech qachon oxirgi
+  // emas) — ReadingSection.tsx'dagi izohga q.
+  isFinal?: boolean;
+  onSectionAdvanced?: () => void;
 }
 
-export default function ListeningSection({ attemptId, candidateName, candidateId, onSubmitted }: ListeningSectionProps) {
+export default function ListeningSection({
+  attemptId,
+  candidateName,
+  candidateId,
+  onSubmitted,
+  isFinal = true,
+  onSectionAdvanced,
+}: ListeningSectionProps) {
   const [test, setTest] = useState<SanitizedTest | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -62,8 +73,13 @@ export default function ListeningSection({ attemptId, candidateName, candidateId
       (async () => {
         try {
           await useExamStore.getState().syncNow();
-          const { result } = await submitAttempt(attemptId);
-          onSubmitted(result);
+          if (isFinal) {
+            const { result } = await submitAttempt(attemptId);
+            onSubmitted(result);
+          } else {
+            await advanceMockSection(attemptId);
+            onSectionAdvanced?.();
+          }
         } catch {
           setLoadError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
           setSubmitting(false);
@@ -71,7 +87,7 @@ export default function ListeningSection({ attemptId, candidateName, candidateId
       })();
       return true;
     });
-  }, [attemptId, onSubmitted]);
+  }, [attemptId, isFinal, onSubmitted, onSectionAdvanced]);
 
   useExamTimer(doSubmit);
 
@@ -208,7 +224,7 @@ export default function ListeningSection({ attemptId, candidateName, candidateId
       volume={volume}
       onVolumeChange={setVolume}
       footerGroups={footerGroups}
-      onSubmit={doSubmit}
+      onSubmit={isFinal ? doSubmit : undefined}
       submitLabel={submitting ? 'Yuborilmoqda…' : 'Yakunlash'}
     >
       <AudioEngine

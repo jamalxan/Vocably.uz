@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useExamStore } from '../state/examStore';
 import { useExamTimer } from '../state/useExamTimer';
 import { useAutosave } from '../state/useAutosave';
-import { fetchAttempt, sendHeartbeat, submitAttempt } from '../state/attemptsApi';
+import { fetchAttempt, sendHeartbeat, submitAttempt, advanceMockSection } from '../state/attemptsApi';
 import ExamShell from '../shell/ExamShell';
 import SplitPane from '../split/SplitPane';
 import PassagePane from './PassagePane';
@@ -22,13 +22,29 @@ export interface ReadingSectionProps {
   candidateName: string;
   candidateId: string;
   onSubmitted: (result: AttemptResult | null) => void;
+  // TZ §9.1/§5.5 — Mock'da Reading oxirgi bo'lim emas (Listening → Reading →
+  // Writing). `isFinal=false` bo'lsa: (1) footer'da "Yakunlash" tugmasi
+  // ko'rinmaydi (§5.5 — faqat oxirgi bo'limda bor), (2) taymer tugaganda yoki
+  // — bu bo'limda foydalanuvchi tugma bosib "tugatishi" YO'Q, faqat vaqt orqali
+  // — `onSubmitted` o'rniga `onSectionAdvanced` chaqiriladi va HECH QANDAY
+  // baholash qilinmaydi (submitAttempt() faqat mock'ning OXIRGI bo'limida,
+  // barcha bo'limlarni birga baholaydi — attemptServer.ts).
+  isFinal?: boolean;
+  onSectionAdvanced?: () => void;
 }
 
 function firstQuestionNumber(test: SanitizedTest): number {
   return test.sections.reading?.passages[0]?.questionGroups[0]?.questions[0]?.number ?? 1;
 }
 
-export default function ReadingSection({ attemptId, candidateName, candidateId, onSubmitted }: ReadingSectionProps) {
+export default function ReadingSection({
+  attemptId,
+  candidateName,
+  candidateId,
+  onSubmitted,
+  isFinal = true,
+  onSectionAdvanced,
+}: ReadingSectionProps) {
   const [test, setTest] = useState<SanitizedTest | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -45,9 +61,11 @@ export default function ReadingSection({ attemptId, candidateName, candidateId, 
 
   useAutosave(attemptId);
 
-  // Taymer nolga yetganda HAM, "Yakunlash" bosilganda HAM shu bitta yo'ldan
-  // o'tadi — submitAttempt() serverda idempotent (attemptServer.ts), shuning
-  // uchun ikkalasi bir vaqtda chaqirilsa ham xavfsiz.
+  // Taymer nolga yetganda HAM, "Yakunlash" bosilganda HAM (faqat isFinal
+  // bo'lsa ko'rinadi) shu bitta yo'ldan o'tadi — submitAttempt() serverda
+  // idempotent (attemptServer.ts), shuning uchun ikkalasi bir vaqtda
+  // chaqirilsa ham xavfsiz. Mock'da isFinal=false bo'lsa, baholash o'rniga
+  // shunchaki keyingi bo'limga o'tkazadi.
   const doSubmit = useCallback(async () => {
     setSubmitting((already) => {
       if (already) return already;
@@ -56,8 +74,13 @@ export default function ReadingSection({ attemptId, candidateName, candidateId, 
           // Yakunlashdan oldin so'nggi javoblarni saqlaymiz — aks holda hali
           // otilmagan 800ms debounce'dagi oxirgi javob yo'qolib qolardi.
           await useExamStore.getState().syncNow();
-          const { result } = await submitAttempt(attemptId);
-          onSubmitted(result);
+          if (isFinal) {
+            const { result } = await submitAttempt(attemptId);
+            onSubmitted(result);
+          } else {
+            await advanceMockSection(attemptId);
+            onSectionAdvanced?.();
+          }
         } catch {
           setLoadError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
           setSubmitting(false);
@@ -65,7 +88,7 @@ export default function ReadingSection({ attemptId, candidateName, candidateId, 
       })();
       return true;
     });
-  }, [attemptId, onSubmitted]);
+  }, [attemptId, isFinal, onSubmitted, onSectionAdvanced]);
 
   useExamTimer(doSubmit);
 
@@ -141,7 +164,7 @@ export default function ReadingSection({ attemptId, candidateName, candidateId, 
       candidateName={candidateName}
       candidateId={candidateId}
       footerGroups={footerGroups}
-      onSubmit={doSubmit}
+      onSubmit={isFinal ? doSubmit : undefined}
       submitLabel={submitting ? 'Yuborilmoqda…' : 'Yakunlash'}
     >
       <SplitPane

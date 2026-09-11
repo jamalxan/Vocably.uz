@@ -7,7 +7,14 @@ import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel } from '@/li
 import { isCorrect, isSetCorrect, listeningBand, readingBand, overallBand } from './scoring';
 import { sanitizeForExam } from './sanitize';
 import { gradeEssay, combineWritingBand } from './writingGrader';
-import type { AnswerKey, AnswerValue, AttemptResult, SanitizedTest, Test, WordLimit } from './types';
+import type { AnswerKey, AnswerValue, AttemptResult, ExamSectionKey, SanitizedTest, Test, WordLimit } from './types';
+
+// TZ-vocably-v2.md §9.1 — Mock'da bo'limlar QAT'IY shu tartibda o'tiladi
+// (Listening → Reading → Writing; Speaking Faza 3'dan tashqarida, §9.1 "Speaking
+// alohida, mock natijasiga null sifatida kiradi"). Bu tartib faqat mock uchun —
+// `mode:'section'` urinishlar bitta bo'limning o'zi bilan cheklangan, tartibga
+// ehtiyoj yo'q.
+const MOCK_SECTION_ORDER: ExamSectionKey[] = ['listening', 'reading', 'writing'];
 
 // models.js oddiy JavaScript — .ts fayldan chaqirilganda Mongoose static
 // metodlarining generic bo'lmagan turi bilan to'qnashadi (TZ2349). `./server.ts`
@@ -43,12 +50,63 @@ export function remainingSec(endsAt: Date, now: Date = new Date()): number {
 
 /** Vaqti tugagan (`in_progress` holatida, `remainingSec === 0`) urinishni
  * avtomatik yakunlaydi — TZ §18 "Vaqt tugaganda avtomatik submit (klient yopiq
- * bo'lsa ham server bajaradi)". O'zgargan bo'lsa yangilangan hujjatni qaytaradi. */
+ * bo'lsa ham server bajaradi)". O'zgargan bo'lsa yangilangan hujjatni qaytaradi.
+ *
+ * `mode:'mock'`da `endsAt` BUTUN mock emas, FAQAT joriy bo'limning muddati
+ * (TZ §9.1 ketma-ket bo'lim taymerlari) — shuning uchun vaqt tugashi to'g'ridan-
+ * to'g'ri submit emas, balki "keyingi bo'limga o't" degani (oxirgi bo'lim —
+ * Writing — bo'lsagina haqiqiy submit). `mode:'section'`da o'zgarishsiz. */
 export async function syncAttemptExpiry(doc: any) {
   if (doc.status !== 'in_progress') return doc;
   if (remainingSec(doc.endsAt) > 0) return doc;
+  if (doc.mode === 'mock') {
+    await advanceMockSection(String(doc._id), String(doc.userId), 'time_expired');
+    return ExamAttempt.findById(doc._id);
+  }
   await submitAttempt(String(doc._id), String(doc.userId), 'time_expired');
   return ExamAttempt.findById(doc._id);
+}
+
+/** TZ §4/§9.1 — "POST /attempts/:id/section/next — Mock'da keyingi bo'limga
+ * o'tish (orqaga qaytish mumkin emas)". Joriy bo'limning JAVOBLARI hech qanday
+ * baholashsiz saqlanib qoladi (submitAttempt() BARCHA bo'limlarni FAQAT oxirgi
+ * bo'lim — Writing — tugagach birga baholaydi, TZ Mock arxitekturasi shunday:
+ * bir martalik yakuniy submit, bo'lim-bo'lim emas). Bu funksiya faqat
+ * `currentSection`/`endsAt`ni yangilaydi.
+ *
+ * Idempotent emas — ikki marta chaqirilsa ikki marta ilgarilab ketishi mumkin,
+ * lekin chaqiruvchilar (syncAttemptExpiry — faqat vaqt haqiqatan tugaganda;
+ * route — faqat 'in_progress' holatida) bu holatga deyarli olib kelmaydi;
+ * to'liq atomik himoya kerak bo'lsa (parallel so'rovlar), keyingi qadam sifatida
+ * qo'shilishi mumkin — hozircha real xavf past (bitta foydalanuvchi, ketma-ket
+ * chaqiruvlar).
+ */
+export async function advanceMockSection(attemptId: string, userId: string, reason: string) {
+  const attempt = await getOwnedAttempt(attemptId, userId);
+  if (attempt.mode !== 'mock' || attempt.status !== 'in_progress') return attempt;
+
+  const sections: ExamSectionKey[] = attempt.sections || [];
+  const currentIdx = sections.indexOf(attempt.currentSection);
+  const nextSection = sections[currentIdx + 1];
+
+  if (!nextSection) {
+    // Oxirgi bo'lim tugadi — bu endi "keyingisi"ga o'tish emas, HAQIQIY yakunlash.
+    await submitAttempt(attemptId, userId, reason);
+    return ExamAttempt.findById(attemptId);
+  }
+
+  const test: Test | null = await ExamTest.findById(attempt.testId).lean();
+  const nextDuration = (test?.sections as any)?.[nextSection]?.durationSec;
+  if (typeof nextDuration !== 'number') {
+    throw new ExamAttemptError(`Testda "${nextSection}" bo'limi yo'q`, 400);
+  }
+
+  const now = new Date();
+  await ExamAttempt.updateOne(
+    { _id: attemptId, status: 'in_progress' },
+    { $set: { currentSection: nextSection, sectionStartedAt: now, endsAt: new Date(now.getTime() + nextDuration * 1000) } }
+  );
+  return ExamAttempt.findById(attemptId);
 }
 
 /** Bitta konteyner (passage yoki listening part) ichidagi savollarni tekislab
@@ -125,6 +183,22 @@ export function scoreSection(test: Test, attemptAnswers: Record<string, AnswerVa
  * `'graded'`ga o'tkazadi. Speaking hali umuman baholanmaydi (Faza 3).
  */
 export async function submitAttempt(attemptId: string, userId: string, reason: string): Promise<AttemptResult | null> {
+  // Mock'da vaqtidan oldin (Writing'gacha yetmasdan) submit chaqirilsa —
+  // xato o'rniga xavfsiz tarzda "keyingi bo'limga o't"ga yo'naltiramiz.
+  // syncAttemptExpiry() buni allaqachon to'g'ri qiladi, lekin klient /submit'ni
+  // to'g'ridan-to'g'ri (masalan eski kod yo'li yoki xato bosilgan tugma bilan)
+  // chaqirib qolishi mumkin — himoya shu yerda ikkinchi qatlam sifatida.
+  const preCheck = await ExamAttempt.findOne({ _id: attemptId, userId }).select('mode sections currentSection status').lean();
+  if (preCheck?.mode === 'mock' && preCheck.status === 'in_progress') {
+    const sections: ExamSectionKey[] = preCheck.sections || [];
+    const isLastSection = sections.indexOf(preCheck.currentSection as ExamSectionKey) === sections.length - 1;
+    if (!isLastSection) {
+      await advanceMockSection(attemptId, userId, reason);
+      const advanced = await ExamAttempt.findById(attemptId).select('result').lean();
+      return advanced?.result ?? null;
+    }
+  }
+
   const pre = await ExamAttempt.findOneAndUpdate(
     { _id: attemptId, userId, status: 'in_progress' },
     { $set: { status: 'submitted', submittedAt: new Date(), submitReason: reason } },
