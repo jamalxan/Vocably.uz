@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { fetchAttemptResult } from '../state/attemptsApi';
 import ReviewScreen from './ReviewScreen';
+import ResultAnalytics from './ResultAnalytics';
 import type { AttemptResult, AttemptReviewDetail } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §19 Faza 1 item 9 — "Natija ekrani (oddiy)". Bu ATAYLAB
@@ -69,6 +70,8 @@ export default function SectionResult({ attemptId, result, sectionKey, label }: 
         {loadingReview && <Loader2 size={14} className="animate-spin" />}
         Javoblarni ko&apos;rib chiqish
       </button>
+
+      <ResultAnalytics perQuestion={result.perQuestion} metric={sectionKey} />
     </div>
   );
 }

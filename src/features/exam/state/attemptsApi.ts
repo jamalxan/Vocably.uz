@@ -1,5 +1,5 @@
 import { getStoredAuthToken } from './examStore';
-import type { AnswerValue, AttemptResult, AttemptReviewDetail, SanitizedTest } from '@/lib/exam/types';
+import type { AnswerValue, AttemptResult, AttemptReviewDetail, AttemptHistoryEntry, SanitizedTest } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §4 — `/api/exam/attempts/*` uchun yupqa klient. Barcha
 // bo'lim modullari (Reading — allaqachon, Listening/Writing Faza 2'da) shu bir
@@ -142,5 +142,13 @@ export async function gradeWriting(attemptId: string): Promise<{ result: Attempt
     const data = await res.json().catch(() => ({}));
     throw new Error(data?.error || "Baholab bo'lmadi");
   }
+  return res.json();
+}
+
+/** TZ §19 Faza 3 item 17 — natija analitikasi uchun foydalanuvchining oldingi
+ * baholangan urinishlari (progress chart). */
+export async function fetchAttemptHistory(): Promise<{ history: AttemptHistoryEntry[] }> {
+  const res = await authedFetch('/api/exam/attempts/history');
+  if (!res.ok) throw new Error("Tarixni yuklab bo'lmadi");
   return res.json();
 }
