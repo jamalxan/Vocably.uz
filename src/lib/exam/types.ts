@@ -166,6 +166,18 @@ export interface Question {
   locatorParagraph?: string; // "C" — javob qaysi paragrafda (review uchun) — sanitizatsiyada olib tashlanadi
 }
 
+// TZ §6.3 / §19 Faza 3 item 19 — Reading passage'da matn belgilash. Offset
+// `TreeWalker` bilan paragraf ichidagi barcha text node'lar birlashtirilgan
+// holda hisoblanadi — DOM qayta chizilganda shu offsetlardan `Range` tiklanadi.
+export interface Highlight {
+  id: string;
+  passageOrder: number;
+  paragraphIndex: number;
+  startOffset: number;
+  endOffset: number;
+  note?: string;
+}
+
 export interface AnswerKey {
   accepted: string[]; // ["museum", "the museum"]
   pattern?: string; // ixtiyoriy regex, murakkab holatlar uchun
@@ -242,6 +254,9 @@ export interface Attempt {
     task1?: { text: string; wordCount: number; updatedAt: string };
     task2?: { text: string; wordCount: number; updatedAt: string };
   };
+
+  // Reading — matn belgilash + eslatma (§6.3, faqat Reading)
+  highlights: Highlight[];
 
   // Integrity
   events: { type: string; at: string; meta?: Record<string, unknown> }[];
