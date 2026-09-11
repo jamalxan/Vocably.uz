@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useExamStore } from '../state/examStore';
 import { useExamTimer } from '../state/useExamTimer';
 import { useAutosave } from '../state/useAutosave';
+import { useHighlights } from '../highlight/useHighlights';
 import { fetchAttempt, sendHeartbeat, submitAttempt, advanceMockSection } from '../state/attemptsApi';
 import ExamShell from '../shell/ExamShell';
 import SplitPane from '../split/SplitPane';
@@ -60,6 +61,8 @@ export default function ReadingSection({
   const reconcileFromHeartbeat = useExamStore((s) => s.reconcileFromHeartbeat);
 
   useAutosave(attemptId);
+  const { highlights, seed: seedHighlights, add: addHighlight, remove: removeHighlight, setNote: setHighlightNote } =
+    useHighlights(attemptId);
 
   // Taymer nolga yetganda HAM, "Yakunlash" bosilganda HAM (faqat isFinal
   // bo'lsa ko'rinadi) shu bitta yo'ldan o'tadi — submitAttempt() serverda
@@ -103,6 +106,7 @@ export default function ReadingSection({
           return;
         }
         setTest(data.test);
+        seedHighlights(data.attempt.highlights || []);
         init({
           attemptId,
           mode: 'practice',
@@ -172,7 +176,15 @@ export default function ReadingSection({
         onRatioChange={setSplitRatio}
         leftLabel={`Reading Passage ${passages.indexOf(activePassage) + 1}`}
         rightLabel="Questions"
-        left={<PassagePane passage={activePassage} />}
+        left={
+          <PassagePane
+            passage={activePassage}
+            highlights={highlights}
+            onAddHighlight={(paragraphIndex, start, end) => addHighlight(activePassage.order, paragraphIndex, start, end)}
+            onRemoveHighlight={removeHighlight}
+            onSetNote={setHighlightNote}
+          />
+        }
         right={
           <div>
             {activePassage.questionGroups.map((g) => (

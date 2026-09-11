@@ -1,5 +1,5 @@
 import { getStoredAuthToken } from './examStore';
-import type { AnswerValue, AttemptResult, AttemptReviewDetail, AttemptHistoryEntry, SanitizedTest } from '@/lib/exam/types';
+import type { AnswerValue, AttemptResult, AttemptReviewDetail, AttemptHistoryEntry, Highlight, SanitizedTest } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §4 — `/api/exam/attempts/*` uchun yupqa klient. Barcha
 // bo'lim modullari (Reading — allaqachon, Listening/Writing Faza 2'da) shu bir
@@ -44,6 +44,7 @@ export interface AttemptStateResponse {
     lastQuestion: number;
     essays: AttemptEssaysResponse;
     audio: AttemptAudioResponse;
+    highlights: Highlight[];
     result: AttemptResult | null;
   };
   test: SanitizedTest;
@@ -151,4 +152,37 @@ export async function fetchAttemptHistory(): Promise<{ history: AttemptHistoryEn
   const res = await authedFetch('/api/exam/attempts/history');
   if (!res.ok) throw new Error("Tarixni yuklab bo'lmadi");
   return res.json();
+}
+
+/** TZ §6.3 / §19 Faza 3 item 19 — Reading passage'da matn belgilash + eslatma.
+ * Uch amal bitta endpointda (old-engine'dagi `/api/exam/[id]/highlight` bilan
+ * bir xil naqsh) — har biri darhol saqlanadi (belgilash kam-tez-tez, davomiy
+ * typing emas, shuning uchun `examStore`ning dirtyKeys-debounce autosave'iga
+ * qo'shilmaydi). */
+export async function addHighlight(
+  attemptId: string,
+  h: { passageOrder: number; paragraphIndex: number; startOffset: number; endOffset: number }
+): Promise<{ highlight: Highlight }> {
+  const res = await authedFetch(`/api/exam/attempts/${attemptId}/highlight`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'add', ...h }),
+  });
+  if (!res.ok) throw new Error("Belgilab bo'lmadi");
+  return res.json();
+}
+
+export async function removeHighlight(attemptId: string, highlightId: string): Promise<void> {
+  const res = await authedFetch(`/api/exam/attempts/${attemptId}/highlight`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'remove', highlightId }),
+  });
+  if (!res.ok) throw new Error("Belgini olib bo'lmadi");
+}
+
+export async function setHighlightNote(attemptId: string, highlightId: string, note: string): Promise<void> {
+  const res = await authedFetch(`/api/exam/attempts/${attemptId}/highlight`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'note', highlightId, note }),
+  });
+  if (!res.ok) throw new Error("Eslatmani saqlab bo'lmadi");
 }

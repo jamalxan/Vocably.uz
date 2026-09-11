@@ -752,6 +752,21 @@ const ExamAttemptSchema = new mongoose.Schema(
     ],
     tabSwitchCount: { type: Number, default: 0 },
 
+    // TZ §6.3 / §19 Faza 3 item 19 — Reading passage'da matn belgilash +
+    // eslatma. Faqat Reading (§6 butunlay Reading UI'siga bag'ishlangan —
+    // Listening'da imtihon paytida transkript ko'rsatilmaydi, belgilaydigan
+    // matn yo'q). Offset-based (TZ'ning o'zidagi interfeys) — DOM qayta
+    // chizilganda TreeWalker bilan aniq Range tiklash uchun.
+    highlights: [
+      {
+        passageOrder: { type: Number, required: true },
+        paragraphIndex: { type: Number, required: true },
+        startOffset: { type: Number, required: true },
+        endOffset: { type: Number, required: true },
+        note: { type: String, default: '' },
+      },
+    ],
+
     result: { type: mongoose.Schema.Types.Mixed, default: null },
     submittedAt: { type: Date, default: null },
   },

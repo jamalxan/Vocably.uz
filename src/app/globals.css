@@ -286,6 +286,18 @@ body {
   color: var(--exam-text);
 }
 
+/* §6.3 / §19 Faza 3 item 19 — matn belgilash. `highlightDom.ts#applyHighlights`
+   shu klass bilan `<mark>` yaratadi; eslatmasi bo'lsa `title` atributi orqali
+   hover'da ko'rsatiladi (native tooltip — TZ'dagi maxsus 📝 ikonkaning
+   soddalashtirilgan o'rnini bosuvchisi, xuddi shu "hover'da ko'rinadi"
+   talabini qondiradi). */
+[data-exam] mark.exam-highlight-mark {
+  background: var(--exam-highlight);
+  color: inherit;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
 /* §13 — yuqori kontrast rejimi (sozlamalar panelida yoqiladi/o'chiriladi,
    rasmiy IELTS CD'dagi accessibility opsiyasi bilan bir xil: oq matn qora fonda). */
 [data-exam][data-exam-contrast="high"] {
