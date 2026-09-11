@@ -257,3 +257,57 @@ body {
     animation: none !important;
   }
 }
+
+/* TZ-vocably-v2.md §5.2 (IELTS CD Exam Engine v1.0) — imtihon ekrani tokenlari.
+   ATAYLAB qolgan ilovadan MUSTAQIL: §5.1 qoidasi — imtihon ekranida Deep
+   Merlot/premium/animatsiya YO'Q, chunki maqsad haqiqiy IELTS CD interfeysiga
+   o'rganish, chalg'itish emas. `--color-*` tokenlari (yuqorida) bu yerda ATAYLAB
+   ishlatilmaydi — `[data-exam]` o'ziga xos, doim OCH (light) palitra bilan.
+   Dark mode §5.2: "haqiqiy IELTS'da yo'q" — shuning uchun @media (prefers-color-
+   scheme: dark) yoki [data-theme="dark"] uchun BU BLOK QAYTA YOZILMAYDI. */
+[data-exam] {
+  --exam-bg: #ffffff;
+  --exam-chrome: #f1f1f1;
+  --exam-chrome-border: #d4d4d4;
+  --exam-text: #1a1a1a;
+  --exam-muted: #6b6b6b;
+  --exam-instruction: #f7f7f7;
+  --exam-input-border: #8c8c8c;
+  --exam-accent: #4a1226;
+  --exam-accent-soft: #b8394a;
+  --exam-answered: #4a1226;
+  --exam-answered-bg: #efe6ea;
+  --exam-flag: #e08d00;
+  --exam-danger: #c0392b;
+  --exam-highlight: #ffe9a8;
+  --exam-focus-ring: 0 0 0 3px rgba(74, 18, 38, 0.28);
+  color-scheme: light;
+  background: var(--exam-bg);
+  color: var(--exam-text);
+}
+
+/* §13 — yuqori kontrast rejimi (sozlamalar panelida yoqiladi/o'chiriladi,
+   rasmiy IELTS CD'dagi accessibility opsiyasi bilan bir xil: oq matn qora fonda). */
+[data-exam][data-exam-contrast="high"] {
+  --exam-bg: #000000;
+  --exam-chrome: #1a1a1a;
+  --exam-chrome-border: #4d4d4d;
+  --exam-text: #ffffff;
+  --exam-muted: #cccccc;
+  --exam-instruction: #1a1a1a;
+  --exam-input-border: #ffffff;
+  --exam-answered-bg: #3a1420;
+  --exam-highlight: #5c4a00;
+}
+
+/* §5.4 — 5 daqiqa chegarasiga yetganda taymer 2 marta pulsatsiya qiladi, keyin to'xtaydi
+   (src/features/exam/shell/ExamTimer.tsx). §13 Motion: reduced-motion'da o'chadi. */
+@keyframes exam-timer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-exam] .animate-\[exam-timer-pulse_600ms_ease-in-out_2\] {
+    animation: none !important;
+  }
+}
