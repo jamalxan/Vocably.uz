@@ -1,8 +1,9 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Loader2, Paperclip, X, Send, Mic } from 'lucide-react';
+import { Sparkles, Loader2, Paperclip, X, Send, Mic, BookMarked } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ChatMessage from './chat/ChatMessage';
+import WordPicker, { toWordContext } from './ai/WordPicker';
 
 // Bu til FAQAT mikrofon (SpeechRecognition, ovozli kiritish) uchun — matn yozishga ta'sir
 // qilmaydi, tanlagich faqat mikrofon yoqilganda ko'rinadi.
@@ -13,13 +14,35 @@ const RECOGNITION_LANGS = [
 ];
 const DEFAULT_RECOGNITION_LANG = 'en-US';
 const MAX_ATTACHED_IMAGES = 10;
-// VOCABLY-TZ.md §12.2 — "Tez amallar (chat ostida chip'lar)". Bo'sh holatda
-// ko'rsatiladi, bosilsa handleSend(overrideText) orqali darhol yuboriladi.
+// TZ-vocably-v2.md §D2.3 — avval bu tugmalar so'z tanlanmagan holda oddiy matn yuborar,
+// AI esa "qaysi so'zni nazarda tutyapsiz, yozib yuboring" deb javob berardi (BUG-007).
+// Endi har biri avval Word Picker'ni (min/max cheklov bilan) ochadi, so'ng tanlangan
+// so'zlar asosida xabar avtomatik tuziladi va to'liq kontekst bilan yuboriladi.
 const QUICK_ACTIONS = [
-  "Bu so'zni tushuntir",
-  'Misol jumla ber',
-  "Mnemonika o'ylab top",
-  'Test tuz',
+  {
+    label: "Bu so'zni tushuntir",
+    minSelect: 1,
+    maxSelect: 1,
+    buildMessage: (words) => `"${words[0].word}" so'zini tushuntirib ber.`,
+  },
+  {
+    label: 'Misol jumla ber',
+    minSelect: 1,
+    maxSelect: 5,
+    buildMessage: (words) => `${words.map((w) => w.word).join(', ')} so'z(lar)i uchun har biriga 3 tadan gap tuzib ber.`,
+  },
+  {
+    label: "Mnemonika o'ylab top",
+    minSelect: 1,
+    maxSelect: 10,
+    buildMessage: (words) => `${words.map((w) => w.word).join(', ')} so'z(lar)i uchun o'zbekcha assotsiatsiya (mnemonika) o'ylab top.`,
+  },
+  {
+    label: 'Test tuz',
+    minSelect: 5,
+    maxSelect: 30,
+    buildMessage: (words) => `${words.map((w) => w.word).join(', ')} so'zlari asosida interaktiv test tuz.`,
+  },
 ];
 const RECOGNITION_LANG_KEY = 'vocably.recognitionLang';
 // Textarea 1 qatordan boshlanadi va ~6 qatorgacha o'sadi, keyin ichida scroll paydo bo'ladi.
@@ -87,6 +110,25 @@ function extractPendingAction(fullText) {
   }
 }
 
+// TZ-vocably-v2.md §D3 (BUG-011) — generate_quiz tool natijasi (src/app/api/ai/chat/route.js
+// QUIZ_MARK_START/END) shu yerda ajratib olinadi, ChatMessage QuizCard render qiladi.
+const QUIZ_MARK_START = '\n[[QUIZ]]';
+const QUIZ_MARK_END = '[[/QUIZ]]';
+
+function extractQuizAction(fullText) {
+  const startIdx = fullText.indexOf(QUIZ_MARK_START);
+  if (startIdx === -1) return { visibleText: fullText, quizAction: null };
+  const endIdx = fullText.indexOf(QUIZ_MARK_END, startIdx);
+  if (endIdx === -1) return { visibleText: fullText.slice(0, startIdx), quizAction: null };
+  const jsonStr = fullText.slice(startIdx + QUIZ_MARK_START.length, endIdx);
+  try {
+    const quizAction = JSON.parse(jsonStr);
+    return { visibleText: fullText.slice(0, startIdx).trim(), quizAction };
+  } catch {
+    return { visibleText: fullText.slice(0, startIdx), quizAction: null };
+  }
+}
+
 // `contextHint` — VOCABLY-TZ.md §12.1: qaysi sahifadan ochilgani haqida qisqa,
 // tabiiy tildagi jumla (masalan "Reading (Oqish) bo'limida"). AiPanel.jsx
 // (global sirg'aluvchi panel) usePathname() orqali hisoblab beradi; /app/ai
@@ -111,6 +153,17 @@ export default function AiChat({ contextHint } = {}) {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [attachedImages, setAttachedImages] = useState([]);
+
+  // TZ-vocably-v2.md §D2.1/D2.3 — Word Picker holati. `pickerConfig.pendingQuickAction`
+  // bo'lsa (tez-tugma bosilganda) tanlov tugagach xabar avtomatik tuziladi va yuboriladi;
+  // aks holda (asosiy "📚 Lug'atdan tanlash" tugmasi) tanlangan so'zlar chip sifatida
+  // inputga qo'shiladi, foydalanuvchi o'z xabarini yozib, keyin birga yuboradi.
+  const [pickerConfig, setPickerConfig] = useState(null); // { minSelect, maxSelect, title, pendingQuickAction? }
+  const [selectedWordChips, setSelectedWordChips] = useState([]);
+
+  // TZ-vocably-v2.md §D2.2 — `@` mention: input ichida "@" dan keyin yozilgan matn
+  // aktiv kategoriyadagi so'zlarni real vaqtda taklif qiladi.
+  const [mentionQuery, setMentionQuery] = useState(null); // { text, start, end } yoki null
 
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [recognitionLang, setRecognitionLang] = useState(DEFAULT_RECOGNITION_LANG);
@@ -310,12 +363,18 @@ export default function AiChat({ contextHint } = {}) {
   // takrorlamasdan, faqat so'rovni qaytadan yuborish uchun (TZ-vocably-v2.md §D1.5).
   const lastRequestRef = useRef(null);
 
-  const runAiRequest = async (text, imagesToSend) => {
+  const runAiRequest = async (text, imagesToSend, wordContextToSend) => {
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ sessionId: currentSessionId, message: text, imagesBase64: imagesToSend, context: contextHint }),
+        body: JSON.stringify({
+          sessionId: currentSessionId,
+          message: text,
+          imagesBase64: imagesToSend,
+          context: contextHint,
+          wordContext: wordContextToSend,
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -336,7 +395,8 @@ export default function AiChat({ contextHint } = {}) {
         const { done, value } = await reader.read();
         if (done) break;
         fullText += decoder.decode(value, { stream: true });
-        const { visibleText: afterPending } = extractPendingAction(fullText);
+        const { visibleText: afterQuiz } = extractQuizAction(fullText);
+        const { visibleText: afterPending } = extractPendingAction(afterQuiz);
         const { visibleText } = extractAiError(afterPending);
         setMessages((prev) => {
           const updated = [...prev];
@@ -345,7 +405,8 @@ export default function AiChat({ contextHint } = {}) {
         });
       }
 
-      const { visibleText: afterPending, pendingAction } = extractPendingAction(fullText);
+      const { visibleText: afterQuiz, quizAction } = extractQuizAction(fullText);
+      const { visibleText: afterPending, pendingAction } = extractPendingAction(afterQuiz);
       const { visibleText, aiError } = extractAiError(afterPending);
 
       // AI shu javob davomida yangi kategoriya yaratgan bo'lishi mumkin (create_category darhol
@@ -357,7 +418,7 @@ export default function AiChat({ contextHint } = {}) {
         const updated = [...prev];
         updated[updated.length - 1] = aiError
           ? { role: 'model', parts: [{ text: visibleText }], aiError }
-          : { role: 'model', parts: [{ text: visibleText }], pendingAction: pendingAction || null };
+          : { role: 'model', parts: [{ text: visibleText }], pendingAction: pendingAction || null, quizAction: quizAction || null };
         return updated;
       });
 
@@ -378,14 +439,16 @@ export default function AiChat({ contextHint } = {}) {
     }
   };
 
-  const handleSend = async (overrideText) => {
+  const handleSend = async (overrideText, overrideWordContext) => {
     const text = (overrideText ?? chatInput).trim();
+    const wordContextToSend = overrideWordContext ?? selectedWordChips;
     if ((!text && attachedImages.length === 0) || chatLoading) return;
 
     const userMsg = {
       role: 'user',
       parts: [{ text: text || '(rasm yuborildi)' }],
       imageUrls: attachedImages,
+      wordChips: wordContextToSend.length > 0 ? wordContextToSend : undefined,
     };
     const modelPlaceholder = { role: 'model', parts: [{ text: '' }], _streaming: true };
 
@@ -393,11 +456,12 @@ export default function AiChat({ contextHint } = {}) {
     setChatInput('');
     const imagesToSend = attachedImages;
     setAttachedImages([]);
+    setSelectedWordChips([]);
     setChatLoading(true);
     stickToBottomRef.current = true;
-    lastRequestRef.current = { text, images: imagesToSend };
+    lastRequestRef.current = { text, images: imagesToSend, wordContext: wordContextToSend };
 
-    await runAiRequest(text, imagesToSend);
+    await runAiRequest(text, imagesToSend, wordContextToSend);
   };
 
   // Xato kartasidagi "Qayta urinish" — foydalanuvchi xabarini takrorlamaydi, faqat
@@ -411,7 +475,7 @@ export default function AiChat({ contextHint } = {}) {
     });
     setChatLoading(true);
     stickToBottomRef.current = true;
-    runAiRequest(lastRequestRef.current.text, lastRequestRef.current.images);
+    runAiRequest(lastRequestRef.current.text, lastRequestRef.current.images, lastRequestRef.current.wordContext);
   };
 
   const handleFormSubmit = (e) => {
@@ -419,12 +483,91 @@ export default function AiChat({ contextHint } = {}) {
     handleSend();
   };
 
+  // TZ-vocably-v2.md §D2.3 — tez-tugma bosilganda avval Word Picker ochiladi (min/max
+  // shu tugmaga mos), tanlov tugagach xabar avtomatik tuzilib yuboriladi.
+  const openQuickAction = (action) => {
+    setPickerConfig({
+      minSelect: action.minSelect,
+      maxSelect: action.maxSelect,
+      title: action.label,
+      pendingQuickAction: action,
+    });
+  };
+
+  // §D2.1 — asosiy "📚 Lug'atdan tanlash" tugmasi: tanlangan so'zlar inputga chip
+  // sifatida qo'shiladi, xabar matnini foydalanuvchi o'zi yozadi.
+  const openManualPicker = () => {
+    setPickerConfig({ minSelect: 1, maxSelect: 30, title: "Lug'atdan so'z tanlash" });
+  };
+
+  const handlePickerConfirm = (words) => {
+    const action = pickerConfig?.pendingQuickAction;
+    setPickerConfig(null);
+    if (action) {
+      handleSend(action.buildMessage(words), words);
+      return;
+    }
+    setSelectedWordChips((prev) => {
+      const merged = [...prev];
+      for (const w of words) if (!merged.some((m) => m.wordId === w.wordId)) merged.push(w);
+      return merged;
+    });
+  };
+
+  const removeWordChip = (wordId) => {
+    setSelectedWordChips((prev) => prev.filter((w) => w.wordId !== wordId));
+  };
+
+  // §D2.2 — `@` mention: kursor turgan joydan orqaga qarab oxirgi bo'shliqqacha bo'lgan
+  // matnni tekshiradi, agar u "@" bilan boshlansa (va bo'sh joy bo'lmasa) — taklif ro'yxati
+  // ochiladi. Barcha kategoriyalar bo'yicha qidiradi, mos so'zlar 6 tagacha ko'rsatiladi.
+  const allWordsFlat = (categories || []).flatMap((c) => (c.words || []).map((w) => ({ word: w, category: c })));
+
+  const mentionSuggestions = mentionQuery
+    ? allWordsFlat
+        .filter(({ word }) => mentionQuery.text === '' || word.word.toLowerCase().startsWith(mentionQuery.text.toLowerCase()))
+        .slice(0, 6)
+    : [];
+
+  const updateMentionFromCaret = (value, caret) => {
+    const upToCaret = value.slice(0, caret);
+    const atIdx = upToCaret.lastIndexOf('@');
+    if (atIdx === -1) return setMentionQuery(null);
+    const between = upToCaret.slice(atIdx + 1);
+    if (/\s/.test(between)) return setMentionQuery(null);
+    setMentionQuery({ text: between, start: atIdx, end: caret });
+  };
+
+  const handleChatInputChange = (e) => {
+    const value = e.target.value;
+    setChatInput(value);
+    updateMentionFromCaret(value, e.target.selectionStart ?? value.length);
+  };
+
+  const selectMention = ({ word, category }) => {
+    if (!mentionQuery) return;
+    const before = chatInput.slice(0, mentionQuery.start);
+    const after = chatInput.slice(mentionQuery.end);
+    setChatInput(`${before}${after}`);
+    setMentionQuery(null);
+    setSelectedWordChips((prev) => (prev.some((w) => w.wordId === word._id) ? prev : [...prev, toWordContext(word, category)]));
+    textareaRef.current?.focus();
+  };
+
   // Enter — yuborish, Shift+Enter — yangi qator.
   // IME (koreys/xitoy/yapon klaviaturasi) kompozitsiyasi paytida Enter xabarni yubormasligi kerak.
   const handleTextareaKeyDown = (e) => {
+    if (e.key === 'Escape' && mentionQuery) {
+      setMentionQuery(null);
+      return;
+    }
     if (e.key !== 'Enter' || e.shiftKey) return;
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     e.preventDefault();
+    if (mentionQuery && mentionSuggestions.length > 0) {
+      selectMention(mentionSuggestions[0]);
+      return;
+    }
     handleSend();
   };
 
@@ -474,15 +617,15 @@ export default function AiChat({ contextHint } = {}) {
               <p className="text-[10px] text-muted/70 mt-2">
                 Masalan: "arise" so'zini bir nechta gapda ishlatib ko'rsat, yoki rasm yuboring
               </p>
-              {/* Tez amallar (VOCABLY-TZ.md §12.2) — bosilsa darhol yuboriladi. */}
+              {/* Tez amallar (TZ-vocably-v2.md §D2.3) — avval Word Picker'ni ochadi. */}
               <div className="flex flex-wrap justify-center gap-1.5 mt-5 max-w-sm mx-auto">
                 {QUICK_ACTIONS.map((qa) => (
                   <button
-                    key={qa}
-                    onClick={() => handleSend(qa)}
+                    key={qa.label}
+                    onClick={() => openQuickAction(qa)}
                     className="px-3 py-1.5 bg-surface border border-border hover:border-accent/40 hover:text-accent rounded-full text-xs text-muted transition-colors"
                   >
-                    {qa}
+                    {qa.label}
                   </button>
                 ))}
               </div>
@@ -542,7 +685,7 @@ export default function AiChat({ contextHint } = {}) {
               chapga-o'ngga borsin, tugmalar ichida tursin"). Stiker/emoji ATAYLAB yo'q. */}
           <form
             onSubmit={handleFormSubmit}
-            className="w-full border border-border rounded-2xl bg-surface focus-within:border-accent transition-colors overflow-hidden"
+            className="relative w-full border border-border rounded-2xl bg-surface focus-within:border-accent transition-colors overflow-hidden"
           >
             <input
               type="file"
@@ -552,8 +695,40 @@ export default function AiChat({ contextHint } = {}) {
               className="hidden"
               onChange={handleFileInputChange}
             />
-            {attachedImages.length > 0 && (
+            {/* §D2.2 `@` mention taklif ro'yxati */}
+            {mentionQuery && mentionSuggestions.length > 0 && (
+              <div className="absolute bottom-full mb-1 left-2 right-2 z-30 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
+                {mentionSuggestions.map(({ word, category }) => (
+                  <button
+                    key={word._id}
+                    type="button"
+                    onClick={() => selectMention({ word, category })}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-bg transition-colors"
+                  >
+                    <span className="font-semibold text-ink">{word.word}</span>
+                    <span className="text-muted truncate">{(word.syns || []).join(', ')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {(attachedImages.length > 0 || selectedWordChips.length > 0) && (
               <div className="flex flex-wrap gap-2 px-3 pt-3">
+                {selectedWordChips.map((w) => (
+                  <span
+                    key={w.wordId}
+                    className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold"
+                  >
+                    <BookMarked size={11} /> {w.word}
+                    <button
+                      type="button"
+                      onClick={() => removeWordChip(w.wordId)}
+                      aria-label={`${w.word} so'zini olib tashlash`}
+                      className="hover:text-accent-hover"
+                    >
+                      <X size={11} />
+                    </button>
+                  </span>
+                ))}
                 {attachedImages.map((img, i) => (
                   <div key={i} className="relative inline-block">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -567,23 +742,34 @@ export default function AiChat({ contextHint } = {}) {
                     </button>
                   </div>
                 ))}
-                <span className="self-center text-[10px] text-muted">
-                  {attachedImages.length}/{MAX_ATTACHED_IMAGES}
-                </span>
+                {attachedImages.length > 0 && (
+                  <span className="self-center text-[10px] text-muted">
+                    {attachedImages.length}/{MAX_ATTACHED_IMAGES}
+                  </span>
+                )}
               </div>
             )}
             <textarea
               ref={textareaRef}
               rows={1}
-              placeholder="Xabaringizni yozing... (Shift+Enter — yangi qator)"
+              placeholder="Xabaringizni yozing... (@ — lug'atdan so'z, Shift+Enter — yangi qator)"
               value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
+              onChange={handleChatInputChange}
               onPaste={handlePaste}
               onKeyDown={handleTextareaKeyDown}
               className="w-full px-4 pt-3 pb-1 bg-transparent text-sm leading-5 outline-none resize-none"
             />
             <div className="flex items-center justify-between gap-2 px-2 pb-2">
               <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={openManualPicker}
+                  className="p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors"
+                  title="Lug'atdan so'z tanlash"
+                  aria-label="Lug'atdan so'z tanlash"
+                >
+                  <BookMarked size={18} />
+                </button>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -659,6 +845,18 @@ export default function AiChat({ contextHint } = {}) {
           </form>
         </div>
       </div>
+
+      {pickerConfig && (
+        <WordPicker
+          open
+          onClose={() => setPickerConfig(null)}
+          categories={categories}
+          minSelect={pickerConfig.minSelect}
+          maxSelect={pickerConfig.maxSelect}
+          title={pickerConfig.title}
+          onConfirm={handlePickerConfirm}
+        />
+      )}
     </div>
   );
 }

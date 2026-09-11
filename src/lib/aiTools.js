@@ -46,6 +46,36 @@ const TOOL_DEFS = [
       required: ['name'],
     },
   },
+  {
+    name: 'generate_quiz',
+    description:
+      "Foydalanuvchi 'Test tuz' deb so'raganda (yoki so'z(lar) asosida test/quiz so'ralganda) chaqiriladi. " +
+      "Testni oddiy matn sifatida YOZMANG — har doim shu funksiya orqali strukturali qaytaring, " +
+      "shunda foydalanuvchi interaktiv (bosib javob beradigan) test ko'radi.",
+    parameters: {
+      type: 'object',
+      properties: {
+        questions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              prompt: { type: 'string', description: "Savol matni (masalan so'z ma'nosi yoki gapni to'ldirish)" },
+              options: {
+                type: 'array',
+                items: { type: 'string' },
+                description: '3-4 ta javob varianti',
+              },
+              answer: { type: 'string', description: "To'g'ri javob — options ichidan aynan bittasi" },
+              explanation: { type: 'string', description: 'Nega shu javob to\'g\'ri — qisqa izoh' },
+            },
+            required: ['prompt', 'options', 'answer', 'explanation'],
+          },
+        },
+      },
+      required: ['questions'],
+    },
+  },
 ];
 
 export function toGeminiTools() {
@@ -105,6 +135,27 @@ export function runToolCall(name, args, user, ctx = {}) {
     return {
       result: { status: "Foydalanuvchi tasdig'i so'ralmoqda, hali qo'shilmadi" },
       pendingAction,
+      shouldStop: true,
+    };
+  }
+
+  // TZ-vocably-v2.md §D3 (BUG-011) — "Test tuz" endi oddiy matn emas, strukturali JSON
+  // qaytaradi (add_words'dagi pendingAction bilan bir xil naqsh: shu javobda darhol
+  // to'xtaymiz, klient QuizCard'ni render qiladi).
+  if (name === 'generate_quiz') {
+    const quizAction = {
+      questions: (Array.isArray(args?.questions) ? args.questions : [])
+        .map((q) => ({
+          prompt: q?.prompt || '',
+          options: Array.isArray(q?.options) ? q.options.filter(Boolean) : [],
+          answer: q?.answer || '',
+          explanation: q?.explanation || '',
+        }))
+        .filter((q) => q.prompt && q.options.length >= 2 && q.answer),
+    };
+    return {
+      result: { status: "Test foydalanuvchiga interaktiv ko'rinishda ko'rsatilmoqda" },
+      quizAction,
       shouldStop: true,
     };
   }

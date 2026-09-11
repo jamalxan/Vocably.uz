@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Sparkles, Copy, Check, Pencil, RotateCcw } from 'lucide-react';
+import { Sparkles, Copy, Check, Pencil, RotateCcw, BookMarked } from 'lucide-react';
 import PendingAddWordsCard from './PendingAddWordsCard';
+import QuizCard from './QuizCard';
 
 export default function ChatMessage({ msg, index, categories, sessionId, onResolvedAdd, onEdit, onRetry }) {
   const [copied, setCopied] = useState(false);
@@ -35,6 +36,20 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
                 alt="Yuklangan rasm"
                 className="max-w-[220px] rounded-xl border border-border"
               />
+            ))}
+          </div>
+        )}
+        {/* TZ-vocably-v2.md §D2.1 — Word Picker orqali tanlangan so'zlar chat tarixida
+            ham chip sifatida ko'rinadi (matn ichiga aralashtirilmaydi). */}
+        {msg.wordChips?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-1.5 justify-end">
+            {msg.wordChips.map((w) => (
+              <span
+                key={w.wordId}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent-soft text-accent rounded-full text-[11px] font-semibold"
+              >
+                <BookMarked size={10} /> {w.word}
+              </span>
             ))}
           </div>
         )}
@@ -103,6 +118,7 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
             onResolved={(data) => onResolvedAdd(index, data)}
           />
         )}
+        {msg.quizAction && <QuizCard quizAction={msg.quizAction} />}
       </div>
     </div>
   );

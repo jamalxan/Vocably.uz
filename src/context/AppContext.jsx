@@ -426,6 +426,45 @@ export function AppProvider({ children }) {
     [token]
   );
 
+  // TZ-vocably-v2.md §D5 (BUG-008) — bir so'rovda 10 tagacha so'zni birga boyitish
+  // (src/app/api/words/enrich-batch). WordTable.jsx bir nechta bunday chaqiruvni
+  // parallel yuboradi. Har bir so'z natijasi mustaqil (birontasi xato bo'lsa ham
+  // qolganlari saqlanadi) — shuning uchun natija massivini qaytaramiz, xato
+  // bo'lganlarini chaqiruvchi o'zi ajratib oladi.
+  const enrichWordsBatch = useCallback(
+    async (categoryId, wordIds) => {
+      const res = await fetch('/api/words/enrich-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ categoryId, wordIds }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return wordIds.map((wordId) => ({ wordId, error: data?.error || "Boyitib bo'lmadi", requestId: data?.requestId || null }));
+      }
+
+      const results = Array.isArray(data.results) ? data.results : [];
+      const succeeded = results.filter((r) => r.success);
+      if (succeeded.length > 0) {
+        setCategories((prev) =>
+          prev.map((c) =>
+            c._id !== categoryId
+              ? c
+              : {
+                  ...c,
+                  words: c.words.map((w) => {
+                    const match = succeeded.find((r) => r.wordId === w._id);
+                    return match ? { ...w, enrichment: match.enrichment } : w;
+                  }),
+                }
+          )
+        );
+      }
+      return results;
+    },
+    [token]
+  );
+
   // V6 "Mnemonika ustaxonasi" — foydalanuvchining o'z mnemonikasini saqlaydi
   // (src/app/api/words/mnemonic, models.js'dagi userMnemonicUz izohiga q.).
   const saveMnemonic = useCallback(
@@ -462,6 +501,7 @@ export function AppProvider({ children }) {
     activeCatIndex,
     setActiveCatIndex,
     enrichWord,
+    enrichWordsBatch,
     saveMnemonic,
     activeCategory,
     token,
