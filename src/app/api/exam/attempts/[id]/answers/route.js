@@ -10,6 +10,11 @@ import { NextResponse } from 'next/server';
 // birlashtiriladi (Object.assign), butunlay ALMASHTIRILMAYDI. `flagged` va
 // `lastQuestion` esa to'liq snapshot sifatida keladi (§4.3 jadvali) — bor
 // bo'yicha almashtiriladi.
+//
+// `essays` — TZ §4/§8 Writing uchun alohida endpoint YO'Q (§4 jadvalida
+// bittagina PATCH /answers bor); insho matni ham xuddi shu "batch saqlash"
+// yo'lidan, `{task1?: {text, wordCount}, task2?: {text, wordCount}}` sifatida
+// keladi (examStore.ts#syncNow "task1"/"task2" dirty kalitlari orqali).
 export async function PATCH(req, { params }) {
   try {
     const userId = getUserIdFromRequest(req);
@@ -23,7 +28,7 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ error: 'Urinish allaqachon yakunlangan' }, { status: 409 });
     }
 
-    const { answers, flagged, lastQuestion } = await req.json().catch(() => ({}));
+    const { answers, flagged, lastQuestion, essays } = await req.json().catch(() => ({}));
 
     if (answers && typeof answers === 'object') {
       attempt.answers = { ...(attempt.answers || {}), ...answers };
@@ -31,6 +36,17 @@ export async function PATCH(req, { params }) {
     }
     if (Array.isArray(flagged)) attempt.flagged = flagged;
     if (typeof lastQuestion === 'number') attempt.lastQuestion = lastQuestion;
+
+    if (essays && typeof essays === 'object') {
+      const now = new Date();
+      for (const key of ['task1', 'task2']) {
+        const incoming = essays[key];
+        if (incoming && typeof incoming.text === 'string') {
+          attempt.essays[key] = { text: incoming.text, wordCount: Number(incoming.wordCount) || 0, updatedAt: now };
+        }
+      }
+      attempt.markModified('essays');
+    }
 
     await attempt.save();
 

@@ -19,6 +19,9 @@ export interface ExamShellProps {
   footerGroups?: QuestionGroupNav[];
   onSubmit?: () => void;
   submitLabel?: string;
+  // Writing'ning footeri savol paneli emas — Task 1/2 almashtirgich (§8.4).
+  // Berilsa `footerGroups`/`onSubmit` o'rniga shu ko'rsatiladi.
+  customFooter?: ReactNode;
   children: ReactNode;
 }
 
@@ -36,6 +39,7 @@ export default function ExamShell({
   footerGroups,
   onSubmit,
   submitLabel,
+  customFooter,
   children,
 }: ExamShellProps) {
   const remainingSec = useExamStore((s) => s.remainingSec);
@@ -84,16 +88,21 @@ export default function ExamShell({
 
       <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
 
-      {footerGroups && footerGroups.length > 0 && (
-        <ExamFooterNav
-          groups={footerGroups}
-          answers={answers}
-          flagged={flagged}
-          currentQuestion={currentQuestion}
-          onGoTo={goToQuestion}
-          onSubmit={() => onSubmit?.()}
-          submitLabel={submitLabel}
-        />
+      {customFooter ? (
+        customFooter
+      ) : (
+        footerGroups &&
+        footerGroups.length > 0 && (
+          <ExamFooterNav
+            groups={footerGroups}
+            answers={answers}
+            flagged={flagged}
+            currentQuestion={currentQuestion}
+            onGoTo={goToQuestion}
+            onSubmit={() => onSubmit?.()}
+            submitLabel={submitLabel}
+          />
+        )
       )}
 
       <SettingsPanel

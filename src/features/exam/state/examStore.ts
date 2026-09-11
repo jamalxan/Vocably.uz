@@ -1,6 +1,7 @@
 'use client';
 import { create } from 'zustand';
 import type { AnswerValue, ExamSectionKey } from '@/lib/exam/types';
+import { countWords } from '@/lib/exam/wordCount';
 
 // TZ-vocably-v2.md §17 (IELTS CD Exam Engine v1.0) — client holati (zustand).
 //
@@ -50,9 +51,19 @@ export function getStoredAuthToken(): string | null {
   }
 }
 
+export interface EssayState {
+  text: string;
+  wordCount: number;
+}
+
 async function patchAnswers(
   attemptId: string,
-  body: { answers: Record<string, AnswerValue>; flagged: number[]; lastQuestion: number }
+  body: {
+    answers: Record<string, AnswerValue>;
+    flagged: number[];
+    lastQuestion: number;
+    essays?: { task1?: EssayState; task2?: EssayState };
+  }
 ): Promise<boolean> {
   const token = getStoredAuthToken();
   if (!token) return false;
@@ -79,6 +90,13 @@ export interface ExamStoreState {
   answers: Record<string, AnswerValue>;
   flagged: Set<number>;
   currentQuestion: number;
+
+  // Writing (§8) — "q12" kalitlardan farqli, `dirtyKeys` ichida "task1"/"task2"
+  // sifatida kuzatiladi, shunda MAVJUD autosave infratuzilmasi (debounce/
+  // interval/blur/beforeunload, useAutosave.ts) qayta ishlatiladi — Writing
+  // uchun alohida "dirty" mexanizmi QURILMAYDI.
+  essays: { task1: EssayState; task2: EssayState };
+  activeWritingTask: 1 | 2;
 
   // Taymer — §4.2: `endsAt` (server bergan, ms epoch) + `serverOffset`
   // (serverNow - Date.now(), so'rov vaqtida hisoblangan) haqiqat manbai;
@@ -107,11 +125,14 @@ export interface ExamStoreState {
     currentQuestion: number;
     endsAt: number; // ms epoch
     serverNow: number; // ms epoch
+    essays?: { task1?: Partial<EssayState>; task2?: Partial<EssayState> };
   }) => void;
   reset: () => void;
   setAnswer: (qNum: number, value: AnswerValue) => void;
   toggleFlag: (qNum: number) => void;
   goToQuestion: (qNum: number) => void;
+  setEssayText: (task: 1 | 2, text: string) => void;
+  setActiveWritingTask: (task: 1 | 2) => void;
   setRemainingSec: (sec: number) => void;
   reconcileFromHeartbeat: (remainingSecFromServer: number) => void;
   toggleTimerHidden: () => void;
@@ -121,6 +142,8 @@ export interface ExamStoreState {
   syncNow: () => Promise<void>;
 }
 
+const EMPTY_ESSAY: EssayState = { text: '', wordCount: 0 };
+
 const INITIAL_TRANSIENT_STATE = {
   attemptId: null as string | null,
   mode: 'practice' as ExamMode,
@@ -128,6 +151,8 @@ const INITIAL_TRANSIENT_STATE = {
   answers: {} as Record<string, AnswerValue>,
   flagged: new Set<number>(),
   currentQuestion: 1,
+  essays: { task1: EMPTY_ESSAY, task2: EMPTY_ESSAY },
+  activeWritingTask: 1 as 1 | 2,
   endsAt: 0,
   serverOffset: 0,
   remainingSec: 0,
@@ -149,7 +174,7 @@ export const useExamStore = create<ExamStoreState>((set, get) => ({
     return Number.isFinite(n) ? Math.min(0.7, Math.max(0.3, n)) : 0.5;
   }),
 
-  init: ({ attemptId, mode, section, answers, flagged, currentQuestion, endsAt, serverNow }) =>
+  init: ({ attemptId, mode, section, answers, flagged, currentQuestion, endsAt, serverNow, essays }) =>
     set({
       attemptId,
       mode,
@@ -157,6 +182,11 @@ export const useExamStore = create<ExamStoreState>((set, get) => ({
       answers,
       flagged: new Set(flagged),
       currentQuestion,
+      essays: {
+        task1: { text: essays?.task1?.text || '', wordCount: essays?.task1?.wordCount ?? countWords(essays?.task1?.text || '') },
+        task2: { text: essays?.task2?.text || '', wordCount: essays?.task2?.wordCount ?? countWords(essays?.task2?.text || '') },
+      },
+      activeWritingTask: 1,
       endsAt,
       serverOffset: serverNow - Date.now(),
       remainingSec: Math.max(0, Math.round((endsAt - serverNow) / 1000)),
@@ -175,6 +205,17 @@ export const useExamStore = create<ExamStoreState>((set, get) => ({
       dirtyKeys: new Set(state.dirtyKeys).add(`q${qNum}`),
       saveStatus: 'saving',
     })),
+
+  // §8.3 — so'z hisoblagich har o'zgarishda qayta hisoblanadi (debounce
+  // chaqiruvchi tarafda, EssayEditor.tsx'da — bu yerda faqat state).
+  setEssayText: (task, text) =>
+    set((state) => ({
+      essays: { ...state.essays, [`task${task}`]: { text, wordCount: countWords(text) } },
+      dirtyKeys: new Set(state.dirtyKeys).add(`task${task}`),
+      saveStatus: 'saving',
+    })),
+
+  setActiveWritingTask: (task) => set({ activeWritingTask: task }),
 
   toggleFlag: (qNum) =>
     set((state) => {
@@ -241,12 +282,18 @@ export const useExamStore = create<ExamStoreState>((set, get) => ({
     const keysBeingSynced = new Set(state.dirtyKeys);
     const flaggedBeingSynced = state.flaggedDirty;
     const dirtyAnswers: Record<string, AnswerValue> = {};
-    for (const key of keysBeingSynced) dirtyAnswers[key] = state.answers[key];
+    const dirtyEssays: { task1?: EssayState; task2?: EssayState } = {};
+    for (const key of keysBeingSynced) {
+      if (key === 'task1') dirtyEssays.task1 = state.essays.task1;
+      else if (key === 'task2') dirtyEssays.task2 = state.essays.task2;
+      else dirtyAnswers[key] = state.answers[key];
+    }
 
     const ok = await patchAnswers(state.attemptId, {
       answers: dirtyAnswers,
       flagged: Array.from(state.flagged),
       lastQuestion: state.currentQuestion,
+      essays: Object.keys(dirtyEssays).length > 0 ? dirtyEssays : undefined,
     });
 
     set((s) => {

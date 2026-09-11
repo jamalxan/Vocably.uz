@@ -16,6 +16,11 @@ async function authedFetch(url: string, init?: RequestInit): Promise<Response> {
   });
 }
 
+export interface AttemptEssaysResponse {
+  task1?: { text: string; wordCount: number; updatedAt?: string };
+  task2?: { text: string; wordCount: number; updatedAt?: string };
+}
+
 export interface AttemptStateResponse {
   serverNow: string;
   endsAt: string;
@@ -30,6 +35,7 @@ export interface AttemptStateResponse {
     answers: Record<string, AnswerValue>;
     flagged: number[];
     lastQuestion: number;
+    essays: AttemptEssaysResponse;
     result: AttemptResult | null;
   };
   test: SanitizedTest;

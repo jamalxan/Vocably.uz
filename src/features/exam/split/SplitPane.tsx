@@ -19,9 +19,15 @@ export interface SplitPaneProps {
   onRatioChange: (ratio: number) => void;
   leftLabel?: string;
   rightLabel?: string;
+  // Reading/Writing Task panellari o'qish uchun padding+o'z scroll kerak
+  // (standart). Writing muharriri panelida esa (§8.2 "panel to'liq
+  // balandligi") tashqi padding/scroll KERAK EMAS — EssayEditor o'zi to'liq
+  // balandlikni egallaydi va faqat textarea scroll qiladi (qo'sh scrollbar
+  // bo'lmasin uchun).
+  rightPadded?: boolean;
 }
 
-export default function SplitPane({ left, right, ratio, onRatioChange, leftLabel, rightLabel }: SplitPaneProps) {
+export default function SplitPane({ left, right, ratio, onRatioChange, leftLabel, rightLabel, rightPadded = true }: SplitPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -47,7 +53,7 @@ export default function SplitPane({ left, right, ratio, onRatioChange, leftLabel
 
       <section
         aria-label={rightLabel}
-        className="h-full min-w-0 overflow-y-auto overscroll-contain px-6 sm:px-7 py-6"
+        className={`h-full min-w-0 ${rightPadded ? 'overflow-y-auto overscroll-contain px-6 sm:px-7 py-6' : 'overflow-hidden'}`}
         style={{ pointerEvents: dragging ? 'none' : 'auto' }}
       >
         {right}

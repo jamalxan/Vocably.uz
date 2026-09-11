@@ -162,10 +162,35 @@ async function main() {
 
     const doc = {
       slug: SLUG,
-      title: 'Demo Reading — The Evolution of the Bicycle',
+      title: 'Demo — The Evolution of the Bicycle',
       module: 'academic',
       difficulty: 'easy',
-      sections: { reading: { durationSec: 600, passages: [PASSAGE] } },
+      sections: {
+        reading: { durationSec: 600, passages: [PASSAGE] },
+        // Faza 2 item 12 (WritingSection) sinovi uchun — original, kichik
+        // topshiriqlar. Real IELTS band jadvali AI grader hali yo'q (Faza 2
+        // item 13) shuning uchun `result.writing` submit'dan keyin ham `null`
+        // qoladi — bu ATAYLAB shunday (attemptServer.ts).
+        writing: {
+          durationSec: 600,
+          tasks: [
+            {
+              order: 1,
+              minWords: 50,
+              recommendedMin: 5,
+              promptHtml:
+                '<p>The chart below shows how bicycle commuting in one city changed between 1990 and 2020.</p><p>Summarise the information by selecting and reporting the main features, and make comparisons where relevant.</p>',
+            },
+            {
+              order: 2,
+              minWords: 80,
+              recommendedMin: 10,
+              promptHtml:
+                '<p>Some people think cities should build more bicycle lanes, while others believe the money should be spent on public transport instead.</p><p>Discuss both views and give your own opinion.</p>',
+            },
+          ],
+        },
+      },
       bandTable: null,
       isPublished: true,
       createdBy: user._id,
@@ -176,7 +201,8 @@ async function main() {
     const testId = result.upsertedId ?? (await db.collection('examtests').findOne({ slug: SLUG }, { projection: { _id: 1 } }))._id;
 
     console.log(`Tayyor. Test ID: ${testId}`);
-    console.log(`Sinash uchun: /app/oqish-beta?testId=${testId}`);
+    console.log(`Reading sinovi: /app/oqish-beta?testId=${testId}`);
+    console.log(`Writing sinovi: /app/yozish-beta?testId=${testId}`);
   } finally {
     await client.close();
   }
