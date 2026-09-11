@@ -318,3 +318,48 @@ export type SanitizedTest = Omit<Test, 'sections'> & {
     speaking?: SpeakingSection;
   };
 };
+
+// ============================================================================
+// §4/§11.2 — Review (to'liq, izohli) ko'rinish. Sanitized* dan FARQLI — bu
+// yerda javob kaliti/izoh/transkript ATAYLAB bor, chunki §4.1'dagi maxfiylik
+// qoidasi faqat EXAM rejimiga tegishli; review faqat `status==='graded'`dan
+// keyin, alohida `/attempts/:id/result` endpointi orqali ochiladi (TZ §19
+// Faza 3 item 16).
+// ============================================================================
+
+export interface ReviewQuestion {
+  number: number;
+  promptHtml: string;
+  options?: Option[];
+  userAnswer: string;
+  correct: boolean;
+  accepted: string[];
+  explanationHtml: string;
+  locatorParagraph?: string;
+}
+
+export interface ReviewPassage {
+  order: number;
+  title: string;
+  paragraphs: PassageParagraph[];
+  questions: ReviewQuestion[];
+}
+
+export interface ReviewListeningPart {
+  order: number;
+  transcript: string;
+  contextText?: string;
+  questions: ReviewQuestion[];
+}
+
+export interface AttemptReviewDetail {
+  overall?: number;
+  reading?: { band: number; raw: number; passages: ReviewPassage[] };
+  listening?: { band: number; raw: number; parts: ReviewListeningPart[] };
+  writing?: {
+    task1: WritingScore;
+    task2: WritingScore;
+    band: number;
+    essays: { task1: string; task2: string };
+  };
+}

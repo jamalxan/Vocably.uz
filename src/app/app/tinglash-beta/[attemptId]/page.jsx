@@ -26,7 +26,7 @@ export default function TinglashBetaAttemptPage() {
   if (submitted) {
     return (
       <div>
-        <ListeningResult result={result} />
+        <ListeningResult attemptId={attemptId} result={result} />
         <div className="text-center pb-10">
           <button onClick={() => router.push('/app/tinglash-beta')} className="text-sm text-accent hover:underline font-semibold">
             Yangi urinish boshlash

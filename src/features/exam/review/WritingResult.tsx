@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { RotateCcw, Loader2 } from 'lucide-react';
 import { gradeWriting } from '../state/attemptsApi';
-import type { AttemptResult, WritingScore } from '@/lib/exam/types';
+import WritingScoreCard from './WritingScoreCard';
+import type { AttemptResult } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §19 Faza 2 item 13 — AI grader natijasi. `result.writing`
 // bo'lmasa (AI vaqtincha ishlamay qolgan bo'lishi mumkin — attempt.status
@@ -13,49 +14,6 @@ export interface WritingResultProps {
   attemptId: string;
   result: AttemptResult | null;
   onRegraded: (result: AttemptResult | null) => void;
-}
-
-function CriterionRow({ label, band, note }: { label: string; band: number; note: string }) {
-  return (
-    <div className="flex items-start justify-between gap-3 py-2 border-b border-border last:border-0">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-ink">{label}</p>
-        {note && <p className="text-xs text-muted mt-0.5">{note}</p>}
-      </div>
-      <span className="flex-shrink-0 text-sm font-bold text-brand-text tabular-nums">{band.toFixed(1)}</span>
-    </div>
-  );
-}
-
-function TaskCard({ title, score }: { title: string; score: WritingScore }) {
-  return (
-    <div className="border border-border rounded-xl p-4">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold text-ink">{title}</p>
-        <p className="text-2xl font-bold text-brand-text tabular-nums">{score.band.toFixed(1)}</p>
-      </div>
-      <p className="text-sm text-muted mb-3">{score.feedbackUz}</p>
-      <div>
-        <CriterionRow label="Task Achievement / Response" band={score.taskAchievement} note={score.criteriaFeedbackUz.taskAchievement} />
-        <CriterionRow label="Coherence & Cohesion" band={score.coherenceCohesion} note={score.criteriaFeedbackUz.coherenceCohesion} />
-        <CriterionRow label="Lexical Resource" band={score.lexicalResource} note={score.criteriaFeedbackUz.lexicalResource} />
-        <CriterionRow label="Grammatical Range & Accuracy" band={score.grammaticalRange} note={score.criteriaFeedbackUz.grammaticalRange} />
-      </div>
-      {score.corrections.length > 0 && (
-        <div className="mt-3 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tuzatishlar</p>
-          {score.corrections.map((c, i) => (
-            <div key={i} className="text-xs bg-bg rounded-lg p-2.5">
-              <p>
-                <span className="line-through text-danger">{c.original}</span> → <span className="text-success font-semibold">{c.suggested}</span>
-              </p>
-              <p className="text-muted mt-1">{c.reason}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default function WritingResult({ attemptId, result, onRegraded }: WritingResultProps) {
@@ -109,8 +67,8 @@ export default function WritingResult({ attemptId, result, onRegraded }: Writing
         </p>
       </div>
 
-      <TaskCard title="Task 1" score={writing.task1} />
-      <TaskCard title="Task 2" score={writing.task2} />
+      <WritingScoreCard title="Task 1" score={writing.task1} />
+      <WritingScoreCard title="Task 2" score={writing.task2} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { getStoredAuthToken } from './examStore';
-import type { AnswerValue, AttemptResult, SanitizedTest } from '@/lib/exam/types';
+import type { AnswerValue, AttemptResult, AttemptReviewDetail, SanitizedTest } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §4 — `/api/exam/attempts/*` uchun yupqa klient. Barcha
 // bo'lim modullari (Reading — allaqachon, Listening/Writing Faza 2'da) shu bir
@@ -118,6 +118,17 @@ export async function sendHeartbeat(
 export async function submitAttempt(attemptId: string): Promise<{ result: AttemptResult | null }> {
   const res = await authedFetch(`/api/exam/attempts/${attemptId}/submit`, { method: 'POST' });
   if (!res.ok) throw new Error("Yakunlab bo'lmadi");
+  return res.json();
+}
+
+/** TZ §4/§11.2 — faqat `status==='graded'` bo'lganda ishlaydi (aks holda
+ * server 409 qaytaradi). */
+export async function fetchAttemptResult(attemptId: string): Promise<{ detail: AttemptReviewDetail }> {
+  const res = await authedFetch(`/api/exam/attempts/${attemptId}/result`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || "Natijani yuklab bo'lmadi");
+  }
   return res.json();
 }
 
