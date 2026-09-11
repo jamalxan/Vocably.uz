@@ -140,8 +140,8 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
     );
   }
 
-  if (phase === 'result') {
-    return <MockResult result={result} />;
+  if (phase === 'result' && attemptId) {
+    return <MockResult attemptId={attemptId} result={result} />;
   }
 
   if (phase === 'section' && attemptId && currentSection) {

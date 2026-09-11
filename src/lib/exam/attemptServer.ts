@@ -7,7 +7,18 @@ import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel } from '@/li
 import { isCorrect, isSetCorrect, listeningBand, readingBand, overallBand } from './scoring';
 import { sanitizeForExam } from './sanitize';
 import { gradeEssay, combineWritingBand } from './writingGrader';
-import type { AnswerKey, AnswerValue, AttemptResult, ExamSectionKey, SanitizedTest, Test, WordLimit } from './types';
+import type {
+  AnswerKey,
+  AnswerValue,
+  AttemptReviewDetail,
+  AttemptResult,
+  ExamSectionKey,
+  Question,
+  ReviewQuestion,
+  SanitizedTest,
+  Test,
+  WordLimit,
+} from './types';
 
 // TZ-vocably-v2.md §9.1 — Mock'da bo'limlar QAT'IY shu tartibda o'tiladi
 // (Listening → Reading → Writing; Speaking Faza 3'dan tashqarida, §9.1 "Speaking
@@ -286,9 +297,82 @@ export async function gradeWritingAttempt(attemptId: string, userId: string): Pr
 }
 
 /** GET /attempts/:id uchun — javob kalitlari HECH QACHON bu orqali chiqmaydi
- * (TZ §4.1). To'liq (izohli) ko'rinish keyinroq qo'shiladigan alohida
- * `/attempts/:id/result` endpointi ishi (TZ §19 Faza 3), faqat `status==='graded'`
- * bo'lganda. */
+ * (TZ §4.1). To'liq (izohli) ko'rinish faqat quyidagi
+ * `getAttemptReviewDetail()` orqali, alohida `/attempts/:id/result`
+ * endpointida (TZ §19 Faza 3 item 16), faqat `status==='graded'` bo'lganda. */
 export function sanitizedTestFor(test: Test): SanitizedTest {
   return sanitizeForExam(test);
+}
+
+function buildReviewQuestion(q: Question, perQuestion: AttemptResult['perQuestion']): ReviewQuestion {
+  const scored = perQuestion.find((p) => p.number === q.number);
+  return {
+    number: q.number,
+    promptHtml: q.promptHtml || '',
+    options: q.options,
+    userAnswer: scored?.userAnswer || '',
+    correct: scored?.correct || false,
+    accepted: scored?.accepted || q.answer?.accepted || [],
+    explanationHtml: q.explanationHtml || '',
+    locatorParagraph: q.locatorParagraph,
+  };
+}
+
+/** TZ §4/§11.2 — "GET /attempts/:id/result — To'g'ri javoblar + izohlar —
+ * faqat status==='graded' bo'lsa". `result.perQuestion`dan (submitAttempt()
+ * paytida ALLAQACHON hisoblangan to'g'ri/noto'g'ri) foydalanadi — qayta
+ * hisoblamaydi, faqat test'ning xom (sanitizatsiyalanmagan) savol
+ * matni/izohi/lokatori bilan BOYITADI. Shu tufayli review'dagi natija
+ * submit paytida ko'rsatilgan natija bilan har doim MOS keladi (ikki xil
+ * hisoblash yo'li — ikkita mumkin bo'lgan javob — yo'q).
+ */
+export async function getAttemptReviewDetail(attemptId: string, userId: string): Promise<AttemptReviewDetail> {
+  const attempt = await getOwnedAttempt(attemptId, userId);
+  if (attempt.status !== 'graded') {
+    throw new ExamAttemptError("Urinish hali baholanmagan", 409);
+  }
+
+  const test: Test | null = await ExamTest.findById(attempt.testId).lean();
+  if (!test) throw new ExamAttemptError('Test topilmadi', 404);
+
+  const result: AttemptResult = attempt.result || { timeSpentSec: 0, perQuestion: [] };
+  const perQuestion = result.perQuestion || [];
+  const detail: AttemptReviewDetail = { overall: result.overall };
+
+  if (test.sections.reading && result.reading) {
+    detail.reading = {
+      band: result.reading.band,
+      raw: result.reading.raw,
+      passages: test.sections.reading.passages.map((p) => ({
+        order: p.order,
+        title: p.title,
+        paragraphs: p.paragraphs,
+        questions: p.questionGroups.flatMap((g) => g.questions.map((q) => buildReviewQuestion(q, perQuestion))),
+      })),
+    };
+  }
+
+  if (test.sections.listening && result.listening) {
+    detail.listening = {
+      band: result.listening.band,
+      raw: result.listening.raw,
+      parts: test.sections.listening.parts.map((p) => ({
+        order: p.order,
+        transcript: p.transcript || '',
+        contextText: p.contextText,
+        questions: p.questionGroups.flatMap((g) => g.questions.map((q) => buildReviewQuestion(q, perQuestion))),
+      })),
+    };
+  }
+
+  if (test.sections.writing && result.writing) {
+    detail.writing = {
+      task1: result.writing.task1,
+      task2: result.writing.task2,
+      band: result.writing.band,
+      essays: { task1: attempt.essays?.task1?.text || '', task2: attempt.essays?.task2?.text || '' },
+    };
+  }
+
+  return detail;
 }

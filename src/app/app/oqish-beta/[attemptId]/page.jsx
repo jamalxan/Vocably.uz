@@ -27,7 +27,7 @@ export default function OqishBetaAttemptPage() {
   if (submitted) {
     return (
       <div>
-        <ReadingResult result={result} />
+        <ReadingResult attemptId={attemptId} result={result} />
         <div className="text-center pb-10">
           <button onClick={() => router.push('/app/oqish-beta')} className="text-sm text-accent hover:underline font-semibold">
             Yangi urinish boshlash

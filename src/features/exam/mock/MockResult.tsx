@@ -1,12 +1,19 @@
 'use client';
-import type { AttemptResult } from '@/lib/exam/types';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { fetchAttemptResult } from '../state/attemptsApi';
+import ReviewScreen from '../review/ReviewScreen';
+import type { AttemptResult, AttemptReviewDetail } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §19 Faza 3 item 15's scope stops at orchestration — this is
 // a MINIMAL post-mock summary (overall + per-section bands) just so the mock
-// flow has somewhere to land. The real thing (§11: radar chart, per-question
-// review with explanations/transcript, weak-area analysis, "add to
-// dictionary", history comparison) is items 16-19, separate work.
+// flow has somewhere to land. The real premium version (§11: radar chart,
+// weak-area analysis, "add to dictionary", history comparison) is items
+// 17-19, separate work — but the per-question review itself (item 16,
+// ReviewScreen.tsx) IS wired in here already, same as the standalone section
+// result screens.
 export interface MockResultProps {
+  attemptId: string;
   result: AttemptResult | null;
 }
 
@@ -19,7 +26,26 @@ function SectionRow({ label, band }: { label: string; band?: number | null }) {
   );
 }
 
-export default function MockResult({ result }: MockResultProps) {
+export default function MockResult({ attemptId, result }: MockResultProps) {
+  const [reviewDetail, setReviewDetail] = useState<AttemptReviewDetail | null>(null);
+  const [loadingReview, setLoadingReview] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+
+  const openReview = async () => {
+    setLoadingReview(true);
+    setReviewError('');
+    try {
+      const { detail } = await fetchAttemptResult(attemptId);
+      setReviewDetail(detail);
+    } catch {
+      setReviewError("Ko'rib chiqishni yuklab bo'lmadi.");
+    } finally {
+      setLoadingReview(false);
+    }
+  };
+
+  if (reviewDetail) return <ReviewScreen detail={reviewDetail} />;
+
   if (!result) {
     return <div className="p-8 text-center text-sm text-muted">Natija topilmadi.</div>;
   }
@@ -40,6 +66,16 @@ export default function MockResult({ result }: MockResultProps) {
       {result.writing == null && (
         <p className="text-xs text-muted mt-3 text-center">Writing hali baholanmagan bo&apos;lishi mumkin — bir necha soniya kuting.</p>
       )}
+
+      {reviewError && <p className="text-xs text-danger mt-3 text-center">{reviewError}</p>}
+      <button
+        onClick={openReview}
+        disabled={loadingReview}
+        className="mt-5 w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-semibold rounded-lg"
+      >
+        {loadingReview && <Loader2 size={14} className="animate-spin" />}
+        Javoblarni ko&apos;rib chiqish
+      </button>
     </div>
   );
 }
