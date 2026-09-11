@@ -99,7 +99,7 @@ export default function ExamShell({
             flagged={flagged}
             currentQuestion={currentQuestion}
             onGoTo={goToQuestion}
-            onSubmit={() => onSubmit?.()}
+            onSubmit={onSubmit}
             submitLabel={submitLabel}
           />
         )

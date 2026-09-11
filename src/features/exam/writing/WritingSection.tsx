@@ -24,9 +24,15 @@ export interface WritingSectionProps {
   candidateName: string;
   candidateId: string;
   onSubmitted: (result: AttemptResult | null) => void;
+  // TZ §9.3 — Mock'da Writing HAR DOIM oxirgi bo'lim (attemptServer.ts'dagi
+  // MOCK_SECTION_ORDER), shuning uchun bu yerdagi "Yakunlash" — butun mock'ni
+  // tugatadi. Qo'lda bosilganda (taymer tugashi bilan EMAS — o'shanda
+  // tasdiqlashga vaqt/ma'no yo'q) `confirmFinish` berilgan bo'lsa avval
+  // chaqiriladi; `false` qaytarsa yakunlash bekor qilinadi.
+  confirmFinish?: () => Promise<boolean>;
 }
 
-export default function WritingSection({ attemptId, candidateName, candidateId, onSubmitted }: WritingSectionProps) {
+export default function WritingSection({ attemptId, candidateName, candidateId, onSubmitted, confirmFinish }: WritingSectionProps) {
   const [test, setTest] = useState<SanitizedTest | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -68,6 +74,16 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
       return true;
     });
   }, [attemptId, onSubmitted]);
+
+  // Qo'lda bosilgan "Yakunlash" — tasdiqlash (Mock'da) darvozasidan o'tadi,
+  // avtomatik (taymer) yo'l esa to'g'ridan-to'g'ri `doSubmit`ni chaqiradi.
+  const handleManualFinish = useCallback(async () => {
+    if (confirmFinish) {
+      const confirmed = await confirmFinish();
+      if (!confirmed) return;
+    }
+    await doSubmit();
+  }, [confirmFinish, doSubmit]);
 
   useExamTimer(doSubmit);
 
@@ -168,7 +184,7 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
           </div>
           <button
             type="button"
-            onClick={doSubmit}
+            onClick={handleManualFinish}
             className="h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold"
             style={{ background: 'var(--exam-accent)' }}
           >

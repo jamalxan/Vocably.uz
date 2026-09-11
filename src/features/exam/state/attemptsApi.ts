@@ -49,12 +49,51 @@ export interface AttemptStateResponse {
   test: SanitizedTest;
 }
 
+export interface TestPreview {
+  id: string;
+  title: string;
+  module: string;
+  sections: {
+    listening?: { durationSec: number; questionCount: number };
+    reading?: { durationSec: number; questionCount: number };
+    writing?: { durationSec: number; taskCount: number };
+  };
+}
+
+/** TZ §9.2 — Mock intro ekrani uchun, attempt yaratilishidan OLDIN (aks holda
+ * intro ekranida turgan vaqt ham bo'lim taymeridan yeb ketardi). */
+export async function fetchTestPreview(testId: string): Promise<TestPreview> {
+  const res = await authedFetch(`/api/exam/tests/${testId}`);
+  if (!res.ok) throw new Error("Testni yuklab bo'lmadi");
+  return res.json();
+}
+
 export async function createAttempt(testId: string, section: string): Promise<{ attemptId: string }> {
   const res = await authedFetch('/api/exam/attempts', {
     method: 'POST',
     body: JSON.stringify({ testId, mode: 'section', section }),
   });
   if (!res.ok) throw new Error("Urinish yaratib bo'lmadi");
+  return res.json();
+}
+
+/** TZ §9.1 — Mock: testda mavjud listening/reading/writing bo'limlarining
+ * BARCHASI, bitta urinishda, ketma-ket. */
+export async function createMockAttempt(testId: string): Promise<{ attemptId: string }> {
+  const res = await authedFetch('/api/exam/attempts', {
+    method: 'POST',
+    body: JSON.stringify({ testId, mode: 'mock' }),
+  });
+  if (!res.ok) throw new Error("Urinish yaratib bo'lmadi");
+  return res.json();
+}
+
+/** TZ §4/§9.1 — joriy bo'lim (masalan Listening'ning audiosi+final-check'i)
+ * o'z ichida tugaganda chaqiriladi, keyingi bo'limga o'tkazadi (yoki oxirgi
+ * bo'lim bo'lsa — haqiqiy yakunlashni ishga tushiradi, attemptServer.ts#advanceMockSection). */
+export async function advanceMockSection(attemptId: string): Promise<{ currentSection: string; status: string; endsAt: string }> {
+  const res = await authedFetch(`/api/exam/attempts/${attemptId}/section/next`, { method: 'POST' });
+  if (!res.ok) throw new Error("Keyingi bo'limga o'tib bo'lmadi");
   return res.json();
 }
 
