@@ -12,7 +12,7 @@ import AiErrorNotice from './ui/AiErrorNotice';
 const UNDO_MS = 5000;
 
 export default function WordTable() {
-  const { activeCategory, handleAddWord, deleteWords, restoreWords, enrichWord } = useApp();
+  const { activeCategory, handleAddWord, deleteWords, restoreWords, enrichWordsBatch } = useApp();
   const [newWord, setNewWord] = useState('');
   const [newSyns, setNewSyns] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,9 +21,10 @@ export default function WordTable() {
   const [undoState, setUndoState] = useState(null); // { categoryId, words }
   const [addError, setAddError] = useState('');
   const [adding, setAdding] = useState(false);
-  // VOCABLY-TZ.md §19 (FAZA 1): "mavjud 215+ so'zni AI bilan boyitish" — { done, total }
-  // yoki null (ishlamayotgan bo'lsa). Bittalab (ketma-ket) yuboriladi — bepul AI
-  // provayderlarning daqiqalik so'rov chegarasiga tegib qolmaslik uchun (src/app/api/words/enrich).
+  // TZ-vocably-v2.md §D5 (BUG-008): "mavjud 215+ so'zni AI bilan boyitish" — { done, total }
+  // yoki null (ishlamayotgan bo'lsa). 10 tagacha so'z bitta so'rovda (enrich-batch), bir
+  // vaqtda BATCH_CONCURRENCY ta so'rov parallel yuboriladi — 30 so'z ≈ 5 daqiqa o'rniga
+  // ≈12-18 soniyaga tushadi.
   const [bulkEnrich, setBulkEnrich] = useState(null);
   // TZ-vocably-v2.md §D1 — avval AI xatolari shu yerda jimgina yutilib ketardi (foydalanuvchi
   // "ishlamayapti" deb o'ylardi, hech qanday izoh yo'q edi). Endi muvaffaqiyatsiz so'zlar
@@ -52,20 +53,43 @@ export default function WordTable() {
 
   const unenrichedWords = words.filter((w) => w._id && !w.enrichment?.aiEnrichedAt);
 
+  const ENRICH_BATCH_SIZE = 10;
+  const BATCH_CONCURRENCY = 3;
+
   const runBulkEnrich = async (targets) => {
     if (targets.length === 0) return;
     const categoryId = activeCategory._id;
     bulkCancelRef.current = false;
     const failed = [];
+    let done = 0;
     setBulkEnrichFailed([]);
     setBulkEnrich({ done: 0, total: targets.length });
-    for (let i = 0; i < targets.length; i++) {
-      if (bulkCancelRef.current) break;
-      // eslint-disable-next-line no-await-in-loop
-      const result = await enrichWord(categoryId, targets[i]._id);
-      if (result?.error) failed.push({ wordId: targets[i]._id, word: targets[i].word, error: result.error, requestId: result.requestId });
-      setBulkEnrich({ done: i + 1, total: targets.length });
-    }
+
+    const chunks = [];
+    for (let i = 0; i < targets.length; i += ENRICH_BATCH_SIZE) chunks.push(targets.slice(i, i + ENRICH_BATCH_SIZE));
+
+    const wordById = new Map(targets.map((w) => [w._id, w]));
+    let nextChunkIdx = 0;
+
+    // BATCH_CONCURRENCY ta "worker" bir vaqtda navbatdagi keyingi partiyani oladi —
+    // shu tarzda hech qachon BATCH_CONCURRENCY dan ortiq so'rov bir vaqtda ochiq turmaydi.
+    const runWorker = async () => {
+      while (!bulkCancelRef.current) {
+        const idx = nextChunkIdx++;
+        if (idx >= chunks.length) return;
+        const chunk = chunks[idx];
+        // eslint-disable-next-line no-await-in-loop
+        const results = await enrichWordsBatch(categoryId, chunk.map((w) => w._id));
+        for (const r of results) {
+          if (r.error) failed.push({ wordId: r.wordId, word: wordById.get(r.wordId)?.word || r.word, error: r.error, requestId: r.requestId });
+        }
+        done += chunk.length;
+        setBulkEnrich({ done: Math.min(done, targets.length), total: targets.length });
+      }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, chunks.length) }, runWorker));
+
     setBulkEnrich(null);
     setBulkEnrichFailed(failed);
   };
@@ -212,7 +236,7 @@ export default function WordTable() {
           ) : (
             <button
               onClick={startBulkEnrich}
-              title="Kategoriyadagi hali boyitilmagan so'zlarni birma-bir AI bilan to'ldiradi"
+              title="Kategoriyadagi hali boyitilmagan so'zlarni AI bilan to'ldiradi (10 tadan partiyalarda, 3 tasi parallel)"
               className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-surface hover:bg-accent-soft border border-border hover:border-accent/40 text-muted hover:text-accent rounded-xl text-sm font-semibold transition-colors whitespace-nowrap"
             >
               <Sparkles size={14} /> Barchasini boyitish ({unenrichedWords.length})

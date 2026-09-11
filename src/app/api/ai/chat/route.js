@@ -15,6 +15,7 @@ import {
   checkAndIncrementAiRateLimit,
   rateLimitMessage,
 } from '@/lib/ai/client';
+import { buildDictionaryContext, formatDictionaryContextForPrompt } from '@/lib/ai/dictionaryContext';
 import { NextResponse } from 'next/server';
 
 const SYSTEM_INSTRUCTION = `Siz Vocably — ingliz tili o'rganish platformasidagi yordamchisiz. Sizning vazifangiz FAQAT ingliz tilini o'rganayotgan o'zbek foydalanuvchilarga yordam berish:
@@ -32,6 +33,10 @@ Lug'atga so'z qo'shish bilan bog'liq qoidalar:
 - MUHIM — foydalanuvchi so'zni faqat bitta tilda bersa ham (masalan faqat inglizcha "arise" yoki faqat o'zbekcha "paydo bo'lmoq"), ikkinchi tomonini SIZ o'zingiz tarjima qilishingiz kerak — hech qachon foydalanuvchidan tarjimani so'rab, uni kutib turmang, o'zingiz aniqlab bering. add_words'ga yuboriladigan har bir so'z uchun: (1) inglizcha "word", (2) IPA formatidagi "pronunciation" (masalan "/əˈraɪz/"), (3) kamida bitta o'zbekcha tarjima "syns" ichida — uchalasi ham HAR DOIM to'ldirilgan bo'lishi shart, birontasi ham bo'sh qolmasin.
 - add_words funksiyasini FAQAT foydalanuvchi qo'shiladigan so'zlar ro'yxatini ko'rib chiqib, aniq tasdiqlagandan keyin ("ha", "tasdiqlayman", "qo'sh" kabi) chaqiring. Tasdiqlashdan oldin har doim qo'shiladigan so'zlar ro'yxatini (so'z — talaffuz — tarjima(lar)) chatda ko'rsating.
 - Rasm(lar)da so'zlar topilmasa, buni foydalanuvchiga aytib, hech qanday funksiya chaqirmang.
+
+Lug'at konteksti bilan ishlash qoidalari (TZ-vocably-v2.md §D2):
+- Xabar oxirida "[TANLANGAN SO'ZLAR]" bloki bo'lsa — bu foydalanuvchi lug'atidan Word Picker orqali ANIQ tanlagan so'z(lar), to'liq ma'lumot (tarjima, CEFR, SRS holati, xato soni) bilan. Ularni to'g'ridan-to'g'ri ishlating — hech qachon "qaysi so'zni nazarda tutyapsiz, yozib yuboring" deb SO'RAMANG, chunki so'z(lar) allaqachon aniq berilgan.
+- Xabar oxirida "[FOYDALANUVCHI HOLATI]" bloki bo'lsa — bu fon ma'lumoti (jami so'z, bugungi takrorlash soni, streak, ko'p xato qilingan so'zlar, so'nggi mock bali). Kerak bo'lsa tabiiy tarzda undan foydalaning (masalan tabriklash, eslatma berish), lekin har javobda albatta tilga olish shart emas.
 
 Mashq rejimlari (foydalanuvchi "Writing/Reading/Speaking/Listening mashqini boshlaylik" kabi xabar bilan boshlasa):
 - Writing: foydalanuvchidan biror mavzu so'rang (yoki o'zingiz 2-3 ta mavzu taklif qiling). U matn yozib yuborgach, xatolarni tuzatib, to'g'ri variantni ko'rsating va ish CEFR (A1-C1) darajasi bo'yicha qisqa baholang.
@@ -65,8 +70,33 @@ const PROVIDERS = {
   },
 };
 
+const MAX_WORD_CONTEXT_ITEMS = 30;
+
+// TZ-vocably-v2.md §D2.1 — Word Picker orqali tanlangan so'zlar to'liq ma'lumot bilan
+// (tarjima, POS, CEFR, SRS holati, xato soni) AI'ga yuboriladi. Bu blok faqat AI'ga
+// ketadigan matnga qo'shiladi — chatda ko'rinadigan xabar (session.messages) va
+// klientdagi foydalanuvchi pufakchasi toza qoladi, chunki chip'lar allaqachon UI'da
+// alohida ko'rsatilgan (AiChat.jsx).
+function buildWordContextBlock(wordContext) {
+  if (!Array.isArray(wordContext) || wordContext.length === 0) return '';
+  const items = wordContext.slice(0, MAX_WORD_CONTEXT_ITEMS).map((w) => ({
+    word: String(w?.word || '').slice(0, 80),
+    translations: Array.isArray(w?.translations) ? w.translations.slice(0, 5).map((t) => String(t).slice(0, 60)) : [],
+    cefr: w?.cefr || undefined,
+    partOfSpeech: w?.partOfSpeech || undefined,
+    srsState: w?.srsState || undefined,
+    mistakeCount: typeof w?.mistakeCount === 'number' ? w.mistakeCount : undefined,
+  }));
+  return `\n\n[TANLANGAN SO'ZLAR] ${JSON.stringify(items)}`;
+}
+
 const PENDING_MARK_START = '\n[[PENDING_ADD_WORDS]]';
 const PENDING_MARK_END = '[[/PENDING_ADD_WORDS]]\n';
+
+// TZ-vocably-v2.md §D3 (BUG-011) — generate_quiz tool natijasi PENDING_MARK bilan bir xil
+// naqshda oqimga qo'shiladi, klient (AiChat.jsx) buni ajratib olib QuizCard render qiladi.
+const QUIZ_MARK_START = '\n[[QUIZ]]';
+const QUIZ_MARK_END = '[[/QUIZ]]\n';
 
 // TZ-vocably-v2.md §D1.5 — barcha provayderlar muvaffaqiyatsiz bo'lganda, oldingi kod
 // oddiy prozani ("\n⚠️ Xatolik: ...") oqimga qo'shib, uni chat matnidan farqlab
@@ -93,6 +123,7 @@ async function runGeminiProviderTurn({ history, userParts, controller, encoder, 
   const contents = [...history, { role: 'user', parts: userParts }];
   let assistantText = '';
   let pendingAction = null;
+  let quizAction = null;
   // Shu navbat davomida create_category chaqirilgan bo'lsa, ID'sini shu yerda saqlaymiz —
   // agar keyinroq add_words boshqa/yaroqsiz categoryId bilan chaqirilsa (model ba'zan bitta
   // javobda ikkalasini ham chaqirib, add_words'ga hali ma'lum bo'lmagan ID beradi), shu bilan
@@ -138,11 +169,12 @@ async function runGeminiProviderTurn({ history, userParts, controller, encoder, 
           ? { ...call.args, categoryId: justCreatedCategoryId }
           : call.args;
 
-      const { result: toolResult, pendingAction: pa, shouldStop: stop } = runToolCall(call.name, args, user, {
+      const { result: toolResult, pendingAction: pa, quizAction: qa, shouldStop: stop } = runToolCall(call.name, args, user, {
         createdCategoryIds,
       });
       if (call.name === 'create_category' && toolResult?.id) justCreatedCategoryId = toolResult.id;
       if (pa) pendingAction = pa;
+      if (qa) quizAction = qa;
       if (stop) shouldStop = true;
       responseParts.push({ functionResponse: { name: call.name, response: toolResult } });
     }
@@ -152,7 +184,7 @@ async function runGeminiProviderTurn({ history, userParts, controller, encoder, 
     contents.push({ role: 'user', parts: responseParts });
   }
 
-  return { assistantText, pendingAction };
+  return { assistantText, pendingAction, quizAction };
 }
 
 // Groq/OpenRouter (OpenAI bilan mos) uchun bir "navbat"ni funksiya-chaqiruv sikli bilan bajaradi.
@@ -161,6 +193,7 @@ async function runOpenAiProviderTurn({ provider, history, currentMessage, contro
   const tools = toOpenAiTools();
   let assistantText = '';
   let pendingAction = null;
+  let quizAction = null;
   // Gemini navbatidagi bilan bir xil maqsad — bitta javobda create_category + add_words
   // birga chaqirilganda categoryId'ni haqiqiy yaratilgan kategoriyaga to'g'irlab qo'yamiz.
   let justCreatedCategoryId = null;
@@ -211,11 +244,12 @@ async function runOpenAiProviderTurn({ provider, history, currentMessage, contro
         args = { ...args, categoryId: justCreatedCategoryId };
       }
 
-      const { result: toolResult, pendingAction: pa, shouldStop: stop } = runToolCall(tc.name, args, user, {
+      const { result: toolResult, pendingAction: pa, quizAction: qa, shouldStop: stop } = runToolCall(tc.name, args, user, {
         createdCategoryIds,
       });
       if (tc.name === 'create_category' && toolResult?.id) justCreatedCategoryId = toolResult.id;
       if (pa) pendingAction = pa;
+      if (qa) quizAction = qa;
       if (stop) shouldStop = true;
       messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
     }
@@ -223,7 +257,7 @@ async function runOpenAiProviderTurn({ provider, history, currentMessage, contro
     if (shouldStop) break;
   }
 
-  return { assistantText, pendingAction };
+  return { assistantText, pendingAction, quizAction };
 }
 
 export async function POST(req) {
@@ -233,7 +267,7 @@ export async function POST(req) {
 
     await connectToDatabase();
 
-    const { sessionId, message, imagesBase64, context } = await req.json();
+    const { sessionId, message, imagesBase64, context, wordContext } = await req.json();
     const images = Array.isArray(imagesBase64) ? imagesBase64.slice(0, MAX_IMAGES) : [];
     if ((!message || !message.trim()) && images.length === 0) {
       return NextResponse.json({ error: "Xabar bo'sh bo'lmasin" }, { status: 400 });
@@ -245,19 +279,28 @@ export async function POST(req) {
       return NextResponse.json({ error: rateLimitMessage(rl.retryAfterMinutes) }, { status: 429 });
     }
 
+    const user = await User.findById(userId);
+    if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
+
+    // TZ-vocably-v2.md §D2.4 — foydalanuvchining lug'at holati (jami so'z, bugungi
+    // takrorlash, streak, ko'p xato qilingan so'zlar, so'nggi mock bali) har suhbatda
+    // AI'ga kompakt JSON sifatida beriladi.
+    const dictionaryContext = await buildDictionaryContext(user);
+    const dictionaryContextText = formatDictionaryContextForPrompt(dictionaryContext);
+
     // VOCABLY-TZ.md §12.1 — kontekstli AI panel: chaqiruvchi sahifa qayerda
     // ekanini (masalan "Reading bo'limida, shu matn ustida") qisqa matn sifatida
     // yuboradi (AiPanel.jsx), shu tur bir martalik qo'shimcha ko'rsatma sifatida
     // asosiy SYSTEM_INSTRUCTION'ga qo'shiladi — chatning o'zi bilmaydi, faqat
     // shu "navbat" uchun kontekstni hisobga oladi. Ishonchsiz emas (foydalanuvchi
     // o'zi haqidagi holat, promptga ta'sir qiluvchi tashqi ma'lumot emas).
-    const systemInstruction =
-      typeof context === 'string' && context.trim()
-        ? `${SYSTEM_INSTRUCTION}\n\nJoriy kontekst (foydalanuvchi hozir shu yerda): ${context.trim().slice(0, 300)}`
-        : SYSTEM_INSTRUCTION;
-
-    const user = await User.findById(userId);
-    if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
+    let systemInstruction = SYSTEM_INSTRUCTION;
+    if (typeof context === 'string' && context.trim()) {
+      systemInstruction += `\n\nJoriy kontekst (foydalanuvchi hozir shu yerda): ${context.trim().slice(0, 300)}`;
+    }
+    if (dictionaryContextText) {
+      systemInstruction += `\n\n[FOYDALANUVCHI HOLATI] ${dictionaryContextText}`;
+    }
 
     let session = sessionId ? user.chatSessions.id(sessionId) : null;
     if (!session) {
@@ -278,9 +321,12 @@ export async function POST(req) {
     });
 
     const hasImages = images.length > 0;
+    // Faqat AI'ga yuboriladigan matn — chatda saqlanadigan/ko'rsatiladigan `message`dan
+    // farqli, chunki tanlangan so'zlar UI'da alohida chip sifatida ko'rinadi.
+    const messageForAi = `${message || ''}${buildWordContextBlock(wordContext)}`;
 
     const geminiUserParts = [];
-    if (message && message.trim()) geminiUserParts.push({ text: message });
+    if (messageForAi.trim()) geminiUserParts.push({ text: messageForAi });
     for (const img of images) {
       const { mimeType, data } = parseDataUrl(img);
       geminiUserParts.push({ inlineData: { mimeType, data } });
@@ -288,11 +334,11 @@ export async function POST(req) {
 
     let openAiUserMessage;
     if (hasImages) {
-      const content = [{ type: 'text', text: message && message.trim() ? message : "Rasm(lar)ni tahlil qiling" }];
+      const content = [{ type: 'text', text: messageForAi.trim() ? messageForAi : "Rasm(lar)ni tahlil qiling" }];
       for (const img of images) content.push({ type: 'image_url', image_url: { url: img } });
       openAiUserMessage = { role: 'user', content };
     } else {
-      openAiUserMessage = { role: 'user', content: message };
+      openAiUserMessage = { role: 'user', content: messageForAi };
     }
 
     // Rasm bo'lsa Groq'da bepul vision modeli yo'q — to'g'ridan-to'g'ri vision zaxiraga o'tamiz.
@@ -315,6 +361,7 @@ export async function POST(req) {
         const state = { emitted: false };
         let finalText = '';
         let pendingAction = null;
+        let quizAction = null;
         let succeeded = false;
         let lastErr = null;
 
@@ -363,6 +410,7 @@ export async function POST(req) {
 
             finalText = outcome.assistantText;
             pendingAction = outcome.pendingAction;
+            quizAction = outcome.quizAction;
             succeeded = true;
             break;
           } catch (err) {
@@ -396,13 +444,18 @@ export async function POST(req) {
           if (pendingAction) {
             controller.enqueue(encoder.encode(`${PENDING_MARK_START}${JSON.stringify(pendingAction)}${PENDING_MARK_END}`));
           }
+          if (quizAction && quizAction.questions.length > 0) {
+            controller.enqueue(encoder.encode(`${QUIZ_MARK_START}${JSON.stringify(quizAction)}${QUIZ_MARK_END}`));
+          }
 
           // Model faqat funksiya chaqirib, matn yozmagan bo'lishi mumkin.
           const storedText = finalText.trim()
             ? finalText
             : pendingAction
               ? "So'zlarni qo'shishni tasdiqlashingizni kutmoqdaman."
-              : "(javob bo'sh)";
+              : quizAction && quizAction.questions.length > 0
+                ? "Test tayyor — yuqorida javob berishingiz mumkin."
+                : "(javob bo'sh)";
           session.messages.push({ role: 'model', parts: [{ text: storedText }] });
           session.updatedAt = new Date();
           if (isNewConversation && message && message.trim()) {

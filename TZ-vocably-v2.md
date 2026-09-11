@@ -998,3 +998,1422 @@ GET  /api/chat/:conversationId/messages?limit&before
 - [IELTS Listening raw score to band conversion](https://ielts9.io/blog/ielts-listening-raw-score-to-band-conversion) — Listening konvertatsiya jadvali
 - [IELTS Reading raw score to band conversion](https://typogrammar.com/ielts/reading-raw-score-to-band-conversion/) — Academic va General Reading jadvallari
 - [IELTS on Computer — British Council](https://takeielts.britishcouncil.org/computer-delivered-sample-test-questions) — rasmiy familiarisation test
+
+# Vocably — IELTS CD Exam Engine
+## To'liq texnik topshiriq (TZ) v1.0
+
+**Loyiha:** vocably.uz
+**Stack:** Next.js (App Router) + MongoDB + Vercel
+**Maqsad:** Reading, Listening, Writing va to'liq Mock bo'limlarini haqiqiy IELTS Computer-Delivered imtihon interfeysiga maksimal darajada o'xshatish va ularning barchasini **bitta umumiy exam engine** ustiga o'tkazish.
+
+---
+
+## 0. Bu hujjat nima uchun
+
+Hozir Vocably'da `/app/oqish`, `/app/tinglash`, `/app/yozish`, `/app/mock` — to'rtta alohida sahifa. Har biri o'z taymeri, o'z navigatsiyasi, o'z javob saqlash mantig'i bilan ishlaydi. Bu uchta muammo tug'diradi:
+
+1. **Bir xil bug'ni 4 marta tuzatasiz.** Taymer drift'i, autosave, javob validatsiyasi — hammasi takrorlanadi.
+2. **Mock haqiqiy tuyulmaydi.** Foydalanuvchi mashq rejimida bir interfeysni, mock'da boshqasini ko'radi. IELTS'ning butun qiymati — interfeysga o'rganib qolish.
+3. **Yangi savol turi qo'shish 4 joyda kod yozish demak.**
+
+Yechim: **bitta `ExamShell` + pluggable section modullari + bitta `QuestionRenderer`**. Barcha 4 sahifa shu shell'ning turli konfiguratsiyasi bo'ladi.
+
+---
+
+## 1. Qamrov: qaysi sahifalarga tegadi
+
+| Sahifa | Rejim | Shell | Taymer | Savol navigatsiyasi | Audio | Split-pane |
+|---|---|---|---|---|---|---|
+| `/app/mock` | `exam` | ✅ to'liq | Server, qattiq | 1–40, bo'lim bo'yicha | ✅ bir marta | ✅ Reading + Writing |
+| `/app/oqish` | `practice` | ✅ to'liq | Yumshoq / o'chiriladi | 1–13 (bitta passage) | — | ✅ |
+| `/app/tinglash` | `practice` | ✅ to'liq | Yumshoq | 1–10 (bitta part) | ✅ to'liq boshqaruv | ❌ (faqat savollar) |
+| `/app/yozish` | `practice` | ✅ to'liq | Yumshoq | Task 1 / Task 2 | — | ✅ |
+| `/app/gapirish` | `practice` | ⚠️ Faza 3 | — | Part 1/2/3 | ovoz yozish | ❌ |
+| `/app/lugat` | — | ❌ tegmaydi | — | — | — | — |
+
+**Muhim:** `/app/lugat` (14 rejim) va dashboard bu engine'ga tegmaydi. Ular alohida qoladi.
+
+---
+
+## 2. Asosiy arxitektura qarori
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ ExamShell                                                │
+│  ├─ ExamHeader   (nom, ID, taymer, sozlamalar, yordam)  │
+│  ├─ ExamBody     ← bu yerga section moduli joylashadi   │
+│  │    ├─ ReadingSection   (SplitPane: Passage | Questions)│
+│  │    ├─ ListeningSection (AudioEngine + Questions)      │
+│  │    ├─ WritingSection   (SplitPane: Task | Editor)     │
+│  │    └─ SpeakingSection  (Faza 3)                       │
+│  └─ ExamFooterNav (1–40 tugmalar, Review, ←/→, Submit)  │
+└─────────────────────────────────────────────────────────┘
+            ↑                    ↑                  ↑
+      examStore (zustand)   useExamTimer()    useAutosave()
+```
+
+**Qoida:** Section moduli taymerni, navigatsiyani, saqlashni **bilmaydi**. U faqat "menda shu savollar bor, ularni chiz" deydi. Qolgan hammasi shell'ning ishi.
+
+**Qoida 2:** `QuestionRenderer` bitta. Reading va Listening bir xil `sentence_completion` komponentidan foydalanadi. Farq faqat `allowedTypes` ro'yxatida.
+
+---
+
+## 3. Ma'lumotlar modeli
+
+### 3.1 Test (kontent — admin kiritadi)
+
+```ts
+interface Test {
+  _id: ObjectId;
+  slug: string;                    // "cambridge-19-test-1"
+  title: string;                   // "Cambridge IELTS 19 — Test 1"
+  module: 'academic' | 'general';
+  difficulty: 'easy' | 'medium' | 'hard';
+  sections: {
+    listening?: ListeningSection;
+    reading?: ReadingSection;
+    writing?: WritingSection;
+    speaking?: SpeakingSection;
+  };
+  isPublished: boolean;
+  createdBy: ObjectId;
+  createdAt: Date;
+}
+```
+
+### 3.2 Reading
+
+```ts
+interface ReadingSection {
+  durationSec: 3600;               // 60 daqiqa
+  passages: Passage[];             // uzunligi 3
+}
+
+interface Passage {
+  order: 1 | 2 | 3;
+  title: string;                   // "The history of glass"
+  subtitle?: string;               // "Read the text and answer questions 1-13"
+  paragraphs: {
+    label?: string;                // "A", "B", "C" — matching_headings uchun
+    html: string;                  // <p>...</p>, faqat p/em/strong/sup ruxsat
+  }[];
+  questionGroups: QuestionGroup[];
+}
+```
+
+### 3.3 Listening
+
+```ts
+interface ListeningSection {
+  durationSec: 1800;               // 30 daqiqa (audio davomiyligi + 2 daq tekshirish)
+  checkTimeSec: 120;
+  parts: ListeningPart[];          // uzunligi 4
+}
+
+interface ListeningPart {
+  order: 1 | 2 | 3 | 4;
+  audioUrl: string;                // har part alohida fayl — bu eng barqaror yechim
+  durationSec: number;
+  transcript?: string;             // faqat practice rejimda, tugagandan keyin
+  contextText?: string;            // "You will hear a conversation between..."
+  questionGroups: QuestionGroup[];
+}
+```
+
+### 3.4 Writing
+
+```ts
+interface WritingSection {
+  durationSec: 3600;
+  tasks: [WritingTask, WritingTask];
+}
+
+interface WritingTask {
+  order: 1 | 2;
+  minWords: 150 | 250;
+  recommendedMin: 20 | 40;
+  promptHtml: string;
+  imageUrl?: string;               // Task 1 Academic uchun grafik
+  imageAlt?: string;               // accessibility uchun majburiy
+  sampleAnswer?: string;           // practice rejimda tugagandan keyin
+  markingNotes?: string;           // AI grader uchun yashirin kontekst
+}
+```
+
+### 3.5 QuestionGroup va Question
+
+```ts
+interface QuestionGroup {
+  id: string;
+  type: QuestionType;
+  instructionHtml: string;         // "Choose NO MORE THAN TWO WORDS..."
+  wordLimit?: {                    // avtomatik validatsiya uchun
+    maxWords: number;
+    maxNumbers?: number;
+    label: string;                 // "NO MORE THAN TWO WORDS AND/OR A NUMBER"
+  };
+  bank?: BankItem[];               // matching / wordbank turlari uchun
+  bankReusable?: boolean;          // variantni qayta ishlatish mumkinmi
+  stemHtml?: string;               // summary/table/flowchart uchun umumiy karkas
+  imageUrl?: string;               // map / diagram / plan
+  imageHotspots?: Hotspot[];       // diagram_label uchun
+  questions: Question[];
+}
+
+interface Question {
+  number: number;                  // 1–40 global
+  promptHtml?: string;
+  options?: Option[];              // MC uchun
+  selectCount?: number;            // multiple_choice_multi: 2 yoki 3
+  answer: AnswerKey;               // ⚠️ MIJOZGA HECH QACHON YUBORILMAYDI (exam rejimda)
+  explanationHtml?: string;        // natija ekranida ko'rsatiladi
+  locatorParagraph?: string;       // "C" — javob qaysi paragrafda (review uchun)
+}
+
+interface AnswerKey {
+  accepted: string[];              // ["museum", "the museum"]
+  pattern?: string;                // ixtiyoriy regex, murakkab holatlar uchun
+  caseSensitive?: false;
+}
+```
+
+### 3.6 Savol turlari (to'liq ro'yxat)
+
+```ts
+type QuestionType =
+  // Umumiy
+  | 'multiple_choice_single'       // A/B/C/D — bitta
+  | 'multiple_choice_multi'        // "Choose TWO letters"
+  | 'sentence_completion'          // matn ichida gap
+  | 'short_answer'                 // savolga qisqa javob
+  | 'note_completion'
+  | 'table_completion'
+  | 'flowchart_completion'
+  | 'summary_completion'           // bo'sh joy, erkin yozish
+  | 'summary_completion_bank'      // bo'sh joy, variantlar bankidan
+  | 'matching_features'            // "Which person said..."
+  | 'matching_sentence_endings'
+  | 'diagram_label'                // rasm ustiga yorliq
+  // Faqat Reading
+  | 'true_false_notgiven'
+  | 'yes_no_notgiven'
+  | 'matching_headings'            // i, ii, iii rim raqamlari
+  | 'matching_information'         // "Which paragraph contains..."
+  // Faqat Listening
+  | 'form_completion'
+  | 'map_label'                    // xarita/plan ustiga drag-drop
+  | 'plan_label';
+```
+
+### 3.7 Attempt (foydalanuvchi urinishi)
+
+```ts
+interface Attempt {
+  _id: ObjectId;
+  userId: ObjectId;
+  testId: ObjectId;
+  mode: 'mock' | 'section';
+  sections: ('listening'|'reading'|'writing'|'speaking')[];  // mock'da hammasi
+  currentSection: string;
+  status: 'in_progress' | 'submitted' | 'graded' | 'expired' | 'abandoned';
+
+  // Taymer — SERVER manbai
+  startedAt: Date;
+  sectionStartedAt: Date;
+  endsAt: Date;                    // server hisoblaydi
+  pausedSec: number;               // faqat practice rejimda
+
+  // Javoblar
+  answers: Record<string, AnswerValue>;   // key = "q12"
+  flagged: number[];                      // review uchun belgilangan savollar
+  lastQuestion: number;
+
+  // Listening holati
+  audio: {
+    partIndex: number;
+    positionSec: number;           // refresh qilsa shu joydan davom etadi
+    playedParts: number[];         // qayta tinglash mumkin emas
+    volume: number;
+  };
+
+  // Writing
+  essays: {
+    task1?: { text: string; wordCount: number; updatedAt: Date };
+    task2?: { text: string; wordCount: number; updatedAt: Date };
+  };
+
+  // Integrity
+  events: { type: string; at: Date; meta?: any }[];
+  tabSwitchCount: number;
+
+  // Natija
+  result?: AttemptResult;
+  submittedAt?: Date;
+}
+
+type AnswerValue = string | string[] | null;
+```
+
+### 3.8 Natija
+
+```ts
+interface AttemptResult {
+  listening?: { raw: number; band: number; perPart: number[] };
+  reading?:   { raw: number; band: number; perPassage: number[] };
+  writing?:   {
+    task1: WritingScore;
+    task2: WritingScore;
+    band: number;                  // (task1 + task2*2) / 3, 0.5 ga yaxlitlanadi
+  };
+  speaking?:  { band: number; criteria: Record<string, number> };
+  overall?: number;
+  timeSpentSec: number;
+  perQuestion: { number: number; userAnswer: string; correct: boolean; accepted: string[] }[];
+}
+
+interface WritingScore {
+  taskAchievement: number;   // TA / TR
+  coherenceCohesion: number; // CC
+  lexicalResource: number;   // LR
+  grammaticalRange: number;  // GRA
+  band: number;
+  feedbackUz: string;
+  corrections: { original: string; suggested: string; reason: string }[];
+  improvedVersion?: string;
+}
+```
+
+---
+
+## 4. Backend API
+
+Barcha endpoint'lar `/api/exam/...` ostida. Auth majburiy.
+
+| Metod | Endpoint | Vazifa |
+|---|---|---|
+| `POST` | `/attempts` | Yangi urinish. Body: `{testId, mode, sections}`. Javob: `{attemptId}` |
+| `GET` | `/attempts/:id` | **Sanitizatsiya qilingan** kontent + saqlangan javoblar + `serverNow`, `endsAt` |
+| `PATCH` | `/attempts/:id/answers` | Batch saqlash: `{answers: {...}, flagged: [...], lastQuestion: n}` |
+| `POST` | `/attempts/:id/heartbeat` | Har 15s. Body: `{audioPositionSec, currentQuestion}`. Javob: `{remainingSec, status}` |
+| `POST` | `/attempts/:id/section/next` | Mock'da keyingi bo'limga o'tish (orqaga qaytish mumkin emas) |
+| `POST` | `/attempts/:id/submit` | Yakunlash + avtomatik baholash |
+| `POST` | `/attempts/:id/grade-writing` | AI baholash (navbatga qo'yiladi, natija polling bilan) |
+| `GET` | `/attempts/:id/result` | To'g'ri javoblar + izohlar — **faqat `status === 'graded'` bo'lsa** |
+| `POST` | `/attempts/:id/event` | Integrity log: tab switch, fullscreen exit, paste |
+
+### 4.1 ⚠️ Eng muhim xavfsizlik qoidasi
+
+`GET /attempts/:id` javobida **`answer`, `explanationHtml`, `transcript`, `sampleAnswer`, `locatorParagraph` maydonlari bo'lmasligi kerak** (exam rejimda). Serverda sanitizer funksiyasi yozing:
+
+```ts
+function sanitizeForExam(test: Test): SanitizedTest {
+  // recursively delete: answer, explanationHtml, locatorParagraph,
+  // transcript, sampleAnswer, markingNotes
+}
+```
+
+Hozir agar javoblar HTML/JSON payload bilan birga kelayotgan bo'lsa — bu butun mock tizimining ma'nosini yo'q qiladi. Birinchi navbatda shuni tekshiring.
+
+### 4.2 Taymer — server manbai
+
+Klientdagi taymer **faqat ko'rsatkich**. Haqiqat serverda:
+
+```ts
+// GET /attempts/:id javobida
+{ serverNow: 1757580000000, endsAt: 1757583600000 }
+
+// Klient:
+const offset = serverNow - Date.now();
+const remaining = () => endsAt - (Date.now() + offset);
+```
+
+Har `heartbeat`da server `remainingSec` qaytaradi va klient farqni ≥3s bo'lsa tuzatadi. `remaining <= 0` bo'lsa server `submit`ni majburan bajaradi — klient nima qilishidan qat'i nazar.
+
+### 4.3 Autosave strategiyasi
+
+| Trigger | Nima saqlanadi |
+|---|---|
+| Javob o'zgardi | 800ms debounce → shu bitta javob |
+| Har 20 soniya | To'liq snapshot (javoblar + flagged + lastQuestion) |
+| `blur` / `visibilitychange` | Darhol to'liq snapshot |
+| `beforeunload` | `navigator.sendBeacon()` bilan snapshot |
+| Bo'lim almashganda | Majburiy sync, muvaffaqiyatsiz bo'lsa o'tkazmaydi |
+
+Optimistik UI: javob darhol ko'rinadi, saqlash fonda. Xatolik bo'lsa header'da kichik indikator: `● Saqlanmadi — qayta urinilmoqda`.
+
+---
+
+## 5. UI spetsifikatsiyasi — umumiy shell
+
+### 5.1 Dizayn qarori (bu sizga yoqmasligi mumkin, lekin muhim)
+
+Siz maksimalizm, 3D, scroll-animatsiya va premium ranglarni yoqtirasiz. **Imtihon ekranida bularning hech biri bo'lmasligi kerak.** Sabab: mock'ning yagona maqsadi — haqiqiy imtihonga o'rganish. Har qanday bezak diqqatni bo'ladi va tayyorgarlik sifatini pasaytiradi. IELTS CD ekrani ataylab zerikarli: kulrang, oq, Arial.
+
+Shuning uchun:
+
+- **Imtihon ekrani (`ExamShell` ichi):** neytral, IELTS'ga o'xshash. Deep Merlot faqat **aksent** sifatida — joriy savol ramkasi, focus ring, asosiy tugma.
+- **Imtihondan oldin/keyin (intro, natija, review, dashboard):** to'liq Deep Merlot + premium + animatsiya. Bu yerda o'zingizni erkin his qiling.
+
+### 5.2 Exam design tokenlari
+
+```css
+[data-exam] {
+  --exam-bg:            #FFFFFF;
+  --exam-chrome:        #F1F1F1;   /* header/footer fon */
+  --exam-chrome-border: #D4D4D4;
+  --exam-text:          #1A1A1A;
+  --exam-muted:         #6B6B6B;
+  --exam-instruction:   #F7F7F7;   /* ko'rsatma bloki foni */
+  --exam-input-border:  #8C8C8C;
+  --exam-accent:        #4A1226;   /* Deep Merlot — joriy savol, focus */
+  --exam-accent-soft:   #B8394A;
+  --exam-answered:      #4A1226;
+  --exam-flag:          #E08D00;
+  --exam-danger:        #C0392B;   /* 5 daqiqa qolganda */
+  --exam-highlight:     #FFE9A8;   /* matn belgilash */
+  --exam-focus-ring:    0 0 0 3px rgba(74,18,38,.28);
+}
+```
+
+**Dark mode:** imtihon ekranida **yo'q**. Haqiqiy IELTS'da dark mode yo'q, va oq fon ko'z charchashini imitatsiya qiladi. Sozlamalarda faqat "yuqori kontrast" rejimi (oq matn qora fonda) — bu rasmiy IELTS'da mavjud accessibility opsiyasi.
+
+### 5.3 Tipografika
+
+| Element | O'lcham | Line-height | Og'irlik |
+|---|---|---|---|
+| Passage matni | 16px (sozlanadi 16/18/20/22) | 1.75 | 400 |
+| Passage sarlavhasi | 20px | 1.3 | 700 |
+| Savol matni | 16px | 1.6 | 400 |
+| Ko'rsatma bloki | 15px | 1.55 | 400 (kalit so'zlar 700 + CAPS) |
+| Savol raqami | 15px | — | 700 |
+| Taymer | 18px tabular-nums | — | 600 |
+| Nav tugmasi | 13px | — | 600 |
+
+Shrift: `system-ui, -apple-system, "Segoe UI", Arial, sans-serif`. Imtihon ekranida dekorativ shrift ishlatmang.
+
+### 5.4 ExamHeader (balandligi 56px)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ 👤 Jamolxon T.  ·  ID 0012345 │  ⏱ 42:17  │ 🔊──── ⚙ ? 🖥 │
+└──────────────────────────────────────────────────────────────────┘
+   chap (nom + ID)              markaz (taymer)    o'ng (boshqaruv)
+```
+
+- **Chap:** foydalanuvchi ismi + soxta candidate ID (attempt'dan generatsiya, masalan `attemptId` oxirgi 7 raqami). Bu haqiqiylik hissini beradi.
+- **Markaz:** taymer. `MM:SS` formatida, `font-variant-numeric: tabular-nums`.
+  - 10 daqiqa qolganda: toast + taymer `--exam-accent-soft`
+  - 5 daqiqa qolganda: toast + taymer `--exam-danger` + 2 marta pulsatsiya (keyin to'xtaydi)
+  - 1 daqiqa: toast
+  - `aria-live="polite"` bilan e'lon qilinadi
+- **O'ng:**
+  - 🔊 Volume slider (faqat Listening'da ko'rinadi)
+  - ⚙ Sozlamalar: matn o'lchami, yuqori kontrast
+  - ? Yordam: savol turlari bo'yicha qisqa qo'llanma (modal, taymer to'xtamaydi)
+  - 🖥 "Yashirish" — taymerni yashirish tugmasi (haqiqiy IELTS'da bor, tashvishni kamaytiradi)
+
+Header `position: sticky; top: 0; z-index: 50`.
+
+### 5.5 ExamFooterNav (balandligi 64px desktop, 88px mobil)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ Part 1 [1][2][3]…[10] │ Part 2 [11]…[20] │ Part 3 …  │  ← →  ✓ │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+Savol tugmasi holatlari:
+
+| Holat | Ko'rinish |
+|---|---|
+| Javobsiz | Oq fon, `--exam-chrome-border` chegara, qora raqam |
+| Javob berilgan | `--exam-answered` rangida **tagiga chizilgan** raqam + och fon `#EFE6EA` |
+| Joriy | 2px `--exam-accent` ramka + `--exam-focus-ring` |
+| Belgilangan (flag) | Yuqori-o'ng burchakda 6px `--exam-flag` uchburchak |
+| Boshqa bo'limda (mock) | 40% opacity, bosilmaydi |
+
+**Xatti-harakat:**
+- Tugma bosilganda → savol paneli shu savolga smooth scroll + input'ga focus. **Passage paneli qimirlamaydi** (haqiqiy IELTS shunday).
+- ← → strelkalari: bir savol oldinga/orqaga.
+- ✓ tugmasi: mock'da faqat oxirgi bo'limda "Yakunlash", practice'da doim.
+- Klaviatura: `←`/`→` navigatsiya, `Ctrl+F` belgilash (flag), `Tab` inputlar orasida.
+
+### 5.6 Ko'rsatma bloki (instruction block)
+
+Har `QuestionGroup` tepasida:
+
+```
+┌──────────────────────────────────────────────┐
+│ Questions 14–18                              │  ← 15px, 700
+│                                              │
+│ Complete the sentences below.                │
+│ Choose NO MORE THAN TWO WORDS from the       │  ← CAPS qismi 700
+│ passage for each answer.                     │
+└──────────────────────────────────────────────┘
+background: var(--exam-instruction);
+border-left: 3px solid var(--exam-accent);
+padding: 14px 16px;
+```
+
+### 5.7 Sozlamalar paneli
+
+```
+Matn o'lchami:   [A-]  16px  [A+]        (16 / 18 / 20 / 22)
+Yuqori kontrast: [  ○──]                 (off / on)
+Taymer:          [──○  ]                 (ko'rsatish / yashirish)
+```
+
+`localStorage`da saqlanadi va keyingi urinishda tiklanadi.
+
+---
+
+## 6. Reading moduli
+
+### 6.1 Split-pane — bu asosiy talab
+
+```
+┌───────────────────────────┬┬───────────────────────────┐
+│ READING PASSAGE 1         ││ Questions 1–6             │
+│ The history of glass      ││ ┌───────────────────────┐ │
+│                           ││ │ Do the following      │ │
+│ A  Glass has been used... ││ │ statements agree...   │ │
+│    ...                    ││ └───────────────────────┘ │
+│                           ││                           │
+│ B  From the Middle Ages...││ 1. Glass was first...     │
+│    ...                    ││    ○ TRUE                 │
+│                           ││    ○ FALSE                │
+│    ↕ mustaqil scroll      ││    ○ NOT GIVEN            │
+│                           ││    ↕ mustaqil scroll      │
+└───────────────────────────┴┴───────────────────────────┘
+                        ↑ divider (6px, sudraladigan)
+```
+
+**Texnik talablar:**
+
+```css
+.exam-split { display: grid; grid-template-columns: 1fr 6px 1fr; height: calc(100vh - 120px); }
+.exam-pane  { overflow-y: auto; overscroll-behavior: contain; padding: 24px 28px; }
+.exam-divider {
+  cursor: col-resize; background: var(--exam-chrome-border);
+  position: relative; touch-action: none;
+}
+.exam-divider::after {           /* sudrash zonasi kengaytirilgan */
+  content:''; position:absolute; inset:0 -6px;
+}
+```
+
+- Boshlang'ich nisbat **50/50**.
+- Sudrash chegarasi: **30%–70%**. Undan tashqariga chiqmaydi.
+- **Double-click** → 50/50 ga qaytadi.
+- Nisbat `localStorage['exam.split.reading']` da saqlanadi.
+- Sudrash paytida `user-select: none` butun body'ga, va panellarda `pointer-events: none` (iframe muammosi oldini olish uchun).
+- Sudrash `requestAnimationFrame` bilan, `transform` emas — `grid-template-columns` yangilanadi.
+- Klaviatura: divider `tabindex="0"`, `←`/`→` bilan 2% qadamda siljiydi, `aria-label="Panellar kengligini o'zgartirish"`, `role="separator"`, `aria-valuenow`.
+
+### 6.2 Passage paneli
+
+- Paragraf yorliqlari (**A**, **B**, **C**) — chap chetda, `position: absolute; left: 0; font-weight: 700`, paragraf matni `padding-left: 28px`.
+- Yorliq faqat `matching_headings` yoki `matching_information` guruhi mavjud bo'lsa ko'rsatiladi.
+- `max-width` **yo'q** — panel kengligi o'zi cheklaydi.
+- Sarlavha `position: sticky; top: 0` qilib qo'yiladi (fon bilan), scroll paytida qaysi passage ekanligi ko'rinib turadi.
+
+### 6.3 Matn belgilash va eslatma (highlight & notes)
+
+Haqiqiy IELTS CD'da bu bor va ko'p nomzod ishlatadi.
+
+**Ish tartibi:**
+1. Foydalanuvchi matnni tanlaydi → o'ng tugma bosadi (yoki mobil'da tanlov ustida "..." tugmasi).
+2. Kontekst menyusi: `Belgilash` / `Belgini olib tashlash` / `Eslatma qo'shish`.
+3. Belgilangan matn `background: var(--exam-highlight)` bo'ladi.
+4. Eslatma: kichik popup, matn kiritiladi, belgilangan joyda kichik 📝 ikonka paydo bo'ladi, hover'da ko'rsatiladi.
+
+**Saqlash formati:**
+
+```ts
+interface Highlight {
+  passageOrder: number;
+  paragraphIndex: number;
+  startOffset: number;   // paragraf ichidagi tekst offset (barcha text node'lar birlashtirilgan holda)
+  endOffset: number;
+  note?: string;
+}
+```
+
+Offset'ni hisoblash uchun `TreeWalker` bilan text node'larni yurib chiqing va kumulyativ offset toping. DOM'ni qayta chizishda offsetdan `Range` tiklanadi. Attempt'da saqlanadi, refresh'dan keyin tiklanadi.
+
+**Brauzer kontekst menyusini bloklash:** faqat passage paneli ichida (`onContextMenu={e => e.preventDefault()}`), boshqa joyda emas.
+
+### 6.4 Savol turlari — Reading render qoidalari
+
+| Tur | Render |
+|---|---|
+| `true_false_notgiven` | Radio guruh, gorizontal: `TRUE / FALSE / NOT GIVEN`. Matn CAPS. |
+| `yes_no_notgiven` | Xuddi shunday: `YES / NO / NOT GIVEN` |
+| `multiple_choice_single` | Radio, vertikal, A–D harflari bilan |
+| `multiple_choice_multi` | Checkbox. `selectCount` ga yetganda qolganlari `disabled`. Yuqorida: `2 tadan 1 ta tanlangan` |
+| `matching_headings` | Har savol yonida `<select>` (rim raqamlari i–x). Yuqorida sarlavhalar ro'yxati sticky blokda. |
+| `matching_information` | `<select>` yoki matn input (A–H harfi). Bitta harf bir necha marta ishlatilishi mumkin — `bankReusable: true` |
+| `matching_features` | `<select>` variantlar bankidan |
+| `matching_sentence_endings` | Chap: gap boshi, o'ng: `<select>` A–G |
+| `sentence_completion` | Gap ichida inline input: `In 1932, the factory produced ____.` |
+| `summary_completion` | Xuddi shunday, lekin abzats ichida bir nechta input |
+| `summary_completion_bank` | Drag-drop yoki `<select>`. **Tavsiya: `<select>` + drag-drop ikkalasi ham.** Mobil'da drag-drop ishlamaydi. |
+| `short_answer` | Bitta qatorli input |
+| `table_completion` | HTML jadval, `{{q14}}` placeholder'lari input'ga almashadi |
+| `flowchart_completion` | Vertikal oqim, qutilar orasida ↓, ichida input |
+| `diagram_label` | Rasm + absolyut joylashgan input'lar (`imageHotspots` koordinatalari bo'yicha, foizda) |
+
+### 6.5 Inline input dizayni
+
+```css
+.exam-gap {
+  display: inline-block;
+  min-width: 130px;
+  border: none;
+  border-bottom: 1.5px solid var(--exam-input-border);
+  background: transparent;
+  font: inherit;
+  padding: 2px 4px;
+  text-align: center;
+}
+.exam-gap:focus { outline: none; border-bottom-color: var(--exam-accent); box-shadow: 0 2px 0 0 var(--exam-accent); }
+.exam-gap[data-answered="true"] { border-bottom-color: var(--exam-accent); }
+```
+
+Har input oldida kichik raqam belgisi: `⌜14⌟` yoki `14` superscript.
+
+**Word limit real-time indikatori:** agar `wordLimit.maxWords = 2` va foydalanuvchi 3 so'z yozsa — input ostida kichik qizil matn: `Ko'pi bilan 2 ta so'z`. **Yozishni to'xtatmaydi** (haqiqiy imtihonda ham to'xtatmaydi), faqat ogohlantiradi.
+
+---
+
+## 7. Listening moduli
+
+### 7.1 Audio dvigatel — eng nozik qism
+
+```ts
+// AudioEngine qoidalari (exam rejim)
+- <audio> elementi yashirin, native controls YO'Q
+- preload="auto", har part oldindan yuklanadi
+- Faqat volume boshqariladi
+- seek BLOKLANADI:
+    audio.onseeking = () => { if (examMode) audio.currentTime = lastKnownTime; }
+- pause BLOKLANADI (foydalanuvchi tomonidan)
+- Part tugagach avtomatik keyingi partga o'tadi
+- Har 15s heartbeat bilan positionSec serverga yoziladi
+- Refresh qilinsa: server positionSec dan davom etadi, boshidan EMAS
+- playedParts[] ga qo'shilgan part qayta tinglanmaydi
+```
+
+**Brauzer autoplay muammosi:** audio foydalanuvchi bosishisiz boshlanmaydi. Shuning uchun majburiy **Volume Check** ekrani.
+
+### 7.2 Volume Check ekrani (imtihondan oldin)
+
+```
+┌─────────────────────────────────────────┐
+│         🎧 Ovozni tekshirish             │
+│                                         │
+│  Naushnik taqing va quyidagi tugmani    │
+│  bosib ovoz balandligini sozlang.       │
+│                                         │
+│         [ ▶ Sinov ovozini eshitish ]    │
+│                                         │
+│  🔊 ────────●──────────                 │
+│                                         │
+│  ☑ Ovozni eshitdim va tayyorman         │
+│                                         │
+│         [ Imtihonni boshlash ]          │
+└─────────────────────────────────────────┘
+```
+
+Bu ekran `audio.play()` uchun user gesture beradi va real IELTS'dagi qadamni takrorlaydi.
+
+### 7.3 Ekran tartibi
+
+Listening'da split-pane **yo'q**. Faqat savollar paneli, markazda, `max-width: 860px`.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ Part 1                        ▮▮▮▮▮▯▯▯▯▯ 2:14 / 5:30    │  ← progress, bosilmaydi
+├──────────────────────────────────────────────────────────┤
+│ Questions 1–5                                            │
+│ Complete the form below. Write ONE WORD AND/OR A NUMBER. │
+│                                                          │
+│         HOLIDAY BOOKING FORM                             │
+│  Name:          ______1______                            │
+│  Date:          ______2______                            │
+└──────────────────────────────────────────────────────────┘
+```
+
+Progress bar: 4px balandlik, `pointer-events: none`, `--exam-accent` rangida to'ladi.
+
+### 7.4 Part o'tishlari
+
+Haqiqiy IELTS'da part orasida audio ichida "You now have thirty seconds to check your answers" deb aytiladi. Sizda audio faylda shu pauza bo'lishi kerak. Agar yo'q bo'lsa:
+
+- `ListeningPart.gapAfterSec: 30` maydonini qo'shing
+- Part tugagach 30s sanoq ko'rsatiladi: `Javoblaringizni tekshiring — 0:28`
+- Keyin avtomatik keyingi partga o'tadi va savollar paneli almashadi
+
+### 7.5 Oxirgi 2 daqiqa
+
+Audio tugagach: `Endi javoblaringizni tekshirish uchun 2 daqiqa vaqtingiz bor.` Taymer 02:00 dan sanaydi, keyin avtomatik submit.
+
+> Eslatma: 2023-dan boshlab CD IELTS'da 10 daqiqalik "transfer time" yo'q, faqat 2 daqiqa tekshirish. Buni to'g'ri qiling.
+
+### 7.6 Map / plan labelling
+
+```ts
+interface Hotspot {
+  questionNumber: number;
+  x: number;  // 0–100 (%)
+  y: number;  // 0–100 (%)
+}
+```
+
+- Rasm `position: relative` konteynerda, hotspot'lar `position: absolute; left: x%; top: y%`.
+- Har hotspot: kichik input yoki drop zone (variantlar bankidan drag).
+- **Mobil**: drag-drop o'rniga tap → bottom sheet'dan variant tanlash.
+- Rasm zoom: pinch-to-zoom va `+`/`−` tugmalari (haqiqiy IELTS'da rasmni kattalashtirish mumkin).
+
+### 7.7 Practice rejim farqlari
+
+| Xususiyat | Exam | Practice |
+|---|---|---|
+| Pauza | ❌ | ✅ |
+| Orqaga/oldinga | ❌ | ✅ (±10s) |
+| Tezlik | 1.0x qat'iy | 0.75x / 1.0x / 1.25x |
+| Qayta tinglash | ❌ | ✅ cheksiz |
+| Transkript | ❌ | ✅ tugagandan keyin, matnda javob joyi ajratilgan |
+| Darhol javob tekshirish | ❌ | ✅ opsiya |
+
+---
+
+## 8. Writing moduli
+
+### 8.1 Ekran tartibi
+
+```
+┌───────────────────────────┬┬───────────────────────────┐
+│ WRITING TASK 1            ││ [✂ Kesish][⧉ Nusxa][📋 Qo'y]│
+│                           ││ ┌───────────────────────┐ │
+│ The chart below shows...  ││ │                       │ │
+│ [grafik rasmi]            ││ │  (foydalanuvchi       │ │
+│                           ││ │   yozadi)             │ │
+│ Write at least 150 words. ││ │                       │ │
+│                           ││ └───────────────────────┘ │
+│                           ││ So'zlar: 187              │
+└───────────────────────────┴┴───────────────────────────┘
+```
+
+Divider Reading bilan bir xil komponent, `localStorage['exam.split.writing']`.
+
+### 8.2 Editor talablari
+
+```jsx
+<textarea
+  spellCheck={false}
+  autoCorrect="off"
+  autoCapitalize="off"
+  autoComplete="off"
+  data-gramm="false"          // Grammarly extensionni bloklash
+  data-gramm_editor="false"
+  data-enable-grammarly="false"
+/>
+```
+
+- **Spellcheck qat'iy o'chirilgan** — haqiqiy imtihonda yo'q. Bu kelishuvsiz talab.
+- Grammarly kabi extension'lar `data-gramm="false"` bilan bloklanadi (100% kafolat emas, lekin ko'pchiligini to'xtatadi).
+- Shrift: `16px / 1.7`, `padding: 20px`, `resize: none`, panel to'liq balandligi.
+- `Ctrl+Z`/`Ctrl+Y` native ishlaydi.
+- Kesish/Nusxa/Qo'yish tugmalari — real IELTS'da bor, `document.execCommand` yoki `navigator.clipboard` bilan.
+- **Task promptidan nusxa olish bloklanadi** (`onCopy → preventDefault` chap panelda).
+
+### 8.3 So'z hisoblagich
+
+```ts
+const countWords = (t: string) =>
+  t.trim().split(/\s+/).filter(w => /[a-zA-Z0-9]/.test(w)).length;
+```
+
+- 200ms debounce.
+- Ko'rinish: `So'zlar: 187`
+- `< minWords` bo'lsa: `--exam-muted` rangda + `(kamida 150)` qo'shimchasi
+- `>= minWords` bo'lsa: `--exam-accent` rangda, ✓ belgisi bilan
+- Haqiqiy IELTS'da so'z soni **hisoblanadi va ko'rsatiladi** — buni saqlang.
+
+### 8.4 Task 1 ↔ Task 2 almashish
+
+Footer'da ikkita katta tugma: `Task 1` va `Task 2`. Bitta 60-daqiqalik taymer ikkalasiga umumiy. Har taskda alohida tavsiya: `Tavsiya etilgan vaqt: 20 daqiqa`. Foydalanuvchi ixtiyoriy ravishda almashadi — cheklov yo'q (haqiqiy imtihonda ham shunday).
+
+### 8.5 AI baholash
+
+Everest-Mock'dagi grader'ni qayta ishlating. Talablar:
+
+**Prompt strukturasi:**
+```
+Rol: Tajribali IELTS examiner (Cambridge rubrikasi).
+Kirish: task turi, prompt, minWords, foydalanuvchi matni, so'z soni.
+Chiqish: qat'iy JSON (preamble yo'q, ```json yo'q).
+```
+
+**JSON sxemasi:**
+```json
+{
+  "taskAchievement": 6.5,
+  "coherenceCohesion": 6.0,
+  "lexicalResource": 6.5,
+  "grammaticalRange": 6.0,
+  "band": 6.5,
+  "feedbackUz": "O'zbek tilida 3–5 jumlalik umumiy tahlil",
+  "criteriaFeedbackUz": {
+    "taskAchievement": "...",
+    "coherenceCohesion": "...",
+    "lexicalResource": "...",
+    "grammaticalRange": "..."
+  },
+  "corrections": [
+    { "original": "...", "suggested": "...", "reason": "O'zbekcha izoh" }
+  ],
+  "improvedVersion": "Band 7.5 darajasidagi qayta yozilgan variant"
+}
+```
+
+**Muhim qoidalar:**
+- Har mezon **0.5 qadamda**, 0–9.
+- `band` = 4 mezon o'rtachasi, eng yaqin 0.5 ga yaxlitlangan.
+- `minWords`dan kam bo'lsa TA/TR jarimasi qo'llanadi — promptda buni aniq yozing.
+- Baholash **navbatda** (queue) ishlaydi: `POST /grade-writing` → `{jobId}` → klient 2s polling. Vercel serverless timeout muammosini oldini oladi.
+- Natija `Attempt.result.writing` ga yoziladi va keshlanadi — bir matn ikki marta baholanmaydi.
+
+**Natija ko'rsatish:** matn chapda, tuzatishlar o'ngda; tuzatilgan joylar matn ichida `<mark>` bilan belgilanadi, bosilganda o'ngdagi izoh highlight bo'ladi.
+
+---
+
+## 9. Mock — to'liq imtihon orkestratsiyasi
+
+### 9.1 Oqim
+
+```
+Intro ekrani
+  ↓ [Boshlash]
+Volume check (Listening uchun)
+  ↓
+LISTENING — 30 daqiqa + 2 daqiqa
+  ↓ avtomatik
+"Listening tugadi" ekrani (10s sanoq)
+  ↓
+READING — 60 daqiqa
+  ↓ avtomatik
+"Reading tugadi" ekrani (10s)
+  ↓
+WRITING — 60 daqiqa
+  ↓ avtomatik
+Yakuniy submit → baholash → natija
+```
+
+**Qoidalar:**
+- Bo'limlar orasida **orqaga qaytish yo'q**. `POST /section/next` bir tomonlama.
+- Real imtihonda tanaffus yo'q — shuning uchun 10 soniyalik o'tish ekrani, uzoq tanaffus emas.
+- Speaking alohida (Faza 3), mock natijasiga `null` sifatida kiradi.
+- Foydalanuvchi brauzerni yopsa: `status` `in_progress` qoladi, qayta kirganda **qolgan vaqt bilan** davom etadi. Vaqt tugagan bo'lsa → avtomatik `expired` + qisman baholash.
+
+### 9.2 Intro ekrani (bu yerda premium dizayn qiling)
+
+```
+┌────────────────────────────────────────────┐
+│  Cambridge IELTS 19 — Test 1               │
+│  Academic                                  │
+│                                            │
+│  📋 Listening   30 daq   40 savol         │
+│  📖 Reading     60 daq   40 savol         │
+│  ✍  Writing     60 daq   2 task           │
+│  ─────────────────────────────            │
+│  Jami: 2 soat 30 daqiqa                   │
+│                                            │
+│  ⚠ Boshlangandan keyin taymer to'xtamaydi.│
+│  ⚠ Bo'limlar orasida orqaga qaytib        │
+│     bo'lmaydi.                             │
+│  ⚠ Naushnik tayyorlang.                   │
+│                                            │
+│  [ Imtihonni boshlash ]                    │
+└────────────────────────────────────────────┘
+```
+
+### 9.3 Yakunlash tasdiqlash
+
+```
+Yakunlashni xohlaysizmi?
+Javobsiz savollar: 4 ta  (12, 19, 27, 38)
+[Orqaga qaytish]  [Ha, yakunlash]
+```
+
+---
+
+## 10. Baholash mantig'i
+
+### 10.1 Javob tekshirish — bu joyni to'g'ri qiling
+
+Aksariyat klon-platformalar shu yerda xato qiladi.
+
+```ts
+function normalize(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")      // aqlli apostrof → oddiy
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\s+/g, ' ')                  // ko'p probel → bitta
+    .replace(/[.,;:!?]+$/g, '');           // oxirgi tinish belgisi
+}
+
+function isCorrect(user: string, key: AnswerKey, limit?: WordLimit): boolean {
+  if (!user) return false;
+  const u = normalize(user);
+
+  // 1. So'z limiti tekshiruvi
+  if (limit) {
+    const words = u.split(' ').filter(Boolean);
+    if (words.length > limit.maxWords) return false;
+  }
+
+  // 2. Qabul qilinadigan javoblar
+  for (const raw of key.accepted) {
+    // "(the) museum" → ["museum", "the museum"]
+    for (const variant of expandOptional(raw)) {
+      if (u === normalize(variant)) return true;
+    }
+  }
+
+  // 3. Regex (murakkab holatlar)
+  if (key.pattern && new RegExp(`^${key.pattern}$`, 'i').test(u)) return true;
+
+  return false;
+}
+
+function expandOptional(s: string): string[] {
+  // "(the) old museum" → ["old museum", "the old museum"]
+  const m = s.match(/\(([^)]+)\)/);
+  if (!m) return [s];
+  const without = s.replace(/\s*\([^)]+\)\s*/, ' ').trim();
+  const with_ = s.replace(/[()]/g, '').replace(/\s+/g, ' ').trim();
+  return [without, with_];
+}
+```
+
+**Qo'shimcha qoidalar:**
+- Ko'p javobli MC (`multiple_choice_multi`): tartibsiz to'plam solishtiruvi. `["A","C"]` va `["C","A"]` — ikkalasi to'g'ri. Qisman ball **yo'q** (IELTS'da 2 tadan 1 tasi to'g'ri = 0).
+  - ⚠️ Istisno: agar "Choose TWO letters" savoli 2 ta savol raqamini egallasa (masalan 15 va 16), unda har to'g'ri harf 1 ball.
+- Amerikacha/inglizcha imlo: `accepted` ga ikkalasini kiriting (`colour|color`). Avtomatik konvertatsiya qilmang — xato beradi.
+- Raqamlar: `20` va `twenty` — ikkalasi accepted'da bo'lsa qabul qilinadi. Avtomatik emas.
+- Defis bilan yozilgan so'z (`well-known`) = 1 ta so'z.
+- Bo'sh javob = 0, minus ball yo'q.
+
+### 10.2 Band konversiya jadvallari
+
+> Bu jadvallar Cambridge namunalariga yaqin taxminiy qiymatlar. Rasmiy jadval har test uchun biroz farq qiladi. Kodda `bandTable` ni **testga bog'lab** saqlang (`Test.bandTable?`), default jadval bilan.
+
+**Listening (ikkala modul uchun):**
+
+| Xom ball | Band |
+|---|---|
+| 39–40 | 9.0 |
+| 37–38 | 8.5 |
+| 35–36 | 8.0 |
+| 32–34 | 7.5 |
+| 30–31 | 7.0 |
+| 26–29 | 6.5 |
+| 23–25 | 6.0 |
+| 18–22 | 5.5 |
+| 16–17 | 5.0 |
+| 13–15 | 4.5 |
+| 10–12 | 4.0 |
+| 6–9 | 3.5 |
+| 4–5 | 3.0 |
+
+**Academic Reading:**
+
+| Xom ball | Band |
+|---|---|
+| 39–40 | 9.0 |
+| 37–38 | 8.5 |
+| 35–36 | 8.0 |
+| 33–34 | 7.5 |
+| 30–32 | 7.0 |
+| 27–29 | 6.5 |
+| 23–26 | 6.0 |
+| 19–22 | 5.5 |
+| 15–18 | 5.0 |
+| 13–14 | 4.5 |
+| 10–12 | 4.0 |
+| 8–9 | 3.5 |
+| 6–7 | 3.0 |
+
+**General Training Reading:**
+
+| Xom ball | Band |
+|---|---|
+| 40 | 9.0 |
+| 39 | 8.5 |
+| 37–38 | 8.0 |
+| 36 | 7.5 |
+| 34–35 | 7.0 |
+| 32–33 | 6.5 |
+| 30–31 | 6.0 |
+| 27–29 | 5.5 |
+| 23–26 | 5.0 |
+| 19–22 | 4.5 |
+| 15–18 | 4.0 |
+
+### 10.3 Umumiy band
+
+```ts
+function overallBand(l: number, r: number, w: number, s?: number): number {
+  const scores = [l, r, w, s].filter((x): x is number => x != null);
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  // IELTS yaxlitlash: .25 → .5 ga, .75 → keyingi butunga
+  const floor = Math.floor(avg);
+  const frac = avg - floor;
+  if (frac < 0.25) return floor;
+  if (frac < 0.75) return floor + 0.5;
+  return floor + 1;
+}
+```
+
+Agar Speaking topshirilmagan bo'lsa — 3 ta bo'lim o'rtachasi, va natijada aniq yozing: `Speaking topshirilmagan — bu taxminiy ball`.
+
+---
+
+## 11. Natija va Review ekrani
+
+**Bu yerda premium dizayn qiling** — imtihon tugadi, endi cheklov yo'q.
+
+### 11.1 Natija ekrani tuzilishi
+
+```
+1. Katta umumiy band (masalan 6.5) + halqa/gradient vizual
+2. 4 ta bo'lim kartochkasi: band + xom ball + vaqt
+3. Bar chart: bo'limlar taqqoslash
+4. Oldingi urinishlar bilan solishtirish (line chart)
+5. "Zaif tomonlar" bloki — savol turlari bo'yicha to'g'ri % 
+   (masalan: "True/False/Not Given — 40%. Bu sizning eng zaif turingiz.")
+6. [Javoblarni ko'rib chiqish] tugmasi
+7. [Xatolardagi so'zlarni lug'atga qo'shish] ← Vocably'ning kuchli tomoni, buni albatta qiling
+```
+
+### 11.2 Review ekrani
+
+Imtihon shell'ining o'zi, lekin:
+- Taymer yo'q, o'rniga `Ko'rib chiqish rejimi`
+- Har savol yonida: ✅ / ❌ / ⚪ (javobsiz)
+- Foydalanuvchi javobi + to'g'ri javob(lar) ko'rsatiladi
+- `explanationHtml` izoh bloki ochiladi
+- `locatorParagraph` bo'lsa — passage panelida shu paragraf `--exam-highlight` bilan yoritiladi va unga scroll qilinadi
+- Listening'da transkript ko'rsatiladi, javob joyi ajratilgan
+- Bo'limlar va savol turlari bo'yicha filtr: `Faqat xatolar` / `Faqat TFNG`
+
+### 11.3 Vocably bog'lanishi (raqobat ustunligi)
+
+Natija ekranida:
+- Matnda uchragan qiyin so'zlarni ajratib, `Lug'atga qo'shish` tugmasi
+- Qo'shilgan so'zlar SRS tizimiga tushadi va 24 soatdan keyin kartochkada chiqadi
+- Bu sizning landing page'dagi "so'z → ko'nikma zanjiri" va'dasini yopadi
+
+---
+
+## 12. Mobil va responsive
+
+Haqiqatni aytish kerak: **haqiqiy IELTS CD telefonda topshirilmaydi.** Split-pane 375px ekranda ishlamaydi. Shuning uchun mobil = **mashq rejimi**, imtihon simulyatsiyasi emas.
+
+### 12.1 Breakpointlar
+
+| Kenglik | Tartib |
+|---|---|
+| `≥1280px` | To'liq split-pane, footer'da 40 tugma bir qatorda |
+| `1024–1279px` | Split-pane, footer scroll qiladi |
+| `768–1023px` | Split-pane 60/40, matn 15px |
+| `<768px` | **Tab rejimi** |
+
+### 12.2 Mobil tab rejimi
+
+```
+┌─────────────────────────┐
+│ ⏱ 42:17         ⚙  ?   │
+├─────────────────────────┤
+│ [  Matn  ][ Savollar ●] │  ← segmented control, sticky
+├─────────────────────────┤
+│                         │
+│   (faol tab kontenti)   │
+│                         │
+├─────────────────────────┤
+│  ←   Savol 14/40   →    │  ← bosilsa bottom sheet ochiladi
+└─────────────────────────┘
+```
+
+- Tab'lar orasida **swipe** ishlaydi.
+- Savol raqamlari bottom sheet'da 5×8 grid.
+- Klaviatura ochilganda: `visualViewport` API bilan faol input ko'rinib turishini ta'minlang.
+- Barcha bosiladigan elementlar `min-height: 44px`.
+- `viewport-fit=cover` + `env(safe-area-inset-bottom)` — iPhone uchun.
+- Listening'da: `Media Session API` bilan lock screen'da audio davom etadi, lekin ogohlantirish ko'rsating: `Ekranni o'chirmang`.
+
+### 12.3 Mobil uchun bloklanadigan narsalar
+
+- Mock rejimi telefonda: **ruxsat bering, lekin ogohlantiring** — `Eng yaxshi tajriba uchun kompyuterdan foydalaning`. Bloklamang; Uzbekistonda ko'p foydalanuvchi faqat telefonda.
+- Drag-drop savollari → tap-to-select fallback.
+
+---
+
+## 13. Accessibility (A11y)
+
+| Talab | Amalga oshirish |
+|---|---|
+| Kontrast | Barcha matn ≥ 4.5:1. `--exam-muted` (#6B6B6B) oq fonda = 5.7:1 ✅ |
+| Focus | `:focus-visible` ring hech qachon olib tashlanmaydi |
+| Klaviatura | Butun imtihon sichqonchasiz o'tilishi kerak |
+| Label | Har input `aria-label="Savol 14 javobi"` |
+| Taymer | `role="timer" aria-live="polite"`, faqat 10/5/1 daqiqada e'lon qiladi (har soniyada emas) |
+| Rasm | `imageAlt` majburiy, bo'sh bo'lsa admin saqlay olmaydi |
+| Motion | `@media (prefers-reduced-motion: reduce)` — pulsatsiya va o'tishlar o'chadi |
+| Divider | `role="separator" aria-orientation="vertical" aria-valuenow={pct}` |
+| Skip link | `Asosiy kontentga o'tish` |
+
+---
+
+## 14. Yaxlitlik (integrity)
+
+Halol bo'laylik: brauzerda to'liq nazorat **imkonsiz**. Maqsad — tasodifiy aldashni qiyinlashtirish, professional aldovni to'xtatish emas.
+
+**Qiladigan narsalar:**
+- To'g'ri javoblar mijozga yuborilmaydi (§4.1) — **bu eng muhimi**
+- Taymer serverda
+- `visibilitychange` → hodisa logi + hisoblagich
+  - 1-marta: ogohlantirish toast
+  - 3+: natijada belgi `Tab 5 marta almashtirildi`
+- Mock boshlanganda `requestFullscreen()` (majburiy emas, taklif)
+- Passage matnidan nusxa olish bloklanadi (mock'da)
+- O'ng tugma passage'da faqat highlight menyusi
+- Listening audio pozitsiyasi serverda — refresh bilan qayta tinglab bo'lmaydi
+
+**Qilmaydigan narsalar** (vaqt behuda):
+- DevTools bloklash — aylanib o'tiladi
+- Screenshot bloklash — imkonsiz
+- Sichqoncha nazorati
+
+---
+
+## 15. Admin — kontent kiritish
+
+Bu qismni yaxshi qilmasangiz, tizim bo'sh qoladi. Test kiritish **soatlar emas, daqiqalar** olishi kerak.
+
+### 15.1 Uch xil kiritish yo'li
+
+1. **JSON import** — `Test` sxemasi bo'yicha fayl yuklash. Validatsiya + xato ko'rsatish.
+2. **Markdown-ga o'xshash DSL** — tezkor yozish uchun:
+
+```
+## PASSAGE 1
+### The history of glass
+
+[A] Glass has been used by humans...
+[B] From the Middle Ages...
+
+## QUESTIONS 1-6
+type: true_false_notgiven
+instruction: Do the following statements agree with the information given in Reading Passage 1?
+
+1. Glass was first made in Mesopotamia. | TRUE | para:A
+2. The Romans invented glassblowing. | NOT GIVEN
+```
+
+3. **AI yordamchi** — xom matn + javob kalitini joylashtiradi, AI `Test` JSON'ini generatsiya qiladi. Admin ko'rib chiqadi va tasdiqlaydi. Bu eng tez yo'l, lekin **tekshiruvsiz publish qilmang**.
+
+### 15.2 Admin talablari
+
+- **Preview rejimi** — testni foydalanuvchi ko'rgandek ko'rish, javoblar bilan
+- **Validator** — publish qilishdan oldin tekshiradi:
+  - Savol raqamlari 1–40, uzilishsiz
+  - Har savolda kamida 1 ta `accepted` javob
+  - Barcha rasmlarda `imageAlt`
+  - Audio fayl mavjud va davomiyligi mos
+  - `matching_headings` uchun `bank` to'ldirilgan
+- **Statistika** — har savol bo'yicha to'g'ri javob %. 95% dan yuqori yoki 10% dan past bo'lsa — savol shubhali, belgilanadi.
+
+---
+
+## 16. Fayl strukturasi (Next.js App Router)
+
+```
+src/
+├── app/
+│   └── app/
+│       ├── mock/
+│       │   ├── page.tsx                  # testlar ro'yxati
+│       │   └── [attemptId]/page.tsx      # ExamShell
+│       ├── oqish/[attemptId]/page.tsx
+│       ├── tinglash/[attemptId]/page.tsx
+│       ├── yozish/[attemptId]/page.tsx
+│       └── natija/[attemptId]/page.tsx
+│
+├── features/exam/
+│   ├── shell/
+│   │   ├── ExamShell.tsx
+│   │   ├── ExamHeader.tsx
+│   │   ├── ExamFooterNav.tsx
+│   │   ├── ExamTimer.tsx
+│   │   ├── SettingsPanel.tsx
+│   │   ├── HelpDialog.tsx
+│   │   └── SectionTransition.tsx
+│   ├── split/
+│   │   ├── SplitPane.tsx
+│   │   └── Divider.tsx
+│   ├── reading/
+│   │   ├── ReadingSection.tsx
+│   │   ├── PassagePane.tsx
+│   │   ├── ParagraphLabel.tsx
+│   │   └── highlight/
+│   │       ├── HighlightLayer.tsx
+│   │       ├── useHighlights.ts
+│   │       └── rangeSerializer.ts
+│   ├── listening/
+│   │   ├── ListeningSection.tsx
+│   │   ├── AudioEngine.tsx
+│   │   ├── VolumeCheck.tsx
+│   │   ├── AudioProgress.tsx
+│   │   └── PartGap.tsx
+│   ├── writing/
+│   │   ├── WritingSection.tsx
+│   │   ├── TaskPane.tsx
+│   │   ├── EssayEditor.tsx
+│   │   ├── WordCounter.tsx
+│   │   └── EditorToolbar.tsx
+│   ├── questions/
+│   │   ├── QuestionRenderer.tsx          # tur → komponent xaritasi
+│   │   ├── QuestionGroupBlock.tsx
+│   │   ├── InstructionBlock.tsx
+│   │   ├── GapInput.tsx
+│   │   └── types/
+│   │       ├── MultipleChoice.tsx
+│   │       ├── TrueFalseNotGiven.tsx
+│   │       ├── MatchingHeadings.tsx
+│   │       ├── MatchingFeatures.tsx
+│   │       ├── SentenceCompletion.tsx
+│   │       ├── SummaryCompletion.tsx
+│   │       ├── TableCompletion.tsx
+│   │       ├── FlowchartCompletion.tsx
+│   │       ├── FormCompletion.tsx
+│   │       ├── ShortAnswer.tsx
+│   │       ├── DiagramLabel.tsx
+│   │       └── MapLabel.tsx
+│   ├── state/
+│   │   ├── examStore.ts                  # zustand
+│   │   ├── useExamTimer.ts
+│   │   ├── useAutosave.ts
+│   │   └── useKeyboardNav.ts
+│   └── review/
+│       ├── ReviewShell.tsx
+│       └── QuestionResult.tsx
+│
+├── lib/exam/
+│   ├── sanitize.ts                       # javoblarni olib tashlash
+│   ├── scoring.ts                        # isCorrect, normalize, expandOptional
+│   ├── bandTables.ts
+│   └── wordCount.ts
+│
+└── app/api/exam/...
+```
+
+---
+
+## 17. State (zustand)
+
+```ts
+interface ExamStore {
+  attemptId: string;
+  mode: 'exam' | 'practice' | 'review';
+  section: 'listening' | 'reading' | 'writing';
+
+  answers: Record<string, AnswerValue>;
+  flagged: Set<number>;
+  currentQuestion: number;
+
+  // Taymer
+  endsAt: number;
+  serverOffset: number;
+  remainingSec: number;
+  timerHidden: boolean;
+
+  // UI
+  fontSize: 16 | 18 | 20 | 22;
+  highContrast: boolean;
+  splitRatio: number;
+
+  // Saqlash
+  saveStatus: 'saved' | 'saving' | 'error';
+  dirtyKeys: Set<string>;
+
+  setAnswer: (qNum: number, value: AnswerValue) => void;
+  toggleFlag: (qNum: number) => void;
+  goToQuestion: (qNum: number) => void;
+  syncNow: () => Promise<void>;
+}
+```
+
+**Muhim:** `answers` obyekt — `setAnswer` faqat shu kalitni yangilaydi, butun obyektni qayta yaratmaydi. 40 ta input bor, har bosishda hamma render bo'lsa sekinlashadi. Har savol komponenti `useExamStore(s => s.answers[key])` selektor bilan obuna bo'ladi.
+
+---
+
+## 18. Qabul qilish mezonlari (acceptance checklist)
+
+### Umumiy shell
+- [ ] Bitta `ExamShell` 4 sahifada ham ishlaydi
+- [ ] Taymer server bilan sinxron, drift ≤3s
+- [ ] Refresh'dan keyin javoblar, vaqt, audio pozitsiyasi tiklanadi
+- [ ] Vaqt tugaganda avtomatik submit (klient yopiq bo'lsa ham server bajaradi)
+- [ ] 10/5/1 daqiqa ogohlantirishlari ishlaydi
+- [ ] Sozlamalar (matn o'lchami, kontrast) saqlanadi
+- [ ] Javob berilgan/belgilangan/joriy savol footer'da to'g'ri ko'rinadi
+- [ ] Klaviatura bilan to'liq navigatsiya
+
+### Reading
+- [ ] Split-pane ikki panel **mustaqil** scroll qiladi
+- [ ] Divider sudraladi, 30–70% chegarada, double-click reset
+- [ ] Nisbat localStorage'da saqlanadi
+- [ ] Savol raqamiga bosganda **faqat** savol paneli siljiydi
+- [ ] Paragraf yorliqlari (A, B, C) to'g'ri chiqadi
+- [ ] Highlight ishlaydi va refresh'dan keyin tiklanadi
+- [ ] 16 ta savol turining hammasi render bo'ladi
+
+### Listening
+- [ ] Volume check ekrani autoplay muammosini hal qiladi
+- [ ] Audio orqaga surilmaydi (seek bloklangan)
+- [ ] Pauza qilib bo'lmaydi (exam rejimda)
+- [ ] Part avtomatik almashadi va savollar paneli yangilanadi
+- [ ] Refresh → audio server pozitsiyasidan davom etadi
+- [ ] Oxirida 2 daqiqa tekshirish vaqti
+- [ ] Map/diagram savollari rasm ustida to'g'ri joylashadi
+- [ ] Practice'da tezlik, pauza, transkript ishlaydi
+
+### Writing
+- [ ] Spellcheck o'chirilgan, Grammarly bloklangan
+- [ ] So'z hisoblagich real vaqtda, to'g'ri hisoblaydi
+- [ ] Task 1/2 almashadi, ikkalasi ham saqlanadi
+- [ ] Task promptidan nusxa olib bo'lmaydi
+- [ ] AI baholash JSON qaytaradi va parse bo'ladi
+- [ ] Baholash navbatda ishlaydi, timeout bo'lmaydi
+
+### Baholash
+- [ ] `normalize()` katta/kichik harf, probel, apostrofni to'g'ri ishlaydi
+- [ ] `(the) museum` ikkala variantni qabul qiladi
+- [ ] So'z limitidan oshgan javob noto'g'ri sanaladi
+- [ ] Band jadvallari to'g'ri qo'llanadi
+- [ ] Umumiy band IELTS qoidasi bo'yicha yaxlitlanadi
+
+### Xavfsizlik
+- [ ] `GET /attempts/:id` javobida **hech qanday to'g'ri javob yo'q** (Network tab'da tekshiring)
+- [ ] Transkript va sample answer exam rejimda yuborilmaydi
+- [ ] Tab almashish loglanadi
+
+### Mobil
+- [ ] <768px da tab rejimi ishlaydi, swipe bilan
+- [ ] Klaviatura input'ni yopib qo'ymaydi
+- [ ] Barcha tugmalar ≥44px
+- [ ] Safe area hisobga olingan
+
+---
+
+## 19. Fazalar
+
+### Faza 1 — Poydevor (eng muhim)
+1. `Test` / `Attempt` sxemalari + MongoDB indekslari
+2. `sanitize.ts` — javoblarni olib tashlash
+3. Backend: attempts CRUD + heartbeat + submit
+4. `ExamShell` + `ExamHeader` + `ExamFooterNav` + `useExamTimer` + `useAutosave`
+5. `SplitPane` + `Divider`
+6. `QuestionRenderer` + 6 ta eng ko'p ishlatiladigan tur (TFNG, MC single, sentence/summary/note completion, matching_headings, short_answer, table)
+7. `ReadingSection` to'liq
+8. `scoring.ts` + band jadvallari
+9. Natija ekrani (oddiy)
+
+**Natija:** `/app/oqish` yangi engine'da to'liq ishlaydi.
+
+### Faza 2 — Listening + Writing
+10. `AudioEngine` + `VolumeCheck` + part o'tishlari
+11. Qolgan savol turlari (form, map, diagram, flowchart, matching_features, sentence_endings, MC multi, YNG, matching_information, summary bank)
+12. `WritingSection` + editor + word count
+13. AI grader (queue + polling)
+14. `/app/tinglash` va `/app/yozish` migratsiya
+
+### Faza 3 — Mock + Review
+15. Bo'lim orkestratsiyasi, intro, o'tish ekranlari
+16. To'liq Review ekrani + izohlar + transkript
+17. Natija analitikasi (zaif savol turlari, progress chart)
+18. Lug'atga so'z qo'shish integratsiyasi
+19. Highlight & notes
+
+### Faza 4 — Sayqal
+20. Mobil tab rejimi
+21. Admin kontent kiritish (DSL + AI import + validator)
+22. A11y audit
+23. Speaking moduli
+
+---
+
+## 20. Migratsiya qanday qilinadi
+
+Mavjud sahifalarni **bir vaqtda** almashtirmang.
+
+1. Yangi engine `/app/oqish-beta` da qurib chiqing
+2. `?engine=v2` flag bilan eski/yangi orasida almashish
+3. Bitta passage'ni yangi formatga o'tkazib, 10 ta foydalanuvchida sinang
+4. Ishonch hosil bo'lgach `/app/oqish` ni almashtiring, eski kodni **o'chiring** (`-old` qoldirmang)
+5. Listening va Writing uchun takrorlang
+
+Eski kontent migratsiyasi uchun bir martalik skript: eski format → yangi `Test` sxemasi. Skriptni yozishdan oldin eski ma'lumotlarni eksport qilib oling.
+
+---
+
+## 21. Nimaga e'tibor bermaslik kerak (scope ichida emas)
+
+- Speaking AI baholash — Faza 3
+- Real-time multiplayer (do'stlar bilan birga imtihon) — keyinroq
+- Offline rejim — PWA cache murakkab, hozir shart emas
+- Imtihon video-proctoring — talab yo'q
+- Dark mode imtihon ekranida — ataylab yo'q
+
+---
+
+## 22. Claude Code uchun boshlang'ich prompt
+
+```
+Vocably (Next.js App Router + MongoDB) uchun IELTS CD exam engine quryapmiz.
+To'liq TZ: docs/vocably-exam-engine-tz.md
+
+FAZA 1 boshlaymiz. Tartib:
+
+1. src/lib/exam/types.ts — TZ §3 dagi barcha interfeyslar
+2. src/lib/exam/sanitize.ts — Test obyektidan answer, explanationHtml,
+   locatorParagraph, transcript, sampleAnswer, markingNotes ni rekursiv o'chiradi.
+   Bu funksiya uchun test yozing.
+3. src/lib/exam/scoring.ts — normalize, expandOptional, isCorrect, bandTables.
+   TZ §10.1 va §10.2 ga qat'iy amal qiling. Unit testlar bilan.
+4. API route'lar: app/api/exam/attempts/... (TZ §4 jadvali)
+5. features/exam/state/examStore.ts (zustand) + useExamTimer + useAutosave
+
+Har qadamdan keyin to'xtang va ko'rsating. Birdaniga hammasini yozmang.
+
+Muhim cheklovlar:
+- Exam ekranida Deep Merlot faqat aksent sifatida. Fon oq, chrome kulrang.
+- Taymer serverda, klient faqat ko'rsatadi.
+- To'g'ri javoblar exam rejimda mijozga HECH QACHON yuborilmaydi.
+- Har savol komponenti zustand selektor bilan obuna bo'ladi, butun store'ga emas.
+```
+
+---
+
+## 23. Ochiq savollar (javob bering, TZ yangilanadi)
+
+1. Audio fayllar qayerda saqlanadi? (Vercel Blob / S3 / Cloudflare R2). Listening uchun CDN kerak — Uzbekistondan tezlik muhim.
+2. Mavjud `/app/oqish` kontenti qanday formatda? Migratsiya skripti uchun kerak.
+3. AI grader qaysi modelda ishlaydi va byudjet cheklovi bormi?
+4. Foydalanuvchi bir vaqtda nechta faol attempt'ga ega bo'la oladi? (Tavsiya: bitta mock + bo'limlar alohida)
+5. General Training modulini qo'shasizmi yoki faqat Academic?
