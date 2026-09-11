@@ -267,7 +267,11 @@ export interface AttemptResult {
   speaking?: { band: number; criteria: Record<string, number> };
   overall?: number;
   timeSpentSec: number;
-  perQuestion: { number: number; userAnswer: string; correct: boolean; accepted: string[] }[];
+  // `type` — TZ §19 Faza 3 item 17 ("natija analitikasi... zaif savol
+  // turlari") shu maydonga tayanadi: savol turi bo'yicha to'g'ri/noto'g'ri
+  // nisbatini hisoblash uchun. Faza 1'dan buyon yo'q edi (scoring uchun shart
+  // emas edi) — analytics.ts qo'shilganda kiritildi.
+  perQuestion: { number: number; type: QuestionType; userAnswer: string; correct: boolean; accepted: string[] }[];
 }
 
 export interface WritingScore {
@@ -350,6 +354,20 @@ export interface ReviewListeningPart {
   transcript: string;
   contextText?: string;
   questions: ReviewQuestion[];
+}
+
+// TZ §11.1 item 8 / §19 Faza 3 item 17 — "Tarix: oldingi mocklar bilan
+// taqqoslash grafigi" uchun yengil ro'yxat elementi (to'liq Attempt emas).
+export interface AttemptHistoryEntry {
+  id: string;
+  testId: string;
+  testTitle: string;
+  mode: AttemptMode;
+  submittedAt: string | null;
+  overall: number | null;
+  listening: number | null;
+  reading: number | null;
+  writing: number | null;
 }
 
 export interface AttemptReviewDetail {

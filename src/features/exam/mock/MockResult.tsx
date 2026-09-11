@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { fetchAttemptResult } from '../state/attemptsApi';
 import ReviewScreen from '../review/ReviewScreen';
+import ResultAnalytics from '../review/ResultAnalytics';
 import type { AttemptResult, AttemptReviewDetail } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §19 Faza 3 item 15's scope stops at orchestration — this is
@@ -76,6 +77,8 @@ export default function MockResult({ attemptId, result }: MockResultProps) {
         {loadingReview && <Loader2 size={14} className="animate-spin" />}
         Javoblarni ko&apos;rib chiqish
       </button>
+
+      <ResultAnalytics perQuestion={result.perQuestion} metric="overall" />
     </div>
   );
 }

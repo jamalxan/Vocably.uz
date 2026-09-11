@@ -10,10 +10,12 @@ import { gradeEssay, combineWritingBand } from './writingGrader';
 import type {
   AnswerKey,
   AnswerValue,
+  AttemptHistoryEntry,
   AttemptReviewDetail,
   AttemptResult,
   ExamSectionKey,
   Question,
+  QuestionType,
   ReviewQuestion,
   SanitizedTest,
   Test,
@@ -121,16 +123,18 @@ export async function advanceMockSection(attemptId: string, userId: string, reas
 }
 
 /** Bitta konteyner (passage yoki listening part) ichidagi savollarni tekislab
- * chiqaradi — `wordLimit` guruh darajasida turadi, har savolga shu yerda tarqatiladi. */
+ * chiqaradi — `wordLimit`/`type` guruh darajasida turadi, har savolga shu
+ * yerda tarqatiladi. `type` — TZ §19 Faza 3 item 17 (natija analitikasi,
+ * savol turi bo'yicha) uchun kerak. */
 function collectByContainer(test: Test, sectionKey: 'listening' | 'reading') {
   const section = sectionKey === 'reading' ? test.sections.reading : test.sections.listening;
-  if (!section) return [] as { number: number; answer: AnswerKey; wordLimit?: WordLimit }[][];
+  if (!section) return [] as { number: number; answer: AnswerKey; wordLimit?: WordLimit; type: QuestionType }[][];
   const containers = sectionKey === 'reading' ? (section as any).passages : (section as any).parts;
   return (containers || []).map((container: any) =>
     (container.questionGroups || []).flatMap((g: any) =>
-      (g.questions || []).map((q: any) => ({ number: q.number, answer: q.answer, wordLimit: g.wordLimit }))
+      (g.questions || []).map((q: any) => ({ number: q.number, answer: q.answer, wordLimit: g.wordLimit, type: g.type }))
     )
-  ) as { number: number; answer: AnswerKey; wordLimit?: WordLimit }[][];
+  ) as { number: number; answer: AnswerKey; wordLimit?: WordLimit; type: QuestionType }[][];
 }
 
 /** Bitta savolni baholaydi. TZ §10.1: ko'p tanlovli (`multiple_choice_multi`,
@@ -170,6 +174,7 @@ export function scoreSection(test: Test, attemptAnswers: Record<string, AnswerVa
       total += 1;
       perQuestion.push({
         number: q.number,
+        type: q.type,
         userAnswer: Array.isArray(given) ? given.join(', ') : given || '',
         correct: ok,
         accepted: q.answer?.accepted || [],
@@ -375,4 +380,34 @@ export async function getAttemptReviewDetail(attemptId: string, userId: string):
   }
 
   return detail;
+}
+
+/** TZ §11.1 item 8 / §19 Faza 3 item 17 — "Tarix: oldingi mocklar bilan
+ * taqqoslash grafigi". Foydalanuvchining baholangan urinishlarini vaqt
+ * bo'yicha (eng eskisidan eng yangisiga — grafik chapdan o'ngga o'sishi
+ * uchun) qaytaradi. */
+export async function getAttemptHistory(userId: string, limit = 20): Promise<AttemptHistoryEntry[]> {
+  const attempts = await ExamAttempt.find({ userId, status: 'graded' })
+    .sort({ submittedAt: -1 })
+    .limit(limit)
+    .select('testId mode submittedAt result')
+    .lean();
+
+  const testIds = [...new Set(attempts.map((a: any) => String(a.testId)))];
+  const tests = await ExamTest.find({ _id: { $in: testIds } }).select('title').lean();
+  const titleById = new Map(tests.map((t: any) => [String(t._id), t.title]));
+
+  return attempts
+    .map((a: any) => ({
+      id: String(a._id),
+      testId: String(a.testId),
+      testTitle: titleById.get(String(a.testId)) || '',
+      mode: a.mode,
+      submittedAt: a.submittedAt ? new Date(a.submittedAt).toISOString() : null,
+      overall: a.result?.overall ?? null,
+      listening: a.result?.listening?.band ?? null,
+      reading: a.result?.reading?.band ?? null,
+      writing: a.result?.writing?.band ?? null,
+    }))
+    .reverse(); // eng eskisi birinchi — grafik chapdan o'ngga o'sadi
 }
