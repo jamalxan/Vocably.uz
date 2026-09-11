@@ -199,6 +199,7 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
         leftLabel={`Writing Task ${activeTask.order}`}
         rightLabel="Editor"
         rightPadded={false}
+        mobileTabs={['Topshiriq', 'Yozish']}
         left={<TaskPane task={activeTask} />}
         right={
           <EssayEditor
