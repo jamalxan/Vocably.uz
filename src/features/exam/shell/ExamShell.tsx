@@ -72,6 +72,18 @@ export default function ExamShell({
       className="fixed inset-0 z-40 flex flex-col"
       style={{ fontSize: `${fontSize}px` }}
     >
+      {/* §13 — "Skip link: Asosiy kontentga o'tish." sr-only'da yashirin,
+          Tab bosilganda ko'rinadi — klaviatura foydalanuvchisi header'dagi
+          bir nechta tugmani (sozlamalar/yordam/taymer) o'tkazib yuborib,
+          to'g'ridan-to'g'ri savol/matn kontentiga o'tishi mumkin. */}
+      <a
+        href="#exam-main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-3 focus:py-2 focus:rounded-lg focus:text-sm focus:font-semibold focus:text-white"
+        style={{ background: 'var(--exam-accent)' }}
+      >
+        Asosiy kontentga o&apos;tish
+      </a>
+
       <ExamHeader
         candidateName={candidateName}
         candidateId={candidateId}
@@ -86,7 +98,9 @@ export default function ExamShell({
         onOpenHelp={() => setHelpOpen(true)}
       />
 
-      <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
+      <main id="exam-main-content" tabIndex={-1} className="flex-1 min-h-0 overflow-hidden">
+        {children}
+      </main>
 
       {customFooter ? (
         customFooter

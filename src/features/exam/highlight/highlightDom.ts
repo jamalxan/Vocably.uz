@@ -75,8 +75,19 @@ export interface HighlightRange {
  * qayta qo'llaydi (`<mark data-highlight-id>` bilan o'raydi). Bir xil
  * paragrafda kesishmaydigan (overlap qilmaydigan) belgilashlar uchun
  * mo'ljallangan — TZ ham, haqiqiy IELTS CD ham kesishgan belgilashni alohida
- * hodisa sifatida ko'rsatmaydi, shuning uchun bu yerda ham qo'llab-quvvatlanmaydi. */
-export function applyHighlights(container: HTMLElement, highlights: HighlightRange[]): void {
+ * hodisa sifatida ko'rsatmaydi, shuning uchun bu yerda ham qo'llab-quvvatlanmaydi.
+ *
+ * `onActivate` — TZ §13 "butun imtihon sichqonchasiz o'tilishi kerak" qoidasi:
+ * mavjud belgilashni boshqarish (eslatma/o'chirish) o'ng-tugma menyusigagina
+ * bog'liq bo'lib qolmasligi uchun, har belgilashning BIRINCHI segmenti
+ * `tabIndex=0`+`role=button` bilan klaviatura orqali ham (Tab bilan
+ * yetib borib, Enter/Space bilan) faollashtiriladi — chaqiruvchi (PassagePane)
+ * xuddi shu joyda o'ng-tugma menyusini ochadi. */
+export function applyHighlights(
+  container: HTMLElement,
+  highlights: HighlightRange[],
+  onActivate?: (id: string, rect: DOMRect) => void
+): void {
   unwrapMarks(container);
   const sorted = [...highlights].sort((a, b) => a.startOffset - b.startOffset);
 
@@ -112,12 +123,27 @@ export function applyHighlights(container: HTMLElement, highlights: HighlightRan
     }
     if (segment.length === 0) continue;
 
+    let isFirstSegment = true;
     for (const textNode of segment) {
       if (!textNode.textContent) continue;
       const mark = document.createElement('mark');
       mark.setAttribute(HIGHLIGHT_MARK_ATTR, h.id);
       mark.className = 'exam-highlight-mark';
       if (h.note) mark.title = h.note;
+      if (isFirstSegment) {
+        mark.tabIndex = 0;
+        mark.setAttribute('role', 'button');
+        mark.setAttribute('aria-label', h.note ? `Belgilangan matn, eslatma: ${h.note}` : 'Belgilangan matn — boshqarish uchun Enter bosing');
+        if (onActivate) {
+          mark.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onActivate(h.id, mark.getBoundingClientRect());
+            }
+          });
+        }
+        isFirstSegment = false;
+      }
       textNode.parentNode?.insertBefore(mark, textNode);
       mark.appendChild(textNode);
     }

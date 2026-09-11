@@ -1,5 +1,5 @@
 'use client';
-import { useState, type MouseEvent } from 'react';
+import { useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { SanitizedPassage, Highlight } from '@/lib/exam/types';
 import ParagraphLabel from './ParagraphLabel';
 import HighlightMenu from '../highlight/HighlightMenu';
@@ -29,6 +29,20 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [noteEditor, setNoteEditor] = useState<{ x: number; y: number; highlightId: string } | null>(null);
 
+  // Joriy `window.getSelection()`ni belgilanadigan {paragraphIndex, start,
+  // end}ga o'giradi — o'ng-tugma menyusi VA Alt+H klaviatura yorlig'i
+  // IKKALASI ham shu bitta yo'ldan foydalanadi (pastga q.).
+  const resolveSelection = (fallbackTarget: HTMLElement): { paragraphIndex: number; start: number; end: number } | null => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    const paragraphEl = (range.startContainer.parentElement || fallbackTarget)?.closest<HTMLElement>('[data-paragraph-index]');
+    if (!paragraphEl) return null;
+    const offsets = computeOffsets(paragraphEl, range);
+    if (!offsets) return null;
+    return { paragraphIndex: Number(paragraphEl.dataset.paragraphIndex), start: offsets.start, end: offsets.end };
+  };
+
   // TZ §6.3 — "O'ng tugma → kontekst menyusi... faqat passage paneli ichida
   // bloklanadi." Ikki holat bor: mavjud belgi (<mark>) ustida — olib
   // tashlash/eslatma; yoki yangi tanlangan matn ustida — belgilash. Aks holda
@@ -43,30 +57,32 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
       return;
     }
 
-    const sel = window.getSelection();
-    if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
-      const range = sel.getRangeAt(0);
-      const paragraphEl = (range.startContainer.parentElement || target)?.closest<HTMLElement>('[data-paragraph-index]');
-      if (paragraphEl) {
-        const offsets = computeOffsets(paragraphEl, range);
-        if (offsets) {
-          setMenu({
-            mode: 'select',
-            x: e.clientX,
-            y: e.clientY,
-            paragraphIndex: Number(paragraphEl.dataset.paragraphIndex),
-            start: offsets.start,
-            end: offsets.end,
-          });
-          return;
-        }
-      }
+    const resolved = resolveSelection(target);
+    if (resolved) {
+      setMenu({ mode: 'select', x: e.clientX, y: e.clientY, ...resolved });
+      return;
     }
     setMenu(null);
   };
 
+  // TZ §13 — "Butun imtihon sichqonchasiz o'tilishi kerak." O'ng-tugma —
+  // sichqonchaga xos amal, shuning uchun `Alt+H` — mavjud tanlovni
+  // (brauzerning o'z klaviatura-orqali-tanlash imkoniyati, masalan Firefox'ning
+  // "caret browsing"/F7 rejimi, yoki oddiy Shift+strelka) darhol belgilaydi —
+  // menyu ochmasdan, alohida tasdiqlashsiz (menyu faqat sichqoncha uchun
+  // qulaylik, klaviatura yo'li esa to'g'ridan-to'g'ri amal).
+  const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+      const resolved = resolveSelection(e.target as HTMLElement);
+      if (resolved) {
+        e.preventDefault();
+        onAddHighlight(resolved.paragraphIndex, resolved.start, resolved.end);
+      }
+    }
+  };
+
   return (
-    <article onContextMenu={handleContextMenu}>
+    <article onContextMenu={handleContextMenu} onKeyDown={handleKeyDown}>
       <div
         className="sticky -top-6 sm:-top-6 -mx-6 sm:-mx-7 px-6 sm:px-7 pt-6 pb-3 mb-4 z-10"
         style={{ background: 'var(--exam-bg)' }}
@@ -88,6 +104,9 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
             html={p.html}
             paragraphIndex={i}
             highlights={highlights.filter((h) => h.passageOrder === passage.order && h.paragraphIndex === i)}
+            onActivateHighlight={(highlightId, rect) =>
+              setMenu({ mode: 'mark', x: rect.left, y: rect.bottom + 4, highlightId })
+            }
           />
         ))}
       </div>

@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { ExamFontSize } from '../state/examStore';
 
@@ -30,6 +31,18 @@ export default function SettingsPanel({
   timerHidden,
   onToggleTimerHidden,
 }: SettingsPanelProps) {
+  // §13 — "Butun imtihon sichqonchasiz o'tilishi kerak": QuestionSheet'da
+  // allaqachon bor Escape-yopish naqshi shu yerda va HelpDialog'da yo'q edi
+  // (faqat orqa fonga bosish orqali yopilardi) — endi izchil.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const sizeIdx = FONT_SIZES.indexOf(fontSize);
