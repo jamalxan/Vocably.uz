@@ -175,19 +175,28 @@ export default function AppShell({ children }) {
       </nav>
 
       {/* ============ Kontent ============ */}
-      <div className="md:pl-[72px] xl:pl-64 pb-16 md:pb-0 min-h-dvh flex flex-col">
+      <div className="md:pl-[72px] xl:pl-64 pb-16 md:pb-0 h-dvh flex flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-end gap-2 px-4 sm:px-6 py-3 bg-bg/90 backdrop-blur-md border-b border-border">
           <ThemeToggle />
           <NotificationBell token={token} onOpenFriends={() => router.push('/app/dostlar')} />
         </header>
-        {/* TZ-vocably-v2.md BUG-023: `flex flex-col` qo'shildi — muhim CSS nozikligi:
-            bir zveno o'zining `display`i flex bo'lmagan holda (faqat flex-1 orqali)
-            o'lchamga ega bo'lsa, uning bolasidagi foizli balandlik (h-full) HECH QACHON
-            to'g'ri hisoblanmaydi (real brauzerda tekshirilgan). `main` endi o'zi ham flex
-            konteyner bo'lgani uchun /app/dostlar kabi sahifalar o'z ildizida h-full/flex-1
-            bilan butun balandlikni to'g'ri egallay oladi; oddiy sahifalar (bitta bola,
-            aniq balandliksiz) uchun xatti-harakat o'zgarmaydi — ular avvalgidek butun oyna
-            darajasida scroll bo'lishda davom etadi. */}
+        {/* TZ-vocably-v2.md BUG-023 (2026-09-12 haqiqiy brauzerda qayta topildi va
+            tuzatildi): yuqoridagi konteyner ILGARI `min-h-dvh` edi — bu FAQAT pastki
+            chegara, "max" emas, shuning uchun /app/dostlar kabi ko'p xabarli sahifada
+            konteynerning haqiqiy balandligi kontent bo'yicha ~4000px'gacha o'sib
+            ketardi. `main`ning `flex-1 min-h-0` zanjiri ishlashi uchun bu ota
+            konteynerning ANIQ (min emas) balandligi bo'lishi SHART — aks holda
+            "qolgan bo'sh joy"ni hisoblab bo'lmaydi va `main` ham xuddi shunday
+            cho'zilib ketadi: ConversationView'ning `overflow-y-auto` xabarlar
+            ro'yxati hech qachon o'z ichida scroll bo'lmaydi, buning o'rniga BUTUN
+            SAHIFA scroll bo'ladi va chat header (avatar/onlayn/tugmalar) ekrandan
+            tashqariga chiqib ketadi — aynan shu bug foydalanuvchi tomonidan
+            "chat dizayni yana buzilgan" deb topildi. `h-dvh` (aniq balandlik,
+            overflow:visible bilan) muammoni tuzatadi HAM oddiy sahifalarning butun
+            oyna darajasidagi scroll'ini buzmaydi — overflow visible bo'lgani uchun
+            uzun kontent baribir konteyner chegarasidan "toshib" ketaveradi va
+            hujjat odatdagidek scroll bo'ladi, faqat endi flex-1 zanjiri uchun ham
+            haqiqiy asos bor. Https://vocably.uz'da jonli DOM orqali tasdiqlangan. */}
         <main className="flex-1 min-h-0 flex flex-col">{children}</main>
       </div>
       <AiPanel />
