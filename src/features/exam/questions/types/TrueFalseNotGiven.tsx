@@ -1,12 +1,12 @@
 'use client';
 import type { QuestionTypeProps } from '../QuestionRenderer';
 
-// TZ-vocably-v2.md §6.4 — "Radio guruh, gorizontal: TRUE / FALSE / NOT GIVEN.
-// Matn CAPS." (yes_no_notgiven — YES/NO/NOT GIVEN — Faza 2 ishi, TZ §19 item 11;
-// bu komponent shu chegarani hurmat qilib faqat TFNG uchun ishlatiladi.)
-const OPTIONS = ['TRUE', 'FALSE', 'NOT GIVEN'];
-
-export default function TrueFalseNotGiven({ question, value, onChange }: QuestionTypeProps) {
+// TZ-vocably-v2.md §6.4 — "true_false_notgiven: Radio guruh, gorizontal:
+// TRUE / FALSE / NOT GIVEN" va "yes_no_notgiven: xuddi shunday: YES / NO /
+// NOT GIVEN". Ikkalasi bir xil UI, faqat variant matni farq qiladi (fakt
+// haqidagi TFNG va muallif fikri haqidagi YNG) — shuning uchun bitta ichki
+// komponent, ikkita nom bilan eksport qilinadi.
+function ThreeWayChoice({ question, value, onChange, options }: QuestionTypeProps & { options: readonly string[] }) {
   return (
     <fieldset data-question-number={question.number} className="text-sm" style={{ color: 'var(--exam-text)' }}>
       <legend className="mb-2 text-left">
@@ -17,7 +17,7 @@ export default function TrueFalseNotGiven({ question, value, onChange }: Questio
         <span dangerouslySetInnerHTML={{ __html: question.promptHtml || '' }} />
       </legend>
       <div className="flex flex-wrap gap-x-5 gap-y-1.5 pl-4">
-        {OPTIONS.map((opt) => (
+        {options.map((opt) => (
           <label key={opt} className="flex items-center gap-1.5 cursor-pointer">
             <input
               type="radio"
@@ -32,4 +32,12 @@ export default function TrueFalseNotGiven({ question, value, onChange }: Questio
       </div>
     </fieldset>
   );
+}
+
+export default function TrueFalseNotGiven(props: QuestionTypeProps) {
+  return <ThreeWayChoice {...props} options={['TRUE', 'FALSE', 'NOT GIVEN']} />;
+}
+
+export function YesNoNotGiven(props: QuestionTypeProps) {
+  return <ThreeWayChoice {...props} options={['YES', 'NO', 'NOT GIVEN']} />;
 }

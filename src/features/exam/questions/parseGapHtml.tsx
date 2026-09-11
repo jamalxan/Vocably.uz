@@ -1,7 +1,8 @@
 'use client';
 import { Fragment, type ReactNode } from 'react';
 import GapInput from './GapInput';
-import type { AnswerValue, WordLimit } from '@/lib/exam/types';
+import GapSelect from './GapSelect';
+import type { AnswerValue, BankItem, WordLimit } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §6.4/§6.5/§8.1 (stemHtml) — sentence/summary/note/table
 // completion turlarining barchasi bitta muammoni yechadi: admin yozgan HTML
@@ -32,6 +33,9 @@ export interface GapFillContext {
   onChangeGap: (questionNumber: number, value: string) => void;
   wordLimitByQuestion?: Record<number, WordLimit>;
   defaultWordLimit?: WordLimit;
+  // TZ §6.4 `summary_completion_bank` — berilsa har gap erkin matn input
+  // o'rniga shu bankdan tanlaydigan <select> bo'ladi (GapSelect).
+  bank?: BankItem[];
 }
 
 function textNodeToReact(text: string, ctx: GapFillContext, keyPrefix: string): ReactNode {
@@ -47,14 +51,25 @@ function textNodeToReact(text: string, ctx: GapFillContext, keyPrefix: string): 
     if (match.index > lastIndex) pieces.push(<Fragment key={`${keyPrefix}-t${i++}`}>{text.slice(lastIndex, match.index)}</Fragment>);
     const qNum = Number(match[1]);
     const rawValue = ctx.answers[`q${qNum}`];
+    const stringValue = typeof rawValue === 'string' ? rawValue : '';
     pieces.push(
-      <GapInput
-        key={`${keyPrefix}-gap-${qNum}`}
-        questionNumber={qNum}
-        value={typeof rawValue === 'string' ? rawValue : ''}
-        onChange={(v) => ctx.onChangeGap(qNum, v)}
-        wordLimit={ctx.wordLimitByQuestion?.[qNum] ?? ctx.defaultWordLimit}
-      />
+      ctx.bank ? (
+        <GapSelect
+          key={`${keyPrefix}-gap-${qNum}`}
+          questionNumber={qNum}
+          value={stringValue}
+          onChange={(v) => ctx.onChangeGap(qNum, v)}
+          bank={ctx.bank}
+        />
+      ) : (
+        <GapInput
+          key={`${keyPrefix}-gap-${qNum}`}
+          questionNumber={qNum}
+          value={stringValue}
+          onChange={(v) => ctx.onChangeGap(qNum, v)}
+          wordLimit={ctx.wordLimitByQuestion?.[qNum] ?? ctx.defaultWordLimit}
+        />
+      )
     );
     lastIndex = match.index + match[0].length;
   }

@@ -4,7 +4,7 @@
 // faqat Mongoose bilan gaplashish bor. YANGI `ExamAttempt`/`ExamTest` modellari
 // bilan ishlaydi (`@/lib/models`) — eski `ExamSession`ga TEGMAYDI.
 import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel } from '@/lib/models';
-import { isCorrect, listeningBand, readingBand, overallBand } from './scoring';
+import { isCorrect, isSetCorrect, listeningBand, readingBand, overallBand } from './scoring';
 import { sanitizeForExam } from './sanitize';
 import type { AnswerKey, AnswerValue, AttemptResult, SanitizedTest, Test, WordLimit } from './types';
 
@@ -63,15 +63,14 @@ function collectByContainer(test: Test, sectionKey: 'listening' | 'reading') {
   ) as { number: number; answer: AnswerKey; wordLimit?: WordLimit }[][];
 }
 
-/** Bitta savolni baholaydi. TZ §10.1: ko'p tanlovli (`selectCount` bor)
- * savollar to'plam sifatida solishtirilishi kerak — bu savol turi Faza 1
- * QuestionRenderer'ida hali yo'q (TZ §19), shuning uchun massiv javob HOZIRCHA
- * doim noto'g'ri hisoblanadi (jimgina noto'g'ri ballamaslik o'rniga ochiq
- * qoldirilgan) — Faza 2'da multiple_choice_multi UI qo'shilganda shu yerga
- * to'plam solishtiruvi qo'shiladi.
- */
+/** Bitta savolni baholaydi. TZ §10.1: ko'p tanlovli (`multiple_choice_multi`,
+ * `selectCount` bor) savollar massiv qiymat sifatida keladi (Faza 2
+ * QuestionRenderer'i — MultipleChoice.tsx) va to'plam sifatida solishtiriladi
+ * (`isSetCorrect`, qisman ball yo'q); qolgan barcha turlar bitta qatorli
+ * matn/tanlov sifatida keladi va `isCorrect` orqali tekshiriladi. */
 function scoreOne(userValue: AnswerValue, key: AnswerKey, wordLimit?: WordLimit): boolean {
-  if (Array.isArray(userValue) || userValue == null) return false;
+  if (userValue == null) return false;
+  if (Array.isArray(userValue)) return isSetCorrect(userValue, key);
   return isCorrect(userValue, key, wordLimit);
 }
 

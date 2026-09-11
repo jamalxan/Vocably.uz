@@ -3,6 +3,7 @@ import {
   normalize,
   expandOptional,
   isCorrect,
+  isSetCorrect,
   listeningBand,
   readingBand,
   generalTrainingReadingBand,
@@ -75,6 +76,35 @@ describe('isCorrect', () => {
 
   it('ignores trailing punctuation and smart quotes when comparing', () => {
     expect(isCorrect('museum.', { accepted: ['museum'] })).toBe(true);
+  });
+});
+
+describe('isSetCorrect', () => {
+  const key = { accepted: ['B', 'D'] };
+
+  it('accepts the exact correct set regardless of order', () => {
+    expect(isSetCorrect(['B', 'D'], key)).toBe(true);
+    expect(isSetCorrect(['D', 'B'], key)).toBe(true);
+  });
+
+  it('gives no partial credit for one correct and one wrong letter', () => {
+    expect(isSetCorrect(['B', 'C'], key)).toBe(false);
+  });
+
+  it('rejects a subset (only one of the two required letters)', () => {
+    expect(isSetCorrect(['B'], key)).toBe(false);
+  });
+
+  it('rejects a superset (an extra, unrequired letter)', () => {
+    expect(isSetCorrect(['B', 'D', 'A'], key)).toBe(false);
+  });
+
+  it('rejects an empty selection', () => {
+    expect(isSetCorrect([], key)).toBe(false);
+  });
+
+  it('is case-insensitive like isCorrect', () => {
+    expect(isSetCorrect(['b', 'd'], key)).toBe(true);
   });
 });
 

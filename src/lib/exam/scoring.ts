@@ -184,3 +184,19 @@ export function isCorrect(user: string, key: AnswerKey, limit?: WordLimit): bool
 
   return false;
 }
+
+/** Ko'p tanlovli (`multiple_choice_multi`, "Choose TWO letters") savollar uchun
+ * — TZ §10.1: "tartibsiz to'plam solishtiruvi... Qisman ball YO'Q (2 tadan
+ * 1 tasi to'g'ri = 0)." `key.accepted` — to'g'ri javoblar to'plami (masalan
+ * `['B', 'D']`). Foydalanuvchi to'plami AYNAN shu to'plamga teng bo'lishi kerak
+ * — na kam, na ko'p. */
+export function isSetCorrect(userValues: string[], key: AnswerKey): boolean {
+  if (!userValues || userValues.length === 0) return false;
+  const normalizedUser = new Set(userValues.map((v) => normalize(v)));
+  const normalizedAccepted = new Set(key.accepted.map((v) => normalize(v)));
+  if (normalizedUser.size !== normalizedAccepted.size) return false;
+  for (const v of normalizedUser) {
+    if (!normalizedAccepted.has(v)) return false;
+  }
+  return true;
+}
