@@ -4,7 +4,7 @@ import { Check } from 'lucide-react';
 import { useExamStore } from '../state/examStore';
 import { useExamTimer } from '../state/useExamTimer';
 import { useAutosave } from '../state/useAutosave';
-import { fetchAttempt, sendHeartbeat, submitAttempt } from '../state/attemptsApi';
+import { fetchAttempt, sendHeartbeat, submitAttempt, gradeWriting } from '../state/attemptsApi';
 import ExamShell from '../shell/ExamShell';
 import SplitPane from '../split/SplitPane';
 import TaskPane from './TaskPane';
@@ -43,14 +43,23 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
 
   useAutosave(attemptId);
 
+  // §8.5 — submit'dan keyin DARHOL grade-writing chaqiriladi (queue yo'q,
+  // sinxron — writingGrader.ts izohiga q.). AI vaqtincha ishlamasa ham submit
+  // natijasi baribir saqlangan bo'ladi (attempt.status 'submitted'da qoladi) —
+  // WritingResult.tsx shu holatda "Qayta baholash" tugmasini ko'rsatadi.
   const doSubmit = useCallback(async () => {
     setSubmitting((already) => {
       if (already) return already;
       (async () => {
         try {
           await useExamStore.getState().syncNow();
-          const { result } = await submitAttempt(attemptId);
-          onSubmitted(result);
+          const { result: submitResult } = await submitAttempt(attemptId);
+          try {
+            const { result: gradedResult } = await gradeWriting(attemptId);
+            onSubmitted(gradedResult);
+          } catch {
+            onSubmitted(submitResult);
+          }
         } catch {
           setLoadError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
           setSubmitting(false);

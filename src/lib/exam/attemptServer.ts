@@ -6,6 +6,7 @@
 import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel } from '@/lib/models';
 import { isCorrect, isSetCorrect, listeningBand, readingBand, overallBand } from './scoring';
 import { sanitizeForExam } from './sanitize';
+import { gradeEssay, combineWritingBand } from './writingGrader';
 import type { AnswerKey, AnswerValue, AttemptResult, SanitizedTest, Test, WordLimit } from './types';
 
 // models.js oddiy JavaScript — .ts fayldan chaqirilganda Mongoose static
@@ -116,8 +117,12 @@ export function scoreSection(test: Test, attemptAnswers: Record<string, AnswerVa
  * (parallel tab, tarmoq qayta urinishi, taymer + foydalanuvchi bir vaqtda)
  * ikkinchisi hech narsa qilmaydi, saqlangan natijani qaytaradi.
  *
- * Writing/Speaking hozircha baholanmaydi (`null` qoladi) — AI grader Faza 2/3
- * ishi (TZ §19).
+ * Reading/Listening darhol (lokal hisoblash) baholanadi — shu urinish
+ * o'shanda `status: 'graded'` bo'lib qoladi. Writing esa AI chaqiruvi kerak
+ * (sekinroq, tarmoqqa bog'liq) — shuning uchun Writing bo'lgan urinish
+ * `status: 'submitted'`da qoladi, `gradeWritingAttempt()` (klient submit'dan
+ * DARHOL keyin chaqiradi, TZ §4 alohida `/grade-writing` endpointi) uni
+ * `'graded'`ga o'tkazadi. Speaking hali umuman baholanmaydi (Faza 3).
  */
 export async function submitAttempt(attemptId: string, userId: string, reason: string): Promise<AttemptResult | null> {
   const pre = await ExamAttempt.findOneAndUpdate(
@@ -157,6 +162,50 @@ export async function submitAttempt(attemptId: string, userId: string, reason: s
 
   result.perQuestion = perQuestion;
   result.overall = overallBand(sectionBands) ?? undefined;
+
+  const hasPendingWriting = attemptSections.includes('writing');
+  const status = hasPendingWriting ? 'submitted' : 'graded';
+
+  await ExamAttempt.updateOne({ _id: attemptId }, { $set: { result, status } });
+  return result;
+}
+
+/** TZ §4/§8.5 — "POST /attempts/:id/grade-writing" ishi. Idempotent (§8.5:
+ * "bir matn ikki marta baholanmaydi") — attempt allaqachon `'graded'` bo'lsa
+ * saqlangan natijani qaytaradi, qayta AI chaqirmaydi. Ikkala insho PARALLEL
+ * baholanadi (umumiy kutish vaqtini yarmiga tushiradi — queue yo'qligida bu
+ * muhim, TZ §4.3/§8.5 izohiga q. writingGrader.ts'da).
+ */
+export async function gradeWritingAttempt(attemptId: string, userId: string): Promise<AttemptResult | null> {
+  const attempt = await getOwnedAttempt(attemptId, userId);
+  if (attempt.status === 'graded') return attempt.result;
+  if (attempt.status !== 'submitted') {
+    throw new ExamAttemptError('Urinish hali yakunlanmagan yoki holati mos emas', 409);
+  }
+
+  const test: Test | null = await ExamTest.findById(attempt.testId).lean();
+  const tasks = test?.sections.writing?.tasks;
+  if (!tasks) throw new ExamAttemptError('Testda Writing bo\'limi yo\'q', 400);
+
+  const [task1, task2] = tasks;
+  const essayText1 = attempt.essays?.task1?.text || '';
+  const essayText2 = attempt.essays?.task2?.text || '';
+
+  const [score1, score2] = await Promise.all([gradeEssay(task1, essayText1), gradeEssay(task2, essayText2)]);
+
+  const writing = { task1: score1, task2: score2, band: combineWritingBand(score1, score2) };
+  const result: AttemptResult = { ...(attempt.result || {}), writing };
+
+  // Writing yagona baholanadigan bo'lim bo'lgan `mode:'section'` urinishlarda
+  // (Faza 2'ning yagona holati) `overall` xuddi shu Writing bandiga teng —
+  // Mock (bir nechta bo'lim) qo'shilganda bu yerga reading/listening
+  // bandlarini ham qo'shib hisoblash kerak bo'ladi (Faza 3).
+  result.overall = overallBand({
+    reading: result.reading?.band ?? null,
+    listening: result.listening?.band ?? null,
+    writing: writing.band,
+    speaking: null,
+  });
 
   await ExamAttempt.updateOne({ _id: attemptId }, { $set: { result, status: 'graded' } });
   return result;

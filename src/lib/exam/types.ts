@@ -277,6 +277,14 @@ export interface WritingScore {
   grammaticalRange: number; // GRA
   band: number;
   feedbackUz: string;
+  // §8.5 JSON sxemasi — har mezon bo'yicha alohida qisqa izoh (feedbackUz —
+  // umumiy 3-5 jumlalik tahlil, bu esa mezon-mezon).
+  criteriaFeedbackUz: {
+    taskAchievement: string;
+    coherenceCohesion: string;
+    lexicalResource: string;
+    grammaticalRange: string;
+  };
   corrections: { original: string; suggested: string; reason: string }[];
   improvedVersion?: string;
 }

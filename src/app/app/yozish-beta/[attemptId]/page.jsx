@@ -26,7 +26,7 @@ export default function YozishBetaAttemptPage() {
   if (submitted) {
     return (
       <div>
-        <WritingResult result={result} />
+        <WritingResult attemptId={attemptId} result={result} onRegraded={setResult} />
         <div className="text-center pb-10">
           <button onClick={() => router.push('/app/yozish-beta')} className="text-sm text-accent hover:underline font-semibold">
             Yangi urinish boshlash

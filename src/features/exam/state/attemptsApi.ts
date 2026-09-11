@@ -81,3 +81,16 @@ export async function submitAttempt(attemptId: string): Promise<{ result: Attemp
   if (!res.ok) throw new Error("Yakunlab bo'lmadi");
   return res.json();
 }
+
+/** TZ §8.5 — Writing bo'limi bo'lgan attemptlar uchun submit'dan KEYIN
+ * chaqiriladi (WritingSection.tsx). Xato tashlashi mumkin (AI vaqtincha band) —
+ * chaqiruvchi buni "baholanmadi, keyinroq qayta urinib ko'ring" sifatida
+ * ko'rsatishi kerak, submit natijasining o'zi baribir saqlangan bo'ladi. */
+export async function gradeWriting(attemptId: string): Promise<{ result: AttemptResult | null }> {
+  const res = await authedFetch(`/api/exam/attempts/${attemptId}/grade-writing`, { method: 'POST' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || "Baholab bo'lmadi");
+  }
+  return res.json();
+}
