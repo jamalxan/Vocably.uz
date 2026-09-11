@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import ReviewQuestionRow from './ReviewQuestionRow';
 import WritingScoreCard from './WritingScoreCard';
+import WordSelectionCatcher from './WordSelectionCatcher';
 import type { AttemptReviewDetail, ExamSectionKey } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §11.2 — Review ekrani: "Imtihon shell'ining o'zi, lekin
@@ -73,86 +74,88 @@ export default function ReviewScreen({ detail }: ReviewScreenProps) {
         ))}
       </div>
 
-      {activeSection === 'reading' && detail.reading && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-ink">
-              Xom ball: {detail.reading.raw} · Band {detail.reading.band.toFixed(1)}
-            </p>
-            <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer">
-              <input type="checkbox" checked={onlyErrors} onChange={(e) => setOnlyErrors(e.target.checked)} className="accent-accent" />
-              Faqat xatolar
-            </label>
-          </div>
-          {detail.reading.passages.map((p) => (
-            <div key={p.order} className="mb-6">
-              <p className="text-sm font-bold text-ink mb-2">{p.title}</p>
-              <div className="border border-border rounded-xl p-4 mb-3 max-h-64 overflow-y-auto text-sm leading-relaxed bg-surface">
-                {p.paragraphs.map((para, i) => {
-                  const key = `${p.order}-${para.label || i}`;
-                  return (
-                    <p
-                      key={i}
-                      data-review-paragraph={key}
-                      className="relative mb-2 last:mb-0 transition-colors rounded"
-                      style={{ padding: para.label ? '2px 4px 2px 24px' : '2px 4px', background: highlighted === key ? 'var(--exam-highlight)' : 'transparent' }}
-                    >
-                      {para.label && <span className="absolute left-1 font-bold text-muted">{para.label}</span>}
-                      {/* eslint-disable-next-line react/no-danger */}
-                      <span dangerouslySetInnerHTML={{ __html: para.html }} />
-                    </p>
-                  );
-                })}
+      <WordSelectionCatcher>
+        {activeSection === 'reading' && detail.reading && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-ink">
+                Xom ball: {detail.reading.raw} · Band {detail.reading.band.toFixed(1)}
+              </p>
+              <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer">
+                <input type="checkbox" checked={onlyErrors} onChange={(e) => setOnlyErrors(e.target.checked)} className="accent-accent" />
+                Faqat xatolar
+              </label>
+            </div>
+            {detail.reading.passages.map((p) => (
+              <div key={p.order} className="mb-6">
+                <p className="text-sm font-bold text-ink mb-2">{p.title}</p>
+                <div className="border border-border rounded-xl p-4 mb-3 max-h-64 overflow-y-auto text-sm leading-relaxed bg-surface">
+                  {p.paragraphs.map((para, i) => {
+                    const key = `${p.order}-${para.label || i}`;
+                    return (
+                      <p
+                        key={i}
+                        data-review-paragraph={key}
+                        className="relative mb-2 last:mb-0 transition-colors rounded"
+                        style={{ padding: para.label ? '2px 4px 2px 24px' : '2px 4px', background: highlighted === key ? 'var(--exam-highlight)' : 'transparent' }}
+                      >
+                        {para.label && <span className="absolute left-1 font-bold text-muted">{para.label}</span>}
+                        {/* eslint-disable-next-line react/no-danger */}
+                        <span dangerouslySetInnerHTML={{ __html: para.html }} />
+                      </p>
+                    );
+                  })}
+                </div>
+                <div className="border border-border rounded-xl overflow-hidden">
+                  {p.questions
+                    .filter((q) => !onlyErrors || !q.correct)
+                    .map((q) => (
+                      <ReviewQuestionRow key={q.number} question={q} onLocate={(label) => handleLocate(p.order, label)} />
+                    ))}
+                </div>
               </div>
-              <div className="border border-border rounded-xl overflow-hidden">
-                {p.questions
-                  .filter((q) => !onlyErrors || !q.correct)
-                  .map((q) => (
-                    <ReviewQuestionRow key={q.number} question={q} onLocate={(label) => handleLocate(p.order, label)} />
+            ))}
+          </div>
+        )}
+
+        {activeSection === 'listening' && detail.listening && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-ink">
+                Xom ball: {detail.listening.raw} · Band {detail.listening.band.toFixed(1)}
+              </p>
+              <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer">
+                <input type="checkbox" checked={onlyErrors} onChange={(e) => setOnlyErrors(e.target.checked)} className="accent-accent" />
+                Faqat xatolar
+              </label>
+            </div>
+            {detail.listening.parts.map((part) => (
+              <div key={part.order} className="mb-6">
+                <p className="text-sm font-bold text-ink mb-2">Part {part.order}</p>
+                {part.transcript && (
+                  <details className="border border-border rounded-xl mb-3 bg-surface">
+                    <summary className="px-4 py-2.5 text-sm font-semibold text-ink cursor-pointer">Transkript</summary>
+                    <p className="px-4 pb-3 text-sm leading-relaxed text-ink whitespace-pre-wrap">{part.transcript}</p>
+                  </details>
+                )}
+                <div className="border border-border rounded-xl overflow-hidden">
+                  {part.questions.filter((q) => !onlyErrors || !q.correct).map((q) => (
+                    <ReviewQuestionRow key={q.number} question={q} />
                   ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeSection === 'listening' && detail.listening && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-ink">
-              Xom ball: {detail.listening.raw} · Band {detail.listening.band.toFixed(1)}
-            </p>
-            <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer">
-              <input type="checkbox" checked={onlyErrors} onChange={(e) => setOnlyErrors(e.target.checked)} className="accent-accent" />
-              Faqat xatolar
-            </label>
+            ))}
           </div>
-          {detail.listening.parts.map((part) => (
-            <div key={part.order} className="mb-6">
-              <p className="text-sm font-bold text-ink mb-2">Part {part.order}</p>
-              {part.transcript && (
-                <details className="border border-border rounded-xl mb-3 bg-surface">
-                  <summary className="px-4 py-2.5 text-sm font-semibold text-ink cursor-pointer">Transkript</summary>
-                  <p className="px-4 pb-3 text-sm leading-relaxed text-ink whitespace-pre-wrap">{part.transcript}</p>
-                </details>
-              )}
-              <div className="border border-border rounded-xl overflow-hidden">
-                {part.questions.filter((q) => !onlyErrors || !q.correct).map((q) => (
-                  <ReviewQuestionRow key={q.number} question={q} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        )}
 
-      {activeSection === 'writing' && detail.writing && (
-        <div className="space-y-4">
-          <p className="text-sm font-semibold text-ink text-center">Band {detail.writing.band.toFixed(1)}</p>
-          <WritingScoreCard title="Task 1" score={detail.writing.task1} essayText={detail.writing.essays.task1} />
-          <WritingScoreCard title="Task 2" score={detail.writing.task2} essayText={detail.writing.essays.task2} />
-        </div>
-      )}
+        {activeSection === 'writing' && detail.writing && (
+          <div className="space-y-4">
+            <p className="text-sm font-semibold text-ink text-center">Band {detail.writing.band.toFixed(1)}</p>
+            <WritingScoreCard title="Task 1" score={detail.writing.task1} essayText={detail.writing.essays.task1} />
+            <WritingScoreCard title="Task 2" score={detail.writing.task2} essayText={detail.writing.essays.task2} />
+          </div>
+        )}
+      </WordSelectionCatcher>
     </div>
   );
 }
