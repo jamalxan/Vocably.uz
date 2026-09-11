@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 
 // TZ-vocably-v2.md §9.3 — Yakunlash tasdiqlash:
 //   Yakunlashni xohlaysizmi?
@@ -13,6 +14,16 @@ export interface ConfirmFinishModalProps {
 }
 
 export default function ConfirmFinishModal({ unansweredNumbers, onCancel, onConfirm }: ConfirmFinishModalProps) {
+  // §13 — Escape = bekor qilish (xavfsiz tomon: imtihonni tasodifan
+  // yakunlab qo'ymaslik uchun Enter emas, Escape faqat "Orqaga qaytish"ga teng).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onCancel]);
+
   return (
     <div data-exam="" className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4">
       <div

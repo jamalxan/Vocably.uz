@@ -18,13 +18,15 @@ export interface ParagraphLabelProps {
   html: string;
   paragraphIndex: number;
   highlights: Highlight[];
+  onActivateHighlight?: (id: string, rect: DOMRect) => void;
 }
 
-export default function ParagraphLabel({ label, html, paragraphIndex, highlights }: ParagraphLabelProps) {
+export default function ParagraphLabel({ label, html, paragraphIndex, highlights, onActivateHighlight }: ParagraphLabelProps) {
   const contentRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (contentRef.current) applyHighlights(contentRef.current, highlights);
+    if (contentRef.current) applyHighlights(contentRef.current, highlights, onActivateHighlight);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlights]);
 
   return (

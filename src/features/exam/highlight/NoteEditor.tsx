@@ -51,7 +51,7 @@ export default function NoteEditor({ x, y, initialNote, onSave, onClose }: NoteE
         maxLength={500}
         rows={3}
         placeholder="Eslatma yozing..."
-        className="w-full text-sm p-2 rounded outline-none resize-none"
+        className="w-full text-sm p-2 rounded outline-none resize-none focus-visible:shadow-[var(--exam-focus-ring)]"
         style={{ border: '1px solid var(--exam-input-border)', color: 'var(--exam-text)', background: 'var(--exam-bg)' }}
       />
       <div className="flex justify-end gap-2 mt-2">

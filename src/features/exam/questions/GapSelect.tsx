@@ -28,6 +28,14 @@ export default function GapSelect({ questionNumber, value, onChange, bank, class
         data-answered={value ? 'true' : 'false'}
         className="inline-block outline-none bg-transparent text-sm"
         style={{ border: 'none', borderBottom: `1.5px solid var(--exam-input-border)`, font: 'inherit', padding: '2px 4px', color: 'var(--exam-text)' }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderBottomColor = 'var(--exam-accent)';
+          e.currentTarget.style.boxShadow = '0 2px 0 0 var(--exam-accent)';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderBottomColor = value ? 'var(--exam-accent)' : 'var(--exam-input-border)';
+          e.currentTarget.style.boxShadow = 'none';
+        }}
       >
         <option value="">—</option>
         {bank.map((b) => (
