@@ -670,6 +670,99 @@ ExamSessionSchema.index({ userId: 1, mockId: 1, status: 1 });
 
 export const ExamSession = mongoose.models.ExamSession || mongoose.model('ExamSession', ExamSessionSchema);
 
+// ============================================================================
+// TZ-vocably-v2.md (IELTS CD Exam Engine v1.0) §3 — YANGI exam engine modellari.
+// ATAYLAB `ExamSession` (yuqorida, Everest-Mock'dan portlangan eski dvigatel)
+// bilan ALMASHTIRILMAYDI — TZ §20 migratsiya qoidasi: ikkalasi bir muddat
+// yonma-yon yashaydi, `/app/oqish` va boshqalar bosqichma-bosqich o'tkaziladi.
+// Model nomlari ataylab `ExamTest`/`ExamAttempt` (TZ'dagi `Test`/`Attempt` emas) —
+// `src/lib/exam/types.ts`dagi bir xil nomli TS interfeyslar bilan chalkashmasin
+// va kodda grep qilinganda "yangi dvigatel" ekani darhol ko'rinsin uchun.
+//
+// `sections` (kontent — passage/audio/savollar/javob kalitlari) va `answers`/
+// `audio`/`essays`/`events` (urinish holati) ATAYLAB Mixed: TZ §3'dagi chuqur
+// ichma-ich turlar (Test -> sections -> passages -> questionGroups -> questions)
+// DB sxemasi darajasida emas, ilova darajasida (`types.ts` + admin validator,
+// TZ §15.2, Faza 4) tekshiriladi — xuddi eski `ExamSession.answers` kabi.
+// ============================================================================
+
+const ExamTestSchema = new mongoose.Schema({
+  slug: { type: String, required: true, unique: true, trim: true },
+  title: { type: String, required: true, trim: true },
+  module: { type: String, enum: ['academic', 'general'], default: 'academic' },
+  difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
+  // { listening?, reading?, writing?, speaking? } — TZ §3.2-3.4, §3 SpeakingSection
+  sections: { type: mongoose.Schema.Types.Mixed, default: {} },
+  // §10.2 — odatda bo'sh (default jadval ishlatiladi), faqat testga xos konversiya
+  // kerak bo'lsa to'ldiriladi.
+  bandTable: { type: mongoose.Schema.Types.Mixed, default: null },
+  isPublished: { type: Boolean, default: false },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+export const ExamTest = mongoose.models.ExamTest || mongoose.model('ExamTest', ExamTestSchema);
+
+const ExamAttemptSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    testId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest', required: true },
+    mode: { type: String, enum: ['mock', 'section'], default: 'section' },
+    sections: [{ type: String, enum: ['listening', 'reading', 'writing', 'speaking'] }],
+    currentSection: { type: String, enum: ['listening', 'reading', 'writing', 'speaking'], required: true },
+    status: { type: String, enum: ['in_progress', 'submitted', 'graded', 'expired', 'abandoned'], default: 'in_progress' },
+
+    // Taymer — SERVER manbai (TZ §4.2). Klient faqat ko'rsatadi.
+    startedAt: { type: Date, default: Date.now },
+    sectionStartedAt: { type: Date, default: Date.now },
+    endsAt: { type: Date, required: true },
+    pausedSec: { type: Number, default: 0 }, // faqat practice rejimda
+
+    answers: { type: mongoose.Schema.Types.Mixed, default: {} }, // { "q12": AnswerValue }
+    flagged: [{ type: Number }],
+    lastQuestion: { type: Number, default: 0 },
+
+    audio: {
+      partIndex: { type: Number, default: 0 },
+      positionSec: { type: Number, default: 0 },
+      playedParts: [{ type: Number }],
+      volume: { type: Number, default: 1 },
+    },
+
+    essays: {
+      task1: {
+        text: { type: String, default: '' },
+        wordCount: { type: Number, default: 0 },
+        updatedAt: { type: Date, default: null },
+      },
+      task2: {
+        text: { type: String, default: '' },
+        wordCount: { type: Number, default: 0 },
+        updatedAt: { type: Date, default: null },
+      },
+    },
+
+    // Yaxlitlik (TZ §14) — halol bo'lish maqsadida faqat log, hech narsani bloklamaydi.
+    events: [
+      {
+        type: { type: String, required: true },
+        at: { type: Date, default: Date.now },
+        meta: { type: mongoose.Schema.Types.Mixed, default: null },
+      },
+    ],
+    tabSwitchCount: { type: Number, default: 0 },
+
+    result: { type: mongoose.Schema.Types.Mixed, default: null },
+    submittedAt: { type: Date, default: null },
+  },
+  // ExamSession'dagi kabi: bo'sh {}/[] maydonlar minimize:true bilan saqlashdan
+  // oldin butunlay yo'qolib qolmasin (yuqoridagi ExamSessionSchema izohiga q.).
+  { minimize: false }
+);
+ExamAttemptSchema.index({ userId: 1, testId: 1, currentSection: 1, status: 1 });
+
+export const ExamAttempt = mongoose.models.ExamAttempt || mongoose.model('ExamAttempt', ExamAttemptSchema);
+
 // FAZA 5 (VOCABLY-TZ.md §13) — har bir XP berilishi shu yerga yoziladi (ReviewEvent'dagi
 // bilan bir xil append-only audit naqshi). User.xp — joriy jami (tez o'qish uchun);
 // bu kolleksiya esa VAQT OYNASI bo'yicha so'rovlar uchun (haftalik reyting) — faqat
