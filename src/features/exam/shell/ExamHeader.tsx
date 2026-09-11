@@ -71,8 +71,8 @@ export default function ExamHeader({
           onClick={onOpenSettings}
           aria-label="Sozlamalar"
           title="Sozlamalar"
-          className="p-2 rounded-lg hover:bg-black/5"
-          style={{ color: 'var(--exam-muted)' }}
+          className="flex items-center justify-center rounded-lg hover:bg-black/5"
+          style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
         >
           <Settings size={18} />
         </button>
@@ -81,8 +81,8 @@ export default function ExamHeader({
           onClick={onOpenHelp}
           aria-label="Yordam"
           title="Yordam"
-          className="p-2 rounded-lg hover:bg-black/5"
-          style={{ color: 'var(--exam-muted)' }}
+          className="flex items-center justify-center rounded-lg hover:bg-black/5"
+          style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
         >
           <HelpCircle size={18} />
         </button>
@@ -91,8 +91,8 @@ export default function ExamHeader({
           onClick={onToggleTimerHidden}
           aria-label={timerHidden ? 'Taymerni ko’rsatish' : 'Taymerni yashirish'}
           title={timerHidden ? "Taymerni ko'rsatish" : 'Taymerni yashirish'}
-          className="p-2 rounded-lg hover:bg-black/5"
-          style={{ color: 'var(--exam-muted)' }}
+          className="flex items-center justify-center rounded-lg hover:bg-black/5"
+          style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
         >
           <Monitor size={18} />
         </button>

@@ -111,6 +111,15 @@ export interface ExamStoreState {
   highContrast: boolean;
   splitRatio: number; // 0.3-0.7 — §6.1
 
+  // §12.2 — mobil tab rejimi (<768px, SplitPane.tsx#MobileTabs). 0 = "Matn"
+  // (chap panel), 1 = "Savollar" (o'ng panel). `goToQuestion` doim 1'ga
+  // o'tkazadi — footer'dan (yoki bottom sheet'dan) savolga o'tish "Matn"
+  // tab'ida turib chaqirilsa, savol paneli umuman DOM'da mavjud emas edi
+  // (MobileTabs faol bo'lmagan tomonni butunlay unmount qiladi, faqat
+  // CSS bilan yashirmaydi) — shu bog'lanish bo'lmasa, tugma bosilgani
+  // sezilmas edi.
+  mobileTab: 0 | 1;
+
   // Saqlash holati — §4.3
   saveStatus: 'saved' | 'saving' | 'error';
   dirtyKeys: Set<string>;
@@ -131,6 +140,7 @@ export interface ExamStoreState {
   setAnswer: (qNum: number, value: AnswerValue) => void;
   toggleFlag: (qNum: number) => void;
   goToQuestion: (qNum: number) => void;
+  setMobileTab: (tab: 0 | 1) => void;
   setEssayText: (task: 1 | 2, text: string) => void;
   setActiveWritingTask: (task: 1 | 2) => void;
   setRemainingSec: (sec: number) => void;
@@ -159,6 +169,7 @@ const INITIAL_TRANSIENT_STATE = {
   dirtyKeys: new Set<string>(),
   flaggedDirty: false,
   saveStatus: 'saved' as const,
+  mobileTab: 0 as 0 | 1,
 };
 
 export const useExamStore = create<ExamStoreState>((set, get) => ({
@@ -225,7 +236,9 @@ export const useExamStore = create<ExamStoreState>((set, get) => ({
       return { flagged: next, flaggedDirty: true, saveStatus: 'saving' };
     }),
 
-  goToQuestion: (qNum) => set({ currentQuestion: qNum }),
+  goToQuestion: (qNum) => set({ currentQuestion: qNum, mobileTab: 1 }),
+
+  setMobileTab: (tab) => set({ mobileTab: tab }),
 
   setRemainingSec: (sec) => set({ remainingSec: sec }),
 

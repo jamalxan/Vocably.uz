@@ -1,6 +1,9 @@
 'use client';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Check, Grid3x3 } from 'lucide-react';
 import type { AnswerValue } from '@/lib/exam/types';
+import { useIsMobile } from '../state/useIsMobile';
+import QuestionSheet from './QuestionSheet';
 
 // TZ-vocably-v2.md §5.5 — ExamFooterNav (balandligi 64px desktop, 88px mobil).
 // ┌──────────────────────────────────────────────────────────────────┐
@@ -52,6 +55,81 @@ export default function ExamFooterNav({
 
   const goPrev = () => canPrev && onGoTo(allQuestions[currentIdx - 1]);
   const goNext = () => canNext && onGoTo(allQuestions[currentIdx + 1]);
+
+  const isMobile = useIsMobile();
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // TZ §12.2 — "← Savol 14/40 → (bosilsa bottom sheet ochiladi)". Desktop'dagi
+  // to'liq 40-tugmali ro'yxat <768px'da sig'maydi (footer balandligi 88px'ga
+  // ko'tarilsa ham) — shuning uchun ixcham hisoblagich + QuestionSheet.tsx.
+  if (isMobile) {
+    return (
+      <nav
+        className="flex-shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-t"
+        style={{
+          background: 'var(--exam-chrome)',
+          borderColor: 'var(--exam-chrome-border)',
+          minHeight: 64,
+          paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
+        }}
+        aria-label="Savollar paneli"
+      >
+        <button
+          type="button"
+          onClick={goPrev}
+          disabled={!canPrev}
+          aria-label="Oldingi savol"
+          className="flex items-center justify-center rounded-lg border disabled:opacity-30"
+          style={{ width: 44, height: 44, borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
+        >
+          <ChevronLeft size={20} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold"
+          style={{ height: 44, borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
+        >
+          <Grid3x3 size={15} />
+          Savol {currentQuestion} / {allQuestions.length}
+        </button>
+
+        <button
+          type="button"
+          onClick={goNext}
+          disabled={!canNext}
+          aria-label="Keyingi savol"
+          className="flex items-center justify-center rounded-lg border disabled:opacity-30"
+          style={{ width: 44, height: 44, borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
+        >
+          <ChevronRight size={20} />
+        </button>
+
+        {onSubmit && (
+          <button
+            type="button"
+            onClick={onSubmit}
+            className="flex items-center gap-1.5 px-3 rounded-lg text-white text-[13px] font-semibold"
+            style={{ height: 44, background: 'var(--exam-accent)' }}
+          >
+            <Check size={15} /> {submitLabel}
+          </button>
+        )}
+
+        {sheetOpen && (
+          <QuestionSheet
+            groups={groups}
+            answers={answers}
+            flagged={flagged}
+            currentQuestion={currentQuestion}
+            onGoTo={onGoTo}
+            onClose={() => setSheetOpen(false)}
+          />
+        )}
+      </nav>
+    );
+  }
 
   return (
     <nav

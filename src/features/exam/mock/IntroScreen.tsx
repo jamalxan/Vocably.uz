@@ -1,6 +1,7 @@
 'use client';
-import { Headphones, BookOpen, PenLine, AlertTriangle, Loader2 } from 'lucide-react';
+import { Headphones, BookOpen, PenLine, AlertTriangle, Loader2, Monitor } from 'lucide-react';
 import type { TestPreview } from '../state/attemptsApi';
+import { useIsMobile } from '../state/useIsMobile';
 
 // TZ-vocably-v2.md §9.2 — Mock intro ekrani. "Bu yerda premium dizayn qiling"
 // (§9.2 sarlavhasi) — imtihon HALI boshlanmagan, shuning uchun §5.1 qoidasi
@@ -19,10 +20,20 @@ export default function IntroScreen({ test, onStart, starting }: IntroScreenProp
   const { listening, reading, writing } = test.sections;
   const totalSec = (listening?.durationSec || 0) + (reading?.durationSec || 0) + (writing?.durationSec || 0);
   const totalMin = formatMinutes(totalSec);
+  const isMobile = useIsMobile();
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-bg px-4 py-8 overflow-y-auto">
       <div className="w-full max-w-md bg-surface rounded-2xl shadow-card border border-border p-6 sm:p-8">
+        {/* TZ §12.3 — "Mock rejimi telefonda: ruxsat bering, lekin ogohlantiring...
+            Bloklamang; Uzbekistonda ko'p foydalanuvchi faqat telefonda." */}
+        {isMobile && (
+          <div className="mb-4 flex items-start gap-2 px-3 py-2.5 bg-warning-soft rounded-lg text-xs text-ink">
+            <Monitor size={15} className="flex-shrink-0 mt-0.5 text-warning" />
+            Eng yaxshi tajriba uchun kompyuterdan foydalaning — mock imtihon telefonda ham ishlaydi, lekin split-ekran o'rniga tab rejimida.
+          </div>
+        )}
+
         <h1 className="text-lg font-bold text-ink font-display">{test.title}</h1>
         <p className="text-xs uppercase tracking-wide text-muted mt-1">{test.module === 'academic' ? 'Academic' : 'General Training'}</p>
 

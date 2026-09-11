@@ -1,6 +1,9 @@
 'use client';
 import { useRef, useState, type ReactNode } from 'react';
 import Divider from './Divider';
+import MobileTabs from './MobileTabs';
+import { useIsMobile } from '../state/useIsMobile';
+import { useExamStore } from '../state/examStore';
 
 // TZ-vocably-v2.md §6.1/§8.1 — Reading va Writing bo'limlarida ishlatiladigan
 // sudraladigan ikki panelli joylashuv. Balandlik `100%` (ota elementdan meros) —
@@ -9,9 +12,7 @@ import Divider from './Divider';
 // piksel emas, moslashuvchan ota konteyner nazarda tutgan — 120px faqat o'sha
 // paytdagi header+footer yig'indisiga taxminiy mos edi).
 // §12.1/§12.2 — <768px'da bu split-pane "Tab rejimi"ga (Matn/Savollar
-// segmented control) almashishi kerak. Bu komponent hozircha buni QILMAYDI —
-// mobil moslashuv TZ'ning o'z fazalashida Faza 4 ("Sayqal", §19 item 20) ishi,
-// ataylab keyinga qoldirilgan, unutilgani uchun emas.
+// segmented control) almashadi — MobileTabs.tsx, TZ §19 Faza 4 item 20.
 export interface SplitPaneProps {
   left: ReactNode;
   right: ReactNode;
@@ -25,11 +26,32 @@ export interface SplitPaneProps {
   // balandlikni egallaydi va faqat textarea scroll qiladi (qo'sh scrollbar
   // bo'lmasin uchun).
   rightPadded?: boolean;
+  // §12.2 — mobil segmented control yorliqlari (masalan Reading'da
+  // ["Matn", "Savollar"], Writing'da ["Topshiriq", "Yozish"]).
+  mobileTabs?: [string, string];
 }
 
-export default function SplitPane({ left, right, ratio, onRatioChange, leftLabel, rightLabel, rightPadded = true }: SplitPaneProps) {
+export default function SplitPane({
+  left,
+  right,
+  ratio,
+  onRatioChange,
+  leftLabel,
+  rightLabel,
+  rightPadded = true,
+  mobileTabs = ['Matn', 'Savollar'],
+}: SplitPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
+  const isMobile = useIsMobile();
+  const mobileTab = useExamStore((s) => s.mobileTab);
+  const setMobileTab = useExamStore((s) => s.setMobileTab);
+
+  if (isMobile) {
+    return (
+      <MobileTabs left={left} right={right} rightPadded={rightPadded} tabs={mobileTabs} active={mobileTab} onChange={setMobileTab} />
+    );
+  }
 
   return (
     <div
