@@ -158,4 +158,43 @@ describe('validateTest', () => {
     expect(issues.every((i) => i.severity === 'warning')).toBe(true);
     expect(hasBlockingErrors(issues)).toBe(false);
   });
+
+  // VOCABLY-TZ.md (AI Content Ingestion Agent) §13 W01/W02/W03 — sof,
+  // AI'siz tekshiriladigan ogohlantirishlar.
+  it('warns when a reading passage is outside the 650-1000 word range', () => {
+    const shortTest = baseTest(); // default passage is a single short sentence
+    expect(validateTest(shortTest).some((i) => i.message.includes("so'z (IELTS normasi 650-1000)"))).toBe(true);
+
+    const longTest = baseTest();
+    const longParagraph = { label: 'A', html: `<p>${'word '.repeat(1200)}</p>` };
+    longTest.sections!.reading!.passages[0].paragraphs = [longParagraph];
+    expect(validateTest(longTest).some((i) => i.message.includes("so'z (IELTS normasi 650-1000)"))).toBe(true);
+
+    const rightSizedTest = baseTest();
+    rightSizedTest.sections!.reading!.passages[0].paragraphs = [{ label: 'A', html: `<p>${'word '.repeat(800)}</p>` }];
+    expect(validateTest(rightSizedTest).some((i) => i.message.includes('IELTS normasi 650-1000'))).toBe(false);
+  });
+
+  it('warns when total listening audio duration is outside 25-35 minutes', () => {
+    const test = baseTest({
+      sections: {
+        listening: {
+          durationSec: 1800,
+          checkTimeSec: 120,
+          parts: [{ order: 1, audioUrl: 'a.mp3', durationSec: 300, questionGroups: [tfngGroup([1])] }],
+        },
+      },
+    });
+    expect(validateTest(test).some((i) => i.message.includes('IELTS normasi 25-35 daqiqa'))).toBe(true);
+  });
+
+  it('warns when a question type is used more than twice in one test', () => {
+    const test = baseTest();
+    test.sections!.reading!.passages[0].questionGroups = [
+      { ...tfngGroup([1]), id: 'g1' },
+      { ...tfngGroup([2]), id: 'g2' },
+      { ...tfngGroup([3]), id: 'g3' },
+    ];
+    expect(validateTest(test).some((i) => i.message.includes("2 martadan ko'p emas"))).toBe(true);
+  });
 });

@@ -73,6 +73,58 @@ function checkQuestions(sectionLabel: string, groups: QuestionGroup[], issues: V
   }
 }
 
+// VOCABLY-TZ.md (AI Content Ingestion Agent) §13 — "Warning (nashr
+// qilinadi, lekin belgilanadi)" qoidalarining bir qismi. Bu uchtasi (W01/
+// W02/W03) sof, deterministik va HECH QANDAY AI/tashqi xizmatga muhtoj
+// EMAS — shuning uchun bu sessiyada (R2/Redis/OpenRouter ulanmagan bo'lsa
+// ham) to'g'ridan-to'g'ri ishlab chiqarish validatoriga qo'shildi va HOZIR
+// FAOL (admin "Nashr qilish" bosganda ham, qo'lda "Validatsiya" chaqirganda
+// ham ishlaydi). Qolgan W-qoidalar (masalan W04 — "yes_no_notgiven faktik
+// matnda ishlatilgan" — "AI klassifikatori" talab qiladi) ataylab
+// QO'SHILMAGAN, chunki ular haqiqatan ham AI xulosasiga muhtoj.
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ');
+}
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+// §13 W01 — "Reading passage 650 so'zdan kam yoki 1000 dan ko'p."
+function checkPassageLength(passage: { order: number; paragraphs?: { html: string }[] }, issues: ValidationIssue[]) {
+  const words = countWords((passage.paragraphs || []).map((p) => stripHtml(p.html)).join(' '));
+  if (words > 0 && (words < 650 || words > 1000)) {
+    issues.push({
+      severity: 'warning',
+      path: `reading.passage[${passage.order}]`,
+      message: `Passage ${words} so'z (IELTS normasi 650-1000)`,
+    });
+  }
+}
+
+// §13 W02 — "Listening umumiy audio 25 daqiqadan kam yoki 35 dan ko'p."
+function checkListeningDuration(parts: { durationSec?: number }[], issues: ValidationIssue[]) {
+  const totalSec = parts.reduce((sum, p) => sum + (p.durationSec || 0), 0);
+  if (totalSec > 0 && (totalSec < 25 * 60 || totalSec > 35 * 60)) {
+    issues.push({
+      severity: 'warning',
+      path: 'listening',
+      message: `Umumiy audio ${Math.round(totalSec / 60)} daqiqa (IELTS normasi 25-35 daqiqa)`,
+    });
+  }
+}
+
+// §13 W03 — "Bitta testda bir xil savol turi 2 martadan ko'p ishlatilgan."
+function checkQuestionTypeRepetition(allGroups: QuestionGroup[], issues: ValidationIssue[]) {
+  const counts = new Map<string, number>();
+  for (const g of allGroups) counts.set(g.type, (counts.get(g.type) || 0) + 1);
+  for (const [type, count] of counts) {
+    if (count > 2) {
+      issues.push({ severity: 'warning', path: 'sections', message: `'${type}' turi ${count} marta ishlatilgan (tavsiya: 2 martadan ko'p emas)` });
+    }
+  }
+}
+
 export function validateTest(test: Partial<Test>): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
@@ -96,6 +148,8 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
       if (!p.title?.trim()) issues.push({ severity: 'error', path: `reading.passage[${p.order}]`, message: "Passage sarlavhasi bo'sh" });
       if (!p.paragraphs || p.paragraphs.length === 0) {
         issues.push({ severity: 'warning', path: `reading.passage[${p.order}]`, message: 'Paragraflar bo’sh' });
+      } else {
+        checkPassageLength(p, issues);
       }
       checkQuestions(`reading.passage[${p.order}]`, p.questionGroups || [], issues);
     }
@@ -121,6 +175,7 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
       parts.flatMap((p) => (p.questionGroups || []).flatMap((g) => g.questions)),
       issues
     );
+    checkListeningDuration(parts, issues);
   }
 
   if (sections.writing) {
@@ -158,6 +213,14 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
       issues.push({ severity: 'error', path: 'speaking.part3Questions', message: 'Kamida 1 ta Part 3 savoli kerak' });
     }
   }
+
+  checkQuestionTypeRepetition(
+    [
+      ...(sections.reading?.passages || []).flatMap((p) => p.questionGroups || []),
+      ...(sections.listening?.parts || []).flatMap((p) => p.questionGroups || []),
+    ],
+    issues
+  );
 
   return issues;
 }
