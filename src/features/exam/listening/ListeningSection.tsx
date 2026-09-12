@@ -9,6 +9,7 @@ import QuestionGroupBlock from '../questions/QuestionGroupBlock';
 import AudioEngine from './AudioEngine';
 import AudioProgress from './AudioProgress';
 import VolumeCheck from './VolumeCheck';
+import { NEUTRAL_TEST_TONE_URL } from './testTone';
 import PartGap from './PartGap';
 import type { AttemptResult, SanitizedTest } from '@/lib/exam/types';
 import type { QuestionGroupNav } from '../shell/ExamFooterNav';
@@ -200,7 +201,7 @@ export default function ListeningSection({
   if (phase === 'volume-check') {
     return (
       <VolumeCheck
-        sampleAudioUrl={currentPart.audioUrl}
+        sampleAudioUrl={NEUTRAL_TEST_TONE_URL}
         volume={volume}
         onVolumeChange={setVolume}
         onStart={() => {
