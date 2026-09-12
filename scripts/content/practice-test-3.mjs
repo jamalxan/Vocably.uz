@@ -11,23 +11,23 @@ const passage1 = {
   paragraphs: [
     {
       label: 'A',
-      html: '<p>According to a well-known legend, tea was discovered in China around 2737 BC, when a scholar named Shennong was boiling water beneath a tree and a few leaves blew into the pot by chance. Curious about the pleasant smell, he tasted the resulting liquid and found it refreshing. Whether or not the story is entirely true, it reflects the belief that tea was, for centuries, valued first as a medicine rather than as an everyday drink.</p>',
+      html: '<p>According to a well-known legend, tea was discovered in China around 2737 BC, when a scholar named Shennong was boiling water beneath a tree and a few leaves blew into the pot by chance. Curious about the pleasant smell, he tasted the resulting liquid and found it refreshing, and reportedly went on to catalogue it among hundreds of other plants he tested for their medicinal properties. Whether or not the story is entirely true, it reflects the belief that tea was, for centuries, valued first as a medicine rather than as an everyday drink, prescribed by physicians for a range of ailments long before it became a routine part of daily life.</p>',
     },
     {
       label: 'B',
-      html: '<p>Over the following centuries, tea drinking spread throughout China and gradually became a cultural practice rather than simply a remedy. During the Tang and Song dynasties, elaborate methods of preparing and serving tea developed, and the drink took on ceremonial importance. This appreciation for ritual later reached Japan, where tea was refined into the elegant <em>matcha</em> ceremony, involving whisking powdered green tea to a light foam.</p>',
+      html: '<p>Over the following centuries, tea drinking spread throughout China and gradually became a cultural practice rather than simply a remedy. During the Tang and Song dynasties, elaborate methods of preparing and serving tea developed, and the drink took on ceremonial importance, with entire manuals written on the correct selection of water, the ideal temperature, and the proper etiquette for serving guests. This appreciation for ritual later reached Japan, where tea was refined into the elegant <em>matcha</em> ceremony, involving whisking powdered green tea to a light foam in a series of precisely choreographed movements that could take years to master fully.</p>',
     },
     {
       label: 'C',
-      html: '<p>Tea did not reach Europe until the early seventeenth century, when Dutch traders began importing small quantities from China. It arrived as an exotic and extremely expensive luxury, affordable only to the wealthiest households, and it would take many decades before it became a drink for ordinary people.</p>',
+      html: '<p>Tea did not reach Europe until the early seventeenth century, when Dutch traders began importing small quantities from China. It arrived as an exotic and extremely expensive luxury, affordable only to the wealthiest households, who often kept it locked away in ornate caddies to prevent theft by household staff. It would take many decades before it became a drink for ordinary people, as import volumes gradually increased and prices fell within reach of the growing middle classes.</p>',
     },
     {
       label: 'D',
-      html: '<p>Britain, in particular, developed a lasting attachment to tea. The British East India Company came to dominate the tea trade with China, importing vast quantities to satisfy growing domestic demand. When the Chinese supply became politically difficult to rely on, the British began cultivating tea plantations of their own, most famously in the Assam region of India, where the climate proved well suited to large-scale production under colonial administration.</p>',
+      html: '<p>Britain, in particular, developed a lasting attachment to tea. The British East India Company came to dominate the tea trade with China, importing vast quantities to satisfy growing domestic demand that showed no sign of slowing, regardless of the price. When the Chinese supply became politically difficult to rely on, the British began cultivating tea plantations of their own, most famously in the Assam region of India, where the climate proved well suited to large-scale production under colonial administration, transforming the region\'s economy and landscape within a few decades.</p>',
     },
     {
       label: 'E',
-      html: '<p>Today, tea is grown across many countries, including China, India, Kenya and Sri Lanka, and it remains one of the most widely consumed beverages in the world. The many varieties available — black, green, oolong and white — all come from the same plant, <em>Camellia sinensis</em>; the differences arise mainly from how much the leaves are allowed to oxidise during processing, with black tea undergoing full oxidation and green tea very little.</p>',
+      html: '<p>Today, tea is grown across many countries, including China, India, Kenya and Sri Lanka, and it remains one of the most widely consumed beverages in the world, second only to water in many countries\' daily consumption figures. The many varieties available — black, green, oolong and white — all come from the same plant, <em>Camellia sinensis</em>; the differences arise mainly from how much the leaves are allowed to oxidise during processing, with black tea undergoing full oxidation and green tea very little, a distinction that determines not only the colour and flavour of the finished drink but also its caffeine content and shelf life.</p>',
     },
   ],
   questionGroups: [
@@ -83,27 +83,27 @@ const passage2 = {
   paragraphs: [
     {
       label: 'A',
-      html: "<p>Often described as the rainforests of the sea, coral reefs are among the most biologically diverse ecosystems on Earth, despite covering less than one percent of the ocean floor. They are built not by plants but by tiny animals called coral polyps, which secrete calcium carbonate to form hard skeletons that, over thousands of years, accumulate into the vast structures we recognise as reefs.</p>",
+      html: "<p>Often described as the rainforests of the sea, coral reefs are among the most biologically diverse ecosystems on Earth, despite covering less than one percent of the ocean floor. They are built not by plants but by tiny animals called coral polyps, which secrete calcium carbonate to form hard skeletons that, over thousands of years, accumulate into the vast structures we recognise as reefs. A single reef system can take many centuries to form, growing only a few centimetres per year under favourable conditions, which makes the speed of the damage now being observed all the more striking by comparison.</p>",
     },
     {
       label: 'B',
-      html: '<p>Major reef systems are found around the world, including the Great Barrier Reef off the coast of Australia, the Coral Triangle in South-East Asia, and numerous reefs throughout the Caribbean. These ecosystems support local fisheries and tourism industries that millions of people depend on for their livelihoods.</p>',
+      html: '<p>Major reef systems are found around the world, including the Great Barrier Reef off the coast of Australia, the Coral Triangle in South-East Asia, and numerous reefs throughout the Caribbean. These ecosystems support local fisheries and tourism industries that millions of people depend on for their livelihoods, and they also provide a natural barrier that protects coastal communities from the full force of storms and rising waves.</p>',
     },
     {
       label: 'C',
-      html: '<p>Reefs face a growing number of threats, many linked to climate change. Rising sea temperatures can cause coral bleaching, a process in which corals expel the symbiotic algae, known as zooxanthellae, living within their tissues; without these algae, the coral loses both its colour and its main source of energy, and if conditions do not improve quickly, it may die. Ocean acidification, caused by higher levels of dissolved carbon dioxide, further weakens coral skeletons and slows their growth.</p>',
+      html: '<p>Reefs face a growing number of threats, many linked to climate change. Rising sea temperatures can cause coral bleaching, a process in which corals expel the symbiotic algae, known as zooxanthellae, living within their tissues; without these algae, the coral loses both its colour and its main source of energy, and if conditions do not improve quickly, it may die. Ocean acidification, caused by higher levels of dissolved carbon dioxide, further weakens coral skeletons and slows their growth, making it harder for damaged reefs to recover even once temperatures fall back to a more tolerable range.</p>',
     },
     {
       label: 'D',
-      html: '<p>Beyond climate-related pressures, reefs are also damaged directly by human activity, particularly overfishing and pollution from agricultural runoff, alongside unsustainable tourism practices and coastal construction near shorelines.</p>',
+      html: '<p>Beyond climate-related pressures, reefs are also damaged directly by human activity, particularly overfishing and pollution from agricultural runoff, alongside unsustainable tourism practices and coastal construction near shorelines. Sediment washed into the sea from construction and farming can smother coral by blocking the sunlight it needs, while chemical run-off can encourage the growth of algae that compete with coral for space.</p>',
     },
     {
       label: 'E',
-      html: '<p>In response, conservationists have developed several approaches to help reefs recover. Coral nurseries grow fragments of healthy coral in controlled conditions before transplanting them onto damaged reefs, while selective breeding programmes aim to produce corals that are more resistant to heat stress. Marine protected areas also help by limiting fishing and other damaging activities in especially vulnerable locations.</p>',
+      html: '<p>In response, conservationists have developed several approaches to help reefs recover. Coral nurseries grow fragments of healthy coral in controlled conditions before transplanting them onto damaged reefs, a labour-intensive process that nonetheless has shown promising results in several pilot locations. Selective breeding programmes aim to produce corals that are more resistant to heat stress, drawing on naturally occurring variation between individual coral colonies. Marine protected areas also help by limiting fishing and other damaging activities in especially vulnerable locations, giving ecosystems a chance to recover from existing stress before new pressures are added.</p>',
     },
     {
       label: 'F',
-      html: '<p>However, most researchers agree that local conservation measures alone will not be enough. Since rising sea temperatures are the underlying driver of coral bleaching worldwide, meaningfully reducing global carbon emissions is widely regarded as essential to addressing the root cause of reef decline.</p>',
+      html: '<p>However, most researchers agree that local conservation measures alone will not be enough. Since rising sea temperatures are the underlying driver of coral bleaching worldwide, meaningfully reducing global carbon emissions is widely regarded as essential to addressing the root cause of reef decline, meaning that the long-term survival of reefs depends as much on international climate policy as on any conservation work carried out at the reef itself.</p>',
     },
   ],
   questionGroups: [
@@ -193,31 +193,31 @@ const passage3 = {
   paragraphs: [
     {
       label: 'A',
-      html: '<p>Despite occupying roughly a third of human life, sleep remained scientifically mysterious until relatively recently. Modern sleep laboratories use a technique called polysomnography, which records brain activity, eye movement and muscle tone simultaneously, to study what actually happens while we sleep.</p>',
+      html: '<p>Despite occupying roughly a third of human life, sleep remained scientifically mysterious until relatively recently, often dismissed by earlier researchers as simply a passive state in which the brain switched off. Modern sleep laboratories use a technique called polysomnography, which records brain activity, eye movement and muscle tone simultaneously, to study what actually happens while we sleep, and these recordings revealed a far more active and structured process than scientists had previously assumed.</p>',
     },
     {
       label: 'B',
-      html: '<p>Sleep is not a single uniform state but a cycle of distinct stages. Non-REM sleep is divided into three stages, progressing from light sleep towards deep sleep, after which the brain enters REM (rapid eye movement) sleep, during which brain activity increases sharply and most dreaming occurs. A full cycle through these stages lasts approximately ninety minutes and repeats several times each night.</p>',
+      html: '<p>Sleep is not a single uniform state but a cycle of distinct stages. Non-REM sleep is divided into three stages, progressing from light sleep towards deep sleep, during which the body carries out much of its physical repair and restoration. After this, the brain enters REM (rapid eye movement) sleep, during which brain activity increases sharply, closely resembling patterns seen during wakefulness, and most dreaming occurs. A full cycle through these stages lasts approximately ninety minutes and repeats several times each night, with the proportion of REM sleep generally increasing in each successive cycle towards morning.</p>',
     },
     {
       label: 'C',
-      html: "<p>The timing of sleep is governed by the body's circadian rhythm, controlled by a region of the brain called the suprachiasmatic nucleus. This internal clock responds strongly to light exposure and regulates the release of melatonin, a hormone that rises in the evening and promotes drowsiness.</p>",
+      html: "<p>The timing of sleep is governed by the body's circadian rhythm, controlled by a region of the brain called the suprachiasmatic nucleus, which acts as a kind of master clock coordinating numerous other biological rhythms throughout the body. This internal clock responds strongly to light exposure, particularly the blue-tinted light of early morning, and regulates the release of melatonin, a hormone that rises in the evening and promotes drowsiness before falling again close to the body's usual waking time.</p>",
     },
     {
       label: 'D',
-      html: '<p>Chronic sleep deprivation carries serious consequences. It impairs memory consolidation, weakens immune function, and negatively affects mood, and long-term sleep loss has been linked to a higher risk of cardiovascular disease and metabolic disorders such as diabetes.</p>',
+      html: '<p>Chronic sleep deprivation carries serious consequences. It impairs memory consolidation, since much of the process by which the brain files away the day\'s new information into long-term memory appears to happen specifically during sleep, weakens immune function, and negatively affects mood, sometimes producing symptoms that closely resemble those of clinical depression. Long-term sleep loss has been linked to a higher risk of cardiovascular disease and metabolic disorders such as diabetes, prompting public health bodies in several countries to treat insufficient sleep as a genuine population-level health concern.</p>',
     },
     {
       label: 'E',
-      html: "<p>Sleep needs and patterns also vary between individuals. Some people are naturally more alert in the morning while others function better in the evening, a difference often described in terms of a person's chronotype. Age also plays a role: teenagers' circadian rhythms tend to shift to a later schedule than in childhood, while older adults typically experience lighter and more fragmented sleep.</p>",
+      html: "<p>Sleep needs and patterns also vary between individuals. Some people are naturally more alert in the morning while others function better in the evening, a difference often described in terms of a person's chronotype, and research suggests this tendency is influenced by genetics rather than being purely a matter of habit or willpower. Age also plays a role: teenagers' circadian rhythms tend to shift to a later schedule than in childhood, a change that has led some schools to experiment with later start times, while older adults typically experience lighter and more fragmented sleep, often waking several times during the night without necessarily remembering doing so.</p>",
     },
     {
       label: 'F',
-      html: '<p>Modern life introduces further disruption. Blue light emitted by phone and computer screens can suppress the release of melatonin, delaying the onset of sleep, while irregular schedules and consuming caffeine late in the day can also interfere with the ability to fall asleep.</p>',
+      html: '<p>Modern life introduces further disruption. Blue light emitted by phone and computer screens can suppress the release of melatonin, delaying the onset of sleep by tricking the suprachiasmatic nucleus into behaving as though it were still daytime, while irregular schedules and consuming caffeine late in the day can also interfere with the ability to fall asleep, since caffeine\'s effects can persist in the body for several hours after it is consumed.</p>',
     },
     {
       label: 'G',
-      html: '<p>Sleep experts generally recommend a set of habits known as sleep hygiene: maintaining a consistent sleep schedule, keeping the bedroom dark and cool, and limiting screen use in the hour before bed.</p>',
+      html: '<p>Sleep experts generally recommend a set of habits known as sleep hygiene: maintaining a consistent sleep schedule even on weekends, keeping the bedroom dark and cool, and limiting screen use in the hour before bed. Many sleep clinics now incorporate these recommendations into a structured programme, alongside relaxation techniques, as a first-line treatment for mild insomnia before considering medication.</p>',
     },
   ],
   questionGroups: [
