@@ -133,13 +133,19 @@ export default function ExamFooterNav({
 
   return (
     <nav
-      className="flex-shrink-0 min-h-16 sm:min-h-16 border-t flex items-center gap-3 px-3 sm:px-4 py-2 overflow-x-auto"
+      className="flex-shrink-0 min-h-16 sm:min-h-16 border-t flex items-center gap-3 px-3 sm:px-4 py-2"
       style={{ background: 'var(--exam-chrome)', borderColor: 'var(--exam-chrome-border)' }}
       aria-label="Savollar paneli"
     >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+      {/* VOCABLY-TZ.md §1.3 auditi — `overflow-x-auto` ILGARI butun <nav>da
+          edi, shuning uchun o'ng zonadagi (Oldingi/Keyingi/Yakunlash)
+          tugmalar 40 ta savol raqami bilan BIRGA gorizontal scroll qilardi
+          va Reading'da raqamlar ostida, Listening/Writing'da AI FAB ostida
+          qolib bosilmas edi. Endi FAQAT shu ichki konteyner scroll qiladi,
+          o'ng zona (pastda) har doim ko'rinadigan joyida qat'iy turadi. */}
+      <div className="flex items-center gap-3 flex-1 min-w-0 overflow-x-auto">
         {groups.map((g) => (
-          <div key={g.label} className="flex items-center gap-1.5 flex-shrink-0">
+          <div key={g.label} className="flex items-center gap-1 flex-shrink-0">
             <span className="text-[11px] font-semibold uppercase tracking-wide mr-0.5" style={{ color: 'var(--exam-muted)' }}>
               {g.label}
             </span>
@@ -154,7 +160,7 @@ export default function ExamFooterNav({
                   onClick={() => onGoTo(qNum)}
                   aria-label={`Savol ${qNum}${answered ? ", javob berilgan" : ''}${isFlagged ? ', belgilangan' : ''}${isCurrent ? ', joriy' : ''}`}
                   aria-current={isCurrent ? 'true' : undefined}
-                  className="relative w-8 h-8 flex-shrink-0 flex items-center justify-center rounded text-[13px] font-semibold border transition-colors"
+                  className="relative w-7 h-7 flex-shrink-0 flex items-center justify-center rounded text-[12px] font-semibold border transition-colors"
                   style={{
                     borderColor: isCurrent ? 'var(--exam-accent)' : 'var(--exam-chrome-border)',
                     borderWidth: isCurrent ? 2 : 1,

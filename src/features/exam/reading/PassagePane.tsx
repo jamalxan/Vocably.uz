@@ -87,7 +87,7 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
         className="sticky -top-6 sm:-top-6 -mx-6 sm:-mx-7 px-6 sm:px-7 pt-6 pb-3 mb-4 z-10"
         style={{ background: 'var(--exam-bg)' }}
       >
-        <h1 className="text-[20px] font-bold leading-[1.3]" style={{ color: 'var(--exam-text)' }}>
+        <h1 className="text-[1.25em] font-bold leading-[1.3]" style={{ color: 'var(--exam-text)' }}>
           {passage.title}
         </h1>
         {passage.subtitle && (
@@ -96,7 +96,10 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
           </p>
         )}
       </div>
-      <div className="space-y-4 text-[16px] leading-[1.75]" style={{ color: 'var(--exam-text)' }}>
+      {/* VOCABLY-TZ.md §1.6 — matn o'lchami: ATAYLAB qat'iy `text-[16px]` YO'Q,
+          shrift ExamShell ildizidagi `fontSize` inline style'idan meros
+          bo'ladi (sozlama shu yerga to'g'ridan-to'g'ri ta'sir qilishi uchun). */}
+      <div className="space-y-4 leading-[1.75]" style={{ color: 'var(--exam-text)' }}>
         {passage.paragraphs.map((p, i) => (
           <ParagraphLabel
             key={i}

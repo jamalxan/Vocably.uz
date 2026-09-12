@@ -10,7 +10,7 @@ export interface TaskPaneProps {
 
 export default function TaskPane({ task }: TaskPaneProps) {
   return (
-    <div onCopy={(e) => e.preventDefault()} className="text-[16px] leading-[1.7]" style={{ color: 'var(--exam-text)' }}>
+    <div onCopy={(e) => e.preventDefault()} className="leading-[1.7]" style={{ color: 'var(--exam-text)' }}>
       <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--exam-muted)' }}>
         Writing Task {task.order}
       </p>

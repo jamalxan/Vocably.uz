@@ -17,7 +17,7 @@ export default function SentenceCompletion({ group, question, value, onChange }:
   });
 
   return (
-    <p className="text-[16px] leading-[1.75]" style={{ color: 'var(--exam-text)' }}>
+    <p className="leading-[1.75]" style={{ color: 'var(--exam-text)' }}>
       {content}
     </p>
   );

@@ -32,7 +32,7 @@ export default function GroupGapFill({ group, answers, onAnswerChange }: GroupGa
 
   return (
     <div
-      className="text-[16px] leading-[1.75] [&_table]:border-collapse [&_td]:border [&_th]:border [&_td]:border-[var(--exam-chrome-border)] [&_th]:border-[var(--exam-chrome-border)] [&_td]:p-2 [&_th]:p-2"
+      className="leading-[1.75] [&_table]:border-collapse [&_td]:border [&_th]:border [&_td]:border-[var(--exam-chrome-border)] [&_th]:border-[var(--exam-chrome-border)] [&_td]:p-2 [&_th]:p-2"
       style={{ color: 'var(--exam-text)' }}
     >
       {content}

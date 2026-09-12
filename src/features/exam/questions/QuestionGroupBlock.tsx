@@ -39,9 +39,12 @@ export interface QuestionGroupBlockProps {
   group: SanitizedQuestionGroup;
   answers: Record<string, AnswerValue>;
   onAnswerChange: (questionNumber: number, value: AnswerValue) => void;
+  // VOCABLY-TZ.md §1.4 — faqat Reading'dan keladi, `matching_information`
+  // uchun bo'sh `bank`ni paragraf harflaridan avtomatik to'ldirish uchun.
+  paragraphLabels?: string[];
 }
 
-export default function QuestionGroupBlock({ group, answers, onAnswerChange }: QuestionGroupBlockProps) {
+export default function QuestionGroupBlock({ group, answers, onAnswerChange, paragraphLabels }: QuestionGroupBlockProps) {
   const numbers = group.questions.map((q) => q.number);
   const rangeLabel =
     numbers.length <= 1 ? `Question ${numbers[0]}` : `Questions ${Math.min(...numbers)}–${Math.max(...numbers)}`;
@@ -57,7 +60,7 @@ export default function QuestionGroupBlock({ group, answers, onAnswerChange }: Q
   } else if (isMatchingHeadings) {
     body = <MatchingHeadings group={group} answers={answers} onAnswerChange={onAnswerChange} />;
   } else if (isMatchingBank) {
-    body = <MatchingBank group={group} answers={answers} onAnswerChange={onAnswerChange} />;
+    body = <MatchingBank group={group} answers={answers} onAnswerChange={onAnswerChange} paragraphLabels={paragraphLabels} />;
   } else if (isImageHotspot) {
     body = <ImageHotspotLabel group={group} answers={answers} onAnswerChange={onAnswerChange} />;
   } else {

@@ -1,5 +1,6 @@
 'use client';
 import type { QuestionTypeProps } from '../QuestionRenderer';
+import FlagToggle from '../FlagToggle';
 
 // TZ-vocably-v2.md §6.4 — "true_false_notgiven: Radio guruh, gorizontal:
 // TRUE / FALSE / NOT GIVEN" va "yes_no_notgiven: xuddi shunday: YES / NO /
@@ -10,9 +11,12 @@ function ThreeWayChoice({ question, value, onChange, options }: QuestionTypeProp
   return (
     <fieldset data-question-number={question.number} className="text-sm" style={{ color: 'var(--exam-text)' }}>
       <legend className="mb-2 text-left">
-        <sup className="text-[11px] font-bold mr-1.5" style={{ color: 'var(--exam-muted)' }}>
+        <sup className="text-[11px] font-bold mr-1" style={{ color: 'var(--exam-muted)' }}>
           {question.number}
         </sup>
+        <span className="inline-flex align-middle mr-1.5">
+          <FlagToggle questionNumber={question.number} />
+        </span>
         {/* eslint-disable-next-line react/no-danger */}
         <span dangerouslySetInnerHTML={{ __html: question.promptHtml || '' }} />
       </legend>

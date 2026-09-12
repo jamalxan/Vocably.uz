@@ -32,6 +32,32 @@ ${inner}
 </svg>`;
 }
 
+// VOCABLY-TZ.md §2.3 auditi — Y o'qi ILGARI xom `maxVal`ning 0/50/100%
+// nuqtalarida turardi (masalan "0% / 48% / 96%" kabi g'alati qadamlar),
+// haqiqiy IELTS grafiklarida esa doim 0-20-40-60-80-100 kabi "chiroyli"
+// qadamlar bo'ladi. `niceAxisMax` — klassik "nice numbers" algoritmi: berilgan
+// qiymatdan katta yoki teng, 1/2/5×10^n ko'rinishidagi eng kichik sonni topadi
+// (masalan 87 → 100, 34 → 40, 6 → 10) — shundan keyin 0/20/40/60/80/100%
+// nuqtalari HAM doim butun son bo'ladi.
+function niceAxisMax(rawMax) {
+  if (rawMax <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(rawMax));
+  const normalized = rawMax / magnitude; // 1..10 oralig'ida
+  const niceNormalized = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return niceNormalized * magnitude;
+}
+
+const Y_TICK_FRACTIONS = [0, 0.2, 0.4, 0.6, 0.8, 1];
+
+function renderYAxisTicks({ niceMax, unit, chartH }) {
+  return Y_TICK_FRACTIONS.map((f) => {
+    const val = Math.round(niceMax * f);
+    const y = PADDING.top + chartH - chartH * f;
+    return `<line x1="${PADDING.left}" y1="${y}" x2="${PADDING.left + WIDTH - PADDING.left - PADDING.right}" y2="${y}" stroke="#e5e5e5" />
+<text x="${PADDING.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#555">${val}${unit ? unit : ''}</text>`;
+  }).join('');
+}
+
 function renderTitle(title, unit) {
   const label = unit ? `${title} (${unit})` : title;
   return `<text x="${WIDTH / 2}" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#1a1a1a">${escapeXml(label)}</text>`;
@@ -54,20 +80,15 @@ function renderLegend(series) {
 function renderBarChart({ title, unit, categories, series }) {
   const chartH = HEIGHT - PADDING.top - PADDING.bottom;
   const chartW = WIDTH - PADDING.left - PADDING.right;
-  const maxVal = Math.max(1, ...series.flatMap((s) => s.data));
+  const rawMax = Math.max(1, ...series.flatMap((s) => s.data));
+  const niceMax = niceAxisMax(rawMax);
   const groupW = chartW / categories.length;
   const barW = Math.min(36, (groupW * 0.7) / series.length);
 
   const axis = `<line x1="${PADDING.left}" y1="${PADDING.top}" x2="${PADDING.left}" y2="${PADDING.top + chartH}" stroke="#666" />
 <line x1="${PADDING.left}" y1="${PADDING.top + chartH}" x2="${PADDING.left + chartW}" y2="${PADDING.top + chartH}" stroke="#666" />`;
 
-  // Y o'qi belgilari (0, yarmi, maksimum) — gridline bilan.
-  const yTicks = [0, 0.5, 1].map((f) => {
-    const val = Math.round(maxVal * f);
-    const y = PADDING.top + chartH - chartH * f;
-    return `<line x1="${PADDING.left}" y1="${y}" x2="${PADDING.left + chartW}" y2="${y}" stroke="#e5e5e5" />
-<text x="${PADDING.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#555">${val}${unit ? unit : ''}</text>`;
-  });
+  const yTicks = [renderYAxisTicks({ niceMax, unit, chartH })];
 
   const bars = categories
     .map((cat, ci) => {
@@ -75,7 +96,7 @@ function renderBarChart({ title, unit, categories, series }) {
       const barsForGroup = series
         .map((s, si) => {
           const val = s.data[ci] || 0;
-          const h = (val / maxVal) * chartH;
+          const h = (val / niceMax) * chartH;
           const x = groupX + si * barW;
           const y = PADDING.top + chartH - h;
           return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW - 2).toFixed(1)}" height="${h.toFixed(1)}" fill="${GRAYS[si % GRAYS.length]}" />`;
@@ -92,18 +113,15 @@ function renderBarChart({ title, unit, categories, series }) {
 function renderLineChart({ title, unit, categories, series }) {
   const chartH = HEIGHT - PADDING.top - PADDING.bottom;
   const chartW = WIDTH - PADDING.left - PADDING.right;
-  const maxVal = Math.max(1, ...series.flatMap((s) => s.data));
+  const rawMax = Math.max(1, ...series.flatMap((s) => s.data));
+  const niceMax = niceAxisMax(rawMax);
+  const maxVal = niceMax;
   const stepX = categories.length > 1 ? chartW / (categories.length - 1) : chartW;
 
   const axis = `<line x1="${PADDING.left}" y1="${PADDING.top}" x2="${PADDING.left}" y2="${PADDING.top + chartH}" stroke="#666" />
 <line x1="${PADDING.left}" y1="${PADDING.top + chartH}" x2="${PADDING.left + chartW}" y2="${PADDING.top + chartH}" stroke="#666" />`;
 
-  const yTicks = [0, 0.5, 1].map((f) => {
-    const val = Math.round(maxVal * f);
-    const y = PADDING.top + chartH - chartH * f;
-    return `<line x1="${PADDING.left}" y1="${y}" x2="${PADDING.left + chartW}" y2="${y}" stroke="#e5e5e5" />
-<text x="${PADDING.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#555">${val}${unit ? unit : ''}</text>`;
-  });
+  const yTicks = [renderYAxisTicks({ niceMax, unit, chartH })];
 
   const xLabels = categories
     .map((cat, i) => `<text x="${PADDING.left + i * stepX}" y="${PADDING.top + chartH + 16}" text-anchor="middle" font-size="10" fill="#333">${escapeXml(cat)}</text>`)

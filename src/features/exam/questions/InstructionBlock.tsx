@@ -16,12 +16,12 @@ export default function InstructionBlock({ rangeLabel, instructionHtml }: Instru
       className="mb-4 px-4 py-3.5"
       style={{ background: 'var(--exam-instruction)', borderLeft: '3px solid var(--exam-accent)' }}
     >
-      <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--exam-text)' }}>
+      <p className="text-[0.94em] font-bold mb-1.5" style={{ color: 'var(--exam-text)' }}>
         {rangeLabel}
       </p>
       {/* eslint-disable-next-line react/no-danger */}
       <div
-        className="text-[15px] leading-[1.55] [&_strong]:font-bold [&_em]:italic"
+        className="text-[0.94em] leading-[1.55] [&_strong]:font-bold [&_em]:italic"
         style={{ color: 'var(--exam-text)' }}
         dangerouslySetInnerHTML={{ __html: instructionHtml }}
       />

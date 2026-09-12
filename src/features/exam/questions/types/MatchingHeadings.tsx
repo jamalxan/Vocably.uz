@@ -1,5 +1,6 @@
 'use client';
 import type { AnswerValue, SanitizedQuestionGroup } from '@/lib/exam/types';
+import FlagToggle from '../FlagToggle';
 
 // TZ-vocably-v2.md §6.4 — "Har savol yonida <select> (rim raqamlari i–x).
 // Yuqorida sarlavhalar ro'yxati sticky blokda." Sarlavhalar ro'yxati BUTUN
@@ -42,6 +43,7 @@ export default function MatchingHeadings({ group, answers, onAnswerChange }: Mat
               <sup className="text-[11px] font-bold flex-shrink-0" style={{ color: 'var(--exam-muted)' }}>
                 {q.number}
               </sup>
+              <FlagToggle questionNumber={q.number} />
               <span className="flex-1 min-w-0">
                 {/* eslint-disable-next-line react/no-danger */}
                 <span dangerouslySetInnerHTML={{ __html: q.promptHtml || '' }} />

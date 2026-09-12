@@ -188,7 +188,13 @@ export default function ReadingSection({
         right={
           <div>
             {activePassage.questionGroups.map((g) => (
-              <QuestionGroupBlock key={g.id} group={g} answers={answers} onAnswerChange={(qNum, value) => setAnswer(qNum, value)} />
+              <QuestionGroupBlock
+                key={g.id}
+                group={g}
+                answers={answers}
+                onAnswerChange={(qNum, value) => setAnswer(qNum, value)}
+                paragraphLabels={activePassage.paragraphs.map((p) => p.label).filter((l): l is string => !!l)}
+              />
             ))}
           </div>
         }

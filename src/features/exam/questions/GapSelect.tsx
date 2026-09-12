@@ -1,5 +1,6 @@
 'use client';
 import type { BankItem } from '@/lib/exam/types';
+import FlagToggle from './FlagToggle';
 
 // TZ-vocably-v2.md §6.4 — `summary_completion_bank` ("bo'sh joy, variantlar
 // bankidan") va §7.6 map/diagram hotspot'lari (bank mavjud bo'lganda) uchun —
@@ -21,6 +22,7 @@ export default function GapSelect({ questionNumber, value, onChange, bank, class
       <sup className="text-[10px]" style={{ color: 'var(--exam-muted)' }}>
         {questionNumber}
       </sup>
+      <FlagToggle questionNumber={questionNumber} />
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}

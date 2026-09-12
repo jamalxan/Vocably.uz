@@ -1,5 +1,6 @@
 'use client';
 import type { WordLimit } from '@/lib/exam/types';
+import FlagToggle from './FlagToggle';
 
 // TZ-vocably-v2.md §6.5 — inline gap-fill input. Ko'p so'z limiti (`wordLimit`)
 // ko'rsatilgan bo'lsa haqiqiy vaqtda "Ko'pi bilan N ta so'z" ogohlantiradi —
@@ -27,6 +28,7 @@ export default function GapInput({ questionNumber, value, onChange, wordLimit, c
         <sup className="text-[10px]" style={{ color: 'var(--exam-muted)' }}>
           {questionNumber}
         </sup>
+        <FlagToggle questionNumber={questionNumber} />
         <input
           type="text"
           value={value || ''}
