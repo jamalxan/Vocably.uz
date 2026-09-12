@@ -627,6 +627,30 @@ const ExamTestSchema = new mongoose.Schema({
   isPublished: { type: Boolean, default: false },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now },
+
+  // TZ-vocably-v2.md (AI Content Ingestion Agent) §6.6 — kitobdan avtomatik
+  // yaratilgan testlar uchun. Qo'lda (JSON/DSL) yaratilgan testlarda `source`
+  // `null` bo'lib qoladi — ikkalasi ham xuddi shu `ExamTest` hujjati, faqat
+  // kelib chiqishi farqlanadi. Barchasi ixtiyoriy/default'li — mavjud 4 ta
+  // qo'lda yaratilgan test bu maydonlarsiz ham to'g'ri ishlayveradi.
+  source: {
+    bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', default: null },
+    bookTitle: { type: String, default: '' },
+    testIndex: { type: Number, default: null },
+  },
+  availability: {
+    practiceReading: { type: Boolean, default: true },
+    practiceListening: { type: Boolean, default: true },
+    practiceWriting: { type: Boolean, default: true },
+    practiceSpeaking: { type: Boolean, default: true },
+    fullMock: { type: Boolean, default: true },
+  },
+  qa: {
+    score: { type: Number, default: null },
+    blockers: { type: Number, default: 0 },
+    warnings: { type: Number, default: 0 },
+    validatedAt: { type: Date, default: null },
+  },
 });
 
 export const ExamTest = mongoose.models.ExamTest || mongoose.model('ExamTest', ExamTestSchema);
@@ -737,3 +761,214 @@ XpEventSchema.index({ userId: 1, createdAt: -1 });
 XpEventSchema.index({ createdAt: -1 }); // haftalik reyting — barcha userlar bo'yicha
 
 export const XpEvent = mongoose.models.XpEvent || mongoose.model('XpEvent', XpEventSchema);
+
+// ============================================================================
+// TZ-vocably-v2.md (AI Content Ingestion Agent, 2026-09-12) §6 — "admin kitob
+// (PDF), audio va rasm yuklaydi — tizim qolganini o'zi qiladi." M1 bosqichi:
+// R2 yuklash + kolleksiyalar + kitob CRUD/UI (TZ §19/§21). Bosqichlab ishlov
+// berish (BullMQ worker, Lightsail'da) va AI parse (OpenRouter router) —
+// alohida infratuzilma (Redis, Docker worker, Cloudflare R2 hisobi,
+// OpenRouter API kaliti) talab qiladi va BU SESSIYADA yo'q (tarmoqsiz
+// sandbox) — shuning uchun M1'dan faqat kredensialsiz qurilishi VA
+// tekshirilishi mumkin bo'lgan qism qurilgan: kolleksiyalar, R2 klienti,
+// kitob CRUD API'lari, yuklash sehrgari UI. `ingest_jobs` hujjati worker
+// ULANMAGANI uchun ATAYLAB "queued" holatida qotib qoladi — bu yolg'on
+// "succeeded" ko'rsatishdan ko'ra to'g'riroq (worker ulanganda shu yerdan
+// davom etadi, kod o'zgarishi shart emas).
+// ============================================================================
+
+// §6.1 — bitta yuklangan kitob (PDF + unga tegishli audio fayllar manbasi).
+const ContentBookSchema = new mongoose.Schema({
+  title: { type: String, required: true, trim: true },
+  publisher: { type: String, default: '' },
+  series: { type: String, default: '' },
+  volume: { type: Number, default: null },
+  module: { type: String, enum: ['academic', 'general', 'both'], default: 'academic' },
+  language: { type: String, default: 'en' },
+
+  // §16 — huquqiy himoya: bu ikki maydon majburiy, API darajasida
+  // `licence:'third_party_copyright'` + `publishScope:'public'` bloklanadi
+  // (src/app/api/admin/books/route.js).
+  licence: {
+    type: String,
+    enum: ['own', 'licensed', 'public_domain', 'third_party_copyright'],
+    required: true,
+  },
+  licenceNote: { type: String, default: '' },
+  publishScope: { type: String, enum: ['private', 'internal', 'public'], default: 'private' },
+
+  source: {
+    pdfAssetId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentAsset', default: null },
+    pageCount: { type: Number, default: null },
+    hasTextLayer: { type: Boolean, default: null },
+    sha256: { type: String, default: null },
+  },
+
+  status: {
+    type: String,
+    enum: ['uploaded', 'processing', 'needs_review', 'ready', 'published', 'failed'],
+    default: 'uploaded',
+  },
+  progress: {
+    stage: { type: String, default: '' },
+    percent: { type: Number, default: 0 },
+    message: { type: String, default: '' },
+  },
+
+  detected: {
+    tests: { type: mongoose.Schema.Types.Mixed, default: [] },
+    answerKeyPages: { type: [Number], default: [] },
+    audioscriptPages: { type: [Number], default: [] },
+    generatedTestIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest' }],
+  },
+
+  stats: {
+    totalCostUsd: { type: Number, default: 0 },
+    totalTokens: { type: Number, default: 0 },
+    durationSec: { type: Number, default: 0 },
+  },
+
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+ContentBookSchema.index({ status: 1, createdAt: -1 });
+
+export const ContentBook = mongoose.models.ContentBook || mongoose.model('ContentBook', ContentBookSchema);
+
+// §6.2 — R2'ga yuklangan/generatsiya qilingan har bir fayl (PDF, audio,
+// rasm, sahifa render'i) uchun bitta hujjat — real bayt saqlanadi R2'da,
+// bu yerda faqat metama'lumot + `storage.key`.
+const ContentAssetSchema = new mongoose.Schema({
+  bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', default: null },
+  kind: { type: String, enum: ['pdf', 'audio', 'image', 'page_render'], required: true },
+  storage: {
+    bucket: { type: String, required: true },
+    key: { type: String, required: true },
+    bytes: { type: Number, required: true },
+    contentType: { type: String, required: true },
+    sha256: { type: String, default: null },
+  },
+  audio: {
+    durationMs: { type: Number, default: null },
+    sampleRate: { type: Number, default: null },
+    channels: { type: Number, default: null },
+    bitrateKbps: { type: Number, default: null },
+    transcript: { type: mongoose.Schema.Types.Mixed, default: null },
+    parentAssetId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentAsset', default: null },
+    cutFrom: { startMs: Number, endMs: Number },
+  },
+  image: {
+    width: { type: Number, default: null },
+    height: { type: Number, default: null },
+    pageNumber: { type: Number, default: null },
+    bbox: { type: [Number], default: undefined },
+  },
+  usage: {
+    testId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest', default: null },
+    sectionKey: { type: String, default: null },
+    partIndex: { type: Number, default: null },
+    questionGroupId: { type: String, default: null },
+  },
+  createdAt: { type: Date, default: Date.now },
+});
+ContentAssetSchema.index({ bookId: 1, kind: 1 });
+
+export const ContentAsset = mongoose.models.ContentAsset || mongoose.model('ContentAsset', ContentAssetSchema);
+
+// §6.3 — pipeline'ning har bosqichi uchun bitta job hujjati (BullMQ worker
+// ULANGANDA shu yerdan navbatni to'ldiradi/o'qiydi — hozircha faqat "queued"
+// holatida yozib qo'yiladi, TZ §21 M1 qabul mezoniga mos: "job navbatga
+// tushadi", worker ulanmagani hujjatning o'zida ko'rinadi).
+const IngestJobSchema = new mongoose.Schema({
+  bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', required: true },
+  stage: {
+    type: String,
+    enum: [
+      'extract', 'segment', 'split_sections', 'parse_reading', 'parse_listening',
+      'parse_writing', 'parse_speaking', 'parse_answerkey', 'extract_images',
+      'process_audio', 'assemble', 'validate', 'qa',
+    ],
+    required: true,
+  },
+  status: { type: String, enum: ['queued', 'running', 'succeeded', 'failed', 'cancelled'], default: 'queued' },
+  attempt: { type: Number, default: 0 },
+  input: { type: mongoose.Schema.Types.Mixed, default: {} },
+  output: { type: mongoose.Schema.Types.Mixed, default: {} },
+  error: {
+    message: { type: String, default: '' },
+    stack: { type: String, default: '' },
+    retryable: { type: Boolean, default: true },
+  },
+  metrics: {
+    startedAt: { type: Date, default: null },
+    finishedAt: { type: Date, default: null },
+    costUsd: { type: Number, default: 0 },
+    tokensIn: { type: Number, default: 0 },
+    tokensOut: { type: Number, default: 0 },
+  },
+  idempotencyKey: { type: String, required: true, unique: true },
+  createdAt: { type: Date, default: Date.now },
+});
+IngestJobSchema.index({ bookId: 1, stage: 1 });
+IngestJobSchema.index({ status: 1, createdAt: 1 });
+
+export const IngestJob = mongoose.models.IngestJob || mongoose.model('IngestJob', IngestJobSchema);
+
+// §6.4 — har AI chaqiruvi uchun audit yozuvi (worker/ai/router.ts ULANGANDA
+// to'ldiriladi — TZ §5.1 "har chaqiruvni ai_calls'ga yozish"). Hozircha
+// bo'sh turadi, lekin admin panel xarajat ekrani (§11.5) shu kolleksiyaga
+// so'rov yuborishga tayyor bo'lishi uchun oldindan qo'yilgan.
+const AiCallSchema = new mongoose.Schema({
+  jobId: { type: mongoose.Schema.Types.ObjectId, ref: 'IngestJob', default: null },
+  bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', default: null },
+  taskKey: { type: String, required: true },
+  model: { type: String, required: true },
+  promptVersion: { type: String, default: '' },
+  tokensIn: { type: Number, default: 0 },
+  tokensOut: { type: Number, default: 0 },
+  costUsd: { type: Number, default: 0 },
+  latencyMs: { type: Number, default: 0 },
+  ok: { type: Boolean, default: true },
+  validationErrors: { type: [String], default: [] },
+  inputHash: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now },
+});
+AiCallSchema.index({ bookId: 1, createdAt: -1 });
+AiCallSchema.index({ taskKey: 1, createdAt: -1 });
+
+export const AiCall = mongoose.models.AiCall || mongoose.model('AiCall', AiCallSchema);
+
+// §6.5 — tekshiruv navbati (§11.3): AI ishonchi past yoki validatsiya
+// xatosi bo'lgan savol guruhlari shu yerga tushadi, admin ko'rib chiqadi.
+const ReviewItemSchema = new mongoose.Schema({
+  bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', required: true },
+  testId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest', default: null },
+  target: {
+    sectionKey: { type: String, enum: ['listening', 'reading', 'writing', 'speaking'], required: true },
+    partIndex: { type: Number, default: null },
+    groupId: { type: String, default: null },
+    questionNumber: { type: Number, default: null },
+  },
+  reason: {
+    type: String,
+    enum: ['low_confidence', 'validation_failed', 'qa_disagreement', 'missing_answer', 'image_unmatched', 'word_limit_violation'],
+    required: true,
+  },
+  severity: { type: String, enum: ['blocker', 'warning'], required: true },
+  confidence: { type: Number, default: null },
+  evidence: {
+    pageNumber: { type: Number, default: null },
+    pageImageUrl: { type: String, default: '' },
+    bbox: { type: [Number], default: undefined },
+    rawText: { type: String, default: '' },
+  },
+  proposed: { type: mongoose.Schema.Types.Mixed, default: null },
+  status: { type: String, enum: ['open', 'fixed', 'accepted', 'rejected'], default: 'open' },
+  fixedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  fixedAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+ReviewItemSchema.index({ bookId: 1, status: 1, severity: 1 });
+
+export const ReviewItem = mongoose.models.ReviewItem || mongoose.model('ReviewItem', ReviewItemSchema);
