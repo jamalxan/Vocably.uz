@@ -26,7 +26,7 @@ export default function GapSelect({ questionNumber, value, onChange, bank, class
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        aria-label={`Savol ${questionNumber} javobi`}
+        aria-label={`Question ${questionNumber} answer`}
         data-answered={value ? 'true' : 'false'}
         className="inline-block outline-none bg-transparent text-sm"
         style={{ border: 'none', borderBottom: `1.5px solid var(--exam-input-border)`, font: 'inherit', padding: '2px 4px', color: 'var(--exam-text)' }}

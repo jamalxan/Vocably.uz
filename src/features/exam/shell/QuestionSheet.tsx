@@ -37,19 +37,19 @@ export default function QuestionSheet({ groups, answers, flagged, currentQuestio
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Savollar ro'yxati"
+        aria-label="Question list"
         onClick={(e) => e.stopPropagation()}
         className="w-full max-h-[70vh] overflow-y-auto rounded-t-2xl"
         style={{ background: 'var(--exam-bg)', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}
       >
         <div className="flex items-center justify-between px-4 pt-4 pb-2 sticky top-0" style={{ background: 'var(--exam-bg)' }}>
           <p className="text-sm font-bold" style={{ color: 'var(--exam-text)' }}>
-            Savollar
+            Questions
           </p>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Yopish"
+            aria-label="Close"
             className="w-11 h-11 -mr-2 flex items-center justify-center"
             style={{ color: 'var(--exam-muted)' }}
           >
@@ -75,7 +75,7 @@ export default function QuestionSheet({ groups, answers, flagged, currentQuestio
                       onGoTo(qNum);
                       onClose();
                     }}
-                    aria-label={`Savol ${qNum}${answered ? ', javob berilgan' : ''}${isFlagged ? ', belgilangan' : ''}${isCurrent ? ', joriy' : ''}`}
+                    aria-label={`Question ${qNum}${answered ? ', answered' : ''}${isFlagged ? ', flagged' : ''}${isCurrent ? ', current' : ''}`}
                     aria-current={isCurrent ? 'true' : undefined}
                     className="relative flex items-center justify-center rounded-lg text-sm font-semibold border"
                     style={{

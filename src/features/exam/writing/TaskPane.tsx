@@ -33,7 +33,7 @@ export default function TaskPane({ task }: TaskPaneProps) {
         Write at least {task.minWords} words.
       </p>
       <p className="text-xs mt-1" style={{ color: 'var(--exam-muted)' }}>
-        Tavsiya etilgan vaqt: {task.recommendedMin} daqiqa.
+        Recommended time: {task.recommendedMin} minutes.
       </p>
     </div>
   );

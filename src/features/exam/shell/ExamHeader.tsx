@@ -62,15 +62,15 @@ export default function ExamHeader({
               value={volume}
               onChange={(e) => onVolumeChange?.(Number(e.target.value))}
               className="w-20 accent-[var(--exam-accent)]"
-              aria-label="Ovoz balandligi"
+              aria-label="Volume"
             />
           </div>
         )}
         <button
           type="button"
           onClick={onOpenSettings}
-          aria-label="Sozlamalar"
-          title="Sozlamalar"
+          aria-label="Settings"
+          title="Settings"
           className="flex items-center justify-center rounded-lg hover:bg-black/5"
           style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
         >
@@ -79,8 +79,8 @@ export default function ExamHeader({
         <button
           type="button"
           onClick={onOpenHelp}
-          aria-label="Yordam"
-          title="Yordam"
+          aria-label="Help"
+          title="Help"
           className="flex items-center justify-center rounded-lg hover:bg-black/5"
           style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
         >
@@ -89,8 +89,8 @@ export default function ExamHeader({
         <button
           type="button"
           onClick={onToggleTimerHidden}
-          aria-label={timerHidden ? 'Taymerni ko’rsatish' : 'Taymerni yashirish'}
-          title={timerHidden ? "Taymerni ko'rsatish" : 'Taymerni yashirish'}
+          aria-label={timerHidden ? 'Show timer' : 'Hide timer'}
+          title={timerHidden ? 'Show timer' : 'Hide timer'}
           className="flex items-center justify-center rounded-lg hover:bg-black/5"
           style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
         >

@@ -19,13 +19,13 @@ export default function EditorToolbar({ onCut, onCopy, onPaste }: EditorToolbarP
   return (
     <div className="flex items-center gap-1.5 px-3 py-1.5 border-b" style={{ borderColor: 'var(--exam-chrome-border)' }}>
       <button type="button" onClick={onCut} className={btnClass} style={style}>
-        <Scissors size={13} /> Kesish
+        <Scissors size={13} /> Cut
       </button>
       <button type="button" onClick={onCopy} className={btnClass} style={style}>
-        <Copy size={13} /> Nusxa
+        <Copy size={13} /> Copy
       </button>
       <button type="button" onClick={onPaste} className={btnClass} style={style}>
-        <Clipboard size={13} /> Qo&apos;yish
+        <Clipboard size={13} /> Paste
       </button>
     </div>
   );

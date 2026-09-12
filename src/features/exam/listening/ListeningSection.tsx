@@ -225,7 +225,7 @@ export default function ListeningSection({
       onVolumeChange={setVolume}
       footerGroups={footerGroups}
       onSubmit={isFinal ? doSubmit : undefined}
-      submitLabel={submitting ? 'Yuborilmoqda…' : 'Yakunlash'}
+      submitLabel={submitting ? 'Submitting…' : 'Finish'}
     >
       <AudioEngine
         src={currentPart.audioUrl}

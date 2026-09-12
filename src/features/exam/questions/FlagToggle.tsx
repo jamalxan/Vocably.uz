@@ -21,8 +21,8 @@ export default function FlagToggle({ questionNumber }: FlagToggleProps) {
       type="button"
       onClick={() => toggleFlag(questionNumber)}
       aria-pressed={isFlagged}
-      aria-label={isFlagged ? `Savol ${questionNumber} belgisini olib tashlash` : `Savol ${questionNumber}ni keyinroq qaytish uchun belgilash`}
-      title="Review uchun belgilash"
+      aria-label={isFlagged ? `Remove flag from question ${questionNumber}` : `Flag question ${questionNumber} for review`}
+      title="Flag for review"
       className="inline-flex items-center justify-center flex-shrink-0"
       style={{ width: 16, height: 16, color: isFlagged ? 'var(--exam-flag)' : 'var(--exam-muted)' }}
     >

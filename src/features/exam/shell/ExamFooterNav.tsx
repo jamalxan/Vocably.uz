@@ -46,7 +46,7 @@ export default function ExamFooterNav({
   currentQuestion,
   onGoTo,
   onSubmit,
-  submitLabel = 'Yakunlash',
+  submitLabel = 'Finish',
 }: ExamFooterNavProps) {
   const allQuestions = groups.flatMap((g) => g.questions);
   const currentIdx = allQuestions.indexOf(currentQuestion);
@@ -72,13 +72,13 @@ export default function ExamFooterNav({
           minHeight: 64,
           paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
         }}
-        aria-label="Savollar paneli"
+        aria-label="Question navigation"
       >
         <button
           type="button"
           onClick={goPrev}
           disabled={!canPrev}
-          aria-label="Oldingi savol"
+          aria-label="Previous question"
           className="flex items-center justify-center rounded-lg border disabled:opacity-30"
           style={{ width: 44, height: 44, borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
         >
@@ -92,14 +92,14 @@ export default function ExamFooterNav({
           style={{ height: 44, borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
         >
           <Grid3x3 size={15} />
-          Savol {currentQuestion} / {allQuestions.length}
+          Question {currentQuestion} / {allQuestions.length}
         </button>
 
         <button
           type="button"
           onClick={goNext}
           disabled={!canNext}
-          aria-label="Keyingi savol"
+          aria-label="Next question"
           className="flex items-center justify-center rounded-lg border disabled:opacity-30"
           style={{ width: 44, height: 44, borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
         >
@@ -135,7 +135,7 @@ export default function ExamFooterNav({
     <nav
       className="flex-shrink-0 min-h-16 sm:min-h-16 border-t flex items-center gap-3 px-3 sm:px-4 py-2"
       style={{ background: 'var(--exam-chrome)', borderColor: 'var(--exam-chrome-border)' }}
-      aria-label="Savollar paneli"
+      aria-label="Question navigation"
     >
       {/* VOCABLY-TZ.md §1.3 auditi — `overflow-x-auto` ILGARI butun <nav>da
           edi, shuning uchun o'ng zonadagi (Oldingi/Keyingi/Yakunlash)
@@ -158,7 +158,7 @@ export default function ExamFooterNav({
                   key={qNum}
                   type="button"
                   onClick={() => onGoTo(qNum)}
-                  aria-label={`Savol ${qNum}${answered ? ", javob berilgan" : ''}${isFlagged ? ', belgilangan' : ''}${isCurrent ? ', joriy' : ''}`}
+                  aria-label={`Question ${qNum}${answered ? ', answered' : ''}${isFlagged ? ', flagged' : ''}${isCurrent ? ', current' : ''}`}
                   aria-current={isCurrent ? 'true' : undefined}
                   className="relative w-7 h-7 flex-shrink-0 flex items-center justify-center rounded text-[12px] font-semibold border transition-colors"
                   style={{
@@ -193,7 +193,7 @@ export default function ExamFooterNav({
           type="button"
           onClick={goPrev}
           disabled={!canPrev}
-          aria-label="Oldingi savol"
+          aria-label="Previous question"
           className="w-9 h-9 flex items-center justify-center rounded-lg border disabled:opacity-30"
           style={{ borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
         >
@@ -203,7 +203,7 @@ export default function ExamFooterNav({
           type="button"
           onClick={goNext}
           disabled={!canNext}
-          aria-label="Keyingi savol"
+          aria-label="Next question"
           className="w-9 h-9 flex items-center justify-center rounded-lg border disabled:opacity-30"
           style={{ borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
         >

@@ -50,7 +50,7 @@ export default function MatchingBank({ group, answers, onAnswerChange, paragraph
             <select
               value={typeof value === 'string' ? value : ''}
               onChange={(e) => onAnswerChange(q.number, e.target.value || null)}
-              aria-label={`Savol ${q.number} javobi`}
+              aria-label={`Question ${q.number} answer`}
               className="flex-shrink-0 max-w-[45%] rounded px-2 py-1 text-sm bg-transparent"
               style={{ border: '1px solid var(--exam-input-border)', color: 'var(--exam-text)' }}
             >

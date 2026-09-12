@@ -28,14 +28,14 @@ export default function ConfirmFinishModal({ unansweredNumbers, onCancel, onConf
     <div data-exam="" className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4">
       <div
         role="alertdialog"
-        aria-label="Yakunlashni tasdiqlash"
+        aria-label="Confirm finish"
         className="w-full max-w-sm rounded-lg border shadow-lg p-5 space-y-4 text-center"
         style={{ background: 'var(--exam-bg)', borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
       >
-        <p className="text-base font-bold">Yakunlashni xohlaysizmi?</p>
+        <p className="text-base font-bold">Finish the exam?</p>
         {unansweredNumbers.length > 0 && (
           <p className="text-sm" style={{ color: 'var(--exam-danger)' }}>
-            Javobsiz savollar: {unansweredNumbers.length} ta ({unansweredNumbers.join(', ')})
+            Unanswered questions: {unansweredNumbers.length} ({unansweredNumbers.join(', ')})
           </p>
         )}
         <div className="flex gap-2 pt-1">
@@ -45,7 +45,7 @@ export default function ConfirmFinishModal({ unansweredNumbers, onCancel, onConf
             className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold"
             style={{ border: '1px solid var(--exam-chrome-border)', color: 'var(--exam-text)' }}
           >
-            Orqaga qaytish
+            Go back
           </button>
           <button
             type="button"
@@ -53,7 +53,7 @@ export default function ConfirmFinishModal({ unansweredNumbers, onCancel, onConf
             className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
             style={{ background: 'var(--exam-accent)' }}
           >
-            Ha, yakunlash
+            Yes, finish
           </button>
         </div>
       </div>

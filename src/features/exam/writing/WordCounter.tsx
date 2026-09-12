@@ -17,8 +17,8 @@ export default function WordCounter({ wordCount, minWords }: WordCounterProps) {
       style={{ color: met ? 'var(--exam-accent)' : 'var(--exam-muted)' }}
     >
       {met && <Check size={13} />}
-      So&apos;zlar: {wordCount}
-      {!met && <span className="text-xs">(kamida {minWords})</span>}
+      Words: {wordCount}
+      {!met && <span className="text-xs">(at least {minWords})</span>}
     </span>
   );
 }

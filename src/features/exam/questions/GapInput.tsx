@@ -33,7 +33,7 @@ export default function GapInput({ questionNumber, value, onChange, wordLimit, c
           type="text"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          aria-label={`Savol ${questionNumber} javobi`}
+          aria-label={`Question ${questionNumber} answer`}
           data-answered={value ? 'true' : 'false'}
           autoComplete="off"
           autoCapitalize="off"

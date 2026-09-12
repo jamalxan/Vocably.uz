@@ -169,7 +169,7 @@ export default function ReadingSection({
       candidateId={candidateId}
       footerGroups={footerGroups}
       onSubmit={isFinal ? doSubmit : undefined}
-      submitLabel={submitting ? 'Yuborilmoqda…' : 'Yakunlash'}
+      submitLabel={submitting ? 'Submitting…' : 'Finish'}
     >
       <SplitPane
         ratio={splitRatio}

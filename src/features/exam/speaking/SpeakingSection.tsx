@@ -180,7 +180,7 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
             type="button"
             onClick={() => setStepIndex((i) => Math.max(0, i - 1))}
             disabled={stepIndex === 0}
-            aria-label="Oldingi savol"
+            aria-label="Previous question"
             className="w-9 h-9 flex items-center justify-center rounded-lg disabled:opacity-30 focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
             style={{ border: '1px solid var(--exam-chrome-border)', color: 'var(--exam-text)' }}
           >
@@ -193,7 +193,7 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
             type="button"
             onClick={() => setStepIndex((i) => Math.min(steps.length - 1, i + 1))}
             disabled={stepIndex === steps.length - 1}
-            aria-label="Keyingi savol"
+            aria-label="Next question"
             className="w-9 h-9 flex items-center justify-center rounded-lg disabled:opacity-30 focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
             style={{ border: '1px solid var(--exam-chrome-border)', color: 'var(--exam-text)' }}
           >
@@ -206,7 +206,7 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
             className="h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
             style={{ background: 'var(--exam-accent)' }}
           >
-            {submitting ? 'Yuborilmoqda…' : 'Yakunlash'}
+            {submitting ? 'Submitting…' : 'Finish'}
           </button>
         </div>
       }

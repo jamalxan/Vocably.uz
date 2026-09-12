@@ -188,7 +188,7 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
             className="h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold"
             style={{ background: 'var(--exam-accent)' }}
           >
-            {submitting ? 'Yuborilmoqda…' : 'Yakunlash'}
+            {submitting ? 'Submitting…' : 'Finish'}
           </button>
         </div>
       }
