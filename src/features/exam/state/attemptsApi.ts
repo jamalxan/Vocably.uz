@@ -91,14 +91,37 @@ export async function createAttempt(testId: string, section: string): Promise<{ 
  * BARCHASI, bitta urinishda, ketma-ket. `testId` IXTIYORIY — berilmasa,
  * server tomoni tasodifiy nashr etilgan testni tanlaydi (foydalanuvchi
  * so'rovi: "mockda tanlash bo'lmasin, to'liq avto" — /api/exam/attempts
- * route.js'dagi izohga q.). */
-export async function createMockAttempt(testId?: string): Promise<{ attemptId: string }> {
+ * route.js'dagi izohga q.). `abandonExisting` — faqat `testId` bo'lmaganda
+ * ma'noga ega: `true` bo'lsa, mavjud tugallanmagan mock bekor qilinib,
+ * chinakam yangi tasodifiy test bilan boshlanadi (VOCABLY-TZ.md "Attempt
+ * boshqaruvi" auditi — aks holda "Imtihonni boshlash" jimgina eski
+ * urinishni davom ettirar edi, go'yo Listening o'tkazib yuborilgandek). */
+export async function createMockAttempt(testId?: string, abandonExisting?: boolean): Promise<{ attemptId: string }> {
+  const body: Record<string, unknown> = { mode: 'mock' };
+  if (testId) body.testId = testId;
+  if (abandonExisting) body.abandonExisting = true;
   const res = await authedFetch('/api/exam/attempts', {
     method: 'POST',
-    body: JSON.stringify(testId ? { testId, mode: 'mock' } : { mode: 'mock' }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Urinish yaratib bo'lmadi");
   return res.json();
+}
+
+export interface ActiveMockInfo {
+  attemptId: string;
+  currentSection: string;
+}
+
+/** Mock intro ekrani "Imtihonni boshlash"dan OLDIN shu yerdan so'raydi —
+ * tugallanmagan mock bo'lsa, "Davom ettirish" deb ko'rsatish va "Yangi
+ * boshlash" tanlovini berish uchun (faqat tasodifiy mock oqimida, `testId`
+ * berilmaganda ishlatiladi). */
+export async function fetchActiveMock(): Promise<ActiveMockInfo | null> {
+  const res = await authedFetch('/api/exam/attempts/active-mock');
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.active;
 }
 
 /** TZ §4/§9.1 — joriy bo'lim (masalan Listening'ning audiosi+final-check'i)

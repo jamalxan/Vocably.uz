@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { useExamStore } from '../state/examStore';
-import { fetchTestPreview, createMockAttempt, fetchAttempt, type TestPreview } from '../state/attemptsApi';
+import { fetchTestPreview, createMockAttempt, fetchAttempt, fetchActiveMock, type ActiveMockInfo, type TestPreview } from '../state/attemptsApi';
 import IntroScreen from './IntroScreen';
 import ConfirmFinishModal from './ConfirmFinishModal';
 import MockResult from './MockResult';
@@ -60,6 +60,12 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
   const [testPreview, setTestPreview] = useState<TestPreview | null>(null);
   const [previewError, setPreviewError] = useState('');
   const [starting, setStarting] = useState(false);
+  // VOCABLY-TZ.md §1.1/"Attempt boshqaruvi" auditi — `undefined` = hali
+  // so'ralmoqda (intro ekrani shu payt "Yuklanmoqda..." ko'rsatadi, aks holda
+  // tugma bir lahza noto'g'ri matn bilan chaqib keyin o'zgarib qolardi),
+  // `null` = tugallanmagan mock yo'q (yoki `testId` aniq berilgan — bu holda
+  // resume tanlovi kerak emas, /attempts o'zi mavjud urinishni qaytaradi).
+  const [activeMock, setActiveMock] = useState<ActiveMockInfo | null | undefined>(testId ? null : undefined);
 
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [sections, setSections] = useState<ExamSectionKey[]>([]);
@@ -83,11 +89,22 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
     };
   }, [testId]);
 
-  const handleStart = async () => {
+  useEffect(() => {
+    if (testId) return;
+    let cancelled = false;
+    fetchActiveMock()
+      .then((info) => !cancelled && setActiveMock(info))
+      .catch(() => !cancelled && setActiveMock(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [testId]);
+
+  const handleStart = async (fresh?: boolean) => {
     setStarting(true);
     setPreviewError('');
     try {
-      const { attemptId: newAttemptId } = await createMockAttempt(testId);
+      const { attemptId: newAttemptId } = await createMockAttempt(testId, fresh);
       const data = await fetchAttempt(newAttemptId);
       setAttemptId(newAttemptId);
       setSections(data.attempt.sections as ExamSectionKey[]);
@@ -147,10 +164,10 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
   }
 
   if (phase === 'intro') {
-    if (!testPreview) {
+    if (!testPreview || activeMock === undefined) {
       return <div className="p-8 text-center text-sm text-muted">Yuklanmoqda...</div>;
     }
-    return <IntroScreen test={testPreview} onStart={handleStart} starting={starting} />;
+    return <IntroScreen test={testPreview} onStart={handleStart} starting={starting} resumeInfo={activeMock} />;
   }
 
   if (phase === 'transition' && transitionInfo) {

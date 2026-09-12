@@ -62,7 +62,7 @@ export async function POST(req) {
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
-    const { testId, mode = 'section', section } = await req.json().catch(() => ({}));
+    const { testId, mode = 'section', section, abandonExisting } = await req.json().catch(() => ({}));
     if (!['section', 'mock'].includes(mode)) {
       return NextResponse.json({ error: "mode faqat 'section' yoki 'mock' bo'lishi mumkin" }, { status: 400 });
     }
@@ -75,7 +75,21 @@ export async function POST(req) {
     if (mode === 'mock') {
       if (!testId) {
         const existing = await ExamAttempt.findOne({ userId, mode: 'mock', status: 'in_progress' });
-        if (existing) return NextResponse.json({ attemptId: String(existing._id) });
+        // VOCABLY-TZ.md §1.1/"Attempt boshqaruvi" auditi — ILGARI mavjud
+        // in-progress mock HAR DOIM jimgina davom ettirilardi: foydalanuvchi
+        // "Imtihonni boshlash"ni bosganda kutilmaganda to'g'ridan-to'g'ri
+        // Reading'ga (yoki qaysi bo'limda to'xtagan bo'lsa) tushib qolardi,
+        // xuddi Listening "o'tkazib yuborilgandek" ko'rinardi — aslida
+        // to'g'ri davom etayotgan edi, faqat buni frontend oldindan
+        // bilmasdi. Endi frontend `GET /attempts/active-mock` orqali oldindan
+        // so'raydi va foydalanuvchiga aniq tanlov beradi: "Davom ettirish"
+        // (shu yo'l, o'zgarishsiz) yoki `abandonExisting:true` bilan eskisini
+        // bekor qilib, chinakam yangi tasodifiy test bilan boshlash.
+        if (existing && !abandonExisting) return NextResponse.json({ attemptId: String(existing._id) });
+        if (existing && abandonExisting) {
+          existing.status = 'abandoned';
+          await existing.save();
+        }
 
         const [randomTest] = await ExamTest.aggregate([
           {

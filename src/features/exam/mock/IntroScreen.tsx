@@ -1,6 +1,6 @@
 'use client';
-import { Headphones, BookOpen, PenLine, AlertTriangle, Loader2, Monitor } from 'lucide-react';
-import type { TestPreview } from '../state/attemptsApi';
+import { Headphones, BookOpen, PenLine, AlertTriangle, Loader2, Monitor, RotateCcw } from 'lucide-react';
+import type { ActiveMockInfo, TestPreview } from '../state/attemptsApi';
 import { useIsMobile } from '../state/useIsMobile';
 
 // TZ-vocably-v2.md §9.2 — Mock intro ekrani. "Bu yerda premium dizayn qiling"
@@ -8,15 +8,21 @@ import { useIsMobile } from '../state/useIsMobile';
 // bo'yicha ilovaning o'z (Deep Merlot) uslubida, `[data-exam]` ICHIDA EMAS.
 export interface IntroScreenProps {
   test: TestPreview;
-  onStart: () => void;
+  onStart: (fresh?: boolean) => void;
   starting?: boolean;
+  // VOCABLY-TZ.md §1.1/"Attempt boshqaruvi" auditi — bo'lmasa yo'q (yangi mock),
+  // bor bo'lsa foydalanuvchiga aniq tanlov ko'rsatiladi: "Davom ettirish" yoki
+  // eskisini bekor qilib chinakam yangi tasodifiy test bilan boshlash.
+  resumeInfo?: ActiveMockInfo | null;
 }
+
+const SECTION_LABEL_UZ: Record<string, string> = { listening: 'Listening', reading: 'Reading', writing: 'Writing' };
 
 function formatMinutes(sec: number): number {
   return Math.round(sec / 60);
 }
 
-export default function IntroScreen({ test, onStart, starting }: IntroScreenProps) {
+export default function IntroScreen({ test, onStart, starting, resumeInfo }: IntroScreenProps) {
   const { listening, reading, writing } = test.sections;
   const totalSec = (listening?.durationSec || 0) + (reading?.durationSec || 0) + (writing?.durationSec || 0);
   const totalMin = formatMinutes(totalSec);
@@ -87,14 +93,31 @@ export default function IntroScreen({ test, onStart, starting }: IntroScreenProp
           ))}
         </div>
 
+        {resumeInfo && (
+          <div className="mt-5 flex items-start gap-2 px-3 py-2.5 bg-warning-soft rounded-lg text-xs text-ink">
+            <RotateCcw size={15} className="flex-shrink-0 mt-0.5 text-warning" />
+            Sizda tugallanmagan mock urinish bor ({SECTION_LABEL_UZ[resumeInfo.currentSection] || resumeInfo.currentSection} bo'limida). Davom ettirasizmi yoki yangi tasodifiy test bilan qaytadan boshlaysizmi?
+          </div>
+        )}
+
         <button
-          onClick={onStart}
+          onClick={() => onStart(false)}
           disabled={starting}
           className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent hover:bg-accent-hover disabled:opacity-60 text-white font-semibold rounded-lg text-sm transition-colors"
         >
           {starting && <Loader2 size={16} className="animate-spin" />}
-          Imtihonni boshlash
+          {resumeInfo ? 'Davom ettirish' : 'Imtihonni boshlash'}
         </button>
+
+        {resumeInfo && (
+          <button
+            onClick={() => onStart(true)}
+            disabled={starting}
+            className="mt-2.5 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-transparent hover:bg-bg disabled:opacity-60 text-muted hover:text-ink font-medium rounded-lg text-xs transition-colors border border-border"
+          >
+            Yangi tasodifiy mock boshlash
+          </button>
+        )}
       </div>
     </div>
   );
