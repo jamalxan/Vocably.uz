@@ -197,4 +197,46 @@ describe('validateTest', () => {
     ];
     expect(validateTest(test).some((i) => i.message.includes("2 martadan ko'p emas"))).toBe(true);
   });
+
+  it('warns when questions are missing explanationHtml', () => {
+    // baseTest()'s default questions have no explanationHtml.
+    expect(validateTest(baseTest()).some((i) => i.message.includes('explanationHtml'))).toBe(true);
+  });
+
+  it('does not warn about explanations when every question has one', () => {
+    const test = baseTest();
+    test.sections!.reading!.passages[0].questionGroups = [
+      {
+        ...tfngGroup([1, 2, 3]),
+        questions: [1, 2, 3].map((n) => ({ number: n, promptHtml: `Statement ${n}`, answer: { accepted: ['TRUE'] }, explanationHtml: 'Because...' })),
+      },
+    ];
+    expect(validateTest(test).some((i) => i.message.includes('explanationHtml'))).toBe(false);
+  });
+
+  it('warns when a listening part has no audioscript/transcript', () => {
+    const test = baseTest({
+      sections: {
+        listening: {
+          durationSec: 1800,
+          checkTimeSec: 120,
+          parts: [{ order: 1, audioUrl: 'a.mp3', durationSec: 300, questionGroups: [tfngGroup([1])] }],
+        },
+      },
+    });
+    expect(validateTest(test).some((i) => i.message.includes('Audioscript'))).toBe(true);
+  });
+
+  it('warns when reading difficulty does not increase from the first to the last passage', () => {
+    const easySentence = 'The cat sat. It was a big cat. The cat ran fast.';
+    const test = baseTest();
+    test.sections!.reading!.passages = [
+      { order: 1, title: 'P1', paragraphs: [{ label: 'A', html: `<p>${easySentence}</p>` }], questionGroups: [tfngGroup([1])] },
+      { order: 2, title: 'P2', paragraphs: [{ label: 'A', html: `<p>${easySentence}</p>` }], questionGroups: [tfngGroup([2])] },
+      // Passage 3 is a simple repeat of the easiest possible sentence — its
+      // difficulty is certainly not HIGHER than passage 1's, so this should warn.
+      { order: 3, title: 'P3', paragraphs: [{ label: 'A', html: `<p>${easySentence}</p>` }], questionGroups: [tfngGroup([3])] },
+    ];
+    expect(validateTest(test).some((i) => i.message.includes('Flesch-Kincaid'))).toBe(true);
+  });
 });

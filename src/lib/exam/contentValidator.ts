@@ -125,6 +125,72 @@ function checkQuestionTypeRepetition(allGroups: QuestionGroup[], issues: Validat
   }
 }
 
+// §13 W06 — "explanation yoki evidence yo'q (tahlil sifati pasayadi)." Har
+// savol uchun alohida emas (40 ta alohida ogohlantirish shovqin bo'lardi) —
+// bitta konteyner (passage/part) ichida NECHTA savolda yo'qligini bitta
+// xabarda jamlab beradi.
+function checkExplanations(sectionLabel: string, groups: QuestionGroup[], issues: ValidationIssue[]) {
+  const missing = allQuestions(groups).filter(({ question }) => !question.explanationHtml?.trim());
+  if (missing.length > 0) {
+    issues.push({
+      severity: 'warning',
+      path: sectionLabel,
+      message: `${missing.length} ta savolda 'explanationHtml' (tahlil) yo'q — natija ekranida tushuntirish ko'rsatilmaydi`,
+    });
+  }
+}
+
+// §13 W08 — "Audioscript yo'q."
+function checkAudioscript(parts: { order: number; transcript?: string }[], issues: ValidationIssue[]) {
+  for (const part of parts) {
+    if (!part.transcript?.trim()) {
+      issues.push({ severity: 'warning', path: `listening.part[${part.order}]`, message: "Audioscript ('transcript') yo'q" });
+    }
+  }
+}
+
+// §13 W07 — "Passage qiyinligi (Flesch-Kincaid) P1→P3 oshmagan." Bo'g'in
+// sanash sof matndan taxminiy hisoblanadi (unli-guruh usuli — inglizcha
+// imlodan aniq bo'g'in sonini olish printsipial jihatdan noaniq, lekin
+// ogohlantirish darajasida yetarli). Flesch-Kincaid Grade Level formulasi:
+// yuqoriroq qiymat = qiyinroq matn.
+function countSyllables(word: string): number {
+  const clean = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (!clean) return 0;
+  const groups = clean.match(/[aeiouy]+/g);
+  let count = groups ? groups.length : 1;
+  if (clean.endsWith('e') && !clean.endsWith('le') && count > 1) count -= 1;
+  return Math.max(1, count);
+}
+
+function fleschKincaidGrade(text: string): number | null {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+  if (words.length === 0 || sentences.length === 0) return null;
+  const syllables = words.reduce((sum, w) => sum + countSyllables(w), 0);
+  return 0.39 * (words.length / sentences.length) + 11.8 * (syllables / words.length) - 15.59;
+}
+
+function checkReadingDifficultyProgression(
+  passages: { order: number; paragraphs?: { html: string }[] }[],
+  issues: ValidationIssue[]
+) {
+  const sorted = [...passages].sort((a, b) => a.order - b.order);
+  if (sorted.length < 2) return;
+  const grades = sorted.map((p) => fleschKincaidGrade((p.paragraphs || []).map((par) => stripHtml(par.html)).join(' ')));
+  const first = grades[0];
+  const last = grades[grades.length - 1];
+  // "P1->P3 OSHMAGAN" — teng qolishi ham "oshmagan" hisoblanadi, shuning
+  // uchun `<=`, faqat qat'iy kamayish emas.
+  if (first != null && last != null && last <= first) {
+    issues.push({
+      severity: 'warning',
+      path: 'reading',
+      message: `Qiyinlik P${sorted[0].order}dan P${sorted[sorted.length - 1].order}ga oshmagan (Flesch-Kincaid ${first.toFixed(1)} -> ${last.toFixed(1)})`,
+    });
+  }
+}
+
 export function validateTest(test: Partial<Test>): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
@@ -152,6 +218,7 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
         checkPassageLength(p, issues);
       }
       checkQuestions(`reading.passage[${p.order}]`, p.questionGroups || [], issues);
+      checkExplanations(`reading.passage[${p.order}]`, p.questionGroups || [], issues);
     }
     // Raqamlash butun BO'LIM bo'yicha uzluksiz (haqiqiy IELTS'da 2-passage 14dan
     // boshlanadi, 1dan emas) — shuning uchun barcha passage'lar birlashtirilgan
@@ -161,6 +228,7 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
       passages.flatMap((p) => (p.questionGroups || []).flatMap((g) => g.questions)),
       issues
     );
+    checkReadingDifficultyProgression(passages, issues);
   }
 
   if (sections.listening) {
@@ -169,6 +237,7 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
     for (const part of parts) {
       if (!part.audioUrl?.trim()) issues.push({ severity: 'error', path: `listening.part[${part.order}]`, message: "audioUrl bo'sh — audio fayl yuklanmagan" });
       checkQuestions(`listening.part[${part.order}]`, part.questionGroups || [], issues);
+      checkExplanations(`listening.part[${part.order}]`, part.questionGroups || [], issues);
     }
     checkContiguousNumbering(
       'listening',
@@ -176,6 +245,7 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
       issues
     );
     checkListeningDuration(parts, issues);
+    checkAudioscript(parts, issues);
   }
 
   if (sections.writing) {
