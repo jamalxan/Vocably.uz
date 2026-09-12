@@ -49,13 +49,33 @@ function niceAxisMax(rawMax) {
 
 const Y_TICK_FRACTIONS = [0, 0.2, 0.4, 0.6, 0.8, 1];
 
-function renderYAxisTicks({ niceMax, unit, chartH }) {
+function renderYAxisTicks({ niceMax, unit, chartH, padding }) {
   return Y_TICK_FRACTIONS.map((f) => {
     const val = Math.round(niceMax * f);
-    const y = PADDING.top + chartH - chartH * f;
-    return `<line x1="${PADDING.left}" y1="${y}" x2="${PADDING.left + WIDTH - PADDING.left - PADDING.right}" y2="${y}" stroke="#e5e5e5" />
-<text x="${PADDING.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#555">${val}${unit ? unit : ''}</text>`;
+    const y = padding.top + chartH - chartH * f;
+    return `<line x1="${padding.left}" y1="${y}" x2="${padding.left + WIDTH - padding.left - padding.right}" y2="${y}" stroke="#e5e5e5" />
+<text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#555">${val}${unit ? unit : ''}</text>`;
   }).join('');
+}
+
+// VOCABLY-TZ.md §2.3 auditi — "O'q nomlari (Age group, % of people) yo'q."
+// Haqiqiy IELTS Task 1 grafiklarida ikkala o'q ham nomlanadi. `xAxisLabel`/
+// `yAxisLabel` ixtiyoriy (eski chart ma'lumotlarida yo'q bo'lishi mumkin) —
+// berilsa X o'qi labellaridan pastroqda markazda, Y o'qi esa -90° aylantirib
+// chap chetda chiziladi.
+function renderAxisLabels({ xAxisLabel, yAxisLabel, chartH, chartW, padding }) {
+  let out = '';
+  if (xAxisLabel) {
+    const x = padding.left + chartW / 2;
+    const y = padding.top + chartH + 34;
+    out += `<text x="${x}" y="${y}" text-anchor="middle" font-size="10" font-weight="bold" fill="#444">${escapeXml(xAxisLabel)}</text>`;
+  }
+  if (yAxisLabel) {
+    const x = 14;
+    const y = padding.top + chartH / 2;
+    out += `<text x="${x}" y="${y}" text-anchor="middle" font-size="10" font-weight="bold" fill="#444" transform="rotate(-90 ${x} ${y})">${escapeXml(yAxisLabel)}</text>`;
+  }
+  return out;
 }
 
 function renderTitle(title, unit) {
@@ -77,69 +97,73 @@ function renderLegend(series) {
     .join('\n');
 }
 
-function renderBarChart({ title, unit, categories, series }) {
-  const chartH = HEIGHT - PADDING.top - PADDING.bottom;
-  const chartW = WIDTH - PADDING.left - PADDING.right;
+function renderBarChart({ title, unit, categories, series, xAxisLabel, yAxisLabel }) {
+  const padding = { ...PADDING, bottom: PADDING.bottom + (xAxisLabel ? 14 : 0), left: PADDING.left + (yAxisLabel ? 12 : 0) };
+  const chartH = HEIGHT - padding.top - padding.bottom;
+  const chartW = WIDTH - padding.left - padding.right;
   const rawMax = Math.max(1, ...series.flatMap((s) => s.data));
   const niceMax = niceAxisMax(rawMax);
   const groupW = chartW / categories.length;
   const barW = Math.min(36, (groupW * 0.7) / series.length);
 
-  const axis = `<line x1="${PADDING.left}" y1="${PADDING.top}" x2="${PADDING.left}" y2="${PADDING.top + chartH}" stroke="#666" />
-<line x1="${PADDING.left}" y1="${PADDING.top + chartH}" x2="${PADDING.left + chartW}" y2="${PADDING.top + chartH}" stroke="#666" />`;
+  const axis = `<line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + chartH}" stroke="#666" />
+<line x1="${padding.left}" y1="${padding.top + chartH}" x2="${padding.left + chartW}" y2="${padding.top + chartH}" stroke="#666" />`;
 
-  const yTicks = [renderYAxisTicks({ niceMax, unit, chartH })];
+  const yTicks = [renderYAxisTicks({ niceMax, unit, chartH, padding })];
 
   const bars = categories
     .map((cat, ci) => {
-      const groupX = PADDING.left + ci * groupW + (groupW - barW * series.length) / 2;
+      const groupX = padding.left + ci * groupW + (groupW - barW * series.length) / 2;
       const barsForGroup = series
         .map((s, si) => {
           const val = s.data[ci] || 0;
           const h = (val / niceMax) * chartH;
           const x = groupX + si * barW;
-          const y = PADDING.top + chartH - h;
+          const y = padding.top + chartH - h;
           return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW - 2).toFixed(1)}" height="${h.toFixed(1)}" fill="${GRAYS[si % GRAYS.length]}" />`;
         })
         .join('');
-      const labelX = PADDING.left + ci * groupW + groupW / 2;
-      return `${barsForGroup}<text x="${labelX}" y="${PADDING.top + chartH + 16}" text-anchor="middle" font-size="10" fill="#333">${escapeXml(cat)}</text>`;
+      const labelX = padding.left + ci * groupW + groupW / 2;
+      return `${barsForGroup}<text x="${labelX}" y="${padding.top + chartH + 16}" text-anchor="middle" font-size="10" fill="#333">${escapeXml(cat)}</text>`;
     })
     .join('\n');
 
-  return svgWrap(`${renderTitle(title, unit)}${yTicks.join('')}${axis}${bars}${renderLegend(series)}`);
+  const axisLabels = renderAxisLabels({ xAxisLabel, yAxisLabel, chartH, chartW, padding });
+
+  return svgWrap(`${renderTitle(title, unit)}${yTicks.join('')}${axis}${bars}${axisLabels}${renderLegend(series)}`);
 }
 
-function renderLineChart({ title, unit, categories, series }) {
-  const chartH = HEIGHT - PADDING.top - PADDING.bottom;
-  const chartW = WIDTH - PADDING.left - PADDING.right;
+function renderLineChart({ title, unit, categories, series, xAxisLabel, yAxisLabel }) {
+  const padding = { ...PADDING, bottom: PADDING.bottom + (xAxisLabel ? 14 : 0), left: PADDING.left + (yAxisLabel ? 12 : 0) };
+  const chartH = HEIGHT - padding.top - padding.bottom;
+  const chartW = WIDTH - padding.left - padding.right;
   const rawMax = Math.max(1, ...series.flatMap((s) => s.data));
   const niceMax = niceAxisMax(rawMax);
   const maxVal = niceMax;
   const stepX = categories.length > 1 ? chartW / (categories.length - 1) : chartW;
 
-  const axis = `<line x1="${PADDING.left}" y1="${PADDING.top}" x2="${PADDING.left}" y2="${PADDING.top + chartH}" stroke="#666" />
-<line x1="${PADDING.left}" y1="${PADDING.top + chartH}" x2="${PADDING.left + chartW}" y2="${PADDING.top + chartH}" stroke="#666" />`;
+  const axis = `<line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + chartH}" stroke="#666" />
+<line x1="${padding.left}" y1="${padding.top + chartH}" x2="${padding.left + chartW}" y2="${padding.top + chartH}" stroke="#666" />`;
 
-  const yTicks = [renderYAxisTicks({ niceMax, unit, chartH })];
+  const yTicks = [renderYAxisTicks({ niceMax, unit, chartH, padding })];
 
   const xLabels = categories
-    .map((cat, i) => `<text x="${PADDING.left + i * stepX}" y="${PADDING.top + chartH + 16}" text-anchor="middle" font-size="10" fill="#333">${escapeXml(cat)}</text>`)
+    .map((cat, i) => `<text x="${padding.left + i * stepX}" y="${padding.top + chartH + 16}" text-anchor="middle" font-size="10" fill="#333">${escapeXml(cat)}</text>`)
     .join('');
 
   const lines = series
     .map((s, si) => {
       const points = s.data
         .map((val, i) => {
-          const x = PADDING.left + i * stepX;
-          const y = PADDING.top + chartH - (val / maxVal) * chartH;
+          const x = padding.left + i * stepX;
+          const y = padding.top + chartH - (val / maxVal) * chartH;
           return `${x.toFixed(1)},${y.toFixed(1)}`;
         })
         .join(' ');
       const dots = s.data
         .map((val, i) => {
-          const x = PADDING.left + i * stepX;
-          const y = PADDING.top + chartH - (val / maxVal) * chartH;
+          const x = padding.left + i * stepX;
+          const y = padding.top + chartH - (val / maxVal) * chartH;
           return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${GRAYS[si % GRAYS.length]}" />`;
         })
         .join('');
@@ -147,7 +171,9 @@ function renderLineChart({ title, unit, categories, series }) {
     })
     .join('\n');
 
-  return svgWrap(`${renderTitle(title, unit)}${yTicks.join('')}${axis}${xLabels}${lines}${renderLegend(series)}`);
+  const axisLabels = renderAxisLabels({ xAxisLabel, yAxisLabel, chartH, chartW, padding });
+
+  return svgWrap(`${renderTitle(title, unit)}${yTicks.join('')}${axis}${xLabels}${lines}${axisLabels}${renderLegend(series)}`);
 }
 
 function renderPieChart({ title, categories, series }) {

@@ -535,6 +535,8 @@ export default {
         title: 'Renewable energy as a share of total energy consumption, 2000-2020',
         unit: '%',
         categories: ['2000', '2005', '2010', '2015', '2020'],
+        xAxisLabel: 'Year',
+        yAxisLabel: 'Percentage (%)',
         series: [
           { name: 'Country A', data: [4, 9, 18, 29, 42] },
           { name: 'Country B', data: [8, 12, 17, 22, 27] },

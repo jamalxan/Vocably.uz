@@ -549,6 +549,8 @@ export default {
         title: 'Preferred mode of transport for commuting, by city',
         unit: '%',
         categories: ['City A', 'City B', 'City C', 'City D'],
+        xAxisLabel: 'City',
+        yAxisLabel: 'Percentage (%)',
         series: [
           { name: 'Car', data: [45, 60, 30, 20] },
           { name: 'Public transport', data: [40, 25, 50, 35] },

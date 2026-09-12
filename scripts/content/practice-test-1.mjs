@@ -460,6 +460,8 @@ export default {
         title: 'Daily internet use by age group, 2010 vs 2023',
         unit: '%',
         categories: ['18-29', '30-44', '45-59', '60+'],
+        xAxisLabel: 'Age group',
+        yAxisLabel: 'Percentage (%)',
         series: [
           { name: '2010', data: [58, 41, 22, 8] },
           { name: '2023', data: [96, 91, 78, 52] },
