@@ -65,6 +65,18 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
     setMenu(null);
   };
 
+  // VOCABLY-TZ.md §5 item 6 — "mouseup VA contextmenu (preventDefault)
+  // hodisalarida... popover chiqsin." O'ng-tugma ixtiyoriy qulaylik, lekin
+  // asosiy oqim — oddiy chap tugma bilan tanlab, qo'yib yuborish (Kindle/
+  // Google Docs uslubi): shunda foydalanuvchi o'ng-tugma menyusi qayerda
+  // ekanini bilishi shart emas. Mavjud `<mark>` ustida oddiy bosish (drag'siz)
+  // tanlovni yig'ib qo'yadi (`resolveSelection` `null` qaytaradi) — mark
+  // boshqaruvi hamon faqat o'ng-tugma yoki Enter (keyboard) orqali.
+  const handleMouseUp = (e: MouseEvent<HTMLElement>) => {
+    const resolved = resolveSelection(e.target as HTMLElement);
+    if (resolved) setMenu({ mode: 'select', x: e.clientX, y: e.clientY, ...resolved });
+  };
+
   // TZ §13 — "Butun imtihon sichqonchasiz o'tilishi kerak." O'ng-tugma —
   // sichqonchaga xos amal, shuning uchun `Alt+H` — mavjud tanlovni
   // (brauzerning o'z klaviatura-orqali-tanlash imkoniyati, masalan Firefox'ning
@@ -82,7 +94,7 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
   };
 
   return (
-    <article onContextMenu={handleContextMenu} onKeyDown={handleKeyDown}>
+    <article onContextMenu={handleContextMenu} onMouseUp={handleMouseUp} onKeyDown={handleKeyDown}>
       <div
         className="sticky -top-6 sm:-top-6 -mx-6 sm:-mx-7 px-6 sm:px-7 pt-6 pb-3 mb-4 z-10"
         style={{ background: 'var(--exam-bg)' }}
