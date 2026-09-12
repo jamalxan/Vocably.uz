@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library } from 'lucide-react';
+import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 
@@ -15,6 +15,7 @@ const NAV = [
   { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
   { href: '/admin/exam-tests', label: 'IELTS testlar', icon: BookOpen },
   { href: '/admin/content/books', label: 'Kontent studiyasi', icon: Library },
+  { href: '/admin/content/review', label: 'Tekshiruv navbati', icon: ClipboardCheck },
   { href: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
 ];
 
