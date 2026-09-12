@@ -1,5 +1,6 @@
 'use client';
-import { parseGapHtml } from '../parseGapHtml';
+import { useMemo } from 'react';
+import { parseGapTemplate, renderGapTemplate } from '../parseGapHtml';
 import type { AnswerValue, SanitizedQuestionGroup } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §3.5/§6.4/§7.5/§8.1 — summary_completion, summary_completion_bank,
@@ -19,9 +20,14 @@ export interface GroupGapFillProps {
 }
 
 export default function GroupGapFill({ group, answers, onAnswerChange }: GroupGapFillProps) {
+  // VOCABLY-TZ.md §3 — struktura (qaysi teg, qaysi joyda gap) faqat
+  // `stemHtml` o'zgarganda qayta hisoblanadi, har keystrokeda EMAS (parseGapHtml.tsx
+  // yuqoridagi izohiga q.) — guruhda 10+ gap bo'lganda (note/table completion)
+  // bittasiga yozish qolgan 9 tasini ham qayta-parse qilmasin uchun.
+  const template = useMemo(() => parseGapTemplate(group.stemHtml || ''), [group.stemHtml]);
   if (!group.stemHtml) return null;
 
-  const content = parseGapHtml(group.stemHtml, {
+  const content = renderGapTemplate(template, {
     answers,
     onChangeGap: (qNum, value) => onAnswerChange(qNum, value),
     defaultWordLimit: group.wordLimit,

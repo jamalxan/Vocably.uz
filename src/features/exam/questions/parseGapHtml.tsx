@@ -38,78 +38,117 @@ export interface GapFillContext {
   bank?: BankItem[];
 }
 
-function textNodeToReact(text: string, ctx: GapFillContext, keyPrefix: string): ReactNode {
+// VOCABLY-TZ.md §3 ("kuzatilgan, lekin tasdiqlanmagan" caret/qiymat aralashib
+// ketish bugi) — root cause tergovi: `GroupGapFill` bir stemHtml ichida
+// KO'P gap'ni bitta bloqda chiqaradi (masalan note_completion'da 10 ta),
+// va OLDIN butun DOM-parse (`DOMParser` + TreeWalker) har renderda — ya'ni
+// GURUHDAGI ISTALGAN gap'ga HAR BOSILGAN TUGMADA — qaytadan bajarilardi. Bu
+// static STRUKTURA (qaysi teglar, qaysi joyda gap bor)ni har keystrokeda
+// qayta hisoblardi, holbuki faqat gap QIYMATLARI o'zgaradi. Og'ir/sekin
+// qurilmada yoki tez yozganda bu React commit'ini kechiktirib, brauzerning
+// o'zi controlled input'ni vaqtincha "uncontrolled" holatda qoldirishiga
+// (bir necha xat-harakat DOM'da to'planib, keyin React eski `value`ni ustidan
+// yozib chiqishiga) imkon berishi mumkin edi.
+//
+// Yechim: struktura endi `parseGapTemplate` bilan BIR MARTA (faqat `stemHtml`
+// o'zgarsa) hisoblanadi va chaqiruvchida `useMemo`ga qo'yiladi (`GroupGapFill.tsx`).
+// Har render esa faqat YENGIL `renderGapTemplate`ni ishlatadi — DOMParser YO'Q,
+// faqat oldindan tayyor tuzilma bo'ylab yurish va joriy `answers`dan qiymat olish.
+export type GapTemplateNode =
+  | { kind: 'text'; text: string }
+  | { kind: 'br' }
+  | { kind: 'gap'; qNum: number }
+  | { kind: 'element'; tag: string; children: GapTemplateNode[] };
+
+function textNodeToTemplate(text: string): GapTemplateNode[] {
   GAP_PATTERN.lastIndex = 0;
-  if (!GAP_PATTERN.test(text)) return text;
+  if (!GAP_PATTERN.test(text)) return text ? [{ kind: 'text', text }] : [];
   GAP_PATTERN.lastIndex = 0;
 
-  const pieces: ReactNode[] = [];
+  const pieces: GapTemplateNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
-  let i = 0;
   while ((match = GAP_PATTERN.exec(text))) {
-    if (match.index > lastIndex) pieces.push(<Fragment key={`${keyPrefix}-t${i++}`}>{text.slice(lastIndex, match.index)}</Fragment>);
-    const qNum = Number(match[1]);
-    const rawValue = ctx.answers[`q${qNum}`];
-    const stringValue = typeof rawValue === 'string' ? rawValue : '';
-    pieces.push(
-      ctx.bank ? (
-        <GapSelect
-          key={`${keyPrefix}-gap-${qNum}`}
-          questionNumber={qNum}
-          value={stringValue}
-          onChange={(v) => ctx.onChangeGap(qNum, v)}
-          bank={ctx.bank}
-        />
-      ) : (
-        <GapInput
-          key={`${keyPrefix}-gap-${qNum}`}
-          questionNumber={qNum}
-          value={stringValue}
-          onChange={(v) => ctx.onChangeGap(qNum, v)}
-          wordLimit={ctx.wordLimitByQuestion?.[qNum] ?? ctx.defaultWordLimit}
-        />
-      )
-    );
+    if (match.index > lastIndex) pieces.push({ kind: 'text', text: text.slice(lastIndex, match.index) });
+    pieces.push({ kind: 'gap', qNum: Number(match[1]) });
     lastIndex = match.index + match[0].length;
   }
-  if (lastIndex < text.length) pieces.push(<Fragment key={`${keyPrefix}-t${i++}`}>{text.slice(lastIndex)}</Fragment>);
+  if (lastIndex < text.length) pieces.push({ kind: 'text', text: text.slice(lastIndex) });
   return pieces;
 }
 
-function domNodeToReact(node: ChildNode, ctx: GapFillContext, keyPrefix: string): ReactNode {
+function domNodeToTemplate(node: ChildNode): GapTemplateNode[] {
   if (node.nodeType === Node.TEXT_NODE) {
-    return textNodeToReact(node.textContent || '', ctx, keyPrefix);
+    return textNodeToTemplate(node.textContent || '');
   }
 
   if (node.nodeType === Node.ELEMENT_NODE) {
     const el = node as Element;
     const tag = el.tagName.toLowerCase();
 
-    if (DROP_WITH_CONTENT_TAGS.has(tag)) return null;
+    if (DROP_WITH_CONTENT_TAGS.has(tag)) return [];
 
-    const children = Array.from(el.childNodes).map((child, i) => domNodeToReact(child, ctx, `${keyPrefix}-${i}`));
+    const children = Array.from(el.childNodes).flatMap(domNodeToTemplate);
 
-    // §3.2 izohi: passage/instruction HTML'da "faqat p/em/strong/sup ruxsat" —
-    // ruxsat etilmagan teg kelsa (ehtiyot chorasi sifatida) tegning o'zini
-    // tashlab, faqat ICHIDAGI kontentni ko'rsatamiz (butunlay yo'qotib
-    // yubormaslik uchun).
-    if (!ALLOWED_TAGS.has(tag)) return <Fragment key={keyPrefix}>{children}</Fragment>;
-    if (tag === 'br') return <br key={keyPrefix} />;
+    // §3.2 izohi: "faqat p/em/strong/sup ruxsat" — ruxsat etilmagan teg kelsa
+    // (ehtiyot chorasi sifatida) tegning o'zini tashlab, faqat ICHIDAGI
+    // kontentni ko'rsatamiz (butunlay yo'qotib yubormaslik uchun).
+    if (!ALLOWED_TAGS.has(tag)) return children;
+    if (tag === 'br') return [{ kind: 'br' }];
 
-    const Tag = tag as keyof JSX.IntrinsicElements;
-    return <Tag key={keyPrefix}>{children}</Tag>;
+    return [{ kind: 'element', tag, children }];
   }
 
-  return null;
+  return [];
 }
 
 /** `html` — admin tomonidan yozilgan, `{{qN}}` gap-belgilari bo'lgan matn
- * (TZ §3.5 `stemHtml`/`promptHtml`). Faqat brauzerda ishlaydi (`DOMParser`). */
-export function parseGapHtml(html: string, ctx: GapFillContext): ReactNode {
-  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return null;
+ * (TZ §3.5 `stemHtml`/`promptHtml`). Faqat brauzerda ishlaydi (`DOMParser`).
+ * `answers`ga BOG'LIQ EMAS — shuning uchun chaqiruvchida `useMemo(() =>
+ * parseGapTemplate(html), [html])` bilan xavfsiz keshlanadi. */
+export function parseGapTemplate(html: string): GapTemplateNode[] {
+  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return [];
   const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
   const root = doc.body.firstElementChild;
-  if (!root) return null;
-  return Array.from(root.childNodes).map((child, i) => domNodeToReact(child, ctx, `n${i}`));
+  if (!root) return [];
+  return Array.from(root.childNodes).flatMap(domNodeToTemplate);
+}
+
+function renderTemplateNode(node: GapTemplateNode, ctx: GapFillContext, key: string): ReactNode {
+  if (node.kind === 'text') return node.text;
+  if (node.kind === 'br') return <br key={key} />;
+
+  if (node.kind === 'gap') {
+    const rawValue = ctx.answers[`q${node.qNum}`];
+    const stringValue = typeof rawValue === 'string' ? rawValue : '';
+    return ctx.bank ? (
+      <GapSelect key={key} questionNumber={node.qNum} value={stringValue} onChange={(v) => ctx.onChangeGap(node.qNum, v)} bank={ctx.bank} />
+    ) : (
+      <GapInput
+        key={key}
+        questionNumber={node.qNum}
+        value={stringValue}
+        onChange={(v) => ctx.onChangeGap(node.qNum, v)}
+        wordLimit={ctx.wordLimitByQuestion?.[node.qNum] ?? ctx.defaultWordLimit}
+      />
+    );
+  }
+
+  const Tag = node.tag as keyof JSX.IntrinsicElements;
+  return <Tag key={key}>{node.children.map((c, i) => renderTemplateNode(c, ctx, `${key}-${i}`))}</Tag>;
+}
+
+/** Oldindan `parseGapTemplate` bilan hisoblangan (va keshlangan) strukturani
+ * joriy `ctx.answers` bilan yengil qayta chizadi — DOMParser YO'Q. */
+export function renderGapTemplate(template: GapTemplateNode[], ctx: GapFillContext): ReactNode {
+  return template.map((n, i) => <Fragment key={`n${i}`}>{renderTemplateNode(n, ctx, `n${i}`)}</Fragment>);
+}
+
+/** Qulaylik uchun — struktura VA qiymatlarni BIRGALIKDA, bitta chaqiruvda
+ * hisoblaydi (keshlanmaydi). Kam gapli, tez-tez qayta chaqirilmaydigan joylar
+ * uchun (masalan `SentenceCompletion` — bitta savolga bitta gap) yetarli;
+ * ko'p gapli guruhlar (`GroupGapFill`) esa `parseGapTemplate`+`renderGapTemplate`
+ * juftligini `useMemo` bilan ishlatadi. */
+export function parseGapHtml(html: string, ctx: GapFillContext): ReactNode {
+  return renderGapTemplate(parseGapTemplate(html), ctx);
 }
