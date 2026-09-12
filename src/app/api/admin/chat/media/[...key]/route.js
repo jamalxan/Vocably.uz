@@ -20,8 +20,11 @@ export async function GET(req, { params }) {
 
     await writeAuditLog(req, admin._id, 'chat.media.view', 'Conversation', match[1], { key });
 
-    const url = await presignDownload(key);
-    return NextResponse.redirect(url);
+    // src/app/api/chat/media/[...key]/route.js'dagi izohga q. — endi URL
+    // to'g'ridan-to'g'ri src sifatida ishlatiladi (blob-download emas).
+    const mediaType = key.split('/')[2];
+    const url = await presignDownload(key, mediaType === 'file');
+    return NextResponse.json({ url });
   } catch (err) {
     return serverError(err, 'admin/chat/media');
   }

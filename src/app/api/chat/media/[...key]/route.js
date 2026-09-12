@@ -25,8 +25,24 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 403 });
     }
 
-    const url = await presignDownload(key);
-    return NextResponse.redirect(url);
+    // VOCABLY-TZ.md (chat audit) — ILGARI bu yerda `NextResponse.redirect(url)`
+    // qaytarilardi va klient (useAuthedMediaUrl) `fetch()...blob()` bilan BUTUN
+    // faylni xotiraga tortib, keyin `URL.createObjectURL` bilan ko'rsatardi.
+    // Bu ikkita muammo keltirib chiqargan edi: (1) video/rasm HECH NARSA
+    // ko'rsatmasdan, to'liq fayl yuklab bo'lgunga qadar kutardi (progressiv
+    // ko'rsatish yo'q, o'lchamli video/rasmlarda sezilarli sekinlik); (2)
+    // `<video>` HTTP Range so'rovlaridan (forward/backward "scrub" qilish
+    // uchun zarur) butunlay mahrum bo'lardi, chunki butun fayl allaqachon
+    // bitta bloknoyob "blob" sifatida xotirada edi. Endi presigned URL'ning
+    // O'ZI JSON sifatida qaytariladi — `<video src>=shu URL` to'g'ridan-to'g'ri
+    // MinIO/S3'dan progressiv oqim va Range so'rovlari bilan yuklaydi (auth
+    // headersiz, chunki presigned URL o'zida vaqtinchalik imzoni olib yuradi).
+    // "conversations/{id}/{type}/{uuid}.{ext}" — faqat 'file' turi majburiy
+    // yuklab olinadi (Content-Disposition: attachment); rasm/video/ovoz
+    // brauzerda to'g'ridan-to'g'ri ko'rsatiladi/ijro etiladi.
+    const mediaType = key.split('/')[2];
+    const url = await presignDownload(key, mediaType === 'file');
+    return NextResponse.json({ url });
   } catch (err) {
     return serverError(err, 'chat/media');
   }

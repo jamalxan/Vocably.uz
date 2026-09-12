@@ -48,7 +48,11 @@ export function validateUpload(type, mimeType, size) {
 // Kalit hech qachon foydalanuvchi kiritgan fayl nomidan yasalmaydi (path traversal /
 // taxmin qilinadigan nomlarning oldini olish uchun) — faqat random UUID + conversationId.
 export function buildObjectKey(conversationId, type, mimeType) {
-  const ext = (mimeType.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 8);
+  // `mimeType` recorder-produced fayllarda parametr olib yuradi (masalan
+  // "video/webm;codecs=vp8,opus") — avval `;` bo'yicha bo'lib faqat asosiy
+  // subtype'ni olamiz, aks holda kengaytma "webmcode" kabi kesilib qolardi.
+  const subtype = mimeType.split('/')[1]?.split(';')[0];
+  const ext = (subtype || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 8);
   return `conversations/${conversationId}/${type}/${crypto.randomUUID()}.${ext}`;
 }
 
@@ -57,9 +61,27 @@ export async function presignUpload(key, mimeType) {
   return getSignedUrl(getClient(), cmd, { expiresIn: 300 }); // 5 daqiqa
 }
 
-export async function presignDownload(key) {
-  const cmd = new GetObjectCommand({ Bucket: BUCKET(), Key: key });
-  return getSignedUrl(getClient(), cmd, { expiresIn: 300 });
+// VOCABLY-TZ.md (chat audit) — media endpointlar endi bu URL'ni to'g'ridan-to'g'ri
+// `<img>`/`<video>` src sifatida qaytaradi (blob-download emas — pastdagi
+// media route'lardagi izohga q.). `forceDownload` faqat 'file' turidagi
+// biriktirmalar uchun `true` — brauzer `<a download>` atributini faqat BIR
+// XIL manba (same-origin) uchun hurmat qiladi, S3/MinIO esa boshqa domen,
+// shuning uchun majburiy yuklab olish S3'ning o'ziga `Content-Disposition:
+// attachment` headerini so'rash orqali ta'minlanadi. Rasm/video/ovoz uchun
+// FALSE — brauzerda to'g'ridan-to'g'ri ko'rsatilishi/ijro etilishi kerak.
+//
+// `expiresIn` yuklashdagi (`presignUpload`, 5 daqiqa — qisqa, bir martalik
+// harakat) dan ATAYLAB uzoqroq: bu URL to'g'ridan-to'g'ri src sifatida
+// ishlatilgani uchun foydalanuvchi xabarni ochiq qoldirib uzoqroq ko'rishi/
+// tinglashi mumkin — 5 daqiqada muddati o'tib qolsa, video o'rtasida
+// "scrub" qilish (Range so'rovi) kutilmaganda 403 bilan buzilardi.
+export async function presignDownload(key, forceDownload = false) {
+  const cmd = new GetObjectCommand({
+    Bucket: BUCKET(),
+    Key: key,
+    ...(forceDownload ? { ResponseContentDisposition: 'attachment' } : {}),
+  });
+  return getSignedUrl(getClient(), cmd, { expiresIn: 3600 }); // 1 soat
 }
 
 export async function objectExists(key) {
