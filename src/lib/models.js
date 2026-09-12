@@ -972,3 +972,23 @@ const ReviewItemSchema = new mongoose.Schema({
 ReviewItemSchema.index({ bookId: 1, status: 1, severity: 1 });
 
 export const ReviewItem = mongoose.models.ReviewItem || mongoose.model('ReviewItem', ReviewItemSchema);
+
+// §5.1/§11.5 — "Hech bir bosqich modelga qattiq bog'lanmaydi... yaxshiroq
+// model chiqsa admin paneldagi bitta dropdown o'zgartiriladi, kod
+// tegilmaydi." Bitta hujjat = bitta `taskKey`. `src/lib/contentAgent/
+// aiRouter.js` chaqiruvdan OLDIN shu yerdan o'qiydi (DB'da yo'q taskKey
+// uchun modulning o'z ichki standart qiymatiga qaytadi — §5.2 dagi
+// boshlang'ich matritsa), shuning uchun bu kolleksiya bo'sh bo'lsa ham
+// router ishlayveradi.
+const AiTaskConfigSchema = new mongoose.Schema({
+  taskKey: { type: String, required: true, unique: true },
+  primary: { type: String, required: true },
+  fallback: { type: [String], default: [] },
+  temperature: { type: Number, default: 0.2 },
+  maxTokens: { type: Number, default: 8000 },
+  costCapUsd: { type: Number, default: 1 },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+export const AiTaskConfig = mongoose.models.AiTaskConfig || mongoose.model('AiTaskConfig', AiTaskConfigSchema);
