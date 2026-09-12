@@ -1,7 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-// TZ-vocably-v2.md §7.4/§7.5 — ikkala holat ham bir xil mexanizm:
+// TZ-vocably-v2.md §7.4/§7.5 + VOCABLY-TZ.md §2.1/item 10 — uchala holat ham
+// bir xil mexanizm:
+//   item 10: HAR part boshlanishidan OLDIN 30s "You will have 30 seconds to
+//            look at questions X-Y", keyin audio avtomatik boshlanadi.
 //   §7.4: part tugagach 30s "Javoblaringizni tekshiring — 0:28", keyin
 //         avtomatik keyingi partga o'tadi.
 //   §7.5: audio butunlay tugagach "Endi javoblaringizni 2 daqiqa tekshirish

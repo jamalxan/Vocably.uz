@@ -15,9 +15,10 @@ import type { AttemptResult, SanitizedTest } from '@/lib/exam/types';
 import type { QuestionGroupNav } from '../shell/ExamFooterNav';
 
 // TZ-vocably-v2.md §19 Faza 2 item 10 (3/3) — ListeningSection: VolumeCheck →
-// part 1 → (gapAfterSec bo'lsa PartGap) → part 2 → ... → oxirgi part tugagach
-// 2 daqiqalik PartGap (§7.5) → avtomatik submit. Split-pane YO'Q (§7.3: "faqat
-// savollar paneli, markazda, max-width: 860px").
+// (30s preview, VOCABLY-TZ.md item 10) → part 1 → (gapAfterSec bo'lsa PartGap)
+// → (30s preview) → part 2 → ... → oxirgi part tugagach 2 daqiqalik PartGap
+// (§7.5) → avtomatik submit. Split-pane YO'Q (§7.3: "faqat savollar paneli,
+// markazda, max-width: 860px").
 //
 // Diqqat — footer savol paneli BARCHA part'larni ko'rsatadi (ExamFooterNav,
 // Reading bilan bir xil), lekin markaziy kontent FAQAT joriy o'ynalayotgan
@@ -28,8 +29,21 @@ import type { QuestionGroupNav } from '../shell/ExamFooterNav';
 // unutilgani uchun emas.
 const HEARTBEAT_INTERVAL_MS = 15000;
 const FINAL_CHECK_SEC = 120; // §7.5 — "2 daqiqa tekshirish"
+// VOCABLY-TZ.md §2.1/§5 item 10 — "har Part oldidan 'You will have 30
+// seconds to look at questions X-Y'." Haqiqiy IELTS'da bu audio BOSHLANISHIDAN
+// OLDIN beriladi (§7.4'dagi `gapAfterSec` esa PART TUGAGANDAN keyingi "javobni
+// tekshirish" pauzasi — ikkalasi bir xil emas, ikkalasi ham kerak).
+const PREVIEW_SEC = 30;
 
-type Phase = 'loading' | 'volume-check' | 'playing' | 'part-gap' | 'final-check';
+type Phase = 'loading' | 'volume-check' | 'part-preview' | 'playing' | 'part-gap' | 'final-check';
+
+function questionRangeLabel(part: { questionGroups: { questions: { number: number }[] }[] }): string {
+  const numbers = part.questionGroups.flatMap((g) => g.questions.map((q) => q.number));
+  if (numbers.length === 0) return '';
+  const min = Math.min(...numbers);
+  const max = Math.max(...numbers);
+  return min === max ? `question ${min}` : `questions ${min}-${max}`;
+}
 
 export interface ListeningSectionProps {
   attemptId: string;
@@ -179,6 +193,10 @@ export default function ListeningSection({
     setPartIndex((i) => i + 1);
     positionRef.current = 0;
     setPosition(0);
+    setPhase('part-preview');
+  };
+
+  const handlePreviewComplete = () => {
     setAudioPlay(true);
     setPhase('playing');
   };
@@ -204,10 +222,7 @@ export default function ListeningSection({
         sampleAudioUrl={NEUTRAL_TEST_TONE_URL}
         volume={volume}
         onVolumeChange={setVolume}
-        onStart={() => {
-          setPhase('playing');
-          setAudioPlay(true);
-        }}
+        onStart={() => setPhase('part-preview')}
       />
     );
   }
@@ -241,7 +256,13 @@ export default function ListeningSection({
         onEnded={handlePartEnded}
       />
 
-      {phase === 'part-gap' && currentPart.gapAfterSec ? (
+      {phase === 'part-preview' ? (
+        <PartGap
+          durationSec={PREVIEW_SEC}
+          message={`You will have 30 seconds to look at ${questionRangeLabel(currentPart)}.`}
+          onComplete={handlePreviewComplete}
+        />
+      ) : phase === 'part-gap' && currentPart.gapAfterSec ? (
         <PartGap durationSec={currentPart.gapAfterSec} message="Javoblaringizni tekshiring" onComplete={handleGapComplete} />
       ) : phase === 'final-check' ? (
         <PartGap durationSec={FINAL_CHECK_SEC} message="Endi javoblaringizni tekshirish uchun vaqtingiz bor" onComplete={doSubmit} />
