@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, BookOpen, Trash2, Eye, EyeOff, BarChart3 } from 'lucide-react';
+import { Loader2, BookOpen, Trash2, Eye, EyeOff, BarChart3, Copy } from 'lucide-react';
 import NewTestForm from './NewTestForm';
 import TestStats from './TestStats';
 
@@ -65,6 +65,25 @@ export default function ExamTestsPanel({ token }) {
     }
   };
 
+  // TZ-vocably-v2.md §12 — "POST /api/admin/exam-tests/:id/duplicate."
+  // Nusxa har doim draft — admin uni asos qilib tez yangi variant yasashi
+  // uchun (masalan bitta savolni almashtirib, boshqa test sifatida nashr
+  // qilish).
+  const duplicate = async (test) => {
+    setBusyId(test.id);
+    try {
+      const res = await fetch(`/api/admin/exam-tests/${test.id}/duplicate`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Nusxalab bo'lmadi");
+        return;
+      }
+      load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <NewTestForm token={token} onCreated={load} />
@@ -113,6 +132,15 @@ export default function ExamTestsPanel({ token }) {
                   className="p-2 rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors disabled:opacity-50"
                 >
                   {test.isPublished ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => duplicate(test)}
+                  disabled={busyId === test.id}
+                  title="Nusxalash"
+                  className="p-2 rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors disabled:opacity-50"
+                >
+                  <Copy size={16} />
                 </button>
                 <button
                   type="button"
