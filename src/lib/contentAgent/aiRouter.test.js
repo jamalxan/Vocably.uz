@@ -58,6 +58,26 @@ describe('buildRequestBody', () => {
       json_schema: { name: 'passage', strict: true, schema: { type: 'object' } },
     });
   });
+
+  it('uses a full messages array (with system prepended) when given, instead of a single userContent turn', () => {
+    const withMessages = buildRequestBody({
+      model: 'm',
+      systemPrompt: 's',
+      messages: [
+        { role: 'user', content: 'first' },
+        { role: 'assistant', content: 'reply' },
+        { role: 'user', content: 'second' },
+      ],
+      temperature: 0.1,
+      maxTokens: 100,
+    });
+    expect(withMessages.messages).toEqual([
+      { role: 'system', content: 's' },
+      { role: 'user', content: 'first' },
+      { role: 'assistant', content: 'reply' },
+      { role: 'user', content: 'second' },
+    ]);
+  });
 });
 
 describe('callTask', () => {
@@ -143,5 +163,20 @@ describe('callTask', () => {
     await expect(callTask({ taskKey: 'not.a.real.task', systemPrompt: 's', userContent: 'u', apiKey: 'k', fetchImpl: vi.fn() })).rejects.toThrow(
       /Noma'lum taskKey/
     );
+  });
+
+  it('sends a multi-turn messages array through to the request body when given', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(chatCompletion({ ok: true })));
+    await callTask({
+      taskKey: 'reading.parse',
+      systemPrompt: 's',
+      messages: [{ role: 'user', content: 'hi' }],
+      config,
+      apiKey: 'k',
+      fetchImpl,
+      sleepFn: noSleep,
+    });
+    const sentBody = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(sentBody.messages).toEqual([{ role: 'system', content: 's' }, { role: 'user', content: 'hi' }]);
   });
 });

@@ -8,13 +8,15 @@ import crypto from 'crypto';
 // va global `fetch`ga tayanadi, hech qanday Next.js-ga xos import yo'q) —
 // worker qurilganda deyarli o'zgarishsiz ko'chirilishi mumkin.
 //
-// MUHIM — bu sessiyada haqiqiy OpenRouter chaqiruvi bilan SINALMAGAN
-// (OPENROUTER_API_KEY yo'q, tarmoq yo'q). Pastdagi retry/fallback/
-// idempotentlik MANTIG'I `aiRouter.test.js`da mock `fetch` bilan to'liq
-// sinalgan — lekin haqiqiy OpenRouter javob shakli (`response_format:
-// json_schema`, xato kodlari) bilan mos kelishi hali TASDIQLANMAGAN,
-// chunki tekshirib bo'lmaydi. Haqiqiy kalit ulanganda birinchi chaqiruvlar
-// diqqat bilan kuzatilishi kerak.
+// 2026-09-12: `OPENROUTER_API_KEY` ulandi va bu modulning asosiy taxmini —
+// `response_format:{type:'json_schema',strict:true}` OpenRouter tomonidan
+// hurmat qilinishi va javobda `usage.cost` maydoni kelishi — jonli chaqiruv
+// bilan TASDIQLANDI (google/gemini-2.5-flash, HTTP 200, `usage.cost`
+// mavjud). Pastdagi retry/fallback/idempotentlik mantig'i `aiRouter.test.js`da
+// mock `fetch` bilan to'liq sinalgan; endi asosiy shakl ham real tarmoqda
+// tekshirilgan — lekin bu hali ham faqat bitta oddiy so'rov, xato
+// kodlari (429/5xx)ning haqiqiy formati va boshqa modellar (Claude,
+// Gemini Pro)ning `strict:true` bilan mosligi hali kuzatilishi kerak.
 
 // §5.2 — boshlang'ich model matritsasi. DB'dagi `AiTaskConfig` hujjati
 // bo'lsa O'SHA ustunlik qiladi (admin dropdown orqali o'zgartirilgan
@@ -60,15 +62,23 @@ export function hashInput(input) {
 // OpenRouter — OpenAI Chat Completions'ga mos REST API, alohida SDK shart
 // emas (§21 M1 item 5 izohiga q. — bu sessiyada SDK o'rnatib bo'lmaydi,
 // lekin buning aslida keragi yo'q, oddiy fetch yetarli).
-export function buildRequestBody({ model, systemPrompt, userContent, jsonSchema, temperature, maxTokens }) {
+// `messages` (ixtiyoriy) — admin AI sinov-chat playground'i uchun (§11.5 ga
+// yaqin, lekin TZ'da alohida band emas): ko'p burilishli suhbat tarixini
+// (`[{role:'user'|'assistant', content}]`) uzatish kerak bo'lganda
+// `userContent` o'rniga shu beriladi. Berilmasa, eski bitta-burilishli
+// xatti-harakat o'zgarishsiz qoladi (orqaga mos).
+export function buildRequestBody({ model, systemPrompt, userContent, messages, jsonSchema, temperature, maxTokens }) {
   const body = {
     model,
     temperature,
     max_tokens: maxTokens,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userContent },
-    ],
+    messages:
+      messages && messages.length
+        ? [{ role: 'system', content: systemPrompt }, ...messages]
+        : [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userContent },
+          ],
   };
   // §5.3 item 1 — "Har parse chaqiruvida JSON Schema beriladi... Erkin
   // matn qabul qilinmaydi."
@@ -160,6 +170,7 @@ export async function callTask({
   taskKey,
   systemPrompt,
   userContent,
+  messages,
   jsonSchema,
   config,
   apiKey,
@@ -181,6 +192,7 @@ export async function callTask({
       model,
       systemPrompt,
       userContent,
+      messages,
       jsonSchema,
       temperature: resolved.temperature ?? 0.2,
       maxTokens: resolved.maxTokens ?? 8000,
