@@ -14,9 +14,9 @@ export default function OqishPage() {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 
-  const handlePicked = async (testId) => {
+  const handlePicked = async (testId, fresh) => {
     try {
-      const { attemptId } = await createAttempt(testId, 'reading');
+      const { attemptId } = await createAttempt(testId, 'reading', fresh);
       router.push(`/app/oqish/${attemptId}`);
     } catch {
       // TestPicker ro'yxati saqlanadi, foydalanuvchi qayta bosishi mumkin.

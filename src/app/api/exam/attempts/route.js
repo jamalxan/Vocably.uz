@@ -136,7 +136,16 @@ export async function POST(req) {
       mode: 'section',
       status: 'in_progress',
     });
-    if (existing) return NextResponse.json({ attemptId: String(existing._id) });
+    // VOCABLY-TZ.md §2.4/§5 item 12 — "Attempt boshqaruvini bir xil qil":
+    // mock bilan bir xil naqsh — odatda mavjud tugallanmagan urinish
+    // davom ettiriladi, lekin TestPicker'dagi "Yangi boshlash" tugmasi
+    // `abandonExisting:true` yuborib, eskisini bekor qilib chinakam yangi
+    // urinish boshlaydi (masalan eskisi juda uzoq turib qolgan bo'lsa).
+    if (existing && !abandonExisting) return NextResponse.json({ attemptId: String(existing._id) });
+    if (existing && abandonExisting) {
+      existing.status = 'abandoned';
+      await existing.save();
+    }
 
     const now = new Date();
     const attempt = await ExamAttempt.create({

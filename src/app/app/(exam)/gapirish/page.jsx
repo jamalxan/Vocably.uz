@@ -14,9 +14,9 @@ export default function GapirishPage() {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 
-  const handlePicked = async (testId) => {
+  const handlePicked = async (testId, fresh) => {
     try {
-      const { attemptId } = await createAttempt(testId, 'speaking');
+      const { attemptId } = await createAttempt(testId, 'speaking', fresh);
       router.push(`/app/gapirish/${attemptId}`);
     } catch {
       // TestPicker ro'yxati saqlanadi, foydalanuvchi qayta bosishi mumkin.

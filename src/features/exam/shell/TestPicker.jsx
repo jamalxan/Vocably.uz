@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Loader2, ChevronRight } from 'lucide-react';
+import { Loader2, ChevronRight, RotateCcw } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { fetchSectionStatuses } from '../state/attemptsApi';
 
 // TZ-vocably-v2.md §20 migratsiyasi — standalone Reading/Listening/Writing/
 // Speaking sahifalari uchun test tanlash ekrani. Mock'dan FARQLI ravishda bu
@@ -20,9 +21,19 @@ function sectionMeta(test, sectionKey) {
   return `${formatMinutes(s.durationSec)} daq · ${s.questionCount} savol`;
 }
 
+// VOCABLY-TZ.md §2.4/§5 item 12 — "Test ro'yxati kartalarida holat va oxirgi
+// ball ko'rsatilsin." Har status uchun qisqa yorliq + rang.
+const STATUS_BADGE = {
+  in_progress: { label: 'Davom etmoqda', className: 'text-warning bg-warning-soft' },
+  expired: { label: "Muddati o'tgan", className: 'text-muted bg-bg' },
+  submitted: { label: 'Baholanmoqda', className: 'text-muted bg-bg' },
+  graded: { label: 'Tugallangan', className: 'text-success bg-success-soft' },
+};
+
 export default function TestPicker({ sectionKey, title, onPicked }) {
   const { token } = useApp();
   const [tests, setTests] = useState(null);
+  const [statuses, setStatuses] = useState({});
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -34,6 +45,7 @@ export default function TestPicker({ sectionKey, title, onPicked }) {
         setTests((data.tests || []).filter((t) => t.sections?.[sectionKey]));
       })
       .catch(() => !cancelled && setError("Testlar ro'yxatini yuklab bo'lmadi."));
+    fetchSectionStatuses(sectionKey).then((s) => !cancelled && setStatuses(s));
     return () => {
       cancelled = true;
     };
@@ -56,19 +68,43 @@ export default function TestPicker({ sectionKey, title, onPicked }) {
 
       {!error && tests !== null && tests.length > 0 && (
         <div className="flex flex-col gap-2">
-          {tests.map((test) => (
-            <button
-              key={test.id}
-              onClick={() => onPicked(test.id)}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent-soft/40 text-left transition-colors"
-            >
-              <span>
-                <span className="block text-sm font-semibold text-ink">{test.title}</span>
-                <span className="block text-xs text-muted mt-0.5">{sectionMeta(test, sectionKey)}</span>
-              </span>
-              <ChevronRight size={16} className="text-muted flex-shrink-0" />
-            </button>
-          ))}
+          {tests.map((test) => {
+            const st = statuses[test.id];
+            const badge = st ? STATUS_BADGE[st.status] : null;
+            const canRestart = st && st.status !== 'in_progress';
+            return (
+              <div
+                key={test.id}
+                className="flex items-center gap-2 rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent-soft/40 transition-colors"
+              >
+                <button onClick={() => onPicked(test.id)} className="flex-1 flex items-center justify-between gap-3 px-4 py-3.5 text-left min-w-0">
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2">
+                      <span className="block text-sm font-semibold text-ink">{test.title}</span>
+                      {badge && (
+                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${badge.className}`}>
+                          {badge.label}
+                          {st.status === 'graded' && st.band != null ? `: ${st.band}` : ''}
+                        </span>
+                      )}
+                    </span>
+                    <span className="block text-xs text-muted mt-0.5">{sectionMeta(test, sectionKey)}</span>
+                  </span>
+                  <ChevronRight size={16} className="text-muted flex-shrink-0" />
+                </button>
+                {canRestart && (
+                  <button
+                    onClick={() => onPicked(test.id, true)}
+                    title="Yangi urinish boshlash"
+                    aria-label="Yangi urinish boshlash"
+                    className="flex-shrink-0 mr-3 p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors"
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

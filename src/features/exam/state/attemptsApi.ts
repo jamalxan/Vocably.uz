@@ -78,13 +78,31 @@ export async function fetchTestPreview(testId: string): Promise<TestPreview> {
   return res.json();
 }
 
-export async function createAttempt(testId: string, section: string): Promise<{ attemptId: string }> {
+export async function createAttempt(testId: string, section: string, abandonExisting?: boolean): Promise<{ attemptId: string }> {
+  const body: Record<string, unknown> = { testId, mode: 'section', section };
+  if (abandonExisting) body.abandonExisting = true;
   const res = await authedFetch('/api/exam/attempts', {
     method: 'POST',
-    body: JSON.stringify({ testId, mode: 'section', section }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Urinish yaratib bo'lmadi");
   return res.json();
+}
+
+export interface SectionAttemptStatus {
+  attemptId: string;
+  status: 'in_progress' | 'submitted' | 'graded' | 'expired' | 'abandoned';
+  band: number | null;
+  submittedAt: string | null;
+}
+
+/** VOCABLY-TZ.md §2.4/§5 item 12 — TestPicker'dagi har test kartasida holat
+ * (Boshlanmagan / Davom etmoqda / Tugallangan: Band X) ko'rsatish uchun. */
+export async function fetchSectionStatuses(section: string): Promise<Record<string, SectionAttemptStatus>> {
+  const res = await authedFetch(`/api/exam/attempts/section-status?section=${section}`);
+  if (!res.ok) return {};
+  const data = await res.json();
+  return data.statuses || {};
 }
 
 /** TZ §9.1 — Mock: testda mavjud listening/reading/writing bo'limlarining
