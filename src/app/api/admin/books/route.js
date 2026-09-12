@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/db';
 import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
@@ -53,7 +54,27 @@ export async function POST(req) {
       if (err) return NextResponse.json({ error: err }, { status: 400 });
     }
 
+    // Avval bookId'ni oldindan generatsiya qilib, PDF/audio uchun barcha
+    // presigned URL'larni R2'dan OLDIN so'raymiz — hech qanday DB yozuvi
+    // qilinmasdan. Shu tartibda, agar R2 sozlanmagan/xato bo'lsa
+    // (`presignSourceUpload` shu yerda throw qiladi), birorta ham "etim"
+    // ContentBook/ContentAsset qolmaydi (avvalgi versiyada shu bug bor edi —
+    // smoke-testda qo'lda topilib, qo'lda tozalangan).
+    const bookId = new mongoose.Types.ObjectId();
+
+    const pdfKey = buildSourceKey(bookId, 'pdf', pdf.mimeType);
+    const pdfUploadUrl = await presignSourceUpload(pdfKey, pdf.mimeType);
+
+    const audioPresigned = [];
+    for (const a of audio) {
+      const key = buildSourceKey(bookId, 'audio', a.mimeType);
+      const uploadUrl = await presignSourceUpload(key, a.mimeType);
+      audioPresigned.push({ key, uploadUrl, mimeType: a.mimeType, size: a.size, filename: a.filename || '' });
+    }
+
+    // Presign muvaffaqiyatli bo'lgandan keyingina DB yozuvlari yaratiladi.
     const book = await ContentBook.create({
+      _id: bookId,
       title,
       publisher,
       series,
@@ -66,8 +87,6 @@ export async function POST(req) {
       createdBy: admin._id,
     });
 
-    // PDF uchun bitta ContentAsset + presigned PUT URL.
-    const pdfKey = buildSourceKey(book._id, 'pdf', pdf.mimeType);
     const pdfAsset = await ContentAsset.create({
       bookId: book._id,
       kind: 'pdf',
@@ -75,19 +94,15 @@ export async function POST(req) {
     });
     book.source.pdfAssetId = pdfAsset._id;
     await book.save();
-    const pdfUploadUrl = await presignSourceUpload(pdfKey, pdf.mimeType);
 
-    // Har audio fayl uchun ham xuddi shunday — asset + presigned URL.
     const audioUploads = [];
-    for (const a of audio) {
-      const key = buildSourceKey(book._id, 'audio', a.mimeType);
+    for (const a of audioPresigned) {
       const asset = await ContentAsset.create({
         bookId: book._id,
         kind: 'audio',
-        storage: { bucket: process.env.R2_BUCKET || '', key, bytes: a.size, contentType: a.mimeType },
+        storage: { bucket: process.env.R2_BUCKET || '', key: a.key, bytes: a.size, contentType: a.mimeType },
       });
-      const uploadUrl = await presignSourceUpload(key, a.mimeType);
-      audioUploads.push({ assetId: String(asset._id), key, uploadUrl, filename: a.filename || '' });
+      audioUploads.push({ assetId: String(asset._id), key: a.key, uploadUrl: a.uploadUrl, filename: a.filename });
     }
 
     await writeAuditLog(req, admin._id, 'content_book.create', 'ContentBook', book._id, { title, licence, publishScope });
