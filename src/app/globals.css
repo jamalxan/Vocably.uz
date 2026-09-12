@@ -196,6 +196,50 @@ body {
   background: transparent;
 }
 
+/* Sprint 4 "Premium" (TZ-vocably-v2.md §B4/§B5 item 7) — mikro-interaksiyalar:
+   tugma bosilganda active:scale-[0.98] (Button.jsx), karta hover'da ko'tarilish
+   (`.card-hover`, quyida). §B4: "prefers-reduced-motion: reduce — barcha
+   animatsiya o'chadi (majburiy)" — shu bilan bog'liq har qanday transform
+   o'tishi shu yerda global ravishda o'chiriladi. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* TZ §B5 item 2/7 — "gradient sirtlar" + "karta hover: translateY(-2px) + soya
+   kuchayishi". Ixtiyoriy utility klass — mavjud har-joyda-yozilgan kartalarni
+   majburan qayta yozmaydi (katta, xavfli diff bo'lardi), yangi/muhim kartalar
+   shu klassni qo'shib obuna bo'ladi. */
+.card-hover {
+  transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms cubic-bezier(.2,.8,.2,1);
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 60px -15px rgba(74,18,38,.20);
+}
+
+/* TZ §B5 item 1 — "sahifa foniga juda nozik noise/grain overlay" (SVG
+   feTurbulence, opacity .02-.03). Butun ilova foniga (AppShell) qo'llanadi —
+   [data-exam] ekranida ATAYLAB yo'q (§5.1: imtihon ekranida hech qanday
+   premium bezak yo'q). Faqat orqa fonda, klik/tanlashga xalaqit bermaydi. */
+.bg-grain {
+  position: relative;
+  isolation: isolate;
+}
+.bg-grain::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 /* Mobil brauzerlarda inputlarni avtomatik zoom qilishning oldini olish */
 @media (max-width: 640px) {
   input, select, textarea {

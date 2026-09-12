@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { User, OtpSession } from '@/lib/models';
 import jwt from 'jsonwebtoken';
 import { serverError } from '@/lib/apiError';
+import { setAuthCookie } from '@/lib/auth';
 import { sendMessage } from '@/lib/telegram';
 import { formatPhoneDisplay } from '@/lib/phone';
 import { NextResponse } from 'next/server';
@@ -85,7 +86,7 @@ export async function POST(req) {
       await notifyAdminNewUser(newUser);
 
       const token = jwt.sign({ userId: newUser._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
-      return NextResponse.json({ done: true, token, name: newUser.name, phone: newUser.phone });
+      return setAuthCookie(NextResponse.json({ done: true, token, name: newUser.name, phone: newUser.phone }), token);
     }
 
     if (session.purpose === 'reset') {

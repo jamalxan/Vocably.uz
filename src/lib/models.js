@@ -596,86 +596,14 @@ export const SpeakingAttempt =
   mongoose.models.SpeakingAttempt || mongoose.model('SpeakingAttempt', SpeakingAttemptSchema);
 
 // ============================================================================
-// FAZA 4 (VOCABLY-TZ.md §11) — Mock imtihon. github.com/jamalxan/Everest-Mock
-// (backend/exam.py) dan PORTLANGAN — server-authoritative taymer, autosave,
-// play-once audio, idempotent submit. Asl Python demo `user_id`ni CLIENTDAN
-// ishonib oladi (auth qatlami yo'q) — bu yerda esa har doim JWT'dan olingan
-// `userId` (src/lib/auth.js) ishlatiladi va har so'rovda egalik tekshiriladi
-// (src/app/api/exam/**). Bu — mantiqni "qayta yozish" emas, faqat xavfsizlik
-// qatlamini shu ilovaning haqiqiy autentifikatsiyasiga ulash (11.2'dagi
-// "Bu mantiqni qayta yozmang" qoidasiga zid emas — taymer/autosave/audio-once/
-// submit hisoblash mantig'i lib/exam/engine.ts'da so'zma-so'z bir xil).
-const ExamSectionStateSchema = new mongoose.Schema(
-  {
-    startedAt: { type: Date, default: null },
-    endsAt: { type: Date, default: null },
-    locked: { type: Boolean, default: false },
-    duration: { type: Number, required: true }, // soniyalarda
-  },
-  { _id: false }
-);
-
-const ExamSessionSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  mockId: { type: String, required: true },
-  examType: { type: String, default: 'ielts_academic' },
-  // TZ §11.3 — "practice"da applyExpiry o'chadi, javob har savoldan keyin
-  // ko'rsatiladi, audio qayta ijro etiladi (lib/exam/engine.ts'dagi tekshiruvlar).
-  mode: { type: String, enum: ['exam', 'practice'], default: 'exam' },
-  status: { type: String, enum: ['in_progress', 'submitted'], default: 'in_progress' },
-  sections: {
-    listening: { type: ExamSectionStateSchema, required: true },
-    reading: { type: ExamSectionStateSchema, required: true },
-    writing: { type: ExamSectionStateSchema, required: true },
-    speaking: { type: ExamSectionStateSchema, required: true },
-  },
-  answers: { type: mongoose.Schema.Types.Mixed, default: {} }, // {questionId: value}
-  essays: {
-    task1: { type: String, default: '' },
-    task2: { type: String, default: '' },
-  },
-  audio: { type: mongoose.Schema.Types.Mixed, default: {} }, // {sectionKey: {startedAt, plays}}
-  // Haqiqiy IELTS interfeysidagi kabi — o'quvchi passage/savol matnidagi istalgan
-  // qismni belgilab (highlight) qoldirishi va unga eslatma (note) yozishi mumkin.
-  // `text` — belgilangan matnning o'zi (aniq offset emas, chunki kontent AI orqali
-  // generatsiya qilingan bo'lsa ham sessiya davomida o'zgarmaydi — matnni qidirib
-  // topish yetarli, murakkab offset-tracking shart emas). Backend'da saqlanadi
-  // (frontend state emas) — 2026-09-10 so'rovi: "javoblar frontda emas backendda".
-  highlights: [
-    {
-      section: { type: String, enum: ['reading', 'listening'], required: true },
-      text: { type: String, required: true },
-      note: { type: String, default: '' },
-      color: { type: String, default: 'yellow' },
-      createdAt: { type: Date, default: Date.now },
-    },
-  ],
-  result: { type: mongoose.Schema.Types.Mixed, default: null },
-  submittedAt: { type: Date, default: null },
-  submitReason: { type: String, default: null },
-  createdAt: { type: Date, default: Date.now },
-}, {
-  // MUHIM: Mongoose standart holatda ({ minimize: true }) saqlashdan oldin BO'SH
-  // obyektlarni ({}) hujjatdan butunlay olib tashlaydi. `answers`/`audio` yangi
-  // sessiyada aynan {} bo'lib boshlanadi — shuning uchun minimize yoqilgan bo'lsa,
-  // bu maydonlar bazada umuman yo'q bo'lib qoladi, keyin publicState() `undefined`
-  // qaytaradi va client `answers[q.id]`ni o'qiganda qulaydi (2026-09-10'da topilgan
-  // haqiqiy production bug — /app/mock/[id]'da bo'lim boshlanganda "Application
-  // error"). minimize: false shu bo'sh obyektlarni ham saqlab qoladi.
-  minimize: false,
-});
-// start'dagi "davom ettirish" so'rovi shu bo'yicha (userId+mockId+status) — exam.py'dagi
-// server.py'dan portlangan indeks bilan bir xil.
-ExamSessionSchema.index({ userId: 1, mockId: 1, status: 1 });
-
-export const ExamSession = mongoose.models.ExamSession || mongoose.model('ExamSession', ExamSessionSchema);
-
+// Eski (Everest-Mock'dan portlangan) `ExamSession` dvigateli TZ §20 migratsiyasi
+// YAKUNLANGANDA (2026-09-12) shu yerdan o'chirildi — pastdagi `ExamTest`/
+// `ExamAttempt` uni to'liq almashtirdi (`/app/oqish`, `/app/tinglash`,
+// `/app/yozish`, `/app/mock`, `/app/gapirish` barchasi endi shularga ishlaydi).
 // ============================================================================
-// TZ-vocably-v2.md (IELTS CD Exam Engine v1.0) §3 — YANGI exam engine modellari.
-// ATAYLAB `ExamSession` (yuqorida, Everest-Mock'dan portlangan eski dvigatel)
-// bilan ALMASHTIRILMAYDI — TZ §20 migratsiya qoidasi: ikkalasi bir muddat
-// yonma-yon yashaydi, `/app/oqish` va boshqalar bosqichma-bosqich o'tkaziladi.
-// Model nomlari ataylab `ExamTest`/`ExamAttempt` (TZ'dagi `Test`/`Attempt` emas) —
+// TZ-vocably-v2.md (IELTS CD Exam Engine v1.0) §3 — exam engine modellari
+// (eski `ExamSession`ni to'liq almashtirgan, yuqoridagi izohga q.). Model
+// nomlari ataylab `ExamTest`/`ExamAttempt` (TZ'dagi `Test`/`Attempt` emas) —
 // `src/lib/exam/types.ts`dagi bir xil nomli TS interfeyslar bilan chalkashmasin
 // va kodda grep qilinganda "yangi dvigatel" ekani darhol ko'rinsin uchun.
 //

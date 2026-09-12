@@ -130,6 +130,27 @@ describe('validateTest', () => {
     expect(issues.some((i) => i.message.includes('2 ta task'))).toBe(true);
   });
 
+  it('accepts numbering that continues across passages (real IELTS: passage 2 starts at 14, not 1)', () => {
+    const test = baseTest();
+    test.sections!.reading!.passages = [
+      { order: 1, title: 'P1', paragraphs: [{ label: 'A', html: '<p>x</p>' }], questionGroups: [tfngGroup([1, 2, 3])] },
+      { order: 2, title: 'P2', paragraphs: [{ label: 'A', html: '<p>x</p>' }], questionGroups: [tfngGroup([4, 5, 6])] },
+    ];
+    const issues = validateTest(test);
+    expect(issues.some((i) => i.message.includes('uzilishsiz emas'))).toBe(false);
+    expect(hasBlockingErrors(issues)).toBe(false);
+  });
+
+  it('flags numbering that wrongly restarts at 1 in a later passage', () => {
+    const test = baseTest();
+    test.sections!.reading!.passages = [
+      { order: 1, title: 'P1', paragraphs: [{ label: 'A', html: '<p>x</p>' }], questionGroups: [tfngGroup([1, 2, 3])] },
+      { order: 2, title: 'P2', paragraphs: [{ label: 'A', html: '<p>x</p>' }], questionGroups: [tfngGroup([1, 2, 3])] },
+    ];
+    const issues = validateTest(test);
+    expect(issues.some((i) => i.path === 'reading' && i.message.includes('takrorlangan'))).toBe(true);
+  });
+
   it('warnings alone do not block publishing', () => {
     const test = baseTest();
     test.sections!.reading!.passages[0].paragraphs = [];

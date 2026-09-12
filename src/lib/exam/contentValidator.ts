@@ -43,13 +43,15 @@ function checkContiguousNumbering(sectionLabel: string, questions: Question[], i
   }
 }
 
+// `checkQuestions` bitta konteyner (bitta passage / bitta listening part) doirasida
+// chaqiriladi — lekin uzluksiz raqamlash (1..40) butun BO'LIM bo'yicha (barcha
+// passage/part birgalikda), bitta konteyner ichida EMAS: haqiqiy IELTS'da 2-passage
+// 14dan boshlanadi, 1dan emas. Shuning uchun raqamlash tekshiruvi bu funksiyadan
+// TASHQARIDA, butun bo'lim yig'ilgandan keyin bitta marta chaqiriladi (pastga q.,
+// `validateTest`dagi `checkContiguousNumbering` chaqiruvlari) — bu yerda faqat
+// savol/guruh darajasidagi (accepted/selectCount/bank/imageAlt) tekshiruvlar qoladi,
+// har passage/part alohida `path` bilan yaxshi xato joylashuvi uchun.
 function checkQuestions(sectionLabel: string, groups: QuestionGroup[], issues: ValidationIssue[]) {
-  checkContiguousNumbering(
-    sectionLabel,
-    groups.flatMap((g) => g.questions),
-    issues
-  );
-
   for (const { group, question } of allQuestions(groups)) {
     const path = `${sectionLabel} savol ${question.number}`;
     if (!question.answer || !Array.isArray(question.answer.accepted) || question.answer.accepted.length === 0) {
@@ -97,6 +99,14 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
       }
       checkQuestions(`reading.passage[${p.order}]`, p.questionGroups || [], issues);
     }
+    // Raqamlash butun BO'LIM bo'yicha uzluksiz (haqiqiy IELTS'da 2-passage 14dan
+    // boshlanadi, 1dan emas) — shuning uchun barcha passage'lar birlashtirilgan
+    // holda BITTA marta tekshiriladi, yuqoridagi per-passage `checkQuestions`dan tashqarida.
+    checkContiguousNumbering(
+      'reading',
+      passages.flatMap((p) => (p.questionGroups || []).flatMap((g) => g.questions)),
+      issues
+    );
   }
 
   if (sections.listening) {
@@ -106,6 +116,11 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
       if (!part.audioUrl?.trim()) issues.push({ severity: 'error', path: `listening.part[${part.order}]`, message: "audioUrl bo'sh — audio fayl yuklanmagan" });
       checkQuestions(`listening.part[${part.order}]`, part.questionGroups || [], issues);
     }
+    checkContiguousNumbering(
+      'listening',
+      parts.flatMap((p) => (p.questionGroups || []).flatMap((g) => g.questions)),
+      issues
+    );
   }
 
   if (sections.writing) {

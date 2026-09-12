@@ -13,3 +13,8 @@ backups/
 # Vaqtinchalik havola materiallar (dizayn/kontent uchun) — hech qachon commit
 # qilinmasin (mualliflik huquqi bilan himoyalangan fayllar bo'lishi mumkin).
 memory/
+
+# scripts/tts/*.mjs+.ps1 dan qayta generatsiya qilinadigan oraliq audio
+# (har transkript satri uchun alohida WAV) — faqat scripts/tts/concat-parts.mjs
+# uchun kirish, yakuniy fayllar public/audio/exam/ ga yoziladi.
+scripts/tts/out/

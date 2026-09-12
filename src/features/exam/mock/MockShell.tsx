@@ -22,9 +22,28 @@ const SECTION_LABEL: Record<ExamSectionKey, string> = { listening: 'Listening', 
 type Phase = 'intro' | 'section' | 'transition' | 'result';
 
 export interface MockShellProps {
-  testId: string;
+  // Ixtiyoriy — bo'lmasa server tomoni tasodifiy test tanlaydi (pastdagi
+  // GENERIC_MOCK_PREVIEW izohiga q.). Foydalanuvchi so'rovi: "mockda tanlash
+  // bo'lmasin, to'liq avto".
+  testId?: string;
   candidateName: string;
 }
+
+// TZ §9.2 intro ekrani `testId` bo'lmaganda (tasodifiy mock) shu YENGIL
+// ma'lumotdan foydalanadi — `fetchTestPreview` chaqirilmaydi, chunki
+// qaysi test tanlanishi ATAYLAB oldindan ko'rsatilmaydi (aks holda bu
+// "tanlash"ning yashirin shakli bo'lardi). Raqamlar barcha seed qilingan
+// testlarda bir xil standart IELTS uzunligi (30/60/60 daq, 40/40/2).
+const GENERIC_MOCK_PREVIEW: TestPreview = {
+  id: '',
+  title: 'Vocably Mock Imtihon',
+  module: 'academic',
+  sections: {
+    listening: { durationSec: 1800, questionCount: 40 },
+    reading: { durationSec: 3600, questionCount: 40 },
+    writing: { durationSec: 3600, taskCount: 2 },
+  },
+};
 
 // TZ-vocably-v2.md §5.4 — "soxta candidate ID (attemptId oxirgi 7 raqami)."
 function candidateIdFrom(attemptId: string): string {
@@ -51,6 +70,10 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
   useEffect(() => {
+    if (!testId) {
+      setTestPreview(GENERIC_MOCK_PREVIEW);
+      return;
+    }
     let cancelled = false;
     fetchTestPreview(testId)
       .then((p) => !cancelled && setTestPreview(p))

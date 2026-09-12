@@ -31,14 +31,16 @@ export async function buildDictionaryContext(user) {
 
   let lastMockBand = null;
   try {
-    const { ExamSession } = await import('@/lib/models');
-    const last = await ExamSession.findOne({ userId: user._id, status: 'submitted' })
+    // TZ §20 migratsiyasi — eski `ExamSession`(Everest-Mock dvigateli) o'rniga
+    // yangi exam engine'ning `ExamAttempt`si (mode:'mock', status:'graded').
+    const { ExamAttempt } = await import('@/lib/models');
+    const last = await ExamAttempt.findOne({ userId: user._id, mode: 'mock', status: 'graded' })
       .sort({ submittedAt: -1 })
       .select('result submittedAt')
       .lean();
-    if (last?.result?.overallBand != null) lastMockBand = last.result.overallBand;
+    if (last?.result?.overall != null) lastMockBand = last.result.overall;
   } catch {
-    // ExamSession topilmasa yoki xato bo'lsa — jimgina o'tkazib yuboramiz, bu ixtiyoriy maydon
+    // ExamAttempt topilmasa yoki xato bo'lsa — jimgina o'tkazib yuboramiz, bu ixtiyoriy maydon
   }
 
   return {

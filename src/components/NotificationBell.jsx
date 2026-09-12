@@ -40,10 +40,34 @@ export default function NotificationBell({ token, onOpenFriends }) {
     }
   }, [token]);
 
+  // BUG-031 — sahifa ko'rinmasa (boshqa tab/oyna) so'rov yubormaymiz, qaytib
+  // ko'ringanda darhol yangilaymiz (fon intervali kutilmaydi).
   useEffect(() => {
     load();
-    const t = setInterval(load, POLL_MS);
-    return () => clearInterval(t);
+    let t = null;
+    const startPolling = () => {
+      if (t) return;
+      t = setInterval(load, POLL_MS);
+    };
+    const stopPolling = () => {
+      if (!t) return;
+      clearInterval(t);
+      t = null;
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        load();
+        startPolling();
+      }
+    };
+    if (!document.hidden) startPolling();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [load]);
 
   useEffect(() => {

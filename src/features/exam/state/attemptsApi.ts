@@ -88,11 +88,14 @@ export async function createAttempt(testId: string, section: string): Promise<{ 
 }
 
 /** TZ §9.1 — Mock: testda mavjud listening/reading/writing bo'limlarining
- * BARCHASI, bitta urinishda, ketma-ket. */
-export async function createMockAttempt(testId: string): Promise<{ attemptId: string }> {
+ * BARCHASI, bitta urinishda, ketma-ket. `testId` IXTIYORIY — berilmasa,
+ * server tomoni tasodifiy nashr etilgan testni tanlaydi (foydalanuvchi
+ * so'rovi: "mockda tanlash bo'lmasin, to'liq avto" — /api/exam/attempts
+ * route.js'dagi izohga q.). */
+export async function createMockAttempt(testId?: string): Promise<{ attemptId: string }> {
   const res = await authedFetch('/api/exam/attempts', {
     method: 'POST',
-    body: JSON.stringify({ testId, mode: 'mock' }),
+    body: JSON.stringify(testId ? { testId, mode: 'mock' } : { mode: 'mock' }),
   });
   if (!res.ok) throw new Error("Urinish yaratib bo'lmadi");
   return res.json();

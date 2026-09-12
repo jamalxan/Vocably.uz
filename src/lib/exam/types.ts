@@ -1,13 +1,14 @@
 // TZ-vocably-v2.md §3 (IELTS CD Exam Engine v1.0) — yagona ma'lumotlar modeli.
 // Bu fayl FAQAT tur (type) e'lonlaridan iborat, runtime kodi yo'q.
 //
-// MUHIM: bu — YANGI exam engine (`features/exam/`, `/api/exam/attempts/*`) uchun
-// tur tizimi. Eski Everest-Mock'dan portlangan dvigatel (`./engine.ts`, `./content.ts`,
-// `/api/exam/[id]/*`, `ExamSession` mongoose modeli) BUZILMAYDI — TZ §20 "Migratsiya"
-// qoidasi bo'yicha ikkalasi vaqtincha yonma-yon yashaydi, `/app/oqish` va boshqalar
-// bosqichma-bosqich (feature-flag bilan) yangi engine'ga o'tkaziladi. Shu sabab bu
-// yerdagi tur nomlari eski `engine.ts`dagi (`ExamDoc`, `SectionState`, `SectionKey`)
-// nomlar bilan ATAYLAB bir xil emas.
+// MUHIM: bu — exam engine (`features/exam/`, `/api/exam/attempts/*`) uchun tur
+// tizimi. Eski Everest-Mock'dan portlangan dvigatel (`./engine.ts`, `./content.ts`,
+// `/api/exam/[id]/*`, `ExamSession` mongoose modeli) TZ §20 migratsiyasi
+// YAKUNLANGANDA (2026-09-12) butunlay o'chirildi — `/app/oqish`, `/app/tinglash`,
+// `/app/yozish`, `/app/mock`, `/app/gapirish` barchasi endi shu yerdagi tur
+// tizimiga ishlaydi. Shu tarixiy sabab bilan bu yerdagi tur nomlari eski
+// `engine.ts`dagi (`ExamDoc`, `SectionState`, `SectionKey`) nomlar bilan
+// ATAYLAB bir xil emas edi va hozir ham shunday qolmoqda.
 
 // ============================================================================
 // §3.1 — Test (kontent, admin kiritadi)

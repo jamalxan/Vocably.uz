@@ -3,6 +3,7 @@ import { User } from '@/lib/models';
 import { normalizePhone } from '@/lib/phone';
 import { serverError } from '@/lib/apiError';
 import { checkRateLimit } from '@/lib/chatAuth';
+import { setAuthCookie } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
@@ -39,7 +40,7 @@ export async function POST(req) {
 
     const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
-    return NextResponse.json({ token, name: user.name, phone: user.phone });
+    return setAuthCookie(NextResponse.json({ token, name: user.name, phone: user.phone }), token);
   } catch (err) {
     return serverError(err, 'auth/login');
   }

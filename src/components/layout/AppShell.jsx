@@ -42,9 +42,14 @@ export default function AppShell({ children }) {
   }, [onLugat]);
 
   return (
-    <div className="min-h-dvh bg-bg">
+    <div className="min-h-dvh bg-bg bg-grain">
       {/* ============ DESKTOP — to'liq sidebar (1280px+) ============ */}
-      <aside className="hidden xl:flex fixed inset-y-0 left-0 z-30 w-64 flex-col bg-primary text-on-primary">
+      {/* TZ §B5 item 3 — tekis bordo o'rniga yuqoridan pastga gradient + o'ng
+          qirrada nozik accent chizig'i (premium his). */}
+      <aside
+        className="hidden xl:flex fixed inset-y-0 left-0 z-30 w-64 flex-col text-on-primary border-r border-accent/20"
+        style={{ background: 'linear-gradient(160deg, #4A1226, #2A0C18)' }}
+      >
         <div className="p-5 overflow-y-auto flex-1">
           <Link href="/app" className="flex items-center gap-3 mb-8">
             <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-on-accent font-bold text-lg font-display shadow-glow flex-shrink-0">
@@ -119,7 +124,10 @@ export default function AppShell({ children }) {
       </aside>
 
       {/* ============ PLANSHET — 72px ikonka rail, hover'da kengayadi (768-1279px) ============ */}
-      <aside className="hidden md:flex xl:hidden group fixed inset-y-0 left-0 z-30 w-[72px] hover:w-64 flex-col bg-primary text-on-primary transition-[width] duration-200 ease-out overflow-hidden">
+      <aside
+        className="hidden md:flex xl:hidden group fixed inset-y-0 left-0 z-30 w-[72px] hover:w-64 flex-col text-on-primary border-r border-accent/20 transition-[width] duration-200 ease-out overflow-hidden"
+        style={{ background: 'linear-gradient(160deg, #4A1226, #2A0C18)' }}
+      >
         <div className="p-3 flex-1 overflow-y-auto">
           <Link href="/app" className="flex items-center gap-3 mb-6 px-1">
             <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-on-accent font-bold text-lg font-display shadow-glow flex-shrink-0">

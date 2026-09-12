@@ -48,6 +48,10 @@ export function AppProvider({ children }) {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('phone');
+    // BUG-030 (§G1) — login endi httpOnly cookie ham o'rnatadi (lib/auth.js);
+    // u client JS'dan o'chirilmaydi, shuning uchun serverdan tozalanadi.
+    // Fire-and-forget — natijasi kutilmaydi, chiqishni sekinlashtirmaydi.
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     // '/' endi ochiq marketing landing (VOCABLY-TZ.md T3 tuzatildi) — chiqqan
     // foydalanuvchi qayta kirish formasiga to'g'ridan-to'g'ri tushsin.
     router.push('/kirish');
