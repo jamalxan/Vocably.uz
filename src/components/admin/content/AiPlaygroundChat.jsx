@@ -1,22 +1,27 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bot, ChevronDown, Loader2, RotateCcw, Send, Sparkles, User } from 'lucide-react';
+import { Bot, Check, ChevronDown, Loader2, RotateCcw, Send, Settings2, User } from 'lucide-react';
 
 // TZ-vocably-v2.md §11.5 — "AI sozlamalari" ekranining chat ko'rinishidagi
-// sinov qatlami. Admin bir taskKey (masalan `reading.parse`) ni tanlaydi,
-// o'sha bosqichga hozir tayinlangan model bilan erkin suhbat orqali sinaydi —
-// `/api/admin/ai/playground` haqiqiy `aiRouter.callTask`ni chaqiradi, mock
-// emas. Suhbat faqat shu komponent state'ida yashaydi (DB'ga saqlanmaydi) —
-// bu ataylab shunday: bu sinov maydonchasi, kontent manbai emas.
+// sinov qatlami. Ataylab ODDIY AI CHATGA O'XSHAYDI (foydalanuvchi talabi):
+// taskKey admin uchun avtomatik tanlanadi (ro'yxatdagi birinchisi) — admin
+// suhbatni boshlashdan oldin HECH NARSANI tanlashi shart emas, buni
+// o'zgartirish faqat ixtiyoriy, kichik "Model" tugmasi ortida yashiringan
+// (ChatGPT'ning model-switcher naqshiga yaqin), katta majburiy dropdown
+// sifatida emas. `/api/admin/ai/playground` haqiqiy `aiRouter.callTask`ni
+// chaqiradi, mock emas. Suhbat faqat shu komponent state'ida yashaydi
+// (DB'ga saqlanmaydi) — bu ataylab shunday: bu sinov maydonchasi, kontent
+// manbai emas.
 export default function AiPlaygroundChat({ token, taskKeys }) {
   const [taskKey, setTaskKey] = useState(taskKeys[0] || '');
   const [systemPrompt, setSystemPrompt] = useState('');
-  const [showSystemPrompt, setShowSystemPrompt] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [messages, setMessages] = useState([]); // [{role:'user'|'assistant'|'error', content}]
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [lastMeta, setLastMeta] = useState(null);
   const scrollRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -27,12 +32,20 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
     setLastMeta(null);
   }, []);
 
+  const autosizeTextarea = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  };
+
   const send = async () => {
     const text = input.trim();
     if (!text || sending || !taskKey) return;
     const history = [...messages, { role: 'user', content: text }];
     setMessages(history);
     setInput('');
+    requestAnimationFrame(autosizeTextarea);
     setSending(true);
     try {
       const res = await fetch('/api/admin/ai/playground', {
@@ -66,24 +79,21 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
   };
 
   return (
-    <div className="flex flex-col rounded-2xl border border-border bg-surface shadow-card overflow-hidden" style={{ height: '70vh', minHeight: 480 }}>
-      <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
-        <Sparkles size={16} className="text-accent flex-shrink-0" />
-        <select
-          value={taskKey}
-          onChange={(e) => {
-            setTaskKey(e.target.value);
-            resetChat();
-          }}
-          className="px-2.5 py-1.5 bg-bg rounded-lg text-xs font-mono font-semibold text-ink outline-none focus:ring-2 ring-accent/40"
+    <div
+      className="flex flex-col rounded-2xl border border-border bg-surface shadow-card overflow-hidden relative"
+      style={{ height: 'calc(100dvh - 210px)', minHeight: 400, maxHeight: 760 }}
+    >
+      {/* Ixcham tepalik — ChatGPT uslubidagi kichik model-switcher, majburiy forma emas. */}
+      <div className="px-3 sm:px-4 py-2.5 border-b border-border flex items-center gap-2 relative flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => setModelMenuOpen((v) => !v)}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold text-ink bg-bg hover:bg-accent-soft transition-colors"
         >
-          {taskKeys.map((k) => (
-            <option key={k} value={k}>
-              {k}
-            </option>
-          ))}
-        </select>
-        <span className="text-[11px] text-muted">Hozirgi taskKey uchun tayinlangan modelni real chaqiruv bilan sinaydi.</span>
+          <Bot size={13} className="text-accent" />
+          {taskKey}
+          <ChevronDown size={12} className={`text-muted transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} />
+        </button>
         <button
           type="button"
           onClick={resetChat}
@@ -92,33 +102,49 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
         >
           <RotateCcw size={14} />
         </button>
-      </div>
 
-      <div className="border-b border-border">
-        <button
-          type="button"
-          onClick={() => setShowSystemPrompt((v) => !v)}
-          className="w-full px-4 py-2 flex items-center gap-1.5 text-[11px] font-semibold text-muted hover:text-ink transition-colors"
-        >
-          <ChevronDown size={13} className={`transition-transform ${showSystemPrompt ? 'rotate-180' : ''}`} />
-          Tizim prompti (ixtiyoriy)
-        </button>
-        {showSystemPrompt && (
-          <textarea
-            value={systemPrompt}
-            onChange={(e) => setSystemPrompt(e.target.value)}
-            placeholder={`Bo'sh qoldirilsa, standart sinov prompti ishlatiladi. Masalan real "${taskKey}" prompt matnini shu yerga joylashtirib, model qanday javob berishini sinab ko'rishingiz mumkin.`}
-            rows={3}
-            className="w-full px-4 pb-3 bg-transparent text-xs text-ink outline-none resize-none placeholder:text-muted/60"
-          />
+        {modelMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-20" onClick={() => setModelMenuOpen(false)} />
+            <div className="absolute left-3 sm:left-4 top-full mt-1 z-30 w-72 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-card py-1.5 max-h-80 overflow-y-auto">
+              <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">Sinov uchun model (taskKey)</p>
+              {taskKeys.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => {
+                    setTaskKey(k);
+                    setModelMenuOpen(false);
+                    resetChat();
+                  }}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-mono text-left text-ink hover:bg-accent-soft transition-colors"
+                >
+                  {k}
+                  {k === taskKey && <Check size={13} className="text-accent flex-shrink-0" />}
+                </button>
+              ))}
+              <div className="border-t border-border mt-1 pt-2 px-3">
+                <label className="flex items-center gap-1.5 text-[10px] font-semibold text-muted mb-1">
+                  <Settings2 size={11} /> Tizim prompti (ixtiyoriy)
+                </label>
+                <textarea
+                  value={systemPrompt}
+                  onChange={(e) => setSystemPrompt(e.target.value)}
+                  placeholder="Bo'sh qoldirilsa, standart sinov prompti ishlatiladi."
+                  rows={3}
+                  className="w-full px-2 py-1.5 bg-bg rounded-lg text-[11px] text-ink outline-none resize-none placeholder:text-muted/60 mb-1.5"
+                />
+              </div>
+            </div>
+          </>
         )}
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-4 space-y-3">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center text-muted gap-2 py-10">
             <Bot size={28} className="text-accent/60" />
-            <p className="text-sm">Xabar yozib, "{taskKey}" uchun tayinlangan modelni sinab ko'ring.</p>
+            <p className="text-sm">Xabar yozib boshlang — model avtomatik tanlangan.</p>
           </div>
         )}
         {messages.map((m, i) => (
@@ -137,21 +163,25 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
       </div>
 
       {lastMeta && (
-        <div className="px-4 py-1.5 border-t border-border text-[10px] text-muted flex items-center gap-3 font-mono">
-          <span>{lastMeta.model}</span>
-          <span>{lastMeta.tokensIn}→{lastMeta.tokensOut} token</span>
-          <span>${lastMeta.costUsd?.toFixed(5)}</span>
+        <div className="px-3 sm:px-4 py-1.5 border-t border-border text-[10px] text-muted flex items-center gap-3 font-mono flex-shrink-0 overflow-x-auto">
+          <span className="whitespace-nowrap">{lastMeta.model}</span>
+          <span className="whitespace-nowrap">{lastMeta.tokensIn}→{lastMeta.tokensOut} token</span>
+          <span className="whitespace-nowrap">${lastMeta.costUsd?.toFixed(5)}</span>
         </div>
       )}
 
-      <div className="p-3 border-t border-border flex items-end gap-2">
+      <div className="p-2.5 sm:p-3 border-t border-border flex items-end gap-2 flex-shrink-0">
         <textarea
+          ref={textareaRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            autosizeTextarea();
+          }}
           onKeyDown={onKeyDown}
-          placeholder="Xabar yozing... (Enter — yuborish, Shift+Enter — yangi qator)"
+          placeholder="Xabar yozing..."
           rows={1}
-          className="flex-1 px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink outline-none focus:border-accent transition-colors resize-none max-h-32"
+          className="flex-1 px-3.5 py-2.5 bg-bg border border-border rounded-xl text-[16px] sm:text-sm text-ink outline-none focus:border-accent transition-colors resize-none max-h-40"
         />
         <button
           type="button"
@@ -173,7 +203,7 @@ function ChatBubble({ message }) {
         <div className="w-7 h-7 rounded-xl bg-danger/15 flex items-center justify-center flex-shrink-0">
           <Bot size={14} className="text-danger" />
         </div>
-        <div className="bg-danger/10 border border-danger/30 text-danger rounded-2xl rounded-bl-none px-4 py-2.5">{message.content}</div>
+        <div className="bg-danger/10 border border-danger/30 text-danger rounded-2xl rounded-bl-none px-4 py-2.5 max-w-[85%] sm:max-w-[80%]">{message.content}</div>
       </div>
     );
   }
@@ -184,7 +214,7 @@ function ChatBubble({ message }) {
         {isUser ? <User size={14} className="text-muted" /> : <Bot size={14} className="text-on-accent" />}
       </div>
       <div
-        className={`max-w-[80%] px-4 py-2.5 text-sm whitespace-pre-wrap rounded-2xl ${
+        className={`max-w-[85%] sm:max-w-[80%] px-4 py-2.5 text-sm whitespace-pre-wrap break-words rounded-2xl ${
           isUser ? 'bg-accent text-on-accent rounded-br-none' : 'bg-bg border border-border text-ink rounded-bl-none'
         }`}
       >

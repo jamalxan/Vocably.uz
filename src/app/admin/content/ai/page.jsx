@@ -32,15 +32,13 @@ export default function AdminContentAiPage() {
   }, [token, loadTaskKeys]);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-bold text-ink font-display">AI</h2>
-        <p className="text-sm text-muted mt-1">Har bosqich uchun model sozlamalari va ularni real chaqiruv bilan sinash.</p>
-      </div>
-
-      <div className="flex gap-1 p-1 bg-bg border border-border rounded-xl w-fit">
-        <TabButton active={tab === 'chat'} onClick={() => setTab('chat')} icon={MessageSquare} label="Sinov chat" />
-        <TabButton active={tab === 'settings'} onClick={() => setTab('settings')} icon={Settings} label="Sozlamalar" />
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex gap-1 p-1 bg-bg border border-border rounded-xl w-fit">
+          <TabButton active={tab === 'chat'} onClick={() => setTab('chat')} icon={MessageSquare} label="Sinov chat" />
+          <TabButton active={tab === 'settings'} onClick={() => setTab('settings')} icon={Settings} label="Sozlamalar" />
+        </div>
+        {tab === 'settings' && <p className="text-xs text-muted hidden sm:block">Har bosqich uchun model, fallback va xarajat chegarasi.</p>}
       </div>
 
       {tab === 'chat' ? (
