@@ -1,7 +1,47 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Loader2, Plus, BookOpen, Trash2 } from 'lucide-react';
+import { Loader2, Plus, BookOpen, Trash2, Bot, Settings2 } from 'lucide-react';
+
+const LEVEL_LABEL = { manual: "Qo'lda", assisted: 'Yordamchi', autopilot: "To'liq avtopilot" };
+
+// docs/ai-content-agent-tz-avtopilot.md §7.2 — Kontent studiyasi bosh
+// sahifasiga status paneli. `agent_actions` hali bo'sh bo'lishi mumkin
+// (orchestrator qurilmagan) — shunda "hali faoliyat yo'q" ko'rsatiladi,
+// panel o'zi baribir joriy avtomatlashtirish darajasini ko'rsatadi.
+function AutopilotStatusBanner({ token }) {
+  const [policy, setPolicy] = useState(null);
+  const [summary, setSummary] = useState(null);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/admin/automation/policy', { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+      fetch('/api/admin/agent-actions/summary', { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+    ]).then(([p, s]) => {
+      setPolicy(p.global || null);
+      setSummary(s || null);
+    });
+  }, [token]);
+
+  if (!policy) return null;
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-surface flex-wrap">
+      <Bot size={16} className={policy.paused ? 'text-danger' : 'text-accent'} />
+      <span className="text-sm font-semibold text-ink">
+        Avtopilot: {policy.paused ? "TO'XTATILGAN" : 'YOQILGAN'} ({LEVEL_LABEL[policy.level] || policy.level})
+      </span>
+      <span className="text-xs text-muted">
+        {summary && summary.totalActions > 0
+          ? `Bugun: ${summary.totalActions} ta AI harakat, $${summary.costUsdToday.toFixed(3)}`
+          : 'Bugun hali AI harakati yo‘q'}
+      </span>
+      <Link href="/admin/content/ai" className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline flex-shrink-0">
+        <Settings2 size={13} /> Boshqarish
+      </Link>
+    </div>
+  );
+}
 
 // TZ-vocably-v2.md (AI Content Ingestion Agent) §11 — "Kutubxona" ekrani.
 // M1 doirasida: ro'yxat + o'chirish + "Yangi kitob"ga o'tish. Tekshiruv
@@ -49,6 +89,8 @@ export default function ContentBooksPanel({ token }) {
 
   return (
     <div className="space-y-6">
+      <AutopilotStatusBanner token={token} />
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-ink font-display">Kutubxona</h2>

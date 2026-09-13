@@ -651,6 +651,17 @@ const ExamTestSchema = new mongoose.Schema({
     warnings: { type: Number, default: 0 },
     validatedAt: { type: Date, default: null },
   },
+
+  // docs/ai-content-agent-tz-avtopilot.md §4.4 — kim nashr qildi. Qo'lda
+  // (JSON/DSL/admin "Nashr qilish" tugmasi) yaratilgan testlarda hamon
+  // `'admin'` (default) — orqaga mos, mavjud 4 ta test buzilmaydi.
+  publishedBy: { type: String, enum: ['admin', 'ai-agent'], default: 'admin' },
+  autoPublishedAt: { type: Date, default: null },
+  reviewSummary: {
+    autoAccepted: { type: Number, default: 0 },
+    humanReviewed: { type: Number, default: 0 },
+    selfHealed: { type: Number, default: 0 },
+  },
 });
 
 export const ExamTest = mongoose.models.ExamTest || mongoose.model('ExamTest', ExamTestSchema);
@@ -831,6 +842,11 @@ const ContentBookSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+
+  // docs/ai-content-agent-tz-avtopilot.md §4.4/§3.2 — global
+  // `AutomationPolicy`ni shu kitob uchun almashtiradi (topilmasa global
+  // ishlatiladi). `null` — override yo'q (odatiy holat).
+  automationLevel: { type: String, enum: ['manual', 'assisted', 'autopilot'], default: null },
 });
 ContentBookSchema.index({ status: 1, createdAt: -1 });
 
@@ -965,7 +981,10 @@ const ReviewItemSchema = new mongoose.Schema({
   },
   proposed: { type: mongoose.Schema.Types.Mixed, default: null },
   status: { type: String, enum: ['open', 'fixed', 'accepted', 'rejected'], default: 'open' },
-  fixedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  // docs/ai-content-agent-tz-avtopilot.md §2 item 2/§5 S13 — avvalgi versiyada
+  // faqat admin ObjectId'i bo'lardi. Endi AI'ning o'zi avto-qabul qilsa,
+  // literal `'ai-agent'` yoziladi (ObjectId emas) — shuning uchun Mixed.
+  fixedBy: { type: mongoose.Schema.Types.Mixed, default: null },
   fixedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
 });
@@ -992,3 +1011,71 @@ const AiTaskConfigSchema = new mongoose.Schema({
 });
 
 export const AiTaskConfig = mongoose.models.AiTaskConfig || mongoose.model('AiTaskConfig', AiTaskConfigSchema);
+
+// ============================================================================
+// docs/ai-content-agent-tz-avtopilot.md (v1.1 — "Avtopilot qo'shimchasi", §4)
+// — M7 qatlami: admin pipeline bosqichlari orasida qo'lda tugma bosmasin,
+// policy ruxsat bergan darajada AI o'zi qaror qabul qilsin. Bu ikki
+// kolleksiya shu qatlamning ma'lumot asosi; orchestrator (worker/
+// orchestrator/*) va real S12.5/S13/S14/S15 bosqichlari M2-M6'dagi asosiy
+// pipeline (S1-S12) qurilgandan keyin keladi (§9) — hozircha bu yerda
+// faqat policy'ning o'zi va uni o'qish/yozish, jurnal yozuvlari va ularni
+// KO'RSATISH qatlami bor.
+// ============================================================================
+
+// §4.1 — `scope:'global'` bitta hujjat (odatda yagona yozuv), `scope:{bookId}`
+// faqat kerak bo'lgandagina (bitta kitobga override) yaratiladi.
+const AutomationPolicySchema = new mongoose.Schema({
+  scope: { type: String, enum: ['global', 'book'], required: true },
+  bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', default: null }, // faqat scope:'book'
+  level: { type: String, enum: ['manual', 'assisted', 'autopilot'], default: 'assisted' },
+  autoAcceptConfidence: { type: Number, default: 0.93 },
+  autoPublishMinQaScore: { type: Number, default: 0.95 },
+  autoSelfHealMaxAttempts: { type: Number, default: 2 },
+  autoMockGeneration: { type: Boolean, default: true },
+  autoContentGapScan: { type: Boolean, default: false },
+  maxAutonomousCostUsdPerDay: { type: Number, default: 15 },
+  // §3.3 item 6 — admin istalgan payt bitta tugma bilan butun orchestrator'ni
+  // pauza qiladi. Faqat `scope:'global'` hujjatida ma'noga ega.
+  paused: { type: Boolean, default: false },
+  pausedAt: { type: Date, default: null },
+  pausedReason: { type: String, default: '' }, // masalan 'cost_cap_exceeded' yoki 'admin_manual'
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  updatedAt: { type: Date, default: Date.now },
+});
+AutomationPolicySchema.index({ scope: 1, bookId: 1 }, { unique: true });
+
+export const AutomationPolicy = mongoose.models.AutomationPolicy || mongoose.model('AutomationPolicy', AutomationPolicySchema);
+
+// §4.2 — avtonom (AI o'zi qabul qilgan) qarorlar jurnali. Mavjud
+// `AdminAuditLog`dan ATAYLAB alohida: bu yerga har mayda avto-qabul ham
+// yoziladi (bitta kitobda yuzlab bo'lishi mumkin), `AdminAuditLog`ni
+// shishirmaslik uchun. Admin panelda "AI faoliyati jurnali" sifatida va
+// `/admin/audit-log`dagi "Aktyor: AI agent" filtrida ko'rsatiladi.
+const AgentActionSchema = new mongoose.Schema({
+  bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', default: null },
+  testId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest', default: null },
+  reviewItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'ReviewItem', default: null },
+  action: {
+    type: String,
+    enum: [
+      'auto_accept',
+      'self_heal',
+      'auto_publish',
+      'auto_mock_create',
+      'content_gap_detected',
+      'autopilot_paused_cost_cap',
+      'audio_boundary_auto_confirmed',
+    ],
+    required: true,
+  },
+  reasoning: { type: String, default: '' },
+  beforeConfidence: { type: Number, default: null },
+  afterConfidence: { type: Number, default: null },
+  costUsd: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+});
+AgentActionSchema.index({ createdAt: -1 });
+AgentActionSchema.index({ bookId: 1, action: 1 });
+
+export const AgentAction = mongoose.models.AgentAction || mongoose.model('AgentAction', AgentActionSchema);

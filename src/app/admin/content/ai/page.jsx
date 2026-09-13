@@ -1,9 +1,10 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
-import { Loader2, MessageSquare, Settings } from 'lucide-react';
+import { Bot, Loader2, MessageSquare, Settings } from 'lucide-react';
 import AiSettingsPanel from '@/components/admin/content/AiSettingsPanel';
 import AiPlaygroundChat from '@/components/admin/content/AiPlaygroundChat';
+import AutopilotPanel from '@/components/admin/content/AutopilotPanel';
 
 // TZ-vocably-v2.md §11.5 — admin buni endi avvalo CHAT sifatida ochadi
 // (foydalanuvchi talabi: "AI qism chat ko'rinishida bo'lsin"), raw
@@ -37,12 +38,13 @@ export default function AdminContentAiPage() {
         <div className="flex gap-1 p-1 bg-bg border border-border rounded-xl w-fit">
           <TabButton active={tab === 'chat'} onClick={() => setTab('chat')} icon={MessageSquare} label="Sinov chat" />
           <TabButton active={tab === 'settings'} onClick={() => setTab('settings')} icon={Settings} label="Sozlamalar" />
+          <TabButton active={tab === 'autopilot'} onClick={() => setTab('autopilot')} icon={Bot} label="Avtopilot" />
         </div>
         {tab === 'settings' && <p className="text-xs text-muted hidden sm:block">Har bosqich uchun model, fallback va xarajat chegarasi.</p>}
       </div>
 
-      {tab === 'chat' ? (
-        loadingKeys ? (
+      {tab === 'chat' &&
+        (loadingKeys ? (
           <div className="flex items-center gap-2 text-sm text-muted py-8 justify-center">
             <Loader2 size={16} className="animate-spin" /> Yuklanmoqda...
           </div>
@@ -50,10 +52,9 @@ export default function AdminContentAiPage() {
           <p className="text-sm text-muted py-8 text-center">TaskKey topilmadi.</p>
         ) : (
           <AiPlaygroundChat token={token} taskKeys={taskKeys} />
-        )
-      ) : (
-        <AiSettingsPanel token={token} />
-      )}
+        ))}
+      {tab === 'settings' && <AiSettingsPanel token={token} />}
+      {tab === 'autopilot' && <AutopilotPanel token={token} />}
     </div>
   );
 }
