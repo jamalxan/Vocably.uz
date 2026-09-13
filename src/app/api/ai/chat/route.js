@@ -47,25 +47,43 @@ Mashq rejimlari (foydalanuvchi "Writing/Reading/Speaking/Listening mashqini bosh
 const MAX_FUNCTION_ITERATIONS = 5;
 const MAX_IMAGES = 10;
 
-// Provayderlar navbat bilan sinaladi: Groq (matn uchun eng yuqori bepul RPM) -> OpenRouter
-// (zaxira, rasm uchun ham) -> Gemini (oxirgi zaxira, doim ishlaydigan asosiy provayder).
-// Shu tufayli birontasi kvota/limitga tegib qolsa, foydalanuvchi buni sezmasdan davom etadi.
+// Provayderlar navbat bilan sinaladi: Groq (matn uchun eng yuqori bepul RPM) -> Cerebras
+// -> OpenRouter (zaxira, rasm uchun ham) -> Gemini (oxirgi zaxira, doim ishlaydigan asosiy
+// provayder). Shu tufayli birontasi kvota/limitga tegib qolsa, foydalanuvchi buni
+// sezmasdan davom etadi.
+//
+// 2026-09-13: `llama-3.3-70b-versatile` (Groq), `meta-llama/llama-3.3-70b-instruct:free`
+// va `nvidia/nemotron-nano-12b-v2-vl:free` (OpenRouter) — UCHALASI HAM provayder
+// katalogidan olib tashlangan ekan (404) — bu ANIQLANGAN, HAQIQIY jonli xato edi: har
+// bir matn/rasm so'rovi birinchi 1-2 urinishda muqarrar muvaffaqiyatsiz bo'lib, faqat
+// Gemini'ga tushib ishlar edi (sekinroq, retry vaqti bilan). Haqiqiy `node --env-file=.env`
+// skriptlari orqali joriy modellar bilan almashtirildi va real chaqiruv bilan tasdiqlandi
+// (`src/lib/aiJson.js`dagi xuddi shu topilma va model ID'lar — ikkala fayl bir xil
+// provayderlardan foydalanadi, shuning uchun ikkalasi ham yangilandi).
 const PROVIDERS = {
   groq: {
     baseUrl: 'https://api.groq.com/openai/v1',
     apiKey: process.env.GROQ_API_KEY,
-    model: 'llama-3.3-70b-versatile',
+    model: 'openai/gpt-oss-120b',
+  },
+  cerebras: {
+    baseUrl: 'https://api.cerebras.ai/v1',
+    apiKey: process.env.CEREBRAS_API_KEY,
+    model: 'gpt-oss-120b',
   },
   openrouterText: {
     baseUrl: 'https://openrouter.ai/api/v1',
     apiKey: process.env.OPENROUTER_API_KEY,
-    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    model: 'google/gemma-4-31b-it:free',
     extraHeaders: { 'HTTP-Referer': process.env.APP_URL || 'https://vocably.app', 'X-Title': 'Vocably' },
   },
+  // `google/gemma-4-31b-it:free`ning o'zi vision (rasm kirishi)ni ham qo'llab-quvvatlaydi
+  // (OpenRouter'ning `/models` katalogi shuni tasdiqlaydi) — endi matn va rasm uchun
+  // ALOHIDA-ALOHIDA o'lik model ID saqlashning hojati yo'q, ikkalasi ham shu bittasiga.
   openrouterVision: {
     baseUrl: 'https://openrouter.ai/api/v1',
     apiKey: process.env.OPENROUTER_API_KEY,
-    model: 'nvidia/nemotron-nano-12b-v2-vl:free',
+    model: 'google/gemma-4-31b-it:free',
     extraHeaders: { 'HTTP-Referer': process.env.APP_URL || 'https://vocably.app', 'X-Title': 'Vocably' },
   },
 };
@@ -347,12 +365,13 @@ export async function POST(req) {
     // avvalgi standart tartib ishlatiladi.
     const TEXT_CHAIN_ITEMS = {
       groq: { ...PROVIDERS.groq, key: 'groq' },
+      cerebras: { ...PROVIDERS.cerebras, key: 'cerebras' },
       openrouterText: { ...PROVIDERS.openrouterText, key: 'openrouterText' },
       gemini: { key: 'gemini' },
     };
     const chain = hasImages
       ? [{ ...PROVIDERS.openrouterVision, key: 'openrouterVision' }, { key: 'gemini' }]
-      : resolveModelChainOrder(['groq', 'openrouterText', 'gemini']).map((name) => TEXT_CHAIN_ITEMS[name]);
+      : resolveModelChainOrder(['groq', 'cerebras', 'openrouterText', 'gemini']).map((name) => TEXT_CHAIN_ITEMS[name]);
 
     const encoder = new TextEncoder();
 
