@@ -12,7 +12,7 @@
 // oldindan yuklash, Background Sync bilan offline javob yuborish) FAZA 1'dagi
 // FSRS/queue API'siga bog'liq — u hali yo'q, shuning uchun bu yerda emas.
 
-const SHELL_CACHE = 'vocably-shell-v1';
+const SHELL_CACHE = 'vocably-shell-v2';
 const SHELL_URLS = ['/app', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
