@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sun, Moon, Monitor, ShieldCheck, ChevronRight, LogOut } from 'lucide-react';
+import { Sun, Moon, Monitor, ChevronRight, LogOut } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import IconButton from '@/components/ui/IconButton';
@@ -25,7 +25,7 @@ import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { displayName, logout, chatAccess, chatRole, token } = useApp();
+  const { displayName, logout, chatAccess, token } = useApp();
 
   const visibleSidebarNav = SIDEBAR_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
   const visibleBottomNav = BOTTOM_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
@@ -100,12 +100,6 @@ export default function AppShell({ children }) {
               );
             })}
 
-            {chatRole === 'admin' && (
-              <Link href="/admin" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-accent hover:bg-primary-hover transition-colors">
-                <ShieldCheck size={16} />
-                <span className="flex-1 text-left">Admin panel</span>
-              </Link>
-            )}
           </nav>
         </div>
 
@@ -147,12 +141,6 @@ export default function AppShell({ children }) {
                 </Link>
               );
             })}
-            {chatRole === 'admin' && (
-              <Link href="/admin" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-accent hover:bg-primary-hover transition-colors" title="Admin panel">
-                <ShieldCheck size={16} className="flex-shrink-0" />
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Admin panel</span>
-              </Link>
-            )}
           </nav>
         </div>
         <button onClick={logout} className="m-3 p-2.5 rounded-lg text-on-primary/60 hover:text-accent hover:bg-primary-hover transition-colors flex items-center gap-3 flex-shrink-0" title="Chiqish" aria-label="Chiqish">

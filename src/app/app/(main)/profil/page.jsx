@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { LogOut, ShieldCheck, Sun, Moon, Monitor, Flame, Trophy } from 'lucide-react';
+import { LogOut, Sun, Moon, Monitor, Flame, Trophy } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import Button from '@/components/ui/Button';
@@ -17,7 +17,7 @@ const THEME_OPTIONS = [
 ];
 
 export default function ProfilPage() {
-  const { displayName, username, phone, logout, chatRole, reviewStreak, token } = useApp();
+  const { displayName, username, phone, logout, reviewStreak, token } = useApp();
   const { theme, setTheme } = useTheme();
   const [gami, setGami] = useState(null);
 
@@ -108,16 +108,6 @@ export default function ProfilPage() {
           ))}
         </div>
       </section>
-
-      {chatRole === 'admin' && (
-        <Link
-          href="/admin"
-          className="flex items-center gap-3 p-4 bg-surface border border-border rounded-2xl shadow-card hover:shadow-premium transition-shadow text-accent font-medium text-sm"
-        >
-          <ShieldCheck size={18} />
-          Admin panel
-        </Link>
-      )}
 
       <Button variant="secondary" onClick={logout} className="w-full">
         <LogOut size={16} />
