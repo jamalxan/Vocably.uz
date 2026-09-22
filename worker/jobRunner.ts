@@ -9,8 +9,10 @@ import { UnrecoverableError } from 'bullmq';
 import { ContentBook, IngestJob, AgentAction, AutomationPolicy } from '@/lib/models';
 import { canContinueAutonomous } from '@/lib/contentAgent/autopilotGuards';
 import { STAGE_REGISTRY } from './stageRegistry';
-import { RetryableStageError, UnrecoverableStageError } from './lib/errors';
+import { UnrecoverableStageError } from './lib/errors';
+import { runAutoPublishGateForBook } from './orchestrator/autoPublishGate';
 import type { IngestStage } from './types';
+import type { QaOutput } from './stages/qa';
 
 const IngestJobModel: any = IngestJob;
 const ContentBookModel: any = ContentBook;
@@ -97,6 +99,27 @@ export async function runJob(data: WorkerJobData): Promise<unknown> {
       { _id: job._id },
       { $set: { status: 'succeeded', output, 'metrics.finishedAt': new Date() }, $unset: { error: 1 } }
     );
+
+    // LEGAL-01 + AI-01 orchestrator, S14 "auto_publish_gate" — `qa`
+    // muvaffaqiyatli tugagach avtomatik sinab ko'riladi (docs/ai-content-
+    // agent-tz-avtopilot.md §5, "asosiy pipeline S1-S12dan keyin" — bu yagona
+    // orchestrator bosqichi hozircha ulangan, S12.5/S13/S15/S16 hali yo'q).
+    // BEST-EFFORT: gate o'z ichida xato bersa (masalan Mongo vaqtincha
+    // yetib bo'lmasa) bu `qa` ISHINI "failed"ga O'TKAZMASLIGI kerak — `qa`
+    // o'zi ALLAQACHON muvaffaqiyatli tugagan, nashr qarori ALOHIDA qadam.
+    if (data.stage === 'qa') {
+      try {
+        const qaOutput = output as QaOutput;
+        await runAutoPublishGateForBook(
+          data.bookId,
+          qaOutput.results.map((r) => r.testId)
+        );
+      } catch (gateErr) {
+        // eslint-disable-next-line no-console
+        console.error(`[jobRunner] auto_publish_gate muvaffaqiyatsiz (bookId=${data.bookId}):`, (gateErr as Error).message);
+      }
+    }
+
     return output;
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));

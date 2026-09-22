@@ -7,25 +7,37 @@ import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 // o'zini mock qilamiz — `AiRouterError`ning HAQIQIY klassini ishlatamiz,
 // aks holda `instanceof` tekshiruvi (`aiStageRunner.ts`dagi `toStageError`)
 // ishlamay qoladi.
-const recordAiCallMock = vi.fn().mockResolvedValue({});
-const getTaskConfigMock = vi.fn();
+//
+// `vi.mock(...)` factory fayl boshiga ko'chiriladi (hoisted) — tashqi
+// `const`larga (TDZ) to'g'ridan-to'g'ri murojaat qilish ba'zan (boshqa
+// fayllar bilan birga, batch tartibida ishga tushirilganda) `ReferenceError`
+// berishi ANIQLANDI (worker/orchestrator/autoPublishGate.test.ts'da) —
+// `vi.hoisted()` shu muammoning rasmiy yechimi, shuning uchun bu yerda ham
+// ishlatiladi (ilgari ishlagan bo'lsa ham, TDZ xavfi baribir qolar edi).
+const mocks = vi.hoisted(() => ({
+  recordAiCallMock: vi.fn().mockResolvedValue({}),
+  getTaskConfigMock: vi.fn(),
+  callTaskMock: vi.fn(),
+}));
+
 vi.mock('@/lib/contentAgent/aiCallStore', () => ({
-  getTaskConfig: (...args: unknown[]) => getTaskConfigMock(...args),
-  recordAiCall: (...args: unknown[]) => recordAiCallMock(...args),
+  getTaskConfig: (...args: unknown[]) => mocks.getTaskConfigMock(...args),
+  recordAiCall: (...args: unknown[]) => mocks.recordAiCallMock(...args),
   hashInput: (input: unknown) => `hash(${JSON.stringify(input)})`,
 }));
 
-const callTaskMock = vi.fn();
 vi.mock('@/lib/contentAgent/aiRouter', async () => {
   // `AiRouterError`ning HAQIQIY klassi kerak (quyida `instanceof` bilan
   // solishtiriladi) — faqat `callTask`ning o'zi almashtiriladi.
   const actual = await vi.importActual('@/lib/contentAgent/aiRouter');
-  return { ...actual, callTask: (...args: unknown[]) => callTaskMock(...args) };
+  return { ...actual, callTask: (...args: unknown[]) => mocks.callTaskMock(...args) };
 });
 
 import { runAiStage } from './aiStageRunner';
 import { AiRouterError } from '@/lib/contentAgent/aiRouter';
 import { RetryableStageError, UnrecoverableStageError } from './errors';
+
+const { recordAiCallMock, getTaskConfigMock, callTaskMock } = mocks;
 
 describe('runAiStage', () => {
   const originalKey = process.env.OPENROUTER_API_KEY;

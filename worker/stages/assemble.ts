@@ -200,7 +200,12 @@ export async function runAssemble(ctx: StageContext): Promise<AssembleOutput> {
         licenceNote: book.licenceNote || '',
         publishScope,
       },
-      publishedBy: 'ai-agent',
+      // `publishedBy`/`isPublished`/`autoPublishedAt` ATAYLAB bu yerda
+      // O'RNATILMAYDI — assemble bosqichida hali HECH narsa nashr qilingani
+      // yo'q (schema default: `isPublished:false`, `publishedBy:'admin'`).
+      // Auto-publish qarori (LEGAL-01 gate + qa.score + policy) alohida,
+      // `qa` bosqichidan KEYIN keladigan `worker/orchestrator/autoPublishGate.ts`
+      // ishi — shu yerda oldindan taxmin qilib qo'yish noto'g'ri bo'lardi.
     };
 
     let testId: string;
