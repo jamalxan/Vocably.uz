@@ -82,3 +82,21 @@ export async function presignSourceDownload(key) {
 export async function deleteSourceObject(key) {
   await getClient().send(new DeleteObjectCommand({ Bucket: BUCKET(), Key: key }));
 }
+
+// AI-01 worker qatlami (worker/) uchun — admin brauzeri emas, server(worker)ning
+// o'zi R2 kalitlariga bevosita ega, shuning uchun o'ziga (`presignSourceUpload`)
+// so'rov yozib keyin `fetch` bilan PUT qilishning hojati yo'q: to'g'ridan-to'g'ri
+// `PutObjectCommand`/`GetObjectCommand`. Worker manba PDF/audio'ni o'qishi
+// (`getObjectBuffer`) va o'zi hosil qilgan hujjatlarni (sahifa matni/render,
+// kesilgan audio, WebM/Opus derivativ) yozishi (`putObject`) uchun.
+export async function putObject(key, body, contentType) {
+  await getClient().send(new PutObjectCommand({ Bucket: BUCKET(), Key: key, Body: body, ContentType: contentType }));
+  return key;
+}
+
+export async function getObjectBuffer(key) {
+  const res = await getClient().send(new GetObjectCommand({ Bucket: BUCKET(), Key: key }));
+  const chunks = [];
+  for await (const chunk of res.Body) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}

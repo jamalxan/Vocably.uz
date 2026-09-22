@@ -87,7 +87,23 @@ export async function enqueueIngestJob({ ingestJobId, bookId, stage, idempotency
   const addPromise = queue.add(
     stage,
     { ingestJobId: String(ingestJobId), bookId: String(bookId), stage },
-    { jobId: idempotencyKey, removeOnComplete: 1000, removeOnFail: 5000 }
+    {
+      jobId: idempotencyKey,
+      removeOnComplete: 1000,
+      removeOnFail: 5000,
+      // AI-01 worker qismi (`worker/jobRunner.ts`) — bosqichlar orasidagi
+      // bog'liqlik "poll-via-retry" bilan hal qilinadi (worker/lib/
+      // dependencies.ts: bog'liq bosqich hali tugamagan bo'lsa retryable
+      // xato otiladi, chunki `ingest/route.js` BARCHA 13 bosqichni bir
+      // vaqtda navbatga qo'yadi, ketma-ketlikni kutmaydi). Shuning uchun
+      // yetarlicha ko'p urinish + eksponensial backoff kerak — oldingi
+      // bosqich (masalan katta PDF'ni `extract` qilish) bir necha daqiqa
+      // olishi mumkin. `UnrecoverableError` (worker/jobRunner.ts) bu
+      // sozlamadan qat'i nazar DARHOL to'xtatadi — faqat haqiqatan ham
+      // qayta urinish foyda berishi mumkin bo'lgan xatolar shuncha marta suriladi.
+      attempts: 8,
+      backoff: { type: 'exponential', delay: 5000 }, // 5s,10s,20s,40s,80s,160s,320s ≈ jami ~10 daqiqa
+    }
   );
   // Timeout'dan keyin ham fon rejimida davom etadi (bekor qilinmaydi — ioredis
   // buyruqni bekor qila olmaydi) — shuning uchun kech muvaffaqiyatsiz bo'lsa
