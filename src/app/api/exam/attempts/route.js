@@ -9,6 +9,10 @@ const VALID_SECTIONS = ['listening', 'reading', 'writing', 'speaking'];
 // TZ §9.1 — Mock'da bo'limlar shu ketma-ketlikda (attemptServer.ts'dagi bilan
 // bir xil — Speaking Faza 3'dan tashqarida).
 const MOCK_SECTION_ORDER = ['listening', 'reading', 'writing'];
+// "Practice mode" (TZ, Listening bo'limi) — amalda vaqtsiz, lekin
+// `ExamAttempt.endsAt` schema darajasida majburiy (Date, required) —
+// shuning uchun juda uzoq, real vaqt bosimi bermaydigan muddat beriladi.
+const PRACTICE_ATTEMPT_DURATION_SEC = 24 * 3600;
 
 function mockSectionsFor(test) {
   return MOCK_SECTION_ORDER.filter((key) => test.sections?.[key]);
@@ -48,12 +52,15 @@ async function createMockAttemptForTest(userId, test) {
 // TZ-vocably-v2.md §4 (IELTS CD Exam Engine v1.0) — "POST /attempts — Yangi
 // urinish. Body: {testId, mode, sections}. Javob: {attemptId}".
 //
-// `mode: 'section'` — bitta bo'lim (mashq rejimi kabi, Faza 1/2). `mode: 'mock'`
-// — testda mavjud bo'lgan listening/reading/writing bo'limlarining BARCHASI,
-// TZ §9.1 tartibida, bitta attempt ichida ketma-ket (§19 Faza 3 item 15).
-// Ikkala holatda ham allaqachon davom etayotgan mos urinish bo'lsa (sahifa
-// yangilansa) O'SHANI qaytaramiz — yangisini yaratmaymiz, aks holda taymer va
-// javoblar yo'qolib, chalkash holatga tushadi.
+// `mode: 'section'` — bitta bo'lim, haqiqiy vaqt bosimi bilan (real bo'lim
+// muddatida). `mode: 'mock'` — testda mavjud bo'lgan listening/reading/writing
+// bo'limlarining BARCHASI, TZ §9.1 tartibida, bitta attempt ichida ketma-ket
+// (§19 Faza 3 item 15). `mode: 'practice'` — bitta bo'lim, lekin TZ "Practice
+// mode" bo'limidagi kabi (hozircha faqat Listening'da UI qurilgan — replay/
+// tezlik erkin, AudioEngine.tsx#mode='practice'), amalda cheksizga yaqin
+// muddat bilan (pastda). Barcha holatlarda allaqachon davom etayotgan mos
+// urinish bo'lsa (sahifa yangilansa) O'SHANI qaytaramiz — yangisini
+// yaratmaymiz, aks holda taymer va javoblar yo'qolib, chalkash holatga tushadi.
 //
 // `mode: 'mock'` uchun `testId` IXTIYORIY (foydalanuvchi so'rovidan — "mockda
 // tanlash bo'lmasin, to'liq avto"): berilmasa, server nashr etilgan va
@@ -68,10 +75,10 @@ export async function POST(req) {
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     const { testId, mode = 'section', section, abandonExisting } = await req.json().catch(() => ({}));
-    if (!['section', 'mock'].includes(mode)) {
-      return NextResponse.json({ error: "mode faqat 'section' yoki 'mock' bo'lishi mumkin" }, { status: 400 });
+    if (!['section', 'mock', 'practice'].includes(mode)) {
+      return NextResponse.json({ error: "mode faqat 'section', 'mock' yoki 'practice' bo'lishi mumkin" }, { status: 400 });
     }
-    if (mode === 'section' && !testId) {
+    if ((mode === 'section' || mode === 'practice') && !testId) {
       return NextResponse.json({ error: 'testId shart' }, { status: 400 });
     }
 
@@ -134,11 +141,17 @@ export async function POST(req) {
     const sectionContent = test.sections?.[section];
     if (!sectionContent) return NextResponse.json({ error: `Testda ${section} bo'limi yo'q` }, { status: 400 });
 
+    // `mode` shu yerda 'section' yoki 'practice' bo'lishi mumkin — ikkalasi
+    // ham bir bo'limli urinish, faqat muddati farq qiladi (pastda). Mavjud
+    // urinishni qidirishda ham `mode`ning O'ZI ishlatiladi, aks holda
+    // practice va section urinishlari bir-birini "davom ettirgandek" ko'rinib
+    // qolardi (masalan practice ochilganda eskirmagan section urinish topilib,
+    // vaqtsiz bo'lishi kerak bo'lgan sessiya haqiqiy taymerga ega bo'lib qolardi).
     const existing = await ExamAttempt.findOne({
       userId,
       testId,
       currentSection: section,
-      mode: 'section',
+      mode,
       status: 'in_progress',
     });
     // VOCABLY-TZ.md §2.4/§5 item 12 — "Attempt boshqaruvini bir xil qil":
@@ -154,17 +167,18 @@ export async function POST(req) {
 
     const now = new Date();
     const testVersionId = await getOrCreateTestVersion(test);
+    const durationSec = mode === 'practice' ? PRACTICE_ATTEMPT_DURATION_SEC : sectionContent.durationSec;
     const attempt = await ExamAttempt.create({
       userId,
       testId,
       testVersionId,
-      mode: 'section',
+      mode,
       sections: [section],
       currentSection: section,
       status: 'in_progress',
       startedAt: now,
       sectionStartedAt: now,
-      endsAt: new Date(now.getTime() + sectionContent.durationSec * 1000),
+      endsAt: new Date(now.getTime() + durationSec * 1000),
       answers: {},
       flagged: [],
       lastQuestion: 0,

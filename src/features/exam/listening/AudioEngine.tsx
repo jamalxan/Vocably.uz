@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
 // TZ-vocably-v2.md §7.1 — "AudioEngine qoidalari (exam rejim)":
 //   - <audio> elementi yashirin, native controls YO'Q
@@ -27,17 +27,17 @@ export interface AudioEngineProps {
   onDurationKnown?: (sec: number) => void;
 }
 
-export default function AudioEngine({
-  src,
-  mode,
-  volume,
-  playbackRate = 1,
-  startPositionSec,
-  play,
-  onPositionChange,
-  onEnded,
-  onDurationKnown,
-}: AudioEngineProps) {
+// Faqat practice rejimda kerak (ListeningPracticeSection.tsx — ±10s tugmalari)
+// — exam rejimda seek allaqachon `onSeeking` orqali bloklangan, tashqi
+// dasturiy seek imkoniyatining o'zi shart emas.
+export interface AudioEngineHandle {
+  seekBy: (deltaSec: number) => void;
+}
+
+const AudioEngine = forwardRef<AudioEngineHandle, AudioEngineProps>(function AudioEngine(
+  { src, mode, volume, playbackRate = 1, startPositionSec, play, onPositionChange, onEnded, onDurationKnown },
+  ref
+) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const lastKnownTimeRef = useRef(startPositionSec);
   const positionAppliedRef = useRef(false);
@@ -123,15 +123,37 @@ export default function AudioEngine({
   // activation"ni saqlab qoladi). Agar kelajakda bu ishlamay qolsa — sabab
   // shu zanjirda biror joyda asinxron kutish paydo bo'lgani, yechim: play()ni
   // to'g'ridan-to'g'ri onClick handler'ining o'zida (ref orqali) chaqirish.
+  //
+  // `play === false` bo'lganda `audio.pause()` chaqirish FAQAT practice
+  // rejimda kerak — exam rejimda haqiqiy pauza tugmasi umuman yo'q (`play`
+  // bir marta true bo'lib qoladi), va `onPause` listeneri allaqachon har
+  // qanday kutilmagan pauzani avtomatik davom ettiradi (yuqorida) — shu ikki
+  // mexanizm bir-biriga qarshi kelmasin uchun bu yerda exam rejim TEGILMAYDI.
   useEffect(() => {
     const audio = audioRef.current;
-    if (audio && play) {
+    if (!audio) return;
+    if (play) {
       audio.play().catch(() => {
         // Avtoplay bloklandi — VolumeCheck ekrani aynan shu muammoni hal
         // qilish uchun mavjud (user gesture beradi).
       });
+    } else if (mode === 'practice') {
+      audio.pause();
     }
-  }, [play]);
+  }, [play, mode]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      seekBy: (deltaSec: number) => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        const max = Number.isFinite(audio.duration) ? audio.duration : Infinity;
+        audio.currentTime = Math.min(max, Math.max(0, audio.currentTime + deltaSec));
+      },
+    }),
+    []
+  );
 
   return (
     <audio
@@ -145,4 +167,6 @@ export default function AudioEngine({
       aria-hidden="true"
     />
   );
-}
+});
+
+export default AudioEngine;

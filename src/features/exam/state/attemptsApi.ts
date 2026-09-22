@@ -1,4 +1,3 @@
-import { getStoredAuthToken } from './examStore';
 import type {
   AnswerValue,
   AttemptResult,
@@ -12,13 +11,15 @@ import type {
 // TZ-vocably-v2.md §4 — `/api/exam/attempts/*` uchun yupqa klient. Barcha
 // bo'lim modullari (Reading — allaqachon, Listening/Writing Faza 2'da) shu bir
 // xil kontrakt bilan gaplashadi, shuning uchun bu yerda BITTA joyda.
+//
+// AUTH_MIGRATION_MAP.md — Authorization header endi qo'lda biriktirilmaydi;
+// httpOnly cookie orqali autentifikatsiya qilinadi (src/lib/auth.js), brauzer
+// buni same-origin so'rovga o'zi qo'shadi.
 async function authedFetch(url: string, init?: RequestInit): Promise<Response> {
-  const token = getStoredAuthToken();
   return fetch(url, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers || {}),
     },
   });
@@ -80,6 +81,20 @@ export async function fetchTestPreview(testId: string): Promise<TestPreview> {
 
 export async function createAttempt(testId: string, section: string, abandonExisting?: boolean): Promise<{ attemptId: string }> {
   const body: Record<string, unknown> = { testId, mode: 'section', section };
+  if (abandonExisting) body.abandonExisting = true;
+  const res = await authedFetch('/api/exam/attempts', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("Urinish yaratib bo'lmadi");
+  return res.json();
+}
+
+/** TZ "Practice mode" (Listening: replay/tezlik erkin) — `createAttempt`ning
+ * amalda vaqtsiz varianti (server tomoni `mode:'practice'`ni juda uzoq
+ * muddat bilan yaratadi, attempts/route.js#PRACTICE_ATTEMPT_DURATION_SEC). */
+export async function createPracticeAttempt(testId: string, section: string, abandonExisting?: boolean): Promise<{ attemptId: string }> {
+  const body: Record<string, unknown> = { testId, mode: 'practice', section };
   if (abandonExisting) body.abandonExisting = true;
   const res = await authedFetch('/api/exam/attempts', {
     method: 'POST',
@@ -207,7 +222,6 @@ export async function uploadSpeakingRecording(
   attemptId: string,
   args: { part: 1 | 2 | 3; questionIndex: number; blob: Blob; durationSec: number }
 ): Promise<{ audioFileId: string; transcript: string }> {
-  const token = getStoredAuthToken();
   const form = new FormData();
   form.append('part', String(args.part));
   form.append('questionIndex', String(args.questionIndex));
@@ -216,7 +230,6 @@ export async function uploadSpeakingRecording(
 
   const res = await fetch(`/api/exam/attempts/${attemptId}/speaking-recording`, {
     method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: form,
   });
   const data = await res.json().catch(() => ({}));

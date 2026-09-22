@@ -645,9 +645,14 @@ export async function getAttemptReviewDetail(attemptId: string, userId: string):
 /** TZ §11.1 item 8 / §19 Faza 3 item 17 — "Tarix: oldingi mocklar bilan
  * taqqoslash grafigi". Foydalanuvchining baholangan urinishlarini vaqt
  * bo'yicha (eng eskisidan eng yangisiga — grafik chapdan o'ngga o'sishi
- * uchun) qaytaradi. */
+ * uchun) qaytaradi.
+ *
+ * `mode: 'practice'` ATAYLAB chiqarib tashlanadi — bu "haqiqiy" urinish emas
+ * (vaqtsiz, cheksiz qayta tinglash), tarix grafigiga qo'shilsa foydalanuvchi
+ * progressini soxta ko'rsatardi (masalan bir xil testni 5 marta mashq qilib,
+ * "5 ta urinish" bo'lib chiqishi mumkin edi). */
 export async function getAttemptHistory(userId: string, limit = 20): Promise<AttemptHistoryEntry[]> {
-  const attempts = await ExamAttempt.find({ userId, status: 'graded' })
+  const attempts = await ExamAttempt.find({ userId, status: 'graded', mode: { $ne: 'practice' } })
     .sort({ submittedAt: -1 })
     .limit(limit)
     .select('testId mode submittedAt result')

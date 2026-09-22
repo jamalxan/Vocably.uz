@@ -753,7 +753,12 @@ const ExamAttemptSchema = new mongoose.Schema(
     // uchun (orqaga moslik) — bunday holda kod live `ExamTest`ga qaytadi
     // (`resolveTestForAttempt`, attemptServer.ts).
     testVersionId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTestVersion', default: null },
-    mode: { type: String, enum: ['mock', 'section'], default: 'section' },
+    // 'practice' — VOCABLY_TZ_FINAL...2026-09-20.md "Practice mode" (Listening:
+    // replay/tezlik erkin, Reading/Writing hali qurilmagan). `mode:'section'`
+    // bilan bir xil shaklda (bitta bo'lim), faqat cheksizga yaqin `endsAt`
+    // bilan yaratiladi (POST /attempts route.js) va tarix grafigiga qo'shilmaydi
+    // (getAttemptHistory, attemptServer.ts) — bu "haqiqiy" urinish emas.
+    mode: { type: String, enum: ['mock', 'section', 'practice'], default: 'section' },
     sections: [{ type: String, enum: ['listening', 'reading', 'writing', 'speaking'] }],
     currentSection: { type: String, enum: ['listening', 'reading', 'writing', 'speaking'], required: true },
     status: { type: String, enum: ['in_progress', 'submitted', 'graded', 'expired', 'abandoned'], default: 'in_progress' },
