@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getOwnedAttempt, ExamAttemptError } from '@/lib/exam/attemptServer';
+import { ATTEMPT_EVENT_TYPES } from '@/lib/models';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -21,6 +22,9 @@ export async function POST(req, { params }) {
     const { type, meta } = await req.json().catch(() => ({}));
     if (!type || typeof type !== 'string') {
       return NextResponse.json({ error: "'type' shart" }, { status: 400 });
+    }
+    if (!ATTEMPT_EVENT_TYPES.includes(type)) {
+      return NextResponse.json({ error: `Noma'lum event turi: '${type}'` }, { status: 400 });
     }
 
     if (attempt.events.length < MAX_EVENTS) {

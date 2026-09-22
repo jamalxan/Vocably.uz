@@ -731,6 +731,19 @@ ExamTestVersionSchema.index({ parentTestId: 1, versionNumber: -1 });
 
 export const ExamTestVersion = mongoose.models.ExamTestVersion || mongoose.model('ExamTestVersion', ExamTestVersionSchema);
 
+// AUDIT PERF/xavfsizlik (VOCABLY_TZ_FINAL... 2026-09-20 §23, "Event log:
+// Arbitrary `type`ni enum bilan whitelist qilish") — avvalgi versiyada
+// `events[].type` ISTALGAN string qabul qilardi (faqat "bo'sh emasmi"
+// tekshirilardi, route.js). Klient hali `/event`ni umuman chaqirmasa ham
+// (qidiruv bilan tasdiqlandi — bu integrity-log UI hali ulanmagan),
+// backend qabul qiladigan qiymatlar TO'PLAMI ochiq bo'lib qolishi kerak
+// emas — TZ §14 o'zi aniq nomlagan uchtasi (tab switch, fullscreen exit,
+// paste) + ular bilan tabiiy juftlashadigan qarama-qarshi holatlar.
+// `route.js` (`/api/exam/attempts/[id]/event`) HAM shu ro'yxatni import
+// qilib, Mongoose validatsiya xatosi sifatida emas, aniq 400 bilan rad
+// etadi — ikkala qatlam (API + schema) bitta ro'yxatni baham ko'radi.
+export const ATTEMPT_EVENT_TYPES = ['visibility_hidden', 'visibility_visible', 'fullscreen_exit', 'fullscreen_enter', 'paste', 'copy', 'blur', 'focus'];
+
 const ExamAttemptSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -778,7 +791,7 @@ const ExamAttemptSchema = new mongoose.Schema(
     // Yaxlitlik (TZ §14) — halol bo'lish maqsadida faqat log, hech narsani bloklamaydi.
     events: [
       {
-        type: { type: String, required: true },
+        type: { type: String, required: true, enum: ATTEMPT_EVENT_TYPES },
         at: { type: Date, default: Date.now },
         meta: { type: mongoose.Schema.Types.Mixed, default: null },
       },
@@ -825,6 +838,23 @@ const ExamAttemptSchema = new mongoose.Schema(
   { minimize: false }
 );
 ExamAttemptSchema.index({ userId: 1, testId: 1, currentSection: 1, status: 1 });
+
+// AUDIT PERF (§23, "Mongo indexes yo'q") — TZ hujjatining o'zi taklif qilgan
+// `userId+mode+status`/`userId+createdAt`/`testId+createdAt` O'RNIGA, REPO
+// ICHIDAGI HAQIQIY so'rovlar qidirib topilib (`grep -rn "ExamAttempt.find"`),
+// ULARGA aniq mos indekslar qo'shildi — taxminiy emas:
+//  - {userId, mode, status}: active-mock/route.js + attempts/route.js'dagi
+//    "davom etayotgan mock/section bormi" tekshiruvlari (har urinish
+//    yaratishda/GET active-mock'da chaqiriladi).
+//  - {testId, status}: admin/exam-tests/[id]/stats/route.js — bitta test
+//    bo'yicha barcha 'graded' urinishlarni yig'adi (savol-turi statistikasi).
+//  - {userId, status, submittedAt}: attemptServer.ts `getAttemptHistory` —
+//    aynan shu maydonlar bo'yicha filtrlab, `submittedAt`ga qarab saralaydi
+//    (TZ o'zi taklif qilgan `createdAt` EMAS — kod haqiqatda `submittedAt`
+//    ishlatadi).
+ExamAttemptSchema.index({ userId: 1, mode: 1, status: 1 });
+ExamAttemptSchema.index({ testId: 1, status: 1 });
+ExamAttemptSchema.index({ userId: 1, status: 1, submittedAt: -1 });
 
 export const ExamAttempt = mongoose.models.ExamAttempt || mongoose.model('ExamAttempt', ExamAttemptSchema);
 

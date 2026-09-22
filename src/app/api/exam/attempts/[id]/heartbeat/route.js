@@ -26,20 +26,26 @@ export async function POST(req, { params }) {
 
     if (attempt.status === 'in_progress') {
       const { audioPositionSec, currentQuestion, partIndex, partEnded, volume } = await req.json().catch(() => ({}));
+      // PERF-02 — avvalgi versiya "qiymat berilganmi" (typeof === 'number')
+      // tekshirardi, "qiymat O'ZGARDIMI" emas — klient odatda HAR 15s'da
+      // currentQuestion/audioPositionSec'ni QAYTA-QAYTA yuboradi (masalan
+      // foydalanuvchi bir necha daqiqa bir savolda o'tirsa ham), shuning
+      // uchun deyarli HAR heartbeat Mongo'ga yozuv bilan tugardi. Endi
+      // faqat HAQIQATAN farq qilganda `dirty` bo'ladi.
       let dirty = false;
-      if (typeof audioPositionSec === 'number') {
+      if (typeof audioPositionSec === 'number' && attempt.audio.positionSec !== audioPositionSec) {
         attempt.audio.positionSec = audioPositionSec;
         dirty = true;
       }
-      if (typeof currentQuestion === 'number') {
+      if (typeof currentQuestion === 'number' && attempt.lastQuestion !== currentQuestion) {
         attempt.lastQuestion = currentQuestion;
         dirty = true;
       }
-      if (typeof partIndex === 'number') {
+      if (typeof partIndex === 'number' && attempt.audio.partIndex !== partIndex) {
         attempt.audio.partIndex = partIndex;
         dirty = true;
       }
-      if (typeof volume === 'number') {
+      if (typeof volume === 'number' && attempt.audio.volume !== volume) {
         attempt.audio.volume = volume;
         dirty = true;
       }

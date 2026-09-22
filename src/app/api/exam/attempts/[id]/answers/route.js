@@ -1,15 +1,16 @@
 import { connectToDatabase } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/auth';
-import { getOwnedAttempt, syncAttemptExpiry, ExamAttemptError } from '@/lib/exam/attemptServer';
+import { getOwnedAttempt, syncAttemptExpiry, patchAttemptAnswers, ExamAttemptError } from '@/lib/exam/attemptServer';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 // TZ-vocably-v2.md §4/§4.3 — "PATCH /attempts/:id/answers — Batch saqlash:
 // {answers, flagged, lastQuestion}". `answers` QISMAN bo'lishi mumkin (masalan
 // bitta savolning debounce'langan javobi) — mavjud javoblarning ustiga
-// birlashtiriladi (Object.assign), butunlay ALMASHTIRILMAYDI. `flagged` va
-// `lastQuestion` esa to'liq snapshot sifatida keladi (§4.3 jadvali) — bor
-// bo'yicha almashtiriladi.
+// birlashtiriladi, butunlay ALMASHTIRILMAYDI (`patchAttemptAnswers` MongoDB
+// nuqta-notatsiyasi bilan, PERF-01 tuzatishi — attemptServer.ts izohiga q.).
+// `flagged` va `lastQuestion` esa to'liq snapshot sifatida keladi (§4.3
+// jadvali) — bor bo'yicha almashtiriladi.
 //
 // `essays` — TZ §4/§8 Writing uchun alohida endpoint YO'Q (§4 jadvalida
 // bittagina PATCH /answers bor); insho matni ham xuddi shu "batch saqlash"
@@ -29,26 +30,7 @@ export async function PATCH(req, { params }) {
     }
 
     const { answers, flagged, lastQuestion, essays } = await req.json().catch(() => ({}));
-
-    if (answers && typeof answers === 'object') {
-      attempt.answers = { ...(attempt.answers || {}), ...answers };
-      attempt.markModified('answers');
-    }
-    if (Array.isArray(flagged)) attempt.flagged = flagged;
-    if (typeof lastQuestion === 'number') attempt.lastQuestion = lastQuestion;
-
-    if (essays && typeof essays === 'object') {
-      const now = new Date();
-      for (const key of ['task1', 'task2']) {
-        const incoming = essays[key];
-        if (incoming && typeof incoming.text === 'string') {
-          attempt.essays[key] = { text: incoming.text, wordCount: Number(incoming.wordCount) || 0, updatedAt: now };
-        }
-      }
-      attempt.markModified('essays');
-    }
-
-    await attempt.save();
+    await patchAttemptAnswers(params.id, userId, { answers, flagged, lastQuestion, essays });
 
     return NextResponse.json({ saved: true, savedAt: new Date() });
   } catch (err) {

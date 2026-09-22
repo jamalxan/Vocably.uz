@@ -127,6 +127,71 @@ export async function getOwnedAttempt(attemptId: string, userId: string) {
   return doc;
 }
 
+/** AUDIT PERF-01 (VOCABLY_TZ_FINAL... 2026-09-20 §23) — avvalgi autosave yo'li
+ * `attempt.answers = {...attempt.answers, ...answers}; attempt.markModified
+ * ('answers'); attempt.save()` edi. `answers` schema'da `Mixed` tur (models.js
+ * — chuqur ichma-ich `AnswerValue` shakllari DB sxemasi darajasida emas,
+ * ilova darajasida tekshiriladi) — Mongoose Mixed maydonlarda QISMAN
+ * dirty-tracking QILA OLMAYDI: `markModified()` chaqirilgach BUTUN `answers`
+ * obyektini (nechta savolga javob berilgan bo'lsa ham) qayta yozib
+ * yuboradi. Amalda bu shuni anglatardi: 40-savolli Reading testida oxirgi
+ * savolga javob berilganda ham OLDINGI 39 ta javob QAYTA MongoDB'ga
+ * yoziladi — har autosave'da (odatda bir necha soniyada bir marta).
+ *
+ * Tuzatish: `attempt.save()` O'RNIGA to'g'ridan-to'g'ri `updateOne` +
+ * MongoDB NUQTA-NOTATSIYASI (`'answers.q17'`) — bu Mongoose'ning Mixed-tur
+ * cheklovidan chetlab o'tadi, chunki MongoDB'ning o'zi (Mongoose emas)
+ * hujjat ichidagi ISTALGAN chuqurlikdagi yo'lni QISMAN yangilay oladi.
+ * Natijada faqat HAQIQATAN O'ZGARGAN savol(lar) yoziladi, qolganlariga
+ * tegilmaydi. */
+export interface AttemptAnswersPatch {
+  answers?: Record<string, AnswerValue>;
+  flagged?: number[];
+  lastQuestion?: number;
+  essays?: { task1?: { text: string; wordCount?: number }; task2?: { text: string; wordCount?: number } };
+}
+
+/** Sof funksiya (DB'siz) — `patchAttemptAnswers`dan ATAYLAB ajratilgan, shu
+ * sessiyada butun kodda takrorlangan naqsh bo'yicha (scoring.ts,
+ * worker/stages/*.ts): DB-bog'liq qism ingichka qoladi, haqiqiy MANTIQ
+ * (qaysi maydon qaysi nuqta-notatsiyali kalitga aylanishi) alohida, sinash
+ * mumkin bo'lgan joyda. `now` — faqat testlar uchun (deterministik
+ * `updatedAt`), real chaqiruvda berilmaydi. */
+export function buildAnswersPatchSetOps(patch: AttemptAnswersPatch, now: Date = new Date()): Record<string, unknown> {
+  const setOps: Record<string, unknown> = {};
+
+  if (patch.answers && typeof patch.answers === 'object') {
+    for (const [key, value] of Object.entries(patch.answers)) {
+      setOps[`answers.${key}`] = value;
+    }
+  }
+  if (Array.isArray(patch.flagged)) setOps.flagged = patch.flagged;
+  if (typeof patch.lastQuestion === 'number') setOps.lastQuestion = patch.lastQuestion;
+  if (patch.essays && typeof patch.essays === 'object') {
+    for (const key of ['task1', 'task2'] as const) {
+      const incoming = patch.essays[key];
+      if (incoming && typeof incoming.text === 'string') {
+        setOps[`essays.${key}`] = { text: incoming.text, wordCount: Number(incoming.wordCount) || 0, updatedAt: now };
+      }
+    }
+  }
+
+  return setOps;
+}
+
+export async function patchAttemptAnswers(attemptId: string, userId: string, patch: AttemptAnswersPatch): Promise<{ saved: boolean }> {
+  const setOps = buildAnswersPatchSetOps(patch);
+  if (Object.keys(setOps).length === 0) return { saved: false };
+
+  // `status:'in_progress'` shart — allaqachon yakunlangan/muddati o'tgan
+  // urinishga "kech" autosave so'rovi (masalan tarmoq kechikishi bilan
+  // keyinroq yetib kelgan) yozilib qolmasin uchun ikkinchi himoya qatlami
+  // (route.js allaqachon buni oldindan tekshiradi, lekin race-condition
+  // xavfsizligi uchun query filtrida ham takrorlanadi).
+  await ExamAttempt.updateOne({ _id: attemptId, userId, status: 'in_progress' }, { $set: setOps });
+  return { saved: true };
+}
+
 export async function getTestOrThrow(testId: string): Promise<any> {
   const test = await ExamTest.findById(testId);
   if (!test) throw new ExamAttemptError('Test topilmadi', 404);
