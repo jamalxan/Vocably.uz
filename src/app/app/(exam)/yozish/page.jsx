@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { createAttempt } from '@/features/exam/state/attemptsApi';
@@ -8,9 +9,9 @@ import TestPicker from '@/features/exam/shell/TestPicker';
 // (avval `/app/yozish-beta`da qurilgan, endi asosiy yo'lga ko'chirildi).
 export default function YozishPage() {
   const router = useRouter();
-  const { token } = useApp();
+  const { isAuthed } = useApp();
 
-  if (!token) {
+  if (!isAuthed) {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 
@@ -23,5 +24,14 @@ export default function YozishPage() {
     }
   };
 
-  return <TestPicker sectionKey="writing" title="Writing — testni tanlang" onPicked={handlePicked} />;
+  return (
+    <div>
+      <TestPicker sectionKey="writing" title="Writing — testni tanlang" onPicked={handlePicked} />
+      <div className="max-w-lg mx-auto px-6 sm:px-10 pb-6 -mt-4">
+        <Link href="/app/yozish/mashq" className="text-sm text-accent hover:underline font-semibold">
+          Mashq rejimida sinab ko'ring — vaqt cheklanmagan, qoralama bilan →
+        </Link>
+      </div>
+    </div>
+  );
 }
