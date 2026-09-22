@@ -7,17 +7,23 @@
 // alohida, ongli qadam bo'lib qoladi — LEGAL-01 gate + admin/avtopilot
 // tasdig'i, bu bosqich EMAS).
 //
-// ⚠️ BILINGAN CHEKLOV — `ListeningPart.audioUrl` (types.ts): bu bosqich
-// process_audio'dan kelgan `ContentAsset`ni faqat MOS DEB TAXMIN QILADI
-// (audio fayllar tartib bo'yicha testlarga bog'lanadi — kitobda audio
-// fayllar test tartibida yuklangan deb faraz qilinadi, aniq bog'lash signali
-// hozircha yo'q) VA `audioUrl`ni R2 KEY REFERENCE sifatida yozadi
-// (`r2-asset://{assetId}`), HAQIQIY URL EMAS — buni playable URL'ga
-// aylantiruvchi serving route (masalan `/api/content/audio/[assetId]`,
-// presigned GET'ni proxy qiladigan) hali QURILMAGAN, bu worker ishi emas,
-// Next.js API qatlami ishi. Test shu holatda ADMIN PREVIEW uchun yaroqli,
-// lekin haqiqiy foydalanuvchi buni hali TOPSHIRA OLMAYDI (Listening audio
-// ishlamaydi) — serving route qo'shilmaguncha.
+// `ListeningPart.audioUrl` — `process_audio` endi yakuniy WebM/Opus
+// partlarni GridFS'ga yozadi (`/lib/exam/audioStorage.ts`, Speaking
+// yozuvlari ishlatadigan BIR XIL mexanizm), shuning uchun `audioUrl` shu
+// yerda ALLAQACHON MAVJUD, HAQIQIY, auth-gated serving route'ga
+// (`/api/exam/audio/[fileId]`, Range-so'rovlarni qo'llab-quvvatlaydi)
+// ishora qiladi — hech qanday yangi infratuzilma kerak emas edi.
+//
+// ⚠️ QOLGAN BILINGAN CHEKLOV: audio fayl <-> test moslashtirish hamon
+// TARTIB bo'yicha (kitobda audio fayllar test tartibida yuklangan deb
+// faraz qilinadi) — kontent bo'yicha tasdiqlangan emas. Bitta manba
+// ichidagi PART chegaralari esa Whisper transkripti bilan tekshiriladi
+// (`processAudio.ts`'dagi `transcriptMatchRatio`).
+//
+// `WritingTask.imageUrl` (Academic Task 1 grafik) — `/api/content/assets/
+// [assetId]/route.js` (302 redirect'ga presigned R2 GET) orqali beriladi.
+// Audio'dan farqli GridFS'ga ko'chirilmadi — statik rasm uchun redirect
+// YETARLI (Range/progressiv oqim muammosi yo'q, faylning izohiga q.).
 import { ContentBook, ExamTest } from '@/lib/models';
 import { requireStageOutputs } from '../lib/dependencies';
 import type { StageContext } from '../types';
@@ -132,7 +138,7 @@ export async function runAssemble(ctx: StageContext): Promise<AssembleOutput> {
         checkTimeSec: 120,
         parts: listeningTest.parts.map((p) => ({
           order: p.order,
-          audioUrl: audioSource?.parts[p.order - 1] ? `r2-asset://${audioSource.parts[p.order - 1].assetId}` : '',
+          audioUrl: audioSource?.parts[p.order - 1] ? `/api/exam/audio/${audioSource.parts[p.order - 1].gridFsFileId}` : '',
           durationSec: audioSource?.parts[p.order - 1] ? Math.round(audioSource.parts[p.order - 1].durationMs / 1000) : 0,
           contextText: p.contextText || undefined,
           questionGroups: p.questionGroups,
@@ -149,7 +155,7 @@ export async function runAssemble(ctx: StageContext): Promise<AssembleOutput> {
             minWords: t.minWords,
             recommendedMin: t.recommendedMin,
             promptHtml: t.promptHtml,
-            imageUrl: relatedImage ? `r2-asset://${relatedImage.assetId}` : undefined,
+            imageUrl: relatedImage ? `/api/content/assets/${relatedImage.assetId}` : undefined,
             imageAlt: relatedImage ? `Task ${t.order} visual` : undefined,
           };
         }) as [unknown, unknown] as any,

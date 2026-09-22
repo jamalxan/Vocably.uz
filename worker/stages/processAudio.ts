@@ -1,6 +1,18 @@
 // AI-01 worker, S9 "process_audio" — xom audio(lar)ni tekshiradi, 4 ta
-// Listening part'ga bo'lib kesadi va WebM/Opus derivativ sifatida R2'ga
-// yuklaydi. To'liq Whisper-asosli "fuzzy-align" (TZ §13 S9 tavsifi) O'RNIGA
+// Listening part'ga bo'lib kesadi va WebM/Opus derivativ sifatida SAQLAYDI.
+//
+// ⚠️ TUZATISH (dastlabki versiyada bu yerga R2'ga yuklanardi, lekin
+// `ListeningPart.audioUrl`ni R2'dan playable URL'ga aylantiradigan HECH
+// QANDAY serving route yo'q edi — sinov paytida ANIQLANDI). Kesilgan/
+// transkodlangan PARTLAR endi `src/lib/exam/audioStorage.ts` orqali GridFS'ga
+// yoziladi — bu Speaking yozuvlari uchun ALLAQACHON production'da ishlatilib
+// turgan, Range-so'rov qo'llab-quvvatlaydigan, auth-gated serving route'ga
+// (`/api/exam/audio/[fileId]`) ega mexanizm. Xom (manba) audio hamon R2'dan
+// o'qiladi (`getObjectBuffer`) — faqat YAKUNIY, foydalanuvchiga YUBORILADIGAN
+// hosila GridFS'ga ko'chdi, R2 esa "manba material ombori" bo'lib qoladi
+// (worker/lib/pdf.ts va boshqa joylardagi R2 ishlatilishi bilan bir xil rol).
+//
+// To'liq Whisper-asosli "fuzzy-align" (TZ §13 S9 tavsifi) O'RNIGA
 // — vaqt/murakkablik sababli bu MVP versiyada — ODDIYROQ, lekin HAQIQIY
 // ikki qatlamli yondashuv:
 //   1. `ffmpeg silencedetect` bilan eng uzun 3 ta jimlik oralig'ini topib,
@@ -18,9 +30,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { tmpdir } from 'os';
 import { ContentAsset } from '@/lib/models';
-import { getObjectBuffer, putObject } from '@/lib/storage/r2';
+import { getObjectBuffer } from '@/lib/storage/r2';
 import { probeAudio, detectSilences, cutAudio, transcodeToOpus } from '../lib/ffmpeg';
 import { transcribeAudio } from '@/lib/transcribe';
+import { uploadAudioBuffer } from '@/lib/exam/audioStorage';
 import { requireStageOutput } from '../lib/dependencies';
 import type { StageContext } from '../types';
 import type { SplitSectionsOutput } from './splitSections';
@@ -60,7 +73,8 @@ export function splitByLongestSilences(totalDurationSec: number, silences: { sta
 
 export interface AudioPartOutput {
   order: number;
-  assetId: string;
+  assetId: string; // ContentAsset — inventar/audit uchun (admin panel)
+  gridFsFileId: string; // HAQIQIY playable manzil: /api/exam/audio/{gridFsFileId}
   durationMs: number;
   transcriptMatchRatio: number;
 }
@@ -122,8 +136,8 @@ async function processOneSource(bookId: string, sourceAsset: any, audioscriptTex
       await transcodeToOpus(cutPath, opusPath);
 
       const opusBuffer = await fs.readFile(opusPath);
-      const key = `audio/parts/${bookId}/${sourceAsset._id}/${i + 1}.webm`;
-      await putObject(key, opusBuffer, 'audio/webm');
+      const filename = `${bookId}-${sourceAsset._id}-part${i + 1}.webm`;
+      const gridFsFileId = await uploadAudioBuffer(opusBuffer, filename, 'audio/webm');
 
       let transcriptMatchRatio = 0;
       if (process.env.GROQ_API_KEY) {
@@ -137,10 +151,14 @@ async function processOneSource(bookId: string, sourceAsset: any, audioscriptTex
       }
 
       const partProbe = await probeAudio(opusPath);
+      // `storage.bucket/key` R2-shaped maydonlar (schema talabi bo'yicha
+      // required) — GridFS uchun ham to'ldiriladi (admin inventar/audit
+      // uchun), lekin HAQIQIY playable manzil `gridFsFileId`dan quriladi
+      // (`assemble.ts`), bu maydonlardan EMAS.
       const asset = await ContentAssetModel.create({
         bookId,
         kind: 'audio',
-        storage: { bucket: process.env.R2_BUCKET, key, bytes: opusBuffer.length, contentType: 'audio/webm' },
+        storage: { bucket: 'gridfs:examAudio', key: gridFsFileId, bytes: opusBuffer.length, contentType: 'audio/webm' },
         audio: {
           durationMs: partProbe.durationMs,
           sampleRate: partProbe.sampleRate,
@@ -150,7 +168,7 @@ async function processOneSource(bookId: string, sourceAsset: any, audioscriptTex
         },
       });
 
-      parts.push({ order: i + 1, assetId: String(asset._id), durationMs: partProbe.durationMs, transcriptMatchRatio });
+      parts.push({ order: i + 1, assetId: String(asset._id), gridFsFileId, durationMs: partProbe.durationMs, transcriptMatchRatio });
     }
 
     return { sourceAssetId: String(sourceAsset._id), parts };
