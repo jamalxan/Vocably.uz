@@ -21,8 +21,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true 
 import { Worker, type Job } from 'bullmq';
 import IORedis from 'ioredis';
 import { connectToDatabase } from '@/lib/db';
-import { CONTENT_INGEST_QUEUE_NAME } from '@/lib/queue/contentQueue';
+import { CONTENT_INGEST_QUEUE_NAME, MAINTENANCE_SWEEP_JOB_NAME, scheduleMaintenanceSweep } from '@/lib/queue/contentQueue';
 import { runJob, JobPausedSignal, type WorkerJobData } from './jobRunner';
+import { runMaintenanceSweep } from './orchestrator/maintenanceSweep';
 
 const REQUIRED_ENV = ['MONGODB_URI', 'REDIS_URL'] as const;
 
@@ -62,6 +63,14 @@ async function main() {
   const worker = new Worker<WorkerJobData>(
     CONTENT_INGEST_QUEUE_NAME,
     async (job: Job<WorkerJobData>) => {
+      // `MAINTENANCE_SWEEP_JOB_NAME` — `scheduleMaintenanceSweep()`
+      // (contentQueue.js, har 6 soatda) yozadigan DAVRIY job, oddiy
+      // bosqich-job'lardan FARQLI (bookId/stage YO'Q — `job.data` bo'sh).
+      // Shuning uchun `runJob` (IngestJob hujjatini kutadi) O'RNIGA
+      // butunlay boshqa yo'lga yo'naltiriladi.
+      if (job.name === MAINTENANCE_SWEEP_JOB_NAME) {
+        return runMaintenanceSweep();
+      }
       try {
         return await runJob(job.data);
       } catch (err) {
@@ -77,16 +86,34 @@ async function main() {
   );
 
   worker.on('completed', (job) => {
+    if (job.name === MAINTENANCE_SWEEP_JOB_NAME) {
+      // eslint-disable-next-line no-console
+      console.log(`[worker] ✓ maintenance-sweep (job ${job.id})`);
+      return;
+    }
     // eslint-disable-next-line no-console
     console.log(`[worker] ✓ ${job.data.bookId} / ${job.data.stage} (job ${job.id})`);
   });
   worker.on('failed', (job, err) => {
+    if (job?.name === MAINTENANCE_SWEEP_JOB_NAME) {
+      // eslint-disable-next-line no-console
+      console.error(`[worker] ✗ maintenance-sweep (job ${job?.id}): ${err.message}`);
+      return;
+    }
     // eslint-disable-next-line no-console
     console.error(`[worker] ✗ ${job?.data?.bookId} / ${job?.data?.stage} (job ${job?.id}): ${err.message}`);
   });
 
   // eslint-disable-next-line no-console
   console.log(`[worker] "${CONTENT_INGEST_QUEUE_NAME}" navbatini tinglayapti (concurrency=${CONCURRENCY})...`);
+
+  const sweepSchedule = await scheduleMaintenanceSweep();
+  // eslint-disable-next-line no-console
+  console.log(
+    sweepSchedule.scheduled
+      ? '[worker] Davriy inventory audit (mock scheduler + content gap scan) har 6 soatda rejalashtirildi.'
+      : `[worker] Davriy inventory audit rejalashtirilmadi (${sweepSchedule.backend}) — faqat reaktiv (nashrdan keyingi) trigger ishlaydi.`
+  );
 
   const shutdown = async (signal: string) => {
     // eslint-disable-next-line no-console

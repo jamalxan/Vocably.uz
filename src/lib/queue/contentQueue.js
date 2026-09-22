@@ -125,3 +125,34 @@ export async function enqueueIngestJob({ ingestJobId, bookId, stage, idempotency
     return { queued: false, backend: 'redis-error' };
   }
 }
+
+// TZ §28 "har 6 soatda inventory audit" — `worker/orchestrator/mockScheduler.ts`
+// (S15) va `contentGapScan.ts` (S16) hozircha faqat REAKTIV ishlaydi (yangi
+// test nashr qilingandan keyin, `jobRunner.ts`). Bu YETARLI EMAS: agar uzoq
+// muddat hech qanday yangi kontent kelmasa (masalan admin bir necha kun
+// hech narsa yuklamasa), inventar hech qachon qayta tekshirilmaydi. Shu
+// qo'shimcha, VAQT-ASOSLI trigger uchun.
+export const MAINTENANCE_SWEEP_JOB_NAME = 'maintenance-sweep';
+const MAINTENANCE_SWEEP_SCHEDULER_ID = 'content-maintenance-sweep';
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+/** `upsertJobScheduler` — BullMQ'ning ESKI `queue.add(..., {repeat:{every}})`
+ * optsiyasi O'RNIGA tavsiya etiladigan, joriy usul: Redis'da BITTA
+ * scheduler yozuvi sifatida saqlanadi, shuning uchun (a) bir nechta worker
+ * jarayoni bir vaqtda ishga tushsa ham DUBLIKAT davriy job YARATILMAYDI,
+ * (b) worker qayta ishga tushirilganda qayta chaqirilishi XAVFSIZ (upsert —
+ * mavjud jadvalni shunchaki tasdiqlaydi/yangilaydi). `REDIS_URL` sozlanmagan
+ * bo'lsa — boshqa funksiyalar kabi jim `{scheduled:false}` qaytaradi. */
+export async function scheduleMaintenanceSweep() {
+  const queue = getContentQueue();
+  if (!queue) return { scheduled: false, backend: 'mongo-only' };
+
+  try {
+    await queue.upsertJobScheduler(MAINTENANCE_SWEEP_SCHEDULER_ID, { every: SIX_HOURS_MS }, { name: MAINTENANCE_SWEEP_JOB_NAME, data: {} });
+    return { scheduled: true, backend: 'redis' };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[contentQueue] scheduleMaintenanceSweep muvaffaqiyatsiz:', err.message);
+    return { scheduled: false, backend: 'redis-error' };
+  }
+}

@@ -33,4 +33,12 @@ describe('contentQueue — REDIS_URL sozlanmaganda', () => {
     expect(result).toEqual({ queued: false, backend: 'mongo-only' });
     expect(Date.now() - started).toBeLessThan(200); // no network I/O should ever be attempted
   });
+
+  it('scheduleMaintenanceSweep() resolves immediately with a mongo-only degrade result', async () => {
+    const { scheduleMaintenanceSweep } = await import('./contentQueue.js');
+    const started = Date.now();
+    const result = await scheduleMaintenanceSweep();
+    expect(result).toEqual({ scheduled: false, backend: 'mongo-only' });
+    expect(Date.now() - started).toBeLessThan(200);
+  });
 });
