@@ -652,6 +652,25 @@ const ExamTestSchema = new mongoose.Schema({
     validatedAt: { type: Date, default: null },
   },
 
+  // AUDIT LEGAL-01 (VOCABLY_TZ_FINAL... 2026-09-20 §17) — kontentning huquqiy
+  // kelib chiqishi. Default `sourceType:'own', publishScope:'public'` — mavjud
+  // testlarni (bu maydon qo'shilishidan OLDIN yaratilgan) to'satdan bloklamaydi;
+  // gate faqat admin ONGLI ravishda `third_party_copyright` deb belgilaganda
+  // ishga tushadi (`contentValidator.ts` `checkCopyright`, publish vaqtida).
+  rights: {
+    sourceType: {
+      type: String,
+      enum: ['own', 'licensed', 'public_domain', 'third_party_copyright', 'ai_generated_original'],
+      default: 'own',
+    },
+    publisher: { type: String, default: '' },
+    licence: { type: String, default: '' },
+    licenceNote: { type: String, default: '' },
+    rightsVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    rightsVerifiedAt: { type: Date, default: null },
+    publishScope: { type: String, enum: ['public', 'organization', 'private'], default: 'public' },
+  },
+
   // docs/ai-content-agent-tz-avtopilot.md §4.4 — kim nashr qildi. Qo'lda
   // (JSON/DSL/admin "Nashr qilish" tugmasi) yaratilgan testlarda hamon
   // `'admin'` (default) — orqaga mos, mavjud 4 ta test buzilmaydi.
@@ -666,10 +685,48 @@ const ExamTestSchema = new mongoose.Schema({
 
 export const ExamTest = mongoose.models.ExamTest || mongoose.model('ExamTest', ExamTestSchema);
 
+// AUDIT P0-05 (VOCABLY_TZ_FINAL... 2026-09-20 §3) — "ExamAttempt live ExamTest'ga
+// bog'langan. Immutable test version/snapshot yo'q." Admin nashr qilingan testni
+// o'zgartirsa, eski attempt review qilinganda savol matni/javob kaliti/audio boshqa
+// versiyaga o'tib ketishi mumkin edi. Bu model shu holatning oldini oladi: har bir
+// urinish YARATILGAN PAYTDAGI test kontenti to'liq (`snapshot`) shu yerga "muzlatib"
+// qo'yiladi, attempt esa `ExamTest`ga emas, shu muzlatilgan versiyaga bog'lanadi
+// (`ExamAttempt.testVersionId`, pastda). Bir xil kontent uchun qayta-qayta nusxa
+// yaratilmasligi uchun `contentHash` bo'yicha deduplikatsiya qilinadi
+// (`attemptServer.ts` `getOrCreateTestVersion`).
+const ExamTestVersionSchema = new mongoose.Schema({
+  parentTestId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest', required: true, index: true },
+  versionNumber: { type: Number, required: true },
+  // sha256(module+sections+bandTable) — bir xil kontent uchun bir xil hash,
+  // shuning uchun admin test hujjatini saqlab qo'ysa-yu mazmuni o'zgarmasa
+  // (masalan faqat `isPublished`ni bosib qo'ysa) yangi versiya CHIQARILMAYDI.
+  contentHash: { type: String, required: true, index: true },
+  // Attempt yaratilgan paytdagi to'liq Test shakli (slug/title/module/difficulty/
+  // sections/bandTable) — review/scoring shu yerdan o'qiladi, live ExamTest'dan EMAS.
+  snapshot: { type: mongoose.Schema.Types.Mixed, required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  createdAt: { type: Date, default: Date.now },
+  publishedAt: { type: Date, default: Date.now },
+  status: { type: String, enum: ['active', 'superseded'], default: 'active' },
+});
+// unique: 2 ta parallel so'rov bir xil (parentTestId, contentHash) uchun bir
+// vaqtda versiya yaratmoqchi bo'lsa (masalan mock uchun "$sample" bilan bir xil
+// test 2 marta tanlanib qolsa), DB darajasida ikkinchisini rad etadi —
+// `getOrCreateTestVersion` (attemptServer.ts) buni tutib, g'olib versiyani qaytaradi.
+ExamTestVersionSchema.index({ parentTestId: 1, contentHash: 1 }, { unique: true });
+ExamTestVersionSchema.index({ parentTestId: 1, versionNumber: -1 });
+
+export const ExamTestVersion = mongoose.models.ExamTestVersion || mongoose.model('ExamTestVersion', ExamTestVersionSchema);
+
 const ExamAttemptSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     testId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest', required: true },
+    // P0-05 — shu urinish qaysi MUZLATILGAN test snapshotiga bog'langan.
+    // `null` bo'lishi mumkin: shu migratsiyadan OLDIN yaratilgan eski urinishlar
+    // uchun (orqaga moslik) — bunday holda kod live `ExamTest`ga qaytadi
+    // (`resolveTestForAttempt`, attemptServer.ts).
+    testVersionId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTestVersion', default: null },
     mode: { type: String, enum: ['mock', 'section'], default: 'section' },
     sections: [{ type: String, enum: ['listening', 'reading', 'writing', 'speaking'] }],
     currentSection: { type: String, enum: ['listening', 'reading', 'writing', 'speaking'], required: true },

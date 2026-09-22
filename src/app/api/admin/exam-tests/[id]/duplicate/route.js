@@ -38,6 +38,7 @@ export async function POST(req, { params }) {
       difficulty: source.difficulty,
       sections: source.sections,
       bandTable: source.bandTable,
+      rights: source.rights,
       isPublished: false,
       createdBy: admin._id,
       source: source.source,

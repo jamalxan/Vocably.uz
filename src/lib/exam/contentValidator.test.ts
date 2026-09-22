@@ -240,3 +240,54 @@ describe('validateTest', () => {
     expect(validateTest(test).some((i) => i.message.includes('Flesch-Kincaid'))).toBe(true);
   });
 });
+
+// AUDIT LEGAL-01 — "Publish gate: third_party_copyright + public = BLOCK."
+describe('validateTest — checkCopyright (LEGAL-01)', () => {
+  it('does not block when rights is entirely absent (legacy test, back-compat default own/public)', () => {
+    const issues = validateTest(baseTest());
+    expect(issues.some((i) => i.path === 'rights')).toBe(false);
+  });
+
+  it('does not block "own" content published publicly', () => {
+    const issues = validateTest(baseTest({ rights: { sourceType: 'own', publishScope: 'public' } }));
+    expect(hasBlockingErrors(issues.filter((i) => i.path === 'rights'))).toBe(false);
+  });
+
+  it('blocks third_party_copyright content with publishScope public', () => {
+    const issues = validateTest(baseTest({ rights: { sourceType: 'third_party_copyright', publishScope: 'public' } }));
+    const rightsIssues = issues.filter((i) => i.path === 'rights');
+    expect(rightsIssues).toHaveLength(1);
+    expect(rightsIssues[0].severity).toBe('error');
+  });
+
+  it('blocks third_party_copyright even when publishScope is omitted (defaults to public)', () => {
+    const issues = validateTest(baseTest({ rights: { sourceType: 'third_party_copyright' } as never }));
+    expect(hasBlockingErrors(issues.filter((i) => i.path === 'rights'))).toBe(true);
+  });
+
+  it('does not block third_party_copyright content scoped to organization or private', () => {
+    const org = validateTest(baseTest({ rights: { sourceType: 'third_party_copyright', publishScope: 'organization' } }));
+    const priv = validateTest(baseTest({ rights: { sourceType: 'third_party_copyright', publishScope: 'private' } }));
+    expect(hasBlockingErrors(org.filter((i) => i.path === 'rights'))).toBe(false);
+    expect(hasBlockingErrors(priv.filter((i) => i.path === 'rights'))).toBe(false);
+  });
+
+  it('requires a licence value when sourceType is "licensed"', () => {
+    const issues = validateTest(baseTest({ rights: { sourceType: 'licensed', publishScope: 'public', licence: '' } }));
+    expect(hasBlockingErrors(issues.filter((i) => i.path === 'rights'))).toBe(true);
+  });
+
+  it('allows "licensed" content once a licence value is provided', () => {
+    const issues = validateTest(
+      baseTest({ rights: { sourceType: 'licensed', publishScope: 'public', licence: 'Cambridge institutional license #123' } })
+    );
+    expect(hasBlockingErrors(issues.filter((i) => i.path === 'rights'))).toBe(false);
+  });
+
+  it('does not block public_domain or ai_generated_original content', () => {
+    const pd = validateTest(baseTest({ rights: { sourceType: 'public_domain', publishScope: 'public' } }));
+    const ai = validateTest(baseTest({ rights: { sourceType: 'ai_generated_original', publishScope: 'public' } }));
+    expect(hasBlockingErrors(pd.filter((i) => i.path === 'rights'))).toBe(false);
+    expect(hasBlockingErrors(ai.filter((i) => i.path === 'rights'))).toBe(false);
+  });
+});

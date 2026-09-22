@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
 import { ExamTest, ExamAttempt } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { getOrCreateTestVersion } from '@/lib/exam/attemptServer';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -23,9 +24,13 @@ async function createMockAttemptForTest(userId, test) {
 
   const firstSection = sections[0];
   const now = new Date();
+  // P0-05 — test kontenti shu paytda muzlatiladi (ExamTestVersion); admin
+  // keyinroq shu testni tahrirlasa, bu urinish hamon shu snapshotdan ishlaydi.
+  const testVersionId = await getOrCreateTestVersion(test);
   const attempt = await ExamAttempt.create({
     userId,
     testId: test._id,
+    testVersionId,
     mode: 'mock',
     sections,
     currentSection: firstSection,
@@ -148,9 +153,11 @@ export async function POST(req) {
     }
 
     const now = new Date();
+    const testVersionId = await getOrCreateTestVersion(test);
     const attempt = await ExamAttempt.create({
       userId,
       testId,
+      testVersionId,
       mode: 'section',
       sections: [section],
       currentSection: section,

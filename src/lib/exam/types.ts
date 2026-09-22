@@ -38,6 +38,44 @@ export interface Test {
   isPublished: boolean;
   createdBy: string;
   createdAt: string; // ISO
+  // AUDIT LEGAL-01 (VOCABLY_TZ_FINAL... 2026-09-20 §17) — "Copyright/content
+  // rights — MAJBURIY." Repo ichida haqiqiy Cambridge Practice Test PDF
+  // mavjud edi (audit topilmasi) — professional platformada kontentning
+  // huquqiy kelib chiqishi birinchi darajali metadata bo'lishi kerak, admin
+  // "unutib qo'yishi" mumkin bo'lgan ixtiyoriy izoh emas. `rights` YO'Q bo'lsa
+  // (eski test) — `contentValidator.ts` va serverdagi model default'i
+  // `sourceType:'own', publishScope:'public'` deb hisoblaydi (orqaga moslik,
+  // mavjud testlarni to'satdan bloklamaydi); YANGI test uchun admin buni ONGLI
+  // to'ldirishi kutiladi.
+  rights?: ContentRights;
+}
+
+// LEGAL-01 §17 — "Content source turlari": admin kontent qayerdan kelganini
+// aniq deklaratsiya qiladi. `third_party_copyright` + `publishScope:'public'`
+// birikmasi — hech qachon avtomatik OK emas, `contentValidator.ts`dagi
+// `checkCopyright()` buni BLOCKING xato deb hisoblaydi (AI policy'dan ham
+// ustun — §14 "AI hech qachon o'zi hal qilmasin: copyrighted contentni public
+// qilish").
+export type ContentSourceType = 'own' | 'licensed' | 'public_domain' | 'third_party_copyright' | 'ai_generated_original';
+
+// Hozircha faqat metadata/gate uchun — tizimda hali org/classroom-scoped
+// yetkazish yo'li yo'q (Faza 4, Teacher/Classroom bilan birga keladi), shuning
+// uchun bugun `isPublished:true` = har doim `public` bilan bir xil ta'sir
+// qiladi. Maydon shunga qaramay endi kiritiladi: bugun 'organization'/'private'
+// belgilash `third_party_copyright` kontent uchun publish gate'ni "men buni
+// ONGLI ravishda ommaga emas deb belgiladim" degan aniq qaror sifatida ishlaydi
+// (hali hech qanday cheklangan auditoriyaga real yetkazish yo'q, lekin kamida
+// ommaviy nashr gate'i orqali o'tmaydi).
+export type PublishScope = 'public' | 'organization' | 'private';
+
+export interface ContentRights {
+  sourceType: ContentSourceType;
+  publisher?: string; // masalan "Cambridge University Press"
+  licence?: string; // masalan "CC-BY-4.0", "Cambridge institutional license #..."
+  licenceNote?: string;
+  rightsVerifiedBy?: string; // admin userId — kim tasdiqladi
+  rightsVerifiedAt?: string; // ISO
+  publishScope: PublishScope;
 }
 
 export type BandRow = { min: number; max: number; band: number };
@@ -302,8 +340,11 @@ export interface Attempt {
 // ============================================================================
 
 export interface AttemptResult {
-  listening?: { raw: number; band: number; perPart: number[] };
-  reading?: { raw: number; band: number; perPassage: number[] };
+  // `bandEstimated` — TZ §10.2/P0-03: xom ball rasmiy jadval oralig'idan tashqarida
+  // bo'lganda (masalan past GT Reading ball) band chiziqli taxmin bilan olinadi,
+  // "aniq" konversiya emas — UI shu bayroq bilan buni ochiq ko'rsatishi kerak.
+  listening?: { raw: number; band: number; bandEstimated?: boolean; perPart: number[] };
+  reading?: { raw: number; band: number; bandEstimated?: boolean; perPassage: number[] };
   writing?: {
     task1: WritingScore;
     task2: WritingScore;
@@ -444,8 +485,8 @@ export interface ReviewSpeakingRecording {
 
 export interface AttemptReviewDetail {
   overall?: number;
-  reading?: { band: number; raw: number; passages: ReviewPassage[] };
-  listening?: { band: number; raw: number; parts: ReviewListeningPart[] };
+  reading?: { band: number; raw: number; bandEstimated?: boolean; passages: ReviewPassage[] };
+  listening?: { band: number; raw: number; bandEstimated?: boolean; parts: ReviewListeningPart[] };
   writing?: {
     task1: WritingScore;
     task2: WritingScore;

@@ -1,7 +1,6 @@
 import { connectToDatabase } from '@/lib/db';
-import { ExamTest } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
-import { getOwnedAttempt, syncAttemptExpiry, remainingSec, sanitizedTestFor, ExamAttemptError } from '@/lib/exam/attemptServer';
+import { getOwnedAttempt, syncAttemptExpiry, remainingSec, resolveTestForAttempt, sanitizedTestFor, ExamAttemptError } from '@/lib/exam/attemptServer';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -19,7 +18,7 @@ export async function GET(req, { params }) {
     let attempt = await getOwnedAttempt(params.id, userId);
     attempt = await syncAttemptExpiry(attempt);
 
-    const test = await ExamTest.findById(attempt.testId).lean();
+    const test = await resolveTestForAttempt(attempt);
     if (!test) return NextResponse.json({ error: 'Test topilmadi' }, { status: 404 });
 
     const now = new Date();

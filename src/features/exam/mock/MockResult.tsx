@@ -18,11 +18,18 @@ export interface MockResultProps {
   result: AttemptResult | null;
 }
 
-function SectionRow({ label, band }: { label: string; band?: number | null }) {
+function SectionRow({ label, band, estimated }: { label: string; band?: number | null; estimated?: boolean }) {
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b border-border last:border-0">
       <span className="text-sm font-semibold text-ink">{label}</span>
-      <span className="text-lg font-bold text-brand-text tabular-nums">{band != null ? band.toFixed(1) : '—'}</span>
+      <span className="text-lg font-bold text-brand-text tabular-nums">
+        {band != null ? band.toFixed(1) : '—'}
+        {band != null && estimated && (
+          <span className="ml-1 align-top text-[10px] font-semibold text-muted" title="Taxminiy konversiya — xom ball rasmiy jadval oralig'idan tashqarida">
+            taxminiy
+          </span>
+        )}
+      </span>
     </div>
   );
 }
@@ -60,8 +67,8 @@ export default function MockResult({ attemptId, result }: MockResultProps) {
         </p>
       </div>
       <div className="border border-border rounded-xl overflow-hidden">
-        <SectionRow label="Listening" band={result.listening?.band} />
-        <SectionRow label="Reading" band={result.reading?.band} />
+        <SectionRow label="Listening" band={result.listening?.band} estimated={result.listening?.bandEstimated} />
+        <SectionRow label="Reading" band={result.reading?.band} estimated={result.reading?.bandEstimated} />
         <SectionRow label="Writing" band={result.writing?.band} />
       </div>
       {result.writing == null && (

@@ -34,7 +34,7 @@ export async function PATCH(req, { params }) {
     if (!test) return NextResponse.json({ error: 'Test topilmadi' }, { status: 404 });
 
     const body = await req.json().catch(() => ({}));
-    const { title, difficulty, sections, bandTable, isPublished } = body;
+    const { title, difficulty, sections, bandTable, rights, isPublished } = body;
 
     if (title !== undefined) test.title = title;
     if (difficulty !== undefined) test.difficulty = difficulty;
@@ -43,6 +43,10 @@ export async function PATCH(req, { params }) {
       test.markModified('sections');
     }
     if (bandTable !== undefined) test.bandTable = bandTable;
+    if (rights !== undefined) {
+      test.rights = rights;
+      test.markModified('rights');
+    }
 
     // Publish qilinayotganda — HAR DOIM qayta validatsiya (content o'zgarmagan
     // bo'lsa ham, chunki avval draft holida xatolik bilan saqlangan bo'lishi

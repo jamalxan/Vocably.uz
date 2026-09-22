@@ -29,8 +29,8 @@ export async function POST(req) {
       return aiErrorResponse(aiErr, { endpoint: 'admin/exam-tests:ai-generate' });
     }
 
-    const passages = normalizeAiPassages(data);
-    return NextResponse.json({ passages });
+    const { passages, needsReview } = normalizeAiPassages(data);
+    return NextResponse.json({ passages, needsReview });
   } catch (err) {
     return serverError(err, 'admin/exam-tests:ai-generate');
   }

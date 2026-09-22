@@ -80,6 +80,11 @@ export default function ReviewScreen({ detail }: ReviewScreenProps) {
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-ink">
                 Xom ball: {detail.reading.raw} · Band {detail.reading.band.toFixed(1)}
+                {detail.reading.bandEstimated && (
+                  <span className="ml-1 text-[10px] font-semibold text-muted" title="Taxminiy konversiya — xom ball rasmiy jadval oralig'idan tashqarida">
+                    (taxminiy)
+                  </span>
+                )}
               </p>
               <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer">
                 <input type="checkbox" checked={onlyErrors} onChange={(e) => setOnlyErrors(e.target.checked)} className="accent-accent" />
@@ -123,6 +128,11 @@ export default function ReviewScreen({ detail }: ReviewScreenProps) {
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-ink">
                 Xom ball: {detail.listening.raw} · Band {detail.listening.band.toFixed(1)}
+                {detail.listening.bandEstimated && (
+                  <span className="ml-1 text-[10px] font-semibold text-muted" title="Taxminiy konversiya — xom ball rasmiy jadval oralig'idan tashqarida">
+                    (taxminiy)
+                  </span>
+                )}
               </p>
               <label className="flex items-center gap-1.5 text-xs text-muted cursor-pointer">
                 <input type="checkbox" checked={onlyErrors} onChange={(e) => setOnlyErrors(e.target.checked)} className="accent-accent" />

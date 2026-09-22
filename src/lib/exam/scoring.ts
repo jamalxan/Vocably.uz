@@ -11,7 +11,7 @@
 // acceptable}` meta formatiga ishlaydi, bu esa yangi engine'ning `AnswerKey`
 // (types.ts) formatiga. Ikkalasi bir muddat yonma-yon yashaydi (TZ §20).
 
-import type { AnswerKey, WordLimit } from './types';
+import type { AnswerKey, BandTable, ExamModule, WordLimit } from './types';
 
 type BandRow = [number, number, number]; // [min_raw, max_raw, band]
 
@@ -62,10 +62,12 @@ const READING_TABLE: BandRow[] = [
 // ⚠️ TZ hujjatining o'zi bu jadvalni faqat 15 xom balgacha (4.0 band) beradi va
 // pastroq oraliqlarni yozmagan (hujjatdagi eslatma: "Bu jadvallar Cambridge
 // namunalariga yaqin taxminiy qiymatlar... rasmiy jadval har test uchun biroz
-// farq qiladi"). Yo'q qatorlarni O'ZIMDAN TO'QIB CHIQARMADIM — 15 dan past xom
-// ball uchun `generalTrainingReadingBand` eng past ma'lum bandni (4.0) qaytaradi
-// (pastga clamp, aniq oraliq emas). GT rejimi ishga tushirilishidan oldin bu
-// jadval rasmiy manbadan to'ldirilishi kerak (TZ §23 kabi ochiq savol).
+// farq qiladi"). Yo'q qatorlarni O'ZIMDAN TO'QIB CHIQARMADIM. 15 dan past xom
+// ball uchun endi 4.0'ga CLAMP QILINMAYDI (bu eski xatti-harakat raw=0 bilan
+// raw=14'ni bir xil 4.0 band qilib ko'rsatardi — noto'g'ri edi, audit P0-03).
+// Buning o'rniga `lookupBand()` (0, 0.0) va (eng past ma'lum qator)ni bog'lovchi
+// chiziqli taxminni ishlatadi va natijani `estimated: true` deb belgilaydi —
+// bu ham to'qib chiqarilgan "official" raqam emas, ochiq taxmin.
 const GENERAL_TRAINING_READING_TABLE: BandRow[] = [
   [40, 40, 9.0],
   [39, 39, 8.5],
@@ -80,32 +82,56 @@ const GENERAL_TRAINING_READING_TABLE: BandRow[] = [
   [15, 18, 4.0],
 ];
 
-function lookup(table: BandRow[], raw: number): number {
+export type BandLookup = { band: number; estimated: boolean };
+
+function roundToHalfBand(v: number): number {
+  return Math.round(v * 2) / 2;
+}
+
+/** Jadval qatoridan tashqarida qolgan (eng past qatordan ham past) xom ball uchun
+ * (0 xom ball -> 0.0 band) va (eng past ma'lum qator) orasida chiziqli taxmin
+ * qiladi, so'ng eng yaqin 0.5 bandga yaxlitlaydi. Aniq band emas — `estimated: true`. */
+function estimateBelowTable(table: BandRow[], raw: number): number {
+  const lowestRow = table[table.length - 1];
+  const [lowestRaw, , lowestBand] = lowestRow;
+  if (lowestRaw <= 0) return 0;
+  const ratio = Math.max(0, raw) / lowestRaw;
+  return roundToHalfBand(ratio * lowestBand);
+}
+
+function lookupBand(table: BandRow[], raw: number): BandLookup {
   const r = Math.max(0, Math.trunc(raw));
   for (const [lo, hi, band] of table) {
-    if (r >= lo && r <= hi) return band;
+    if (r >= lo && r <= hi) return { band, estimated: false };
   }
-  return table[0][2]; // jadvaldan yuqori -> eng yuqori band
+  if (r > table[0][1]) return { band: table[0][2], estimated: false }; // jadvaldan yuqori -> eng yuqori band
+  return { band: estimateBelowTable(table, r), estimated: true }; // eng past qatordan ham past -> taxmin
 }
 
-export function listeningBand(rawCorrect: number): number {
-  return lookup(LISTENING_TABLE, rawCorrect);
+function toBandRows(table: BandTable): BandRow[] {
+  return table.map((row) => [row.min, row.max, row.band] as BandRow).sort((a, b) => b[0] - a[0]);
 }
 
-export function readingBand(rawCorrect: number): number {
-  return lookup(READING_TABLE, rawCorrect);
+/** `override` — admin testga o'ziga xos `bandTable` bersa (TZ §10.2), shu
+ * ishlatiladi; aks holda standart Listening jadvali. */
+export function listeningBand(rawCorrect: number, override?: BandTable): BandLookup {
+  const table = override && override.length > 0 ? toBandRows(override) : LISTENING_TABLE;
+  return lookupBand(table, rawCorrect);
 }
 
-/** GT jadvali 15 xom balldan pastini bermaydi (yuqoridagi izohga q.) — shu oraliqda
- * eng past ma'lum bandga (4.0) clamp qilinadi, `lookup()`dagi "eng yuqori band"
- * fallback'i BU YERDA ATAYLAB ishlatilmaydi (u noto'g'ri — past ballni 9.0 qilib qo'yardi). */
-export function generalTrainingReadingBand(rawCorrect: number): number {
-  const r = Math.max(0, Math.trunc(rawCorrect));
-  for (const [lo, hi, band] of GENERAL_TRAINING_READING_TABLE) {
-    if (r >= lo && r <= hi) return band;
-  }
-  const lowest = GENERAL_TRAINING_READING_TABLE[GENERAL_TRAINING_READING_TABLE.length - 1];
-  return r < lowest[0] ? lowest[2] : GENERAL_TRAINING_READING_TABLE[0][2];
+/** `module` — Academic va General Training turli konversiya jadvaliga ega
+ * (TZ §10.2, audit P0-03: bu yerda tanlanmasa GT test doim Academic jadvali
+ * bilan baholanardi). `override` mavjud bo'lsa `module`dan ustun turadi. */
+export function readingBand(rawCorrect: number, module: ExamModule = 'academic', override?: BandTable): BandLookup {
+  const table =
+    override && override.length > 0 ? toBandRows(override) : module === 'general' ? GENERAL_TRAINING_READING_TABLE : READING_TABLE;
+  return lookupBand(table, rawCorrect);
+}
+
+/** @deprecated to'g'ridan-to'g'ri `readingBand(raw, 'general')` ishlating —
+ * bu faqat eski test/chaqiruvlar buzilmasligi uchun saqlangan ingichka wrapper. */
+export function generalTrainingReadingBand(rawCorrect: number): BandLookup {
+  return readingBand(rawCorrect, 'general');
 }
 
 /** Rasmiy IELTS yaxlitlash: .25 -> .5, .75 -> keyingi butun. */
@@ -124,12 +150,33 @@ export type SectionBands = {
   speaking?: number | null;
 };
 
-/** Mavjud (null bo'lmagan) bo'lim bandlarining o'rtachasini oladi va yaxlitlaydi —
- * Writing/Speaking hali baholanmagan bo'lsa ham qisman umumiy ball ko'rsatish uchun. */
+/** Mavjud (null bo'lmagan) bo'lim bandlarining o'rtachasini oladi va yaxlitlaydi.
+ * Bitta bo'limli practice/drill urinish uchun ishlatiladi — u yerda "overall"
+ * shunchaki shu bitta bo'lim bandining o'zi, chalkashlik yo'q. TO'LIQ (mock)
+ * urinishlar uchun BUNI EMAS, pastdagi `officialStyleOverallBand()`ni ishlating —
+ * audit P0-04: bu funksiya hali baholanmagan bo'limlarni e'tiborsiz qoldiradi,
+ * shuning uchun mockda Writing hali navbatda turgan bo'lsa ham L+R o'rtachasini
+ * "umumiy band" sifatida ko'rsatib qo'yishi mumkin edi. */
 export function overallBand(sectionBands: SectionBands): number | null {
   const vals = Object.values(sectionBands).filter((b): b is number => b != null);
   if (vals.length === 0) return null;
   return roundOverall(vals.reduce((a, b) => a + b, 0) / vals.length);
+}
+
+/** TZ §5/P0-04: to'liq (mock) urinish uchun "umumiy band" faqat SHU URINISHGA
+ * kiritilgan (`attemptSections`) barcha bo'limlar baholangandan keyin chiqishi
+ * kerak — aks holda "partial average" rasmiy overall bandga o'xshab qolib,
+ * foydalanuvchini chalg'itadi. Hali navbatda turgan (baholanmagan) bo'lim bo'lsa
+ * `null` ("pending") qaytaradi — `overallBand()`dan farqli, mavjudlarni
+ * "yetarli" deb hisoblamaydi. */
+export function officialStyleOverallBand(attemptSections: string[], sectionBands: SectionBands): number | null {
+  const relevant = attemptSections.filter(
+    (s): s is keyof SectionBands => s === 'listening' || s === 'reading' || s === 'writing' || s === 'speaking'
+  );
+  if (relevant.length === 0) return null;
+  const vals = relevant.map((s) => sectionBands[s]);
+  if (vals.some((v) => v == null)) return null; // hali baholanmagan bo'lim bor -> pending
+  return roundOverall((vals as number[]).reduce((a, b) => a + b, 0) / vals.length);
 }
 
 // ============================================================================

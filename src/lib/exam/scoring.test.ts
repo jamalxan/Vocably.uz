@@ -8,6 +8,7 @@ import {
   readingBand,
   generalTrainingReadingBand,
   overallBand,
+  officialStyleOverallBand,
   roundOverall,
 } from './scoring';
 
@@ -111,22 +112,63 @@ describe('isSetCorrect', () => {
 describe('band tables', () => {
   it('listeningBand and readingBand cover the full 0-40 range without gaps', () => {
     for (let raw = 0; raw <= 40; raw++) {
-      expect(typeof listeningBand(raw)).toBe('number');
-      expect(typeof readingBand(raw)).toBe('number');
+      expect(typeof listeningBand(raw).band).toBe('number');
+      expect(typeof readingBand(raw).band).toBe('number');
     }
-    expect(listeningBand(40)).toBe(9.0);
-    expect(readingBand(40)).toBe(9.0);
-    expect(listeningBand(0)).toBe(0.0);
+    expect(listeningBand(40).band).toBe(9.0);
+    expect(readingBand(40).band).toBe(9.0);
+    expect(listeningBand(0).band).toBe(0.0);
+  });
+
+  it('readingBand uses the Academic table by default and is not affected by unrelated calls', () => {
+    expect(readingBand(23).band).toBe(6.0); // Academic: 23-26 -> 6.0
+  });
+
+  it('readingBand switches to the General Training table when module is "general" (P0-03)', () => {
+    // Academic 23 raw -> 6.0, but GT 23 raw -> 5.0 (different table entirely)
+    expect(readingBand(23, 'general').band).toBe(5.0);
+    expect(readingBand(23, 'general').estimated).toBe(false);
+  });
+
+  it('readingBand honours a test-specific bandTable override over the module default', () => {
+    const override = [{ min: 0, max: 40, band: 9.0 }];
+    expect(readingBand(1, 'academic', override)).toEqual({ band: 9.0, estimated: false });
   });
 
   it('generalTrainingReadingBand matches the documented rows', () => {
-    expect(generalTrainingReadingBand(40)).toBe(9.0);
-    expect(generalTrainingReadingBand(16)).toBe(4.0);
+    expect(generalTrainingReadingBand(40).band).toBe(9.0);
+    expect(generalTrainingReadingBand(16).band).toBe(4.0);
   });
 
-  it('generalTrainingReadingBand clamps below-range scores to the lowest documented band instead of fabricating rows', () => {
-    expect(generalTrainingReadingBand(0)).toBe(4.0);
-    expect(generalTrainingReadingBand(5)).toBe(4.0);
+  it('generalTrainingReadingBand no longer flat-clamps below-range scores to 4.0 (P0-03 fix) and flags them as estimated', () => {
+    // Old (buggy) behaviour: raw=0 and raw=14 both mapped to 4.0. Now they must differ
+    // and must be marked estimated (below the lowest documented table row of 15).
+    const zero = generalTrainingReadingBand(0);
+    const fourteen = generalTrainingReadingBand(14);
+    expect(zero.estimated).toBe(true);
+    expect(fourteen.estimated).toBe(true);
+    expect(zero.band).toBeLessThan(fourteen.band);
+    expect(zero.band).toBe(0);
+    expect(fourteen.band).toBe(3.5); // linear estimate toward (15 -> 4.0), rounded to nearest 0.5
+  });
+});
+
+describe('officialStyleOverallBand', () => {
+  it('returns null (pending) when a section included in the attempt has not been graded yet', () => {
+    // Mock attempt with listening+reading+writing: L and R done, Writing still AI-queued.
+    expect(
+      officialStyleOverallBand(['listening', 'reading', 'writing'], { listening: 6.5, reading: 6.5, writing: null, speaking: null })
+    ).toBeNull();
+  });
+
+  it('returns the rounded average once every section in the attempt is graded', () => {
+    expect(
+      officialStyleOverallBand(['listening', 'reading', 'writing'], { listening: 6.5, reading: 6.5, writing: 5.0, speaking: null })
+    ).toBe(6.0);
+  });
+
+  it('treats a single-section practice attempt as complete once that one section is graded', () => {
+    expect(officialStyleOverallBand(['reading'], { listening: null, reading: 7.0, writing: null, speaking: null })).toBe(7.0);
   });
 });
 

@@ -49,9 +49,9 @@ export async function POST(req) {
     await connectToDatabase();
 
     const body = await req.json().catch(() => ({}));
-    const { slug, title, module: mod, difficulty, sections, bandTable } = body;
+    const { slug, title, module: mod, difficulty, sections, bandTable, rights } = body;
 
-    const testDraft = { slug, title, module: mod, difficulty, sections: sections || {} };
+    const testDraft = { slug, title, module: mod, difficulty, sections: sections || {}, rights };
     const issues = validateTest(testDraft);
     if (hasBlockingErrors(issues)) {
       return NextResponse.json({ error: 'Validatsiya xatoliklari bor', issues }, { status: 422 });
@@ -67,6 +67,7 @@ export async function POST(req) {
       difficulty: difficulty || 'medium',
       sections: sections || {},
       bandTable: bandTable || null,
+      rights: rights || undefined,
       isPublished: false,
       createdBy: admin._id,
     });

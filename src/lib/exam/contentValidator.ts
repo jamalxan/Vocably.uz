@@ -191,8 +191,34 @@ function checkReadingDifficultyProgression(
   }
 }
 
+// LEGAL-01 §17 — "Publish gate: third_party_copyright + public = BLOCK. Bu
+// qoida AI policy'dan ham ustun bo'lishi shart." `rights` butunlay yo'q bo'lsa
+// (eski test, bu maydon qo'shilishidan oldin yaratilgan) model default'i bilan
+// bir xil taxmin qilinadi (`sourceType:'own', publishScope:'public'`) — orqaga
+// mos, hech narsani to'satdan bloklamaydi. Bloklanadi FAQAT admin ONGLI
+// ravishda "bu uchinchi tomon materiali" deb belgilab, uni public qilmoqchi
+// bo'lsa.
+function checkCopyright(rights: Test['rights'], issues: ValidationIssue[]) {
+  const sourceType = rights?.sourceType || 'own';
+  const publishScope = rights?.publishScope || 'public';
+
+  if (sourceType === 'third_party_copyright' && publishScope === 'public') {
+    issues.push({
+      severity: 'error',
+      path: 'rights',
+      message:
+        "Kontent manbasi 'third_party_copyright' deb belgilangan, lekin nashr doirasi 'public' — ruxsatsiz uchinchi tomon materialini ommaga chiqarish TAQIQLANADI. Litsenziya mavjud bo'lsa sourceType'ni 'licensed'ga o'zgartirib 'licence' maydonini to'ldiring, aks holda publishScope'ni 'public'dan boshqasiga o'zgartiring.",
+    });
+  }
+  if (sourceType === 'licensed' && !rights?.licence?.trim()) {
+    issues.push({ severity: 'error', path: 'rights', message: "sourceType 'licensed', lekin 'licence' (litsenziya turi/raqami) bo'sh — dalilsiz litsenziya da'vosi" });
+  }
+}
+
 export function validateTest(test: Partial<Test>): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+
+  checkCopyright(test.rights, issues);
 
   if (!test.title?.trim()) issues.push({ severity: 'error', path: 'title', message: "Test sarlavhasi bo'sh bo'lmasin" });
   if (!test.slug?.trim()) issues.push({ severity: 'error', path: 'slug', message: "Slug bo'sh bo'lmasin" });

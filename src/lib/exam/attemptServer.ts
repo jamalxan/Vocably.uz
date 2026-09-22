@@ -3,8 +3,9 @@
 // bilan bir xil naqsh: sof hisoblash `./scoring.ts`/`./sanitize.ts`da, bu yerda
 // faqat Mongoose bilan gaplashish bor. YANGI `ExamAttempt`/`ExamTest` modellari
 // bilan ishlaydi (`@/lib/models`) — eski `ExamSession`ga TEGMAYDI.
-import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel } from '@/lib/models';
-import { isCorrect, isSetCorrect, listeningBand, readingBand, overallBand } from './scoring';
+import crypto from 'crypto';
+import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel, ExamTestVersion as ExamTestVersionModel } from '@/lib/models';
+import { isCorrect, isSetCorrect, listeningBand, readingBand, officialStyleOverallBand } from './scoring';
 import { sanitizeForExam } from './sanitize';
 import { gradeEssay, combineWritingBand } from './writingGrader';
 import { gradeSpeaking } from './speakingGrader';
@@ -37,6 +38,7 @@ const MOCK_SECTION_ORDER: ExamSectionKey[] = ['listening', 'reading', 'writing']
 // xuddi shu sababdan xuddi shu naqshni ishlatadi.
 const ExamAttempt: any = ExamAttemptModel;
 const ExamTest: any = ExamTestModel;
+const ExamTestVersion: any = ExamTestVersionModel;
 
 export class ExamAttemptError extends Error {
   status: number;
@@ -44,6 +46,77 @@ export class ExamAttemptError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+/** P0-05 — bir xil kontent uchun bir xil hash (admin testni ochib qayta
+ * saqlasa-yu mazmuni o'zgarmasa, yangi versiya CHIQMASLIGI kerak). Faqat
+ * BAHOLASH/REVIEW uchun ahamiyatli maydonlar hash'ga kiradi — `isPublished`,
+ * `qa`, `reviewSummary` kabi metadata o'zgarishi versiya YARATMASLIGI kerak. */
+function computeTestContentHash(test: { module?: string; sections?: unknown; bandTable?: unknown }): string {
+  const material = JSON.stringify({ module: test.module, sections: test.sections, bandTable: test.bandTable || null });
+  return crypto.createHash('sha256').update(material).digest('hex');
+}
+
+/** P0-05 — urinish yaratilganda chaqiriladi: shu paytdagi test kontenti bilan
+ * mos `ExamTestVersion`ni topadi (content-hash bo'yicha, takrorlanmasin) yoki
+ * yangisini yaratadi, so'ng uning ID'sini qaytaradi — chaqiruvchi buni
+ * `ExamAttempt.testVersionId`ga yozadi. Shu paytdan boshlab ushbu urinish
+ * uchun test kontenti MUZLAYDI: admin keyinroq shu testni tahrirlasa, bu
+ * urinish (submit/review/scoring) hamon ESKI snapshotdan ishlaydi. */
+export async function getOrCreateTestVersion(test: any): Promise<string> {
+  const contentHash = computeTestContentHash(test);
+  const existing = await ExamTestVersion.findOne({ parentTestId: test._id, contentHash }).select('_id').lean();
+  if (existing) return String(existing._id);
+
+  const last = await ExamTestVersion.findOne({ parentTestId: test._id }).sort({ versionNumber: -1 }).select('versionNumber').lean();
+  const versionNumber = (last?.versionNumber || 0) + 1;
+
+  const snapshot = {
+    _id: String(test._id),
+    slug: test.slug,
+    title: test.title,
+    module: test.module,
+    difficulty: test.difficulty,
+    sections: test.sections,
+    bandTable: test.bandTable || null,
+    isPublished: test.isPublished,
+    createdBy: test.createdBy ? String(test.createdBy) : undefined,
+    createdAt: test.createdAt,
+  };
+
+  try {
+    const version = await ExamTestVersion.create({
+      parentTestId: test._id,
+      versionNumber,
+      contentHash,
+      snapshot,
+      createdBy: test.createdBy || null,
+    });
+    return String(version._id);
+  } catch (err: any) {
+    // Poyga holati: parallel so'rov xuddi shu (parentTestId, contentHash) uchun
+    // versiyani BIZDAN OLDIN yaratdi (unique index, models.js) — duplikat
+    // yaratish o'rniga g'olib versiyani qaytaramiz.
+    if (err?.code === 11000) {
+      const winner = await ExamTestVersion.findOne({ parentTestId: test._id, contentHash }).select('_id').lean();
+      if (winner) return String(winner._id);
+    }
+    throw err;
+  }
+}
+
+/** P0-05 — urinishning haqiqiy test kontentini oladi: `testVersionId` bog'langan
+ * bo'lsa (bu migratsiyadan keyin yaratilgan HAR bir urinishda shunday) shu
+ * MUZLATILGAN snapshotdan, aks holda (migratsiyadan OLDINGI eski urinishlar —
+ * orqaga moslik) live `ExamTest`dan. Submit/scoring/review/GET — BARCHASI shu
+ * bitta funksiya orqali o'tishi kerak, aks holda ikkita hisoblash yo'li paydo
+ * bo'ladi (TZ intizomi — q. `submitAttempt` boshidagi izoh). */
+export async function resolveTestForAttempt(attempt: { testId: unknown; testVersionId?: unknown }): Promise<Test | null> {
+  if (attempt.testVersionId) {
+    const version = await ExamTestVersion.findById(attempt.testVersionId).select('snapshot').lean();
+    if (version?.snapshot) return version.snapshot as Test;
+  }
+  return ExamTest.findById(attempt.testId).lean();
 }
 
 /** Urinishni egasi (userId) bo'yicha tekshirib qaytaradi — client attemptId'ga
@@ -111,7 +184,7 @@ export async function advanceMockSection(attemptId: string, userId: string, reas
     return ExamAttempt.findById(attemptId);
   }
 
-  const test: Test | null = await ExamTest.findById(attempt.testId).lean();
+  const test = await resolveTestForAttempt(attempt);
   const nextDuration = (test?.sections as any)?.[nextSection]?.durationSec;
   if (typeof nextDuration !== 'number') {
     throw new ExamAttemptError(`Testda "${nextSection}" bo'limi yo'q`, 400);
@@ -229,7 +302,7 @@ export async function submitAttempt(attemptId: string, userId: string, reason: s
     return existing?.result ?? null;
   }
 
-  const test: Test | null = await ExamTest.findById(pre.testId).lean();
+  const test = await resolveTestForAttempt(pre);
   const attemptAnswers: Record<string, AnswerValue> = pre.answers || {};
   const attemptSections: string[] = pre.sections || [];
 
@@ -242,19 +315,25 @@ export async function submitAttempt(attemptId: string, userId: string, reason: s
 
   if (test?.sections.reading && attemptSections.includes('reading')) {
     const scored = scoreSection(test, attemptAnswers, 'reading');
-    sectionBands.reading = readingBand(scored.raw);
-    result.reading = { raw: scored.raw, band: sectionBands.reading, perPassage: scored.perContainer };
+    const { band, estimated } = readingBand(scored.raw, test.module, test.bandTable?.reading);
+    sectionBands.reading = band;
+    result.reading = { raw: scored.raw, band, bandEstimated: estimated, perPassage: scored.perContainer };
     perQuestion = perQuestion.concat(scored.perQuestion);
   }
   if (test?.sections.listening && attemptSections.includes('listening')) {
     const scored = scoreSection(test, attemptAnswers, 'listening');
-    sectionBands.listening = listeningBand(scored.raw);
-    result.listening = { raw: scored.raw, band: sectionBands.listening, perPart: scored.perContainer };
+    const { band, estimated } = listeningBand(scored.raw, test.bandTable?.listening);
+    sectionBands.listening = band;
+    result.listening = { raw: scored.raw, band, bandEstimated: estimated, perPart: scored.perContainer };
     perQuestion = perQuestion.concat(scored.perQuestion);
   }
 
   result.perQuestion = perQuestion;
-  result.overall = overallBand(sectionBands) ?? undefined;
+  // P0-04: faqat SHU urinishga kiritilgan barcha bo'limlar baholanganda overall
+  // chiqadi (masalan mockda Writing hali AI navbatida bo'lsa, L+R "umumiy band"
+  // sifatida ko'rsatilmaydi — quyida gradeWritingAttempt/gradeSpeakingAttempt
+  // qayta hisoblab to'ldiradi).
+  result.overall = officialStyleOverallBand(attemptSections, sectionBands) ?? undefined;
 
   // Writing va Speaking ikkalasi ham AI orqali (submitAttempt'dan TASHQARIDA,
   // grade-writing/grade-speaking endpoint'lari orqali) baholanadi — shuning
@@ -327,7 +406,7 @@ export async function gradeWritingAttempt(attemptId: string, userId: string): Pr
     throw new ExamAttemptError('Urinish hali yakunlanmagan yoki holati mos emas', 409);
   }
 
-  const test: Test | null = await ExamTest.findById(attempt.testId).lean();
+  const test = await resolveTestForAttempt(attempt);
   const tasks = test?.sections.writing?.tasks;
   if (!tasks) throw new ExamAttemptError('Testda Writing bo\'limi yo\'q', 400);
 
@@ -340,12 +419,12 @@ export async function gradeWritingAttempt(attemptId: string, userId: string): Pr
   const writing = { task1: score1, task2: score2, band: combineWritingBand(score1, score2) };
   const result: AttemptResult = { ...(attempt.result || {}), writing };
 
-  result.overall = overallBand({
+  result.overall = officialStyleOverallBand(attempt.sections || [], {
     reading: result.reading?.band ?? null,
     listening: result.listening?.band ?? null,
     writing: writing.band,
     speaking: result.speaking?.band ?? null,
-  });
+  }) ?? undefined;
 
   // §9.1 — amalda Writing va Speaking bitta urinishda birga bo'lmaydi (q.
   // submitAttempt'dagi izoh), lekin status shu qoidaga qat'iy rioya qiladi:
@@ -370,7 +449,7 @@ export async function gradeSpeakingAttempt(attemptId: string, userId: string): P
     throw new ExamAttemptError('Urinish hali yakunlanmagan yoki holati mos emas', 409);
   }
 
-  const test: Test | null = await ExamTest.findById(attempt.testId).lean();
+  const test = await resolveTestForAttempt(attempt);
   const section = test?.sections.speaking;
   if (!section) throw new ExamAttemptError("Testda Speaking bo'limi yo'q", 400);
 
@@ -378,12 +457,12 @@ export async function gradeSpeakingAttempt(attemptId: string, userId: string): P
   const speaking = await gradeSpeaking(section, recordings);
   const result: AttemptResult = { ...(attempt.result || {}), speaking };
 
-  result.overall = overallBand({
+  result.overall = officialStyleOverallBand(attempt.sections || [], {
     reading: result.reading?.band ?? null,
     listening: result.listening?.band ?? null,
     writing: result.writing?.band ?? null,
     speaking: speaking.band,
-  });
+  }) ?? undefined;
 
   const stillPendingWriting = (attempt.sections || []).includes('writing') && !result.writing;
   const status = stillPendingWriting ? 'submitted' : 'graded';
@@ -428,7 +507,7 @@ export async function getAttemptReviewDetail(attemptId: string, userId: string):
     throw new ExamAttemptError("Urinish hali baholanmagan", 409);
   }
 
-  const test: Test | null = await ExamTest.findById(attempt.testId).lean();
+  const test = await resolveTestForAttempt(attempt);
   if (!test) throw new ExamAttemptError('Test topilmadi', 404);
 
   const result: AttemptResult = attempt.result || { timeSpentSec: 0, perQuestion: [] };
@@ -439,6 +518,7 @@ export async function getAttemptReviewDetail(attemptId: string, userId: string):
     detail.reading = {
       band: result.reading.band,
       raw: result.reading.raw,
+      bandEstimated: result.reading.bandEstimated,
       passages: test.sections.reading.passages.map((p) => ({
         order: p.order,
         title: p.title,
@@ -452,6 +532,7 @@ export async function getAttemptReviewDetail(attemptId: string, userId: string):
     detail.listening = {
       band: result.listening.band,
       raw: result.listening.raw,
+      bandEstimated: result.listening.bandEstimated,
       parts: test.sections.listening.parts.map((p) => ({
         order: p.order,
         transcript: p.transcript || '',

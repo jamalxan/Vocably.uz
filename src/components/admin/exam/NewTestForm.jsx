@@ -32,7 +32,7 @@ instruction: Do the following statements agree with the information given in Rea
 1. Glass was first made in Mesopotamia. | TRUE | para:A
 2. The Romans invented glassblowing. | NOT GIVEN`;
 
-export default function NewTestForm({ token, onCreated }) {
+export default function NewTestForm({ onCreated }) {
   const [method, setMethod] = useState('json');
 
   const [jsonText, setJsonText] = useState('');
@@ -42,6 +42,16 @@ export default function NewTestForm({ token, onCreated }) {
   const [moduleType, setModuleType] = useState('academic');
   const [difficulty, setDifficulty] = useState('medium');
 
+  // LEGAL-01 — kontent huquqiy kelib chiqishi. `sourceType:'own'` +
+  // `publishScope:'public'` default — hech narsani bloklamaydi, admin
+  // ONGLI ravishda 'third_party_copyright' tanlab, 'public'da qoldirsagina
+  // server publish gate'i ishga tushadi (contentValidator.ts `checkCopyright`).
+  const [sourceType, setSourceType] = useState('own');
+  const [publisher, setPublisher] = useState('');
+  const [licence, setLicence] = useState('');
+  const [licenceNote, setLicenceNote] = useState('');
+  const [publishScope, setPublishScope] = useState('public');
+
   const [dslText, setDslText] = useState('');
   const [dslErrors, setDslErrors] = useState([]);
   const [dslPassages, setDslPassages] = useState(null);
@@ -50,6 +60,7 @@ export default function NewTestForm({ token, onCreated }) {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState('');
   const [aiPassages, setAiPassages] = useState(null);
+  const [aiNeedsReview, setAiNeedsReview] = useState([]);
 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -68,12 +79,13 @@ export default function NewTestForm({ token, onCreated }) {
     try {
       const res = await fetch('/api/admin/exam-tests/ai-generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rawText }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Xatolik');
       setAiPassages(data.passages);
+      setAiNeedsReview(Array.isArray(data.needsReview) ? data.needsReview : []);
     } catch (err) {
       setAiError(err.message);
     } finally {
@@ -93,10 +105,17 @@ export default function NewTestForm({ token, onCreated }) {
     const passages = method === 'dsl' ? dslPassages : aiPassages;
     if (!passages) return { draft: null, jsonParseError: '' };
     return {
-      draft: { title, slug, module: moduleType, difficulty, sections: { reading: { durationSec: 3600, passages } } },
+      draft: {
+        title,
+        slug,
+        module: moduleType,
+        difficulty,
+        sections: { reading: { durationSec: 3600, passages } },
+        rights: { sourceType, publisher, licence, licenceNote, publishScope },
+      },
       jsonParseError: '',
     };
-  }, [method, jsonText, dslPassages, aiPassages, title, slug, moduleType, difficulty]);
+  }, [method, jsonText, dslPassages, aiPassages, title, slug, moduleType, difficulty, sourceType, publisher, licence, licenceNote, publishScope]);
 
   const validatorIssues = useMemo(() => (draft ? validateTest(draft) : []), [draft]);
   const dslParseIssues = method === 'dsl' ? dslErrors.map((e) => ({ severity: 'error', path: `${e.line}-qator`, message: e.message })) : [];
@@ -110,7 +129,7 @@ export default function NewTestForm({ token, onCreated }) {
     try {
       const res = await fetch('/api/admin/exam-tests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(draft),
       });
       const data = await res.json();
@@ -122,8 +141,14 @@ export default function NewTestForm({ token, onCreated }) {
       setDslErrors([]);
       setRawText('');
       setAiPassages(null);
+      setAiNeedsReview([]);
       setTitle('');
       setSlug('');
+      setSourceType('own');
+      setPublisher('');
+      setLicence('');
+      setLicenceNote('');
+      setPublishScope('public');
       setShowPreview(false);
     } catch (err) {
       setCreateError(err.message);
@@ -185,6 +210,62 @@ export default function NewTestForm({ token, onCreated }) {
         </div>
       )}
 
+      {method !== 'json' && (
+        <div className="border border-border rounded-lg p-3 space-y-2">
+          <p className="text-xs font-bold text-ink">Kontent huquqi (LEGAL-01)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <select
+              value={sourceType}
+              onChange={(e) => setSourceType(e.target.value)}
+              className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+            >
+              <option value="own">Own — o&apos;zim yozganman</option>
+              <option value="licensed">Licensed — litsenziya bilan</option>
+              <option value="public_domain">Public domain</option>
+              <option value="third_party_copyright">Third-party copyright (masalan Cambridge)</option>
+              <option value="ai_generated_original">AI-generated original</option>
+            </select>
+            <select
+              value={publishScope}
+              onChange={(e) => setPublishScope(e.target.value)}
+              className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+            >
+              <option value="public">Public — barcha foydalanuvchi</option>
+              <option value="organization">Organization — faqat tashkilot ichida</option>
+              <option value="private">Private — faqat admin/QA</option>
+            </select>
+          </div>
+          {(sourceType === 'licensed' || sourceType === 'third_party_copyright') && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input
+                value={publisher}
+                onChange={(e) => setPublisher(e.target.value)}
+                placeholder="Nashriyot (masalan Cambridge University Press)"
+                className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+              />
+              <input
+                value={licence}
+                onChange={(e) => setLicence(e.target.value)}
+                placeholder="Litsenziya (masalan CC-BY-4.0 yoki shartnoma raqami)"
+                className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+              />
+              <input
+                value={licenceNote}
+                onChange={(e) => setLicenceNote(e.target.value)}
+                placeholder="Izoh (ixtiyoriy)"
+                className="sm:col-span-2 px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+              />
+            </div>
+          )}
+          {sourceType === 'third_party_copyright' && publishScope === 'public' && (
+            <p className="text-xs text-danger">
+              ⚠ Uchinchi tomon materiali + Public — server nashr qilishga yo&apos;l qo&apos;ymaydi. Litsenziya bo&apos;lsa &quot;Licensed&quot;ga
+              o&apos;tkazing, aks holda &quot;Public&quot;dan boshqasini tanlang.
+            </p>
+          )}
+        </div>
+      )}
+
       {method === 'json' && (
         <div>
           <textarea
@@ -236,6 +317,20 @@ export default function NewTestForm({ token, onCreated }) {
             AI bilan generatsiya qilish
           </button>
           {aiError && <p className="text-xs text-danger">{aiError}</p>}
+          {aiNeedsReview.length > 0 && (
+            <div className="rounded-lg border border-warning/40 bg-warning/10 p-2.5 space-y-1">
+              <p className="text-xs font-bold text-warning">
+                ⚠ {aiNeedsReview.length} ta guruh AI tomonidan aniq emas deb belgilandi — nashr qilishdan oldin qo&apos;lda tekshiring:
+              </p>
+              <ul className="text-[11px] text-ink space-y-0.5 list-disc list-inside">
+                {aiNeedsReview.map((n) => (
+                  <li key={n.groupId}>
+                    Passage {n.passageOrder} · {n.groupId} ({n.type}) — {n.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
