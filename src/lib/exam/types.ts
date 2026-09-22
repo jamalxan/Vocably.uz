@@ -279,7 +279,7 @@ export type QuestionType =
 // ============================================================================
 
 export type ExamSectionKey = 'listening' | 'reading' | 'writing' | 'speaking';
-export type AttemptMode = 'mock' | 'section';
+export type AttemptMode = 'mock' | 'section' | 'practice';
 export type AttemptStatus = 'in_progress' | 'submitted' | 'graded' | 'expired' | 'abandoned';
 export type AnswerValue = string | string[] | null;
 
