@@ -12,6 +12,7 @@ import { STAGE_REGISTRY } from './stageRegistry';
 import { UnrecoverableStageError } from './lib/errors';
 import { runAutoPublishGateForBook } from './orchestrator/autoPublishGate';
 import { runSelfHealForBook } from './orchestrator/selfHeal';
+import { runMockScheduler } from './orchestrator/mockScheduler';
 import type { IngestStage } from './types';
 import type { QaOutput } from './stages/qa';
 
@@ -117,15 +118,30 @@ export async function runJob(data: WorkerJobData): Promise<unknown> {
         // eslint-disable-next-line no-console
         console.error(`[jobRunner] self_heal muvaffaqiyatsiz (bookId=${data.bookId}):`, (healErr as Error).message);
       }
+      let anyNewlyPublished = false;
       try {
         const qaOutput = output as QaOutput;
-        await runAutoPublishGateForBook(
+        const gateResults = await runAutoPublishGateForBook(
           data.bookId,
           qaOutput.results.map((r) => r.testId)
         );
+        anyNewlyPublished = gateResults.some((r) => r.published);
       } catch (gateErr) {
         // eslint-disable-next-line no-console
         console.error(`[jobRunner] auto_publish_gate muvaffaqiyatsiz (bookId=${data.bookId}):`, (gateErr as Error).message);
+      }
+
+      // S15 mock_scheduler — REAKTIV: "har yangi published testdan keyin"
+      // (docs) so'zma-so'z shu yerda, kitob darajasida yangi nashr
+      // bo'lganda ishga tushadi (mockScheduler.ts boshidagi izohga q. —
+      // vaqt-asosli davriy sweep hali qurilmagan, ataylab).
+      if (anyNewlyPublished) {
+        try {
+          await runMockScheduler();
+        } catch (schedErr) {
+          // eslint-disable-next-line no-console
+          console.error('[jobRunner] mock_scheduler muvaffaqiyatsiz:', (schedErr as Error).message);
+        }
       }
     }
 

@@ -637,6 +637,19 @@ const ExamTestSchema = new mongoose.Schema({
     bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', default: null },
     bookTitle: { type: String, default: '' },
     testIndex: { type: Number, default: null },
+    // docs/ai-content-agent-tz.md §28 / avtopilot §5 S15 "mock_scheduler" —
+    // bitta kitobda L/R/W'ning barchasi bo'lmasa (masalan faqat Reading
+    // kitobi), lekin BOSHQA nashr qilingan testlarda yetishmagan bo'limlar
+    // mavjud bo'lsa, scheduler ularni BITTA "mixed mock"ga BIRLASHTIRADI —
+    // yangi kontent TO'QIMAYDI, faqat qayta joylashtiradi. Shunday hujjatda
+    // `bookId` yagona manba bo'lmagani uchun `null` qoladi, o'rniga har bir
+    // bo'lim qaysi asl testdan olinganini shu yerda saqlaydi.
+    composedFrom: [
+      {
+        testId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest' },
+        sectionKey: { type: String, enum: ['listening', 'reading', 'writing', 'speaking'] },
+      },
+    ],
   },
   availability: {
     practiceReading: { type: Boolean, default: true },
