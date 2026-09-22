@@ -13,6 +13,7 @@ import { UnrecoverableStageError } from './lib/errors';
 import { runAutoPublishGateForBook } from './orchestrator/autoPublishGate';
 import { runSelfHealForBook } from './orchestrator/selfHeal';
 import { runMockScheduler } from './orchestrator/mockScheduler';
+import { runContentGapScan } from './orchestrator/contentGapScan';
 import type { IngestStage } from './types';
 import type { QaOutput } from './stages/qa';
 
@@ -141,6 +142,17 @@ export async function runJob(data: WorkerJobData): Promise<unknown> {
         } catch (schedErr) {
           // eslint-disable-next-line no-console
           console.error('[jobRunner] mock_scheduler muvaffaqiyatsiz:', (schedErr as Error).message);
+        }
+
+        // S16 content_gap_scan — o'qish-faqat hisobot, `level`dan MUSTAQIL
+        // o'z bayrog'i (`AutomationPolicy.autoContentGapScan`, standart
+        // `false`) bilan boshqariladi — o'zi ichida tekshiradi, shuning
+        // uchun bu yerda qo'shimcha shart yo'q.
+        try {
+          await runContentGapScan();
+        } catch (scanErr) {
+          // eslint-disable-next-line no-console
+          console.error('[jobRunner] content_gap_scan muvaffaqiyatsiz:', (scanErr as Error).message);
         }
       }
     }

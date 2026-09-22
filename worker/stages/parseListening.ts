@@ -14,26 +14,12 @@
 // Reading'dagi diagram_label bilan bir xil sabab (aiImportSchema.ts izohiga q.).
 import { runAiStage } from '../lib/aiStageRunner';
 import { requireStageOutput } from '../lib/dependencies';
+import { LISTENING_QUESTION_TYPES } from '../lib/listeningQuestionTypes';
 import type { StageContext } from '../types';
 import type { SplitSectionsOutput } from './splitSections';
 import type { QuestionGroup, QuestionType } from '@/lib/exam/types';
 
 const PROMPT_VERSION = 'v1';
-
-const LISTENING_QUESTION_TYPES = [
-  'multiple_choice_single',
-  'multiple_choice_multi',
-  'sentence_completion',
-  'short_answer',
-  'note_completion',
-  'table_completion',
-  'flowchart_completion',
-  'summary_completion',
-  'summary_completion_bank',
-  'matching_features',
-  'matching_sentence_endings',
-  'form_completion',
-];
 
 const GROUP_SCHEMA = {
   type: 'object',

@@ -29,8 +29,11 @@
 import type { BankItem, Passage, QuestionType, WordLimit } from './types';
 
 // Reading uchun to'liq qamrab olinadigan 15 tur (19 tadan 4 tasi yuqoridagi
-// sabablar bilan chiqarib tashlangan).
-const AI_IMPORT_QUESTION_TYPES: QuestionType[] = [
+// sabablar bilan chiqarib tashlangan). Eksport qilingan — worker/orchestrator/
+// contentGapScan.ts (S16) shu ro'yxatni HAR BIR turni (hatto hech qachon
+// ishlatilmagan bo'lsa ham, 0 hisobli gap sifatida) sanash uchun qayta
+// ishlatadi, uchinchi mustaqil ro'yxat yaratib chalkashtirmasdan.
+export const AI_IMPORT_QUESTION_TYPES: QuestionType[] = [
   'multiple_choice_single',
   'multiple_choice_multi',
   'sentence_completion',
