@@ -19,6 +19,12 @@ export interface SplitSectionsOutput {
   tests: {
     index: number;
     sections: { listening: string; reading: string; writing: string; speaking: string };
+    // AUDIT — audio<->test kontent-asosli moslashtirish uchun (processAudio.ts).
+    // `segment` shu testga aniq audioscript sahifa oralig'ini bera olgan bo'lsa
+    // O'SHA, bo'lmasa BUTUN KITOB audioscripti (pastdagi `audioscriptText` bilan
+    // bir xil) — bu holda moslashtirish kamroq aniq bo'ladi, lekin baribir
+    // ishlaydi (chaqiruvchi buni ishonch darajasi sifatida hisobga oladi).
+    audioscriptText: string;
   }[];
   answerKeyText: string;
   audioscriptText: string;
@@ -29,6 +35,11 @@ export async function runSplitSections(ctx: StageContext): Promise<SplitSections
   const pages = (extract as ExtractOutput).pages.map((p) => ({ n: p.n, text: p.text }));
   const segmentOutput = segment as SegmentOutput;
 
+  const audioscriptText = segmentOutput.audioscriptPages
+    .map((n) => pages.find((p) => p.n === n)?.text || '')
+    .filter(Boolean)
+    .join('\n\n');
+
   const tests = segmentOutput.tests.map((t) => ({
     index: t.index,
     sections: {
@@ -37,13 +48,10 @@ export async function runSplitSections(ctx: StageContext): Promise<SplitSections
       writing: joinPages(pages, t.sections.writing?.pageFrom, t.sections.writing?.pageTo),
       speaking: joinPages(pages, t.sections.speaking?.pageFrom, t.sections.speaking?.pageTo),
     },
+    audioscriptText: t.audioscript ? joinPages(pages, t.audioscript.pageFrom, t.audioscript.pageTo) || audioscriptText : audioscriptText,
   }));
 
   const answerKeyText = segmentOutput.answerKeyPages
-    .map((n) => pages.find((p) => p.n === n)?.text || '')
-    .filter(Boolean)
-    .join('\n\n');
-  const audioscriptText = segmentOutput.audioscriptPages
     .map((n) => pages.find((p) => p.n === n)?.text || '')
     .filter(Boolean)
     .join('\n\n');

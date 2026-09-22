@@ -14,17 +14,18 @@
 // (`/api/exam/audio/[fileId]`, Range-so'rovlarni qo'llab-quvvatlaydi)
 // ishora qiladi — hech qanday yangi infratuzilma kerak emas edi.
 //
-// ⚠️ QOLGAN BILINGAN CHEKLOV: audio fayl <-> test moslashtirish hamon
-// TARTIB bo'yicha (kitobda audio fayllar test tartibida yuklangan deb
-// faraz qilinadi) — kontent bo'yicha tasdiqlangan emas. Bitta manba
-// ichidagi PART chegaralari esa Whisper transkripti bilan tekshiriladi
+// Audio fayl <-> test moslashtirish endi KONTENT bo'yicha (Whisper namuna
+// transkripti + audioscript solishtirish, `processAudio.ts` `matching`
+// maydoni) — faqat kontent aniqlab bo'lmagan holatlarda TARTIB'ga
+// qaytadi (`method:'order-fallback'`). Bitta manba ichidagi PART
+// chegaralari ham xuddi shunday Whisper bilan tekshiriladi
 // (`processAudio.ts`'dagi `transcriptMatchRatio`).
 //
 // `WritingTask.imageUrl` (Academic Task 1 grafik) — `/api/content/assets/
 // [assetId]/route.js` (302 redirect'ga presigned R2 GET) orqali beriladi.
 // Audio'dan farqli GridFS'ga ko'chirilmadi — statik rasm uchun redirect
 // YETARLI (Range/progressiv oqim muammosi yo'q, faylning izohiga q.).
-import { ContentBook, ExamTest } from '@/lib/models';
+import { ContentBook, ExamTest, ReviewItem } from '@/lib/models';
 import { requireStageOutputs } from '../lib/dependencies';
 import type { StageContext } from '../types';
 import type { SegmentOutput } from './segment';
@@ -38,6 +39,7 @@ import type { ProcessAudioOutput } from './processAudio';
 
 const ContentBookModel: any = ContentBook;
 const ExamTestModel: any = ExamTest;
+const ReviewItemModel: any = ReviewItem;
 
 const RIGHTS_SOURCE_MAP: Record<string, string> = {
   own: 'own',
@@ -101,7 +103,8 @@ export async function runAssemble(ctx: StageContext): Promise<AssembleOutput> {
     requireStageOutputs(ctx.job.bookId, ['process_audio']),
   ]);
   const extractImages = optional[0].status === 'fulfilled' ? (optional[0].value.extract_images as ExtractImagesOutput) : { images: [] };
-  const processAudio = optional[1].status === 'fulfilled' ? (optional[1].value.process_audio as ProcessAudioOutput) : { sources: [] };
+  const processAudio =
+    optional[1].status === 'fulfilled' ? (optional[1].value.process_audio as ProcessAudioOutput) : { sources: [], byTestIndex: {}, matching: [] };
 
   const segment = outputs.segment as SegmentOutput;
   const parseReading = outputs.parse_reading as ParseReadingOutput;
@@ -127,8 +130,8 @@ export async function runAssemble(ctx: StageContext): Promise<AssembleOutput> {
     if (readingTest && answerKeyTest) mergeAnswerKey(readingTest.passages, answerKeyTest.reading);
     if (listeningTest && answerKeyTest) mergeListeningAnswerKey(listeningTest.parts, answerKeyTest.listening);
 
-    // Audio: tartib bo'yicha taxminiy bog'lash (yuqoridagi fayl izohiga q.).
-    const audioSource = processAudio.sources[index - 1];
+    // Audio: kontent-asosli moslashtirish natijasi (yuqoridagi fayl izohiga q.).
+    const audioSource = processAudio.byTestIndex?.[index];
 
     const sections: Record<string, unknown> = {};
     if (readingTest?.passages.length) sections.reading = { durationSec: 3600, passages: readingTest.passages };
@@ -226,6 +229,27 @@ export async function runAssemble(ctx: StageContext): Promise<AssembleOutput> {
       testId = String(created._id);
     }
     testIds.push(testId);
+
+    // Audio kontent bo'yicha tasdiqlanmagan (order-fallback) bo'lsa — admin
+    // ko'rib chiqishi uchun ochiq `ReviewItem` ('warning', 'blocker' EMAS:
+    // audio hali ham TO'G'RI bo'lishi mumkin, faqat TASDIQLANMAGAN).
+    if (listeningTest?.parts.length && audioSource) {
+      const match = processAudio.matching?.find((m) => m.testIndex === index);
+      if (match?.method === 'order-fallback') {
+        await ReviewItemModel.create({
+          bookId: book._id,
+          testId,
+          target: { sectionKey: 'listening' },
+          reason: 'low_confidence',
+          severity: 'warning',
+          confidence: match.matchScore,
+          evidence: {
+            rawText: `Audio manba (${match.sourceAssetId}) bu testga KONTENT bo'yicha emas, TARTIB (yuklash tartibi) bo'yicha bog'landi — Whisper transkripti audioscript bilan yetarlicha mos kelmadi. Qo'lda tekshiring.`,
+          },
+          status: 'open',
+        });
+      }
+    }
   }
 
   await ContentBookModel.updateOne({ _id: book._id }, { $set: { 'detected.generatedTestIds': testIds, updatedAt: new Date() } });

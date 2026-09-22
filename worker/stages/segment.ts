@@ -11,7 +11,9 @@ import type { ExtractOutput } from './extract';
 
 const ContentBookModel: any = ContentBook;
 
-const PROMPT_VERSION = 'v1';
+// v2 — har test uchun `audioscript` sahifa oralig'i so'raladigan bo'ldi
+// (audio<->test kontent-asosli moslashtirish uchun, processAudio.ts izohiga q.).
+const PROMPT_VERSION = 'v2';
 
 const SEGMENT_SCHEMA = {
   type: 'object',
@@ -33,6 +35,12 @@ const SEGMENT_SCHEMA = {
               speaking: { type: 'object', properties: { pageFrom: { type: 'integer' }, pageTo: { type: 'integer' } } },
             },
           },
+          // AUDIT — audio<->test moslashtirish uchun: "Audioscripts" bo'limi
+          // odatda kitob OXIRIDA, testlar bo'yicha alohida-alohida
+          // guruhlangan (masalan "Test 1 Audioscript", "Test 2 Audioscript").
+          // Bu maydon YO'Q bo'lgan eski chaqiruvlarda ham (`audioscriptPages`
+          // ustidan) ishlaydi — orqaga moslik uchun ixtiyoriy.
+          audioscript: { type: 'object', properties: { pageFrom: { type: 'integer' }, pageTo: { type: 'integer' } } },
           confidence: { type: 'number' },
         },
         required: ['index', 'pageFrom', 'pageTo', 'sections'],
@@ -53,6 +61,8 @@ function buildPrompt(pages: { n: number; text: string }[]): string {
 Vazifang: kitobning STRUKTURAVIY XARITASINI chiqarish — nechta test bor, har biri qaysi sahifalarda, har testning Listening/Reading/Writing/Speaking bo'limlari qaysi sahifa oralig'ida, Answer Key va Audioscript qaysi sahifalarda.
 
 QATTIQ QOIDA: matnni KO'CHIRMA — faqat sahifa raqamlarini aniqla. Har bir "Test N" sarlavhasi, "Reading Passage", "SECTION", "Answer Key", "Audioscripts/Tapescripts" kabi belgilarni izlab, qaysi sahifada boshlanib qaysi sahifada tugashini top.
+
+MUHIM: "Audioscripts"/"Tapescripts" bo'limi odatda kitob oxirida, HAR TEST UCHUN ALOHIDA guruhlangan bo'ladi (masalan "Test 1 Audioscript", "Test 2 Audioscript" kabi sarlavhalar bilan). Agar buni ajrata olsang, har testning "audioscript" maydoniga O'SHA testga tegishli audioscript sahifa oralig'ini yoz — bu audio fayl(lar)ni to'g'ri testga bog'lash uchun ishlatiladi. Ajrata olmasang, bo'sh qoldir (umumiy "audioscriptPages" baribir bor).
 
 SAHIFALAR:
 """
@@ -81,7 +91,14 @@ function crossCheckTestBoundaries(pages: { n: number; text: string }[], tests: {
 }
 
 export interface SegmentOutput {
-  tests: { index: number; pageFrom: number; pageTo: number; sections: Record<string, { pageFrom: number; pageTo: number } | undefined>; confidence?: number }[];
+  tests: {
+    index: number;
+    pageFrom: number;
+    pageTo: number;
+    sections: Record<string, { pageFrom: number; pageTo: number } | undefined>;
+    audioscript?: { pageFrom: number; pageTo: number };
+    confidence?: number;
+  }[];
   answerKeyPages: number[];
   audioscriptPages: number[];
   generalTrainingPages: number[];
