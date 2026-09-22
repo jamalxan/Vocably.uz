@@ -1025,7 +1025,20 @@ const ReviewItemSchema = new mongoose.Schema({
   },
   reason: {
     type: String,
-    enum: ['low_confidence', 'validation_failed', 'qa_disagreement', 'missing_answer', 'image_unmatched', 'word_limit_violation'],
+    enum: [
+      'low_confidence',
+      'validation_failed',
+      'qa_disagreement',
+      'missing_answer',
+      'image_unmatched',
+      'word_limit_violation',
+      // docs/ai-content-agent-tz-avtopilot.md §5 S12.5 "self_heal" — orchestrator
+      // avtomatik tuzatishga bir necha marta urinib (`AutomationPolicy.
+      // autoSelfHealMaxAttempts`) baribir muvaffaqiyatsiz bo'lsa, `reason`
+      // shu qiymatga YANGILANADI (original 'qa_disagreement' ustidan) — admin
+      // "AI umuman ko'rmagan" bilan "AI urindi-yu, ololmadi"ni farqlab ko'rsin.
+      'self_heal_exhausted',
+    ],
     required: true,
   },
   severity: { type: String, enum: ['blocker', 'warning'], required: true },

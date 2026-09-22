@@ -11,6 +11,7 @@ import { canContinueAutonomous } from '@/lib/contentAgent/autopilotGuards';
 import { STAGE_REGISTRY } from './stageRegistry';
 import { UnrecoverableStageError } from './lib/errors';
 import { runAutoPublishGateForBook } from './orchestrator/autoPublishGate';
+import { runSelfHealForBook } from './orchestrator/selfHeal';
 import type { IngestStage } from './types';
 import type { QaOutput } from './stages/qa';
 
@@ -100,14 +101,22 @@ export async function runJob(data: WorkerJobData): Promise<unknown> {
       { $set: { status: 'succeeded', output, 'metrics.finishedAt': new Date() }, $unset: { error: 1 } }
     );
 
-    // LEGAL-01 + AI-01 orchestrator, S14 "auto_publish_gate" — `qa`
-    // muvaffaqiyatli tugagach avtomatik sinab ko'riladi (docs/ai-content-
-    // agent-tz-avtopilot.md §5, "asosiy pipeline S1-S12dan keyin" — bu yagona
-    // orchestrator bosqichi hozircha ulangan, S12.5/S13/S15/S16 hali yo'q).
-    // BEST-EFFORT: gate o'z ichida xato bersa (masalan Mongo vaqtincha
-    // yetib bo'lmasa) bu `qa` ISHINI "failed"ga O'TKAZMASLIGI kerak — `qa`
-    // o'zi ALLAQACHON muvaffaqiyatli tugagan, nashr qarori ALOHIDA qadam.
+    // Orchestrator zanjiri — `qa` muvaffaqiyatli tugagach avtomatik ishga
+    // tushadi (docs/ai-content-agent-tz-avtopilot.md §5, "asosiy pipeline
+    // S1-S12dan keyin"). TARTIB MUHIM: S12.5 self-heal AVVAL — u ba'zi
+    // `qa_disagreement` blocker'larni TUZATIB, ReviewItem'ni 'fixed'ga
+    // o'tkazishi mumkin; S14 auto-publish gate esa OCHIQ blocker sonini
+    // shundan KEYIN hisoblaydi, aks holda hali davolanishi mumkin bo'lgan
+    // itemlar tufayli nashr keraksiz rad etilardi. Ikkalasi ham BEST-EFFORT:
+    // o'z ichida xato bersa `qa` ISHINI "failed"ga O'TKAZMAYDI — `qa` o'zi
+    // ALLAQACHON muvaffaqiyatli tugagan, bular ALOHIDA keyingi qadamlar.
     if (data.stage === 'qa') {
+      try {
+        await runSelfHealForBook(data.bookId);
+      } catch (healErr) {
+        // eslint-disable-next-line no-console
+        console.error(`[jobRunner] self_heal muvaffaqiyatsiz (bookId=${data.bookId}):`, (healErr as Error).message);
+      }
       try {
         const qaOutput = output as QaOutput;
         await runAutoPublishGateForBook(
