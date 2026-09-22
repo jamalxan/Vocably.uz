@@ -377,6 +377,12 @@ export interface WritingScore {
   };
   corrections: { original: string; suggested: string; reason: string }[];
   improvedVersion?: string;
+  // Audit metadata (writingGrader.ts) — eski (bu maydonlar qo'shilishidan
+  // oldingi) saqlangan urinishlarda yo'q bo'lishi mumkin, shuning uchun
+  // optional: UI ularsiz ham to'g'ri ishlashi kerak.
+  graderModel?: string; // haqiqatan javob bergan provayder (masalan 'groq', 'gemini')
+  graderVersion?: string; // baholash prompt/sxemasi versiyasi (writingGrader.ts#GRADER_VERSION)
+  underMinWords?: boolean; // insho task.minWords'dan kam yozilgan — TA/TR bahosi shunga qarab jarimalangan
 }
 
 // Eski (pre-exam-engine) `/api/speaking/submit`dagi javob shakli bilan ATAYLAB

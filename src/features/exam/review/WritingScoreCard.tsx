@@ -30,6 +30,11 @@ export default function WritingScoreCard({ title, score, essayText }: WritingSco
         <p className="text-sm font-bold text-ink">{title}</p>
         <p className="text-2xl font-bold text-brand-text tabular-nums">{score.band.toFixed(1)}</p>
       </div>
+      {score.underMinWords && (
+        <p className="text-xs text-danger mb-2">
+          So&apos;z soni talab qilingan minimaldan kam — Task Achievement bahosi shu sabab jarimalangan.
+        </p>
+      )}
       <p className="text-sm text-muted mb-3">{score.feedbackUz}</p>
       <div>
         <CriterionRow label="Task Achievement / Response" band={score.taskAchievement} note={score.criteriaFeedbackUz.taskAchievement} />
@@ -55,6 +60,12 @@ export default function WritingScoreCard({ title, score, essayText }: WritingSco
           <summary className="text-xs font-semibold uppercase tracking-wide text-muted cursor-pointer">Insho matni</summary>
           <p className="text-sm text-ink mt-2 whitespace-pre-wrap">{essayText}</p>
         </details>
+      )}
+      {score.graderModel && (
+        <p className="mt-3 text-[10px] text-muted/70 tabular-nums">
+          AI baholadi: {score.graderModel}
+          {score.graderVersion ? ` · v${score.graderVersion}` : ''}
+        </p>
       )}
     </div>
   );

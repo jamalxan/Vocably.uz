@@ -58,3 +58,14 @@ export function weakestType(perQuestion: AttemptResult['perQuestion']): TypeAccu
   const tied = sorted.filter((t) => t.accuracy === lowestAccuracy);
   return tied.sort((a, b) => b.total - a.total)[0];
 }
+
+// Bitta savolli tur "0% aniqlik" yoki "100% aniqlik" bo'lib chiqishi mumkin
+// shunchaki tasodifdan — kuchli/zaif tomonlar ro'yxatiga faqat statistik
+// jihatdan biroz ishonchliroq turlarni (kamida 2 ta savol) qo'shamiz.
+const MIN_TOTAL_FOR_SIGNAL = 2;
+
+/** To'liq savol turi bo'yicha taqsimot (jadval uchun) — kamida 2 ta savolli
+ * BARCHA turlar, eng zaifidan boshlab (computeTypeAccuracy tartibida). */
+export function meaningfulTypeAccuracy(perQuestion: AttemptResult['perQuestion']): TypeAccuracy[] {
+  return computeTypeAccuracy(perQuestion).filter((t) => t.total >= MIN_TOTAL_FOR_SIGNAL);
+}

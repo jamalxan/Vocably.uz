@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeTypeAccuracy, weakestType } from './analytics';
+import { computeTypeAccuracy, weakestType, meaningfulTypeAccuracy } from './analytics';
 import type { AttemptResult, QuestionType } from './types';
 
 function q(number: number, type: QuestionType, correct: boolean): AttemptResult['perQuestion'][number] {
@@ -64,5 +64,35 @@ describe('weakestType', () => {
 
   it('returns null when there are no questions', () => {
     expect(weakestType([])).toBeNull();
+  });
+});
+
+describe('meaningfulTypeAccuracy', () => {
+  it('excludes types with fewer than 2 questions (single-question noise)', () => {
+    const perQuestion = [
+      q(1, 'short_answer', false), // only 1 question — excluded
+      q(2, 'true_false_notgiven', false),
+      q(3, 'true_false_notgiven', true),
+    ];
+    const result = meaningfulTypeAccuracy(perQuestion);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('true_false_notgiven');
+  });
+
+  it('returns an empty array when every type has fewer than 2 questions', () => {
+    const perQuestion = [q(1, 'short_answer', true), q(2, 'true_false_notgiven', false)];
+    expect(meaningfulTypeAccuracy(perQuestion)).toEqual([]);
+  });
+
+  it('still sorts weakest-first among the included types', () => {
+    const perQuestion = [
+      q(1, 'short_answer', true),
+      q(2, 'short_answer', true),
+      q(3, 'true_false_notgiven', false),
+      q(4, 'true_false_notgiven', false),
+    ];
+    const result = meaningfulTypeAccuracy(perQuestion);
+    expect(result[0].type).toBe('true_false_notgiven');
+    expect(result[1].type).toBe('short_answer');
   });
 });

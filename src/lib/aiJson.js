@@ -97,18 +97,28 @@ const PROVIDER_FNS = {
 };
 
 /** `prompt` — to'liq matn (kutilgan JSON tuzilma tavsifi bilan). `schema` — faqat
- * Gemini uchun (responseSchema); boshqalarida prompt ichidagi tavsifga tayaniladi. */
-export async function generateJson(prompt, schema) {
+ * Gemini uchun (responseSchema); boshqalarida prompt ichidagi tavsifga tayaniladi.
+ * Qaysi provayder haqiqatan javob berganini ham qaytaradi — chaqiruvchilarning
+ * aksariyati buni bilishi shart emas (shuning uchun `generateJson` hali ham
+ * faqat `data`ni qaytaradi), lekin masalan Writing grading kabi natija
+ * saqlanadigan joylarda "qaysi model baholadi" audit uchun kerak bo'ladi. */
+export async function generateJsonWithMeta(prompt, schema) {
   const order = resolveModelChainOrder(['groq', 'gemini', 'cerebras', 'openrouter']);
   let lastErr;
   for (const name of order) {
     try {
-      return await withRetry(() => PROVIDER_FNS[name](prompt, schema));
+      const data = await withRetry(() => PROVIDER_FNS[name](prompt, schema));
+      return { data, provider: name };
     } catch (err) {
       lastErr = err;
     }
   }
   throw lastErr;
+}
+
+export async function generateJson(prompt, schema) {
+  const { data } = await generateJsonWithMeta(prompt, schema);
+  return data;
 }
 
 /** @deprecated `aiErrorResponse(err, meta)` dan foydalaning — u log (requestId bilan) +

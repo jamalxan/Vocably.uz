@@ -12,8 +12,14 @@
 // If this ever needs to become truly async (a real queue arrives), the surface
 // to change is exactly gradeEssay() below plus the one call site — nothing
 // about the client contract (POST grade-writing → result) needs to change.
-import { generateJson } from '@/lib/aiJson';
+import { generateJsonWithMeta } from '@/lib/aiJson';
 import type { WritingScore, WritingTask } from './types';
+
+// Prompt/sxema (RESPONSE_SCHEMA yoki buildPrompt) mazmunli o'zgarganda
+// qo'lda oshiriladi — eski saqlangan `WritingScore.graderVersion` qaysi
+// mezon matni bilan baholanganini bildiradi (audit uchun, TA/TR bahosi
+// prompt formulasiga sezilarli bog'liq).
+const GRADER_VERSION = '1.0';
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -90,7 +96,7 @@ JAVOBNI FAQAT xom JSON obyekti sifatida qaytar — hech qanday izoh, markdown yo
 
 export async function gradeEssay(task: WritingTask, text: string): Promise<WritingScore> {
   const wordCount = countWordsInline(text);
-  const data = await generateJson(buildPrompt(task, text, wordCount), RESPONSE_SCHEMA);
+  const { data, provider } = await generateJsonWithMeta(buildPrompt(task, text, wordCount), RESPONSE_SCHEMA);
 
   const criteria = {
     taskAchievement: clampToHalfBand(data.taskAchievement),
@@ -120,6 +126,9 @@ export async function gradeEssay(task: WritingTask, text: string): Promise<Writi
         }))
       : [],
     improvedVersion: typeof data.improvedVersion === 'string' ? data.improvedVersion : undefined,
+    graderModel: provider,
+    graderVersion: GRADER_VERSION,
+    underMinWords: wordCount < task.minWords,
   };
 }
 
