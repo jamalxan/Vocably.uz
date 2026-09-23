@@ -19,7 +19,7 @@ export default function LeechList({ leeches, onPractice }) {
             <span className="font-medium text-ink truncate min-w-0" title={w.word}>
               {w.word}
             </span>
-            <span className="text-xs text-accent font-mono tabular-nums flex-shrink-0 ml-3">{w.lapses} xato</span>
+            <span className="text-xs text-accent tabular-nums flex-shrink-0 ml-3">{w.lapses} xato</span>
           </li>
         ))}
       </ul>

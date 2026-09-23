@@ -16,7 +16,7 @@ export default function ForecastRow({ forecast }) {
           const heightPct = f.dueCount > 0 ? Math.max(8, (f.dueCount / max) * 100) : 4;
           return (
             <div key={f.date} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-              <span className="text-[11px] leading-none font-mono tabular-nums text-muted">{f.dueCount || ''}</span>
+              <span className="text-[11px] leading-none tabular-nums text-muted">{f.dueCount || ''}</span>
               {/* Foiz balandlik faqat ustun maydoniga nisbatan — yorliqlar hisobga kirmasin. */}
               <div className="flex-1 min-h-0 w-full flex items-end">
                 <div

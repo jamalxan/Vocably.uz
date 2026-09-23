@@ -102,7 +102,7 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
   return (
     <div className="absolute bottom-full mb-2 right-0 flex items-center gap-2 md:gap-3 bg-surface border border-border rounded-xl shadow-lg pl-4 pr-2 md:px-4 py-1.5 md:py-2.5 z-20">
       <span className="w-2 h-2 rounded-full bg-danger motion-safe:animate-pulse" />
-      <span className="text-sm font-mono text-muted tabular-nums">
+      <span className="text-sm text-muted tabular-nums">
         {mm}:{ss}
       </span>
       <button

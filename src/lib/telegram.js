@@ -12,8 +12,12 @@ function getBotToken() {
   return token;
 }
 
+// Ro'yxatdan o'tish va parolni tiklashda ishlatiladigan bot. Sozlama (env) berilsa
+// o'sha ustun turadi, aks holda asosiy bot.
+export const DEFAULT_BOT_USERNAME = 'howtolearnvocabbot';
+
 export function getBotUsername() {
-  return process.env.TELEGRAM_BOT_USERNAME || '';
+  return (process.env.TELEGRAM_BOT_USERNAME || DEFAULT_BOT_USERNAME).replace(/^@/, '');
 }
 
 export function getTelegramDeepLink(sessionToken) {
