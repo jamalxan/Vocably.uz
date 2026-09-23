@@ -125,14 +125,71 @@ export function resolveModelChainOrder(defaultOrder) {
   return ordered;
 }
 
+// BILL-01/02 (VOCABLY_TZ_FINAL...2026-09-20.md §46) — FREE tarif uchun Writing+
+// Speaking AI grading bo'yicha QO'SHIMCHA oylik chegara. Bu pastdagi soatlik
+// (`AI_HOURLY_LIMIT`) limitdan MUSTAQIL — soatlik limit barcha AI endpointlarga
+// (chat, reading/listening generatsiya, so'z boyitish va h.k.) hamma userlar
+// uchun bir xil ishlayveradi, o'zgarmaydi. Oylik chegara esa FAQAT grading
+// chaqiruvchilari `{ feature: 'grading' }` bilan so'raganda va FAQAT
+// `subscriptionTier === 'free'` bo'lganda ishga tushadi (standard/premium bu
+// tekshiruvni butunlay chetlab o'tadi). Bucket mexanizmi — xuddi soatlik
+// limitdagi bir xil `AiUsage` kolleksiyasi/naqshi (TZ o'zi "reuse the same
+// pattern" talab qiladi), faqat kalit `hourBucket` maydonida "grading-YYYY-M"
+// formatida ("hour-YYYY-M-D-H" formati bilan hech qachon to'qnashmaydi).
+function monthlyGradingBucket(now) {
+  return `grading-${now.getUTCFullYear()}-${now.getUTCMonth()}`;
+}
+
+async function checkMonthlyGradingLimit(userId) {
+  const { hasReachedMonthlyLimit, monthlyGradingLimitMessage } = await import('@/lib/entitlements');
+  const { AiUsage, User } = await import('@/lib/models');
+
+  const user = await User.findById(userId).select('subscriptionTier').lean();
+  const tier = user?.subscriptionTier || 'free';
+  if (tier !== 'free') return { allowed: true };
+
+  const now = new Date();
+  const bucket = monthlyGradingBucket(now);
+  // Joriy oydan ikki oy keyingi 1-kunda tugaydi — TTL faqat shu vaqt kelganda
+  // o'chiradi (`expires: 0` = aynan shu maydondagi vaqtda), keraksiz erta
+  // o'chib ketishning oldi olinadi, lekin abadiy ham saqlanmaydi.
+  const expiresAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 2, 1));
+
+  const doc = await AiUsage.findOneAndUpdate(
+    { userId, hourBucket: bucket },
+    { $inc: { count: 1 }, $setOnInsert: { expiresAt } },
+    { upsert: true, new: true }
+  );
+
+  if (hasReachedMonthlyLimit(tier, doc.count)) {
+    return { allowed: false, monthlyLimitReached: true, message: monthlyGradingLimitMessage() };
+  }
+  return { allowed: true };
+}
+
 /** TZ D1.6 — foydalanuvchi boshiga soatlik generatsiya limiti. Redis o'rniga mavjud
  * MongoDB ulanishidan foydalanadi (`aiUsage` kolleksiyasi, TTL index bilan avtomatik
  * tozalanadi — src/lib/models.js'dagi AiUsage sxemasiga q.). Limitga yetilganda
  * `{ allowed:false, retryAfterMinutes }` qaytaradi, aks holda hisoblagichni oshirib
- * `{ allowed:true }` qaytaradi. */
-export async function checkAndIncrementAiRateLimit(userId) {
+ * `{ allowed:true }` qaytaradi.
+ *
+ * `opts.feature === 'grading'` berilsa (Writing/Speaking AI baholash route'lari) —
+ * BILL-01/02: soatlik tekshiruvdan OLDIN FREE tarif uchun oylik grading chegarasi
+ * ham tekshiriladi (src/lib/entitlements.js TIER_CONFIG.free.monthlyAiGradingLimit).
+ * Shu holatda rad javobi `{ allowed:false, monthlyLimitReached:true, message }`
+ * ko'rinishida — chaqiruvchi `rl.message`ni to'g'ridan-to'g'ri foydalanuvchiga
+ * ko'rsatadi (generic soatlik xabaridan farqli, /narxlar'ga yo'naltiradi). */
+export async function checkAndIncrementAiRateLimit(userId, opts = {}) {
+  const { feature = null } = opts;
+  if (!userId) return { allowed: true };
+
+  if (feature === 'grading') {
+    const monthly = await checkMonthlyGradingLimit(userId);
+    if (!monthly.allowed) return monthly;
+  }
+
   const limit = Number(process.env.AI_HOURLY_LIMIT || 30);
-  if (!userId || !Number.isFinite(limit) || limit <= 0) return { allowed: true };
+  if (!Number.isFinite(limit) || limit <= 0) return { allowed: true };
 
   const { AiUsage } = await import('@/lib/models');
   const now = new Date();

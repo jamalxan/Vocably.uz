@@ -137,7 +137,11 @@ const UserSchema = new mongoose.Schema({
   // --- Do'stlar (foydalanuvchilararo chat) uchun, docs/ (chat plani) ---
   // `role` admin panelga kirishni, `chatAccess` esa Do'stlar bo'limining butunlay
   // yashirin/ko'rinishini boshqaradi — ikkalasi ham faqat admin tomonidan o'zgartiriladi.
-  role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  // TCH-01 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md — "Rol tanlovi faqat
+  // user/admin") — 'teacher' faqat admin tomonidan (admin/chat/users/[id]
+  // PATCH, xuddi 'admin' rolini berish bilan bir xil oqim) beriladi, o'zi
+  // ro'yxatdan o'ta olmaydi.
+  role: { type: String, enum: ['user', 'admin', 'teacher'], default: 'user' },
   // `default` yo'q — muhim: agar `default: null` bo'lsa, mongoose har bir yangi
   // hujjatga `username: null` maydonini aynan shu qiymat bilan yozadi. Sparse indeks
   // faqat maydon UMUMAN yo'q hujjatlarni e'tiborsiz qoldiradi — `null` qiymat esa
@@ -182,6 +186,15 @@ const UserSchema = new mongoose.Schema({
   // formatlamagan, MVP doirasida shu uchtasi yetarli).
   currentLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced', null], default: null },
   dailyStudyMinutes: { type: Number, default: null },
+  // BILL-01/02 (VOCABLY_TZ_FINAL...2026-09-20.md §46) — entitlement modeli.
+  // Bu bosqichda haqiqiy to'lov integratsiyasi YO'Q (checkout emas) — tarif
+  // FAQAT admin tomonidan qo'lda tayinlanadi (src/app/api/admin/chat/users/[id]/route.js
+  // PATCH), shuning uchun `subscriptionSetAt`/`subscriptionSetBy` audit uchun
+  // kim/qachon tayinlaganini saqlaydi. Enum qiymatlari va narx/feature
+  // ro'yxati src/lib/entitlements.js'da (hardcode qilinmaydi, TZ §46.2 talabi).
+  subscriptionTier: { type: String, enum: ['free', 'standard', 'premium'], default: 'free' },
+  subscriptionSetAt: { type: Date, default: null },
+  subscriptionSetBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -430,6 +443,21 @@ const RateLimitHitSchema = new mongoose.Schema({
 });
 
 export const RateLimitHit = mongoose.models.RateLimitHit || mongoose.model('RateLimitHit', RateLimitHitSchema);
+
+// BILL-01/02 — /narxlar sahifasidagi STANDARD/PREMIUM "Bog'lanish" tugmasi
+// bosilganda shu yerga yoziladi. HECH QANDAY to'lov maydoni yo'q (karta,
+// summa va h.k.) — bu checkout emas, faqat "kim qaysi tarifga qiziqdi"
+// degan belgi, admin keyin qo'lda (Telegram/telefon orqali) bog'lanadi va
+// UsersTable'dan tarifni tayinlaydi.
+const BillingInterestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  tier: { type: String, enum: ['standard', 'premium'], required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+BillingInterestSchema.index({ createdAt: -1 });
+
+export const BillingInterest =
+  mongoose.models.BillingInterest || mongoose.model('BillingInterest', BillingInterestSchema);
 
 // TZ-vocably-v2.md §D1.6 — soatlik AI generatsiya limiti (src/lib/ai/client.js
 // checkAndIncrementAiRateLimit). RateLimitHit'dan farqli o'laroq bucket kaliti
@@ -1250,3 +1278,46 @@ AgentActionSchema.index({ createdAt: -1 });
 AgentActionSchema.index({ bookId: 1, action: 1 });
 
 export const AgentAction = mongoose.models.AgentAction || mongoose.model('AgentAction', AgentActionSchema);
+
+// ============================================================================
+// TCH-01/02 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md — "Teacher role yo'q",
+// "Classroom/assignment modeli yo'q") — MVP qatlami. To'liq spec
+// (VOCABLY_TZ_FINAL...2026-09-20.md §18/§53) multi-tenancy (Organization),
+// RBAC/ABAC, AI copilot (feedback qoralamasi) va chuqur class analytics'ni
+// ham nazarda tutadi — bu ATAYLAB QILINMAGAN (ko'p haftalik alohida ish,
+// §19 P1/P2'da rejalashtirilgan). Bu yerda faqat load-bearing MVP qism:
+// teacher o'z classroom'ini yaratadi, studentlarni TO'G'RIDAN-TO'G'RI User
+// id orqali qo'shadi (alohida Organization qatlamisiz), MAVJUD nashr
+// qilingan ExamTest'lardan assignment beradi (yangi kontent-yaratish YO'Q)
+// va har student natijasini (holat + band) ko'radi.
+// ============================================================================
+
+const ClassroomSchema = new mongoose.Schema({
+  teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true, trim: true },
+  studentIds: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  createdAt: { type: Date, default: Date.now },
+});
+// src/app/api/teacher/classrooms (GET) — "faqat o'z classroom'lari" so'rovi
+// shu bo'yicha filtrlaydi.
+ClassroomSchema.index({ teacherId: 1 });
+
+export const Classroom = mongoose.models.Classroom || mongoose.model('Classroom', ClassroomSchema);
+
+// Assignment MAVJUD (allaqachon nashr qilingan) ExamTest'ga ishora qiladi —
+// teacher uchun alohida kontent-mualliflik oqimi YO'Q (buyurtma ataylab shu
+// qismni qamrab olmaydi). `sectionKey:'mock'` — butun test (barcha bo'lim),
+// boshqa qiymatlar bitta bo'limgina tayinlash uchun.
+const AssignmentSchema = new mongoose.Schema({
+  classroomId: { type: mongoose.Schema.Types.ObjectId, ref: 'Classroom', required: true },
+  testId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest', required: true },
+  sectionKey: { type: String, enum: ['listening', 'reading', 'writing', 'speaking', 'mock'], required: true },
+  dueAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+});
+// src/app/api/teacher/classrooms/[id]/assignments (GET) — bitta classroom'ning
+// barcha assignment'lari.
+AssignmentSchema.index({ classroomId: 1 });
+
+export const Assignment = mongoose.models.Assignment || mongoose.model('Assignment', AssignmentSchema);

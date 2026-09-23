@@ -33,6 +33,7 @@ import {
   Swords,
   Target,
   Trophy,
+  GraduationCap,
 } from 'lucide-react';
 
 // Ko'nikma bo'limlari — /app/mashq menyusida va desktop sidebar'da ishlatiladi.
@@ -53,6 +54,10 @@ export const SIDEBAR_NAV = [
   // ikkalasi bir vaqtda bo'lishi ortiqcha edi (2026-09-10 foydalanuvchi so'rovi).
   { key: 'reyting', label: 'Reyting', href: '/app/reyting', icon: Trophy },
   { key: 'dostlar', label: "Do'stlar", href: '/app/dostlar', icon: Users, matchPrefix: true, requiresChatAccess: true },
+  // TCH-01/02 — faqat role === 'teacher' bo'lgan foydalanuvchilarga ko'rinadi
+  // (AppShell.jsx'dagi `chatRole` filtri). Mobil pastki tab-bar'ga ATAYLAB
+  // qo'shilmadi — u qat'iy 5 joy bilan cheklangan (pastdagi BOTTOM_NAV izohi).
+  { key: 'teacher', label: "O'qituvchi paneli", href: '/teacher', icon: GraduationCap, matchPrefix: true, requiresTeacherRole: true },
   { key: 'profil', label: 'Profil', href: '/app/profil', icon: User },
 ];
 

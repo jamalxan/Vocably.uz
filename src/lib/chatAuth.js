@@ -53,6 +53,22 @@ export async function requireAdminUser(req) {
   return { user };
 }
 
+// TCH-01/02 — /api/teacher/* route'lar uchun: faqat role === 'teacher'.
+// `requireAdminUser`ning aynan o'zi bilan bir xil shakl (401/403, `user`
+// select'i) — admin/teacher endpoint'lar bir xil chaqiruv naqshini kutadi.
+export async function requireTeacherUser(req) {
+  const userId = getUserIdFromRequest(req);
+  if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
+
+  await connectToDatabase();
+
+  const user = await User.findById(userId).select('username role name phone').lean();
+  if (!user) return { error: 'Foydalanuvchi topilmadi', status: 404 };
+  if (user.role !== 'teacher') return { error: 'Ruxsat berilmagan', status: 403 };
+
+  return { user };
+}
+
 // Infratuzilmasiz (Redis'siz) oddiy tezlik cheklash: 60 soniyalik oynada
 // (userId, action) juftligi uchun `limit` martadan ko'p urinishga yo'l qo'ymaydi.
 // RateLimitHit hujjati TTL indeks orqali 60s'dan keyin o'zi o'chadi (src/lib/models.js).

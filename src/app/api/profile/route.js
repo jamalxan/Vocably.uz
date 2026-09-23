@@ -18,7 +18,9 @@ export async function GET(req) {
 
     await connectToDatabase();
 
-    const user = await User.findById(userId).select(EDITABLE_FIELDS.join(' ')).lean();
+    const user = await User.findById(userId)
+      .select(`${EDITABLE_FIELDS.join(' ')} subscriptionTier`)
+      .lean();
     if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
 
     return NextResponse.json({
@@ -27,6 +29,10 @@ export async function GET(req) {
       examDate: user.examDate ? new Date(user.examDate).toISOString() : null,
       currentLevel: user.currentLevel ?? null,
       dailyStudyMinutes: user.dailyStudyMinutes ?? null,
+      // BILL-01/02 — o'qish uchun (/narxlar joriy tarifni ko'rsatadi); bu route
+      // faqat EDITABLE_FIELDS'ni PATCH qiladi, shuning uchun bu maydon orqali
+      // o'zgartirib bo'lmaydi (faqat admin, UsersTable orqali).
+      subscriptionTier: user.subscriptionTier || 'free',
     });
   } catch (err) {
     return serverError(err, 'profile');

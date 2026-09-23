@@ -1,5 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
-import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
+import { requireAdminUser, requireTeacherUser, writeAuditLog } from '@/lib/chatAuth';
 import { ExamTest } from '@/lib/models';
 import { validateTest, hasBlockingErrors, isMockEligible } from '@/lib/exam/contentValidator';
 import { syncValidationIssuesToReviewQueue } from '@/lib/exam/reviewSync';
@@ -7,13 +7,35 @@ import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 // TZ-vocably-v2.md §15 / §19 Faza 4 item 21 — Admin kontent kiritish.
+//
+// TCH-01/02 — teacher UI (/teacher/classrooms/[id], assignment yaratish
+// formasi) shu SAME endpoint'ni READ uchun qayta ishlatadi ("teachers just
+// need to READ the published test list, no need for a separate
+// teacher-scoped test-listing endpoint" — vazifa ta'rifi). Shuning uchun
+// GET admin'dan TASHQARI teacher'ni ham qabul qiladi — lekin teacher faqat
+// NASHR QILINGAN testlarni ko'radi (qoralama/tekshiruvdagi testlar YO'Q),
+// admin esa avvalgidek hammasini ko'radi. POST (yaratish/tahrirlash)
+// o'zgarmadi — hamon FAQAT admin (teacher yangi test yaratmaydi).
 export async function GET(req) {
   try {
-    const { error, status } = await requireAdminUser(req);
-    if (error) return NextResponse.json({ error }, { status });
+    const adminCheck = await requireAdminUser(req);
+    let caller = adminCheck.user;
+    let publishedOnly = false;
+
+    if (!caller) {
+      const teacherCheck = await requireTeacherUser(req);
+      if (teacherCheck.error) {
+        // Ikkalasi ham rad etsa — admin tekshiruvining xato/status'i qaytadi
+        // (avvalgi xatti-harakat bilan bir xil: admin bo'lmagan userlar uchun
+        // birinchi bo'lib ko'rinadigan xabar).
+        return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
+      }
+      caller = teacherCheck.user;
+      publishedOnly = true;
+    }
 
     await connectToDatabase();
-    const tests = await ExamTest.find({})
+    const tests = await ExamTest.find(publishedOnly ? { isPublished: true } : {})
       .select('slug title module difficulty isPublished createdAt sections isMockEligible rights')
       .sort({ createdAt: -1 })
       .lean();

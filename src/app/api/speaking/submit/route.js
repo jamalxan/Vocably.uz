@@ -79,9 +79,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Yozuv juda qisqa — qaytadan urinib ko\'ring' }, { status: 400 });
     }
 
-    const rl = await checkAndIncrementAiRateLimit(userId);
+    // BILL-01/02: 'grading' — FREE tarif uchun oylik AI baholash chegarasi ham
+    // tekshiriladi (src/lib/ai/client.js), rl.message berilsa shuni ko'rsatamiz.
+    const rl = await checkAndIncrementAiRateLimit(userId, { feature: 'grading' });
     if (!rl.allowed) {
-      return NextResponse.json({ error: rateLimitMessage(rl.retryAfterMinutes) }, { status: 429 });
+      return NextResponse.json({ error: rl.message || rateLimitMessage(rl.retryAfterMinutes) }, { status: 429 });
     }
 
     let transcript;

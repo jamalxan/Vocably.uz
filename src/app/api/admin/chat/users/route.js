@@ -31,7 +31,7 @@ export async function GET(req) {
     // Cursor-based (createdAt bo'yicha) — skip() o'rniga, chunki ma'lumot ko'paygan sari
     // sekinlashmaydi. +1 chegara: navbatdagi sahifa bor-yo'qligini bitta so'rovda bilish uchun.
     const users = await User.find(filter)
-      .select('phone name username role chatAccess chatBanned createdAt')
+      .select('phone name username role chatAccess chatBanned createdAt subscriptionTier')
       .sort({ createdAt: -1 })
       .limit(limit + 1)
       .lean();

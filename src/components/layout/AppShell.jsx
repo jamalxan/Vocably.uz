@@ -25,10 +25,18 @@ import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { displayName, logout, chatAccess } = useApp();
+  const { displayName, logout, chatAccess, chatRole } = useApp();
 
-  const visibleSidebarNav = SIDEBAR_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
-  const visibleBottomNav = BOTTOM_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
+  // TCH-01/02 — "O'qituvchi paneli" yorlig'i xuddi "Do'stlar" (requiresChatAccess)
+  // kabi, faqat mos rolga ega foydalanuvchilarga ko'rinadi. `chatRole` —
+  // AppContext'dagi umumiy `User.role` (nomi tarixiy, faqat Do'stlar
+  // bo'limiga tegishli emas — src/app/api/chat/me GET'dagi izohga q.).
+  const visibleSidebarNav = SIDEBAR_NAV.filter(
+    (item) => (!item.requiresChatAccess || chatAccess) && (!item.requiresTeacherRole || chatRole === 'teacher')
+  );
+  const visibleBottomNav = BOTTOM_NAV.filter(
+    (item) => (!item.requiresChatAccess || chatAccess) && (!item.requiresTeacherRole || chatRole === 'teacher')
+  );
   const onLugat = pathname.startsWith('/app/lugat');
   // Mobilda ochiq chat o'z header'iga ega — ilova header'i yashiriladi (joy tejash).
   const chatOpen = /^\/app\/dostlar\/[^/]+/.test(pathname);

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User as UserIcon } from 'lucide-react';
+import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User as UserIcon, GraduationCap } from 'lucide-react';
+import { SUBSCRIPTION_TIERS, TIER_CONFIG } from '@/lib/entitlements';
 
 export default function UsersTable() {
   const [users, setUsers] = useState([]);
@@ -118,6 +119,7 @@ export default function UsersTable() {
                   <th className="px-5 py-3.5 font-semibold">Username</th>
                   <th className="px-5 py-3.5 font-semibold">Do'stlar</th>
                   <th className="px-5 py-3.5 font-semibold">Rol</th>
+                  <th className="px-5 py-3.5 font-semibold">Tarif</th>
                   <th className="px-5 py-3.5 font-semibold">Holat</th>
                 </tr>
               </thead>
@@ -127,7 +129,13 @@ export default function UsersTable() {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-primary-soft border border-primary/10 flex items-center justify-center text-ink flex-shrink-0">
-                          {u.role === 'admin' ? <Crown size={15} className="text-accent" /> : <UserIcon size={15} />}
+                          {u.role === 'admin' ? (
+                            <Crown size={15} className="text-accent" />
+                          ) : u.role === 'teacher' ? (
+                            <GraduationCap size={15} className="text-accent" />
+                          ) : (
+                            <UserIcon size={15} />
+                          )}
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium text-ink truncate">{u.name || '—'}</p>
@@ -196,7 +204,37 @@ export default function UsersTable() {
                         className="px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent transition-colors"
                       >
                         <option value="user">user</option>
+                        <option value="teacher">teacher</option>
                         <option value="admin">admin</option>
+                      </select>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {/* BILL-01/02 — haqiqiy to'lov integratsiyasi yo'q, tarif FAQAT
+                          shu yerdan admin tomonidan qo'lda tayinlanadi (PATCH
+                          subscriptionTier -> subscriptionSetAt/By + audit log). */}
+                      <select
+                        value={u.subscriptionTier || 'free'}
+                        disabled={savingId === u._id}
+                        onChange={(e) => {
+                          const nextTier = e.target.value;
+                          if (
+                            !confirm(
+                              `${u.name || u.phoneDisplay} uchun tarifni "${TIER_CONFIG[nextTier]?.label || nextTier}"ga o'zgartirasizmi?`
+                            )
+                          ) {
+                            e.target.value = u.subscriptionTier || 'free';
+                            return;
+                          }
+                          patchUser(u._id, { subscriptionTier: nextTier });
+                        }}
+                        aria-label={`${u.name || u.phoneDisplay} tarifi`}
+                        className="px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent transition-colors"
+                      >
+                        {SUBSCRIPTION_TIERS.map((tier) => (
+                          <option key={tier} value={tier}>
+                            {TIER_CONFIG[tier].label}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td className="px-5 py-3.5">

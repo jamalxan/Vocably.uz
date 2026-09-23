@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { User } from '@/lib/models';
+import { SUBSCRIPTION_TIERS } from '@/lib/entitlements';
 import { NextResponse } from 'next/server';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
@@ -30,7 +31,9 @@ export async function PATCH(req, { params }) {
       diff.chatBanned = { from: target.chatBanned, to: body.chatBanned };
       target.chatBanned = body.chatBanned;
     }
-    if (typeof body.role === 'string' && ['user', 'admin'].includes(body.role)) {
+    // TCH-01 — 'teacher' shu bir xil oqimga qo'shildi (admin/chat/users PATCH),
+    // alohida teacher-tayinlash UI/endpoint yaratilmadi.
+    if (typeof body.role === 'string' && ['user', 'admin', 'teacher'].includes(body.role)) {
       diff.role = { from: target.role, to: body.role };
       target.role = body.role;
     }
@@ -47,6 +50,16 @@ export async function PATCH(req, { params }) {
       diff.username = { from: target.username, to: uname };
       target.username = uname;
     }
+    // BILL-01/02 — qo'lda tarif tayinlash (checkout yo'q, admin manual grant).
+    // subscriptionSetAt/subscriptionSetBy audit uchun — kim/qachon tayinlagani
+    // (diff'da ham `role`/`chatAccess` kabi boshqa maydonlar bilan bir xil
+    // tarzda AdminAuditLog'ga tushadi).
+    if (typeof body.subscriptionTier === 'string' && SUBSCRIPTION_TIERS.includes(body.subscriptionTier)) {
+      diff.subscriptionTier = { from: target.subscriptionTier, to: body.subscriptionTier };
+      target.subscriptionTier = body.subscriptionTier;
+      target.subscriptionSetAt = new Date();
+      target.subscriptionSetBy = admin._id;
+    }
 
     await target.save();
     await writeAuditLog(req, admin._id, 'chat.user.update', 'User', target._id, diff);
@@ -60,6 +73,7 @@ export async function PATCH(req, { params }) {
         role: target.role,
         chatAccess: target.chatAccess,
         chatBanned: target.chatBanned,
+        subscriptionTier: target.subscriptionTier,
       },
     });
   } catch (err) {
