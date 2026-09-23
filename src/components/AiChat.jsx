@@ -171,7 +171,6 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
   // Suhbatlar ro'yxati alohida panelda (AiChatSessionsPanel) — bu yerda faqat joriy
   // suhbat xabarlari boshqariladi.
   const {
-    token,
     displayName,
     categories,
     refreshCategories,
@@ -291,9 +290,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
     setSessionLoading(true);
     (async () => {
       try {
-        const res = await fetch(`/api/ai/sessions/${currentSessionId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`/api/ai/sessions/${currentSessionId}`);
         const data = await res.json();
         if (!cancelled && res.ok) setMessages(data.session.messages || []);
       } catch {
@@ -406,7 +403,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: currentSessionId,
           message: text,

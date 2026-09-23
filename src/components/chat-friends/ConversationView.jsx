@@ -4,7 +4,6 @@ import { ArrowLeft, ShieldOff, Bell, BellOff, UserCheck, ArrowDown } from 'lucid
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { formatLastSeen, isOnline, useLiveClock } from '@/lib/presence';
-import { getJwtUserId } from '@/lib/jwtClient';
 import { TYPING_LABEL } from '@/lib/chatConstants';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
@@ -34,7 +33,7 @@ export default function ConversationView({ onBack }) {
     livePresence,
     typingByConversation,
   } = useChat();
-  const { token: myToken } = useApp();
+  const { chatUserId: myId } = useApp();
   const listRef = useRef(null);
   const bottomRef = useRef(null);
   const prevLenRef = useRef(0);
@@ -96,7 +95,6 @@ export default function ConversationView({ onBack }) {
     return <div className="hidden lg:flex flex-1 items-center justify-center text-sm text-muted">Suhbatni tanlang</div>;
   }
 
-  const myId = getJwtUserId(myToken);
   const online = isOnline(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
   const typingKind = typingByConversation[activeConversation.id];
   const isTyping = !!typingKind;

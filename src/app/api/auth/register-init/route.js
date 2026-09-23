@@ -4,6 +4,7 @@ import { normalizePhone } from '@/lib/phone';
 import { serverError } from '@/lib/apiError';
 import { generateSessionToken } from '@/lib/otp';
 import { getTelegramDeepLink, getBotUsername } from '@/lib/telegram';
+import { checkRateLimit } from '@/lib/chatAuth';
 import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
 
@@ -15,6 +16,14 @@ export async function POST(req) {
     const phone = normalizePhone(rawPhone);
     if (!phone) {
       return NextResponse.json({ error: "Telefon raqam noto'g'ri" }, { status: 400 });
+    }
+
+    // Audit topilmasi: bu endpoint avval hech qanday tezlik cheklovisiz edi —
+    // "hisob allaqachon mavjud" javobi orqali raqamlarni ommaviy tekshirish
+    // (enumeration) va bo'sh OtpSession hujjatlari bilan spam qilish mumkin edi.
+    // Foydalanuvchi hali yo'q, shuning uchun kalit sifatida raqamning o'zi.
+    if (!(await checkRateLimit(phone, 'register-init', 5))) {
+      return NextResponse.json({ error: "Juda ko'p urinish. Biroz kuting." }, { status: 429 });
     }
     if (!password || password.length < 6) {
       return NextResponse.json({ error: "Parol kamida 6 belgidan iborat bo'lsin" }, { status: 400 });

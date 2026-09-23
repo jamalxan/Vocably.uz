@@ -66,8 +66,15 @@ export default function AuthForm({ initialMode = 'login' }) {
 
   const pollRef = useRef(null);
 
+  // AUTH_MIGRATION_MAP.md — JWT endi localStorage'da yo'q (httpOnly cookie
+  // orqali), shuning uchun bu tezkor tekshiruv endi haqiqiy tokenga emas,
+  // faqat login/register muvaffaqiyatida qo'yiladigan sezgir-bo'lmagan
+  // bayroqqa (`vocably_authed`) qaraydi — agar cookie muddati o'tgan bo'lsa,
+  // `/app` o'zi darhol `/kirish`ga qaytaradi (AppContext#fetchUserData 401
+  // holatini logout() orqali qayta yo'naltiradi), shuning uchun bu yerda
+  // noto'g'ri bo'lib qolishi xavfsizlik oqibatiga olib kelmaydi.
   useEffect(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('token')) {
+    if (typeof window !== 'undefined' && localStorage.getItem('vocably_authed')) {
       router.replace('/app');
       return;
     }
@@ -194,7 +201,7 @@ export default function AuthForm({ initialMode = 'login' }) {
       if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
 
       if (mode === 'register') {
-        localStorage.setItem('token', data.token);
+        localStorage.setItem('vocably_authed', '1');
         localStorage.setItem('username', data.name || '');
         localStorage.setItem('phone', data.phone || phone);
         router.push('/app');
@@ -258,7 +265,7 @@ export default function AuthForm({ initialMode = 'login' }) {
       const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
 
-      localStorage.setItem('token', data.token);
+      localStorage.setItem('vocably_authed', '1');
       localStorage.setItem('username', data.name || '');
       localStorage.setItem('phone', data.phone || phone);
       router.push('/app');

@@ -15,7 +15,7 @@ function SectionBadges({ test }) {
   );
 }
 
-export default function ExamTestsPanel({ token }) {
+export default function ExamTestsPanel() {
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
@@ -26,13 +26,13 @@ export default function ExamTestsPanel({ token }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/exam-tests', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/admin/exam-tests');
       const data = await res.json();
       if (res.ok) setTests(data.tests || []);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -44,7 +44,7 @@ export default function ExamTestsPanel({ token }) {
     try {
       const res = await fetch(`/api/admin/exam-tests/${test.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPublished: !test.isPublished }),
       });
       const data = await res.json();
@@ -62,7 +62,7 @@ export default function ExamTestsPanel({ token }) {
     if (!confirm(`"${test.title}" testini o'chirishni tasdiqlaysizmi? Bu qaytarib bo'lmaydi.`)) return;
     setBusyId(test.id);
     try {
-      await fetch(`/api/admin/exam-tests/${test.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`/api/admin/exam-tests/${test.id}`, { method: 'DELETE' });
       load();
     } finally {
       setBusyId(null);
@@ -77,7 +77,7 @@ export default function ExamTestsPanel({ token }) {
     setBusyId(test.id);
     setRowError(null);
     try {
-      const res = await fetch(`/api/admin/exam-tests/${test.id}/duplicate`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/admin/exam-tests/${test.id}/duplicate`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
         setRowError({ id: test.id, message: data.error || "Nusxalab bo'lmadi", issues: [] });
@@ -91,7 +91,7 @@ export default function ExamTestsPanel({ token }) {
 
   return (
     <div className="space-y-6">
-      <NewTestForm token={token} onCreated={load} />
+      <NewTestForm onCreated={load} />
 
       {loading ? (
         <div className="flex justify-center py-10">
@@ -172,7 +172,7 @@ export default function ExamTestsPanel({ token }) {
               )}
               {statsFor === test.id && (
                 <div className="px-4 sm:px-5 pb-4">
-                  <TestStats token={token} testId={test.id} />
+                  <TestStats testId={test.id} />
                 </div>
               )}
             </div>

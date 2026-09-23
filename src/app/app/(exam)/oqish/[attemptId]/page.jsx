@@ -15,13 +15,13 @@ function candidateIdFrom(attemptId) {
 
 export default function OqishAttemptPage() {
   const params = useParams();
-  const { token, displayName } = useApp();
+  const { isAuthed, displayName } = useApp();
   const [result, setResult] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
   const attemptId = params.attemptId;
 
-  if (!token) {
+  if (!isAuthed) {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 

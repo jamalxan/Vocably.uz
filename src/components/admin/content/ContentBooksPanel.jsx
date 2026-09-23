@@ -9,15 +9,15 @@ const LEVEL_LABEL = { manual: "Qo'lda", assisted: 'Yordamchi', autopilot: "To'li
 // sahifasiga status paneli. `agent_actions` hali bo'sh bo'lishi mumkin
 // (orchestrator qurilmagan) — shunda "hali faoliyat yo'q" ko'rsatiladi,
 // panel o'zi baribir joriy avtomatlashtirish darajasini ko'rsatadi.
-function AutopilotStatusBanner({ token }) {
+function AutopilotStatusBanner() {
   const [policy, setPolicy] = useState(null);
   const [summary, setSummary] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch('/api/admin/automation/policy', { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-      fetch('/api/admin/agent-actions/summary', { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+      fetch('/api/admin/automation/policy').then((r) => r.json()),
+      fetch('/api/admin/agent-actions/summary').then((r) => r.json()),
     ])
       .then(([p, s]) => {
         if (cancelled) return;
@@ -29,7 +29,7 @@ function AutopilotStatusBanner({ token }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, []);
 
   if (!policy) return null;
 
@@ -64,7 +64,7 @@ const STATUS_LABEL = {
   failed: { label: 'Xatolik', className: 'text-danger bg-danger-soft' },
 };
 
-export default function ContentBooksPanel({ token }) {
+export default function ContentBooksPanel() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
@@ -72,13 +72,13 @@ export default function ContentBooksPanel({ token }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/books', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/admin/books');
       const data = await res.json();
       if (res.ok) setBooks(data.books || []);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -88,7 +88,7 @@ export default function ContentBooksPanel({ token }) {
     if (!confirm(`"${book.title}" kitobini o'chirishni tasdiqlaysizmi? Bu qaytarib bo'lmaydi (R2'dagi fayllar ham o'chadi).`)) return;
     setBusyId(book.id);
     try {
-      await fetch(`/api/admin/books/${book.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`/api/admin/books/${book.id}`, { method: 'DELETE' });
       load();
     } finally {
       setBusyId(null);
@@ -97,7 +97,7 @@ export default function ContentBooksPanel({ token }) {
 
   return (
     <div className="space-y-6">
-      <AutopilotStatusBanner token={token} />
+      <AutopilotStatusBanner />
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">

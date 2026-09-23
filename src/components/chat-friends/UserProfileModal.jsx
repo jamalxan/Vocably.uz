@@ -2,24 +2,23 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { X, Image as ImageIcon, Video, Mic, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
-import { useApp } from '@/context/AppContext';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
 
-function GalleryImageBubble({ media, token }) {
-  const { url } = useAuthedMediaUrl(media.key, token);
+function GalleryImageBubble({ media }) {
+  const { url } = useAuthedMediaUrl(media.key);
   if (!url) return <div className="w-36 h-28 bg-bg rounded-lg animate-pulse" />;
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={url} alt="Rasm" className="max-w-[min(180px,100%)] max-h-[200px] rounded-lg object-cover" />;
 }
 
-function GalleryVideoBubble({ media, token }) {
-  const { url } = useAuthedMediaUrl(media.key, token);
+function GalleryVideoBubble({ media }) {
+  const { url } = useAuthedMediaUrl(media.key);
   if (!url) return <div className="w-48 h-32 bg-bg rounded-lg animate-pulse" />;
   return <video src={url} controls playsInline preload="metadata" className="max-w-[min(200px,100%)] max-h-[220px] rounded-lg" />;
 }
 
-function GalleryVoiceBubble({ media, token }) {
-  const { url } = useAuthedMediaUrl(media.key, token);
+function GalleryVoiceBubble({ media }) {
+  const { url } = useAuthedMediaUrl(media.key);
   if (!url) return <div className="w-44 h-9 bg-bg rounded-full animate-pulse" />;
   return <audio src={url} controls className="w-52 max-w-full h-9" />;
 }
@@ -30,7 +29,7 @@ const GALLERY_BUBBLE = { image: GalleryImageBubble, video: GalleryVideoBubble, v
 // tepada ko'rsatadi — admin panelning ConversationViewer.jsx'dagi galereyasi bilan
 // bir xil naqsh, lekin oddiy foydalanuvchi endpointidan (/api/chat/conversations/[id]/
 // messages?type=...&order=desc) — faqat ikkala ishtirokchi ham ko'rgan (o'chirilmagan) xabarlar.
-function MediaGallery({ conversationId, type, token }) {
+function MediaGallery({ conversationId, type }) {
   const [data, setData] = useState(null); // { messages, cursor }
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -41,9 +40,7 @@ function MediaGallery({ conversationId, type, token }) {
     let cancelled = false;
     setData(null);
     setError(false);
-    fetch(`/api/chat/conversations/${conversationId}/messages?type=${type}&order=desc`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch(`/api/chat/conversations/${conversationId}/messages?type=${type}&order=desc`)
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
@@ -54,15 +51,14 @@ function MediaGallery({ conversationId, type, token }) {
     return () => {
       cancelled = true;
     };
-  }, [conversationId, type, token, reloadKey]);
+  }, [conversationId, type, reloadKey]);
 
   const loadMore = async () => {
     if (!data?.cursor || loadingMore) return;
     setLoadingMore(true);
     try {
       const res = await fetch(
-        `/api/chat/conversations/${conversationId}/messages?type=${type}&order=desc&before=${encodeURIComponent(data.cursor)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `/api/chat/conversations/${conversationId}/messages?type=${type}&order=desc&before=${encodeURIComponent(data.cursor)}`
       );
       if (!res.ok) return;
       const d = await res.json();
@@ -108,7 +104,7 @@ function MediaGallery({ conversationId, type, token }) {
       <div className="flex flex-wrap gap-2.5">
         {visibleMessages.map((m) => (
           <div key={m.id || m._id} className="w-fit max-w-full rounded-xl border border-border bg-bg p-2 flex flex-col gap-1">
-            <Bubble media={m.media} token={token} />
+            <Bubble media={m.media} />
             <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
           </div>
         ))}
@@ -140,7 +136,6 @@ const TABS = [
 // rasm/video/ovozli xabarlarni har birini alohida ko'rish.
 export default function UserProfileModal({ open, onClose }) {
   const { activeConversation, setNickname } = useChat();
-  const { token } = useApp();
   const [tab, setTab] = useState('image');
   const [nicknameInput, setNicknameInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -248,7 +243,7 @@ export default function UserProfileModal({ open, onClose }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-5">
-          <MediaGallery conversationId={activeConversation.id} type={tab} token={token} />
+          <MediaGallery conversationId={activeConversation.id} type={tab} />
         </div>
       </div>
     </div>

@@ -18,6 +18,10 @@ export async function GET(req) {
     if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
 
     return NextResponse.json({
+      // AUTH_MIGRATION_MAP.md — client "o'z ID"sini endi bu yerdan oladi,
+      // JWT'ni client-side decode qilish (src/lib/jwtClient.js#getJwtUserId)
+      // o'rniga (u endi hech qayerda haqiqiy tokenga ega emas).
+      id: String(user._id),
       chatAccess: !!user.chatAccess && !user.chatBanned,
       username: user.username || null,
       role: user.role || 'user',

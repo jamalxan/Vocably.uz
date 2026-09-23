@@ -24,7 +24,7 @@ const MODE_LABEL = {
 // VOCABLY-TZ.md §16 "O'quv analitikasi". src/app/api/admin/learning-analytics
 // izohidagi kabi — retention egri chizig'i va kontent-sifat foizi FAZA1/3
 // arxitektura qarorlari tufayli hozircha yo'q.
-export default function AdminLearningAnalytics({ token }) {
+export default function AdminLearningAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,7 +33,7 @@ export default function AdminLearningAnalytics({ token }) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/admin/learning-analytics', { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch('/api/admin/learning-analytics');
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Xatolik');
         if (!cancelled) setData(json);
@@ -46,7 +46,7 @@ export default function AdminLearningAnalytics({ token }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, []);
 
   if (loading) {
     return (

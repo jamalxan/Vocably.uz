@@ -18,7 +18,7 @@ const THEME_OPTIONS = [
 ];
 
 export default function ProfilPage() {
-  const { displayName, username, phone, logout, reviewStreak, token } = useApp();
+  const { displayName, username, phone, logout, reviewStreak } = useApp();
   const { theme, setTheme } = useTheme();
   const [gami, setGami] = useState(null);
   const [gamiFailed, setGamiFailed] = useState(false);
@@ -30,7 +30,7 @@ export default function ProfilPage() {
     // o'qishlar "Cannot read properties of undefined" bilan BUTUN sahifani
     // qulatib qo'yardi (2026-09-10'da QA bypass orqali topilgan haqiqiy bug —
     // dark-mode'ga aloqasi yo'q).
-    fetch('/api/gamification/me', { headers: { Authorization: `Bearer ${token}` } })
+    fetch('/api/gamification/me')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (cancelled) return;
@@ -41,7 +41,7 @@ export default function ProfilPage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, []);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 w-full max-w-2xl mx-auto space-y-6">

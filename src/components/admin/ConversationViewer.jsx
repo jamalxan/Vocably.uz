@@ -9,27 +9,27 @@ const TYPE_ICON = { image: ImageIcon, video: Video, voice: Mic, file: Paperclip,
 // Image/Video/Voice/FileBubble bilan bir xil naqsh, lekin admin endpointi orqali
 // (/api/admin/chat/media) — ishtirokchi bo'lmasa ham, hatto xabar/suhbat "o'chirilgan"
 // bo'lsa ham fayl ko'rinadi (haqiqiy S3 obyekt hech qachon o'chirilmaydi).
-function AdminImageBubble({ media, token }) {
-  const { url } = useAuthedAdminMediaUrl(media.key, token);
+function AdminImageBubble({ media }) {
+  const { url } = useAuthedAdminMediaUrl(media.key);
   if (!url) return <div className="w-40 max-w-full h-32 bg-primary-soft/40 rounded-lg animate-pulse" />;
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={url} alt="Rasm" className="max-w-[min(220px,100%)] max-h-[240px] rounded-lg object-cover" />;
 }
 
-function AdminVideoBubble({ media, token }) {
-  const { url } = useAuthedAdminMediaUrl(media.key, token);
+function AdminVideoBubble({ media }) {
+  const { url } = useAuthedAdminMediaUrl(media.key);
   if (!url) return <div className="w-56 max-w-full h-40 bg-primary-soft/40 rounded-lg animate-pulse" />;
   return <video src={url} controls className="max-w-[min(240px,100%)] max-h-[260px] rounded-lg" />;
 }
 
-function AdminVoiceBubble({ media, token }) {
-  const { url } = useAuthedAdminMediaUrl(media.key, token);
+function AdminVoiceBubble({ media }) {
+  const { url } = useAuthedAdminMediaUrl(media.key);
   if (!url) return <div className="w-48 max-w-full h-10 bg-primary-soft/40 rounded-full animate-pulse" />;
   return <audio src={url} controls className="w-56 max-w-full h-10" />;
 }
 
-function AdminFileBubble({ media, token }) {
-  const { url } = useAuthedAdminMediaUrl(media.key, token);
+function AdminFileBubble({ media }) {
+  const { url } = useAuthedAdminMediaUrl(media.key);
   // URL tayyor bo'lguncha havola faol emas ('#' yangi bo'sh tab ochmasin).
   if (!url) {
     return (
@@ -56,16 +56,16 @@ function AdminFileBubble({ media, token }) {
   );
 }
 
-function AdminMediaContent({ message, token }) {
+function AdminMediaContent({ message }) {
   if (!message.media) return null;
-  if (message.type === 'image') return <AdminImageBubble media={message.media} token={token} />;
-  if (message.type === 'video') return <AdminVideoBubble media={message.media} token={token} />;
-  if (message.type === 'voice') return <AdminVoiceBubble media={message.media} token={token} />;
-  if (message.type === 'file') return <AdminFileBubble media={message.media} token={token} />;
+  if (message.type === 'image') return <AdminImageBubble media={message.media} />;
+  if (message.type === 'video') return <AdminVideoBubble media={message.media} />;
+  if (message.type === 'voice') return <AdminVoiceBubble media={message.media} />;
+  if (message.type === 'file') return <AdminFileBubble media={message.media} />;
   return null;
 }
 
-export default function ConversationViewer({ token }) {
+export default function ConversationViewer() {
   const [conversations, setConversations] = useState([]);
   const [convCursor, setConvCursor] = useState(null);
   const [loadingMoreConvos, setLoadingMoreConvos] = useState(false);
@@ -84,7 +84,7 @@ export default function ConversationViewer({ token }) {
   const [loadingMoreGallery, setLoadingMoreGallery] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/chat/conversations', { headers: { Authorization: `Bearer ${token}` } })
+    fetch('/api/admin/chat/conversations')
       .then((r) => r.json())
       .then((d) => {
         setConversations(d.conversations || []);
@@ -92,15 +92,13 @@ export default function ConversationViewer({ token }) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   const loadMoreConversations = async () => {
     if (!convCursor || loadingMoreConvos) return;
     setLoadingMoreConvos(true);
     try {
-      const res = await fetch(`/api/admin/chat/conversations?before=${encodeURIComponent(convCursor)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`/api/admin/chat/conversations?before=${encodeURIComponent(convCursor)}`);
       const data = await res.json();
       setConversations((prev) => [...prev, ...(data.conversations || [])]);
       setConvCursor(data.nextCursor || null);
@@ -115,9 +113,7 @@ export default function ConversationViewer({ token }) {
     setMsgCursor(null);
     setViewMode('chat');
     setGalleryData({});
-    const res = await fetch(`/api/admin/chat/conversations/${c.id}/messages`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch(`/api/admin/chat/conversations/${c.id}/messages`);
     const data = await res.json();
     setMessages(data.messages || []);
     setMsgCursor(data.nextCursor || null);
@@ -129,9 +125,7 @@ export default function ConversationViewer({ token }) {
   const openGalleryTab = async (type) => {
     setViewMode(type);
     if (galleryData[type] || !active) return;
-    const res = await fetch(`/api/admin/chat/conversations/${active.id}/messages?type=${type}&order=desc`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch(`/api/admin/chat/conversations/${active.id}/messages?type=${type}&order=desc`);
     const data = await res.json();
     setGalleryData((prev) => ({ ...prev, [type]: { messages: data.messages || [], cursor: data.nextCursor || null } }));
   };
@@ -142,8 +136,7 @@ export default function ConversationViewer({ token }) {
     setLoadingMoreGallery(true);
     try {
       const res = await fetch(
-        `/api/admin/chat/conversations/${active.id}/messages?type=${viewMode}&order=desc&before=${encodeURIComponent(current.cursor)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `/api/admin/chat/conversations/${active.id}/messages?type=${viewMode}&order=desc&before=${encodeURIComponent(current.cursor)}`
       );
       const data = await res.json();
       setGalleryData((prev) => ({
@@ -165,8 +158,7 @@ export default function ConversationViewer({ token }) {
     setLoadingMoreMsgs(true);
     try {
       const res = await fetch(
-        `/api/admin/chat/conversations/${active.id}/messages?before=${encodeURIComponent(msgCursor)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `/api/admin/chat/conversations/${active.id}/messages?before=${encodeURIComponent(msgCursor)}`
       );
       const data = await res.json();
       setMessages((prev) => [...(data.messages || []), ...(prev || [])]);
@@ -286,7 +278,7 @@ export default function ConversationViewer({ token }) {
                           </span>
                         )}
                       </div>
-                      <AdminMediaContent message={m} token={token} />
+                      <AdminMediaContent message={m} />
                       <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
                     </div>
                   );
@@ -367,7 +359,7 @@ export default function ConversationViewer({ token }) {
                     )}
                     {m.type === 'text' && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
                     {m.type === 'sticker' && <p className="opacity-80">stiker: {m.stickerId}</p>}
-                    <AdminMediaContent message={m} token={token} />
+                    <AdminMediaContent message={m} />
                     <p className="text-[11px] opacity-70 mt-1.5">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
                   </div>
                 </div>

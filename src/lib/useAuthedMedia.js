@@ -14,15 +14,19 @@ import { useEffect, useState } from 'react';
 // (forward/backward "scrub" qilish uchun zarur) butunlay mahrum bo'lishiga olib
 // kelgan edi — presigned URL endi to'g'ridan-to'g'ri src bo'lgani uchun brauzer
 // progressiv oqim va Range so'rovlarini o'zi, tabiiy ravishda boshqaradi.
-export function useAuthedMediaUrl(mediaKey, token) {
+//
+// AUTH_MIGRATION_MAP.md — `token` parametri olib tashlandi: bu JSON so'rov endi
+// httpOnly cookie orqali autentifikatsiya qilinadi (src/lib/auth.js), qo'lda
+// Authorization header biriktirish shart emas.
+export function useAuthedMediaUrl(mediaKey) {
   const [url, setUrl] = useState(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!mediaKey || !token) return undefined;
+    if (!mediaKey) return undefined;
     let cancelled = false;
 
-    fetch(`/api/chat/media/${mediaKey}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/chat/media/${mediaKey}`)
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -35,7 +39,7 @@ export function useAuthedMediaUrl(mediaKey, token) {
     return () => {
       cancelled = true;
     };
-  }, [mediaKey, token]);
+  }, [mediaKey]);
 
   return { url, error };
 }
@@ -43,15 +47,15 @@ export function useAuthedMediaUrl(mediaKey, token) {
 // Admin panel uchun — xuddi shu naqsh, lekin /api/admin/chat/media orqali (ishtirokchi
 // tekshiruvisiz, faqat admin roli — o'chirilgan/audit qilinayotgan suhbat fayllarini
 // ham ko'rish uchun, src/app/api/admin/chat/media/[...key]).
-export function useAuthedAdminMediaUrl(mediaKey, token) {
+export function useAuthedAdminMediaUrl(mediaKey) {
   const [url, setUrl] = useState(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!mediaKey || !token) return undefined;
+    if (!mediaKey) return undefined;
     let cancelled = false;
 
-    fetch(`/api/admin/chat/media/${mediaKey}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/admin/chat/media/${mediaKey}`)
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -64,7 +68,7 @@ export function useAuthedAdminMediaUrl(mediaKey, token) {
     return () => {
       cancelled = true;
     };
-  }, [mediaKey, token]);
+  }, [mediaKey]);
 
   return { url, error };
 }

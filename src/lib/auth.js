@@ -1,19 +1,14 @@
 import jwt from 'jsonwebtoken';
 
-// TZ-vocably-v2.md BUG-030 (Sprint 5 "Ishonchlilik" §G1) — token hozircha
-// `localStorage`da ham saqlanadi (client — AppContext.jsx), bu XSS bo'lsa
-// o'g'irlanishi mumkin. To'liq tuzatish (localStorage'ni butunlay olib
-// tashlash) ilova bo'ylab ~100 ta fetch chaqiruvini (har biri qo'lda
-// `Authorization: Bearer ${token}` biriktiradi) qayta yozishni talab qiladi —
-// bu sandboxda hech qanday tarmoq/brauzer orqali sinab bo'lmaydigan, katta va
-// xavfli o'zgarish bo'lardi (login butunlay buzilib qolishi mumkin, sinovsiz).
-// Shu sabab bosqichma-bosqich yondashuv: server endi HAR IKKALASINI qabul
-// qiladi (avvalgidek Authorization header — o'zgarishsiz — VA endi shu
-// yerdagi httpOnly cookie), va login/verify-code endi ikkalasini ham
-// o'rnatadi. Bu mavjud client kodini SINDIRMAYDI (hech narsa o'zgarmadi —
-// header hali ham ishlaydi) va cookie orqali xavfsizroq yo'lni tayyorlaydi;
-// client'ni to'liq faqat-cookie'ga o'tkazish (localStorage'ni olib tashlash)
-// alohida, brauzerda sinovdan o'tkaziladigan keyingi qadam.
+// TZ-vocably-v2.md BUG-030 / AUTH_MIGRATION_MAP.md (2026-09-17) — MIGRATSIYA
+// TUGALLANDI: hech qanday client kodi endi tokenni `localStorage`da
+// saqlamaydi yoki `Authorization` header sifatida qo'lda biriktirmaydi —
+// barcha ~90 fetch chaqiruvi (AppContext, AdminContext, exam-engine,
+// chat-friends, admin panel) httpOnly `vocably_session` cookie'ga tayanadi
+// (brauzer buni same-origin so'rovga o'zi qo'shadi). `Authorization` header
+// tekshiruvi shu funksiyada ATAYLAB saqlab qolingan — faqat orqaga
+// moslik/kelajakdagi boshqa client (masalan mobil ilova) uchun zaxira yo'l,
+// hech qanday joriy kod uni endi yubormaydi.
 const AUTH_COOKIE_NAME = 'vocably_session';
 
 /** So'rov headerlaridagi "Authorization: Bearer <token>" DAN, topilmasa
@@ -32,6 +27,10 @@ export function getUserIdFromRequest(req) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // socket-ticket (src/app/api/chat/socket-ticket/route.js) — 60s, faqat
+    // realtime-server handshake uchun. Shu yerda rad etiladi, shunda uni
+    // Authorization header sifatida oddiy API'larga yuborish ishlamaydi.
+    if (decoded.scope === 'realtime') return null;
     return decoded.userId;
   } catch {
     return null;

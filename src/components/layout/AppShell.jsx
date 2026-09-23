@@ -25,7 +25,7 @@ import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { displayName, logout, chatAccess, token } = useApp();
+  const { displayName, logout, chatAccess } = useApp();
 
   const visibleSidebarNav = SIDEBAR_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
   const visibleBottomNav = BOTTOM_NAV.filter((item) => !item.requiresChatAccess || chatAccess);
@@ -236,7 +236,7 @@ export default function AppShell({ children }) {
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <NotificationBell token={token} onOpenFriends={() => router.push('/app/dostlar')} />
+            <NotificationBell onOpenFriends={() => router.push('/app/dostlar')} />
           </div>
         </header>
         {/* TZ-vocably-v2.md BUG-023 (2026-09-12 haqiqiy brauzerda qayta topildi va

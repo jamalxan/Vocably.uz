@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Loader2, ChevronRight, RotateCcw } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
 import { fetchSectionStatuses } from '../state/attemptsApi';
 
 // TZ-vocably-v2.md §20 migratsiyasi — standalone Reading/Listening/Writing/
@@ -31,14 +30,13 @@ const STATUS_BADGE = {
 };
 
 export default function TestPicker({ sectionKey, title, onPicked }) {
-  const { token } = useApp();
   const [tests, setTests] = useState(null);
   const [statuses, setStatuses] = useState({});
   const [error, setError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/exam/tests', { headers: { Authorization: `Bearer ${token}` } })
+    fetch('/api/exam/tests')
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
@@ -54,7 +52,7 @@ export default function TestPicker({ sectionKey, title, onPicked }) {
     return () => {
       cancelled = true;
     };
-  }, [token, sectionKey]);
+  }, [sectionKey]);
 
   return (
     <div className="max-w-lg mx-auto p-6 sm:p-10">

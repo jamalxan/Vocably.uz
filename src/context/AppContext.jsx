@@ -7,6 +7,17 @@ import Button from '@/components/ui/Button';
 
 const AppContext = createContext(null);
 
+// AUTH_MIGRATION_MAP.md (2026-09-17) — JWT endi localStorage'da SAQLANMAYDI va
+// hech qanday fetch'ga `Authorization: Bearer <token>` sifatida QO'LDA
+// biriktirilmaydi. Server (`src/lib/auth.js#getUserIdFromRequest`) allaqachon
+// httpOnly `vocably_session` cookie'ni ham qabul qiladi — brauzer buni HAR bir
+// same-origin so'rovga o'zi, avtomatik qo'shadi, shuning uchun bu yerdagi
+// fetch'lar endi hech qanday auth-header'siz ishlaydi. `isAuthed` — HAQIQIY
+// token EMAS, faqat "oxirgi authenticated so'rov muvaffaqiyatli bo'ldimi"
+// degan mahalliy UI holati (boolean) — chaqiruvchi effektlar shu bilan
+// gate qilinadi, lekin serverga HECH QACHON yuborilmaydi va XSS uni o'qisa
+// ham hisobga kirish imkonini bermaydi (haqiqiy tekshiruv doim serverda,
+// cookie orqali).
 export function AppProvider({ children }) {
   const router = useRouter();
   const [loadingApp, setLoadingApp] = useState(true);
@@ -17,7 +28,7 @@ export function AppProvider({ children }) {
   const [activeCatIndex, setActiveCatIndex] = useState(0);
   const [reviewStreak, setReviewStreak] = useState(0);
 
-  const [token, setToken] = useState('');
+  const [isAuthed, setIsAuthed] = useState(false);
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
 
@@ -27,15 +38,20 @@ export function AppProvider({ children }) {
   const [chatAccess, setChatAccess] = useState(false);
   const [chatUsername, setChatUsername] = useState(null);
   const [chatRole, setChatRole] = useState('user');
+  // AUTH_MIGRATION_MAP.md — Do'stlar bo'limi ilgari "o'z ID"ni JWT'ni client-side
+  // decode qilib (src/lib/jwtClient.js) olardi; endi JWT client'da yo'q, shuning
+  // uchun bu ID shu javobdan (chat/me/route.js) keladi.
+  const [chatUserId, setChatUserId] = useState(null);
 
-  const fetchChatAccess = useCallback(async (jwtToken) => {
+  const fetchChatAccess = useCallback(async () => {
     try {
-      const res = await fetch('/api/chat/me', { headers: { Authorization: `Bearer ${jwtToken}` } });
+      const res = await fetch('/api/chat/me');
       if (!res.ok) return;
       const data = await res.json();
       setChatAccess(!!data.chatAccess);
       setChatUsername(data.username || null);
       setChatRole(data.role || 'user');
+      setChatUserId(data.id || null);
     } catch {
       // jimgina e'tiborsiz qoldiramiz — bo'lim shunchaki ko'rinmay qoladi
     }
@@ -50,48 +66,45 @@ export function AppProvider({ children }) {
   const triggerMatchReshuffle = useCallback(() => setMatchGameNonce((n) => n + 1), []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('vocably_authed');
     localStorage.removeItem('username');
     localStorage.removeItem('phone');
-    // BUG-030 (§G1) — login endi httpOnly cookie ham o'rnatadi (lib/auth.js);
-    // u client JS'dan o'chirilmaydi, shuning uchun serverdan tozalanadi.
-    // Fire-and-forget — natijasi kutilmaydi, chiqishni sekinlashtirmaydi.
+    setIsAuthed(false);
+    // httpOnly cookie client JS'dan o'chirilmaydi, shuning uchun serverdan
+    // tozalanadi. Fire-and-forget — natijasi kutilmaydi, chiqishni sekinlashtirmaydi.
     fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     // '/' endi ochiq marketing landing (VOCABLY-TZ.md T3 tuzatildi) — chiqqan
     // foydalanuvchi qayta kirish formasiga to'g'ridan-to'g'ri tushsin.
     router.push('/kirish');
   }, [router]);
 
-  const fetchUserData = useCallback(
-    async (jwtToken) => {
-      setAppError(false);
-      try {
-        const res = await fetch('/api/words', {
-          headers: { Authorization: `Bearer ${jwtToken}` },
-        });
-        // Faqat 401 (token yaroqsiz/muddati o'tgan) chiqishga olib keladi; tarmoq yoki
-        // server xatosida sessiya saqlanadi va foydalanuvchi qayta urinadi.
-        if (res.status === 401) {
-          logout();
-          return;
-        }
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setCategories(data.categories || []);
-        setReviewStreak(data.reviewStreak || 0);
-      } catch {
-        setAppError(true);
-      } finally {
-        setLoadingApp(false);
+  const fetchUserData = useCallback(async () => {
+    setAppError(false);
+    try {
+      const res = await fetch('/api/words');
+      // Faqat 401 (sessiya yaroqsiz/muddati o'tgan) chiqishga olib keladi; tarmoq yoki
+      // server xatosida sessiya saqlanadi va foydalanuvchi qayta urinadi.
+      if (res.status === 401) {
+        logout();
+        return;
       }
-    },
-    [logout]
-  );
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setCategories(data.categories || []);
+      setReviewStreak(data.reviewStreak || 0);
+      setIsAuthed(true);
+      localStorage.setItem('vocably_authed', '1');
+    } catch {
+      setAppError(true);
+    } finally {
+      setLoadingApp(false);
+    }
+  }, [logout]);
 
   // Fon rejimida faqat kategoriyalarni qayta yuklaydi (masalan AI chat orqali so'z qo'shilgandan keyin).
   const refreshCategories = useCallback(async () => {
     try {
-      const res = await fetch('/api/words', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/words');
       if (!res.ok) return;
       const data = await res.json();
       setCategories(data.categories || []);
@@ -99,7 +112,7 @@ export function AppProvider({ children }) {
     } catch {
       // jimgina e'tiborsiz qoldiramiz
     }
-  }, [token]);
+  }, []);
 
   // Bitta so'zning takrorlash statistikasini yangilaydi (Bugungi takrorlash, Test, Tinglab yozish rejimlari uchun).
   // Haqiqiy hisob-kitob (src/lib/srs.ts, ease-asosidagi interval) faqat serverda amalga oshadi —
@@ -125,7 +138,7 @@ export function AppProvider({ children }) {
       try {
         const res = await fetch('/api/words/review', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ categoryId, wordId, correct, ...extra }),
         });
         const data = await res.json();
@@ -143,7 +156,7 @@ export function AppProvider({ children }) {
         console.error('Statistikani saqlashda xatolik', err);
       }
     },
-    [token]
+    []
   );
 
   // Dashboard'dagi "Qiynalayotgan so'zlar" ro'yxatidan "Shularni mashq qilish" bosilganda
@@ -166,19 +179,18 @@ export function AppProvider({ children }) {
   const [sessionOpenNonce, setSessionOpenNonce] = useState(0);
 
   const loadChatSessions = useCallback(async () => {
-    if (!token) return;
     try {
-      const res = await fetch('/api/ai/sessions', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/ai/sessions');
       const data = await res.json();
       if (res.ok) setChatSessions(data.sessions || []);
     } catch {
       // jimgina e'tiborsiz qoldiramiz — ro'yxat bo'sh ko'rinadi
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
-    if (token) loadChatSessions();
-  }, [token, loadChatSessions]);
+    if (isAuthed) loadChatSessions();
+  }, [isAuthed, loadChatSessions]);
 
   const openChatSession = useCallback((id) => {
     setCurrentSessionId(id);
@@ -198,7 +210,7 @@ export function AppProvider({ children }) {
       try {
         const res = await fetch(`/api/ai/sessions/${id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title: clean }),
         });
         if (!res.ok) loadChatSessions();
@@ -206,7 +218,7 @@ export function AppProvider({ children }) {
         loadChatSessions();
       }
     },
-    [token, loadChatSessions]
+    [loadChatSessions]
   );
 
   const deleteChatSession = useCallback(
@@ -215,65 +227,50 @@ export function AppProvider({ children }) {
       // Faol suhbat o'chirilsa yangi bo'sh suhbatga o'tamiz.
       if (currentSessionId === id) startNewChatSession();
       try {
-        const res = await fetch(`/api/ai/sessions/${id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`/api/ai/sessions/${id}`, { method: 'DELETE' });
         if (!res.ok) loadChatSessions();
       } catch {
         loadChatSessions();
       }
     },
-    [token, currentSessionId, startNewChatSession, loadChatSessions]
+    [currentSessionId, startNewChatSession, loadChatSessions]
   );
 
   const deleteAllChatSessions = useCallback(async () => {
     setChatSessions([]);
     startNewChatSession();
     try {
-      const res = await fetch('/api/ai/sessions', {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/ai/sessions', { method: 'DELETE' });
       if (!res.ok) loadChatSessions();
     } catch {
       loadChatSessions();
     }
-  }, [token, startNewChatSession, loadChatSessions]);
+  }, [startNewChatSession, loadChatSessions]);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('username');
     const savedPhone = localStorage.getItem('phone');
-    if (!savedToken) {
-      router.push('/kirish');
-    } else {
-      setToken(savedToken);
-      setUsername(savedUser || '');
-      setPhone(savedPhone || '');
-      fetchUserData(savedToken);
-      fetchChatAccess(savedToken);
-    }
+    setUsername(savedUser || '');
+    setPhone(savedPhone || '');
+    // Ilgari bu yerda "localStorage'da token bormi" degan tarmoqsiz tekshiruv
+    // bo'lardi. Endi haqiqiy tekshiruv doim serverga (cookie orqali) boradi —
+    // 401 kelsa fetchUserData o'zi logout() chaqiradi (pastda, useCallback ichida).
+    fetchUserData();
+    fetchChatAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, []);
 
-  const syncData = useCallback(
-    async (updatedCategories) => {
-      try {
-        await fetch('/api/words', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ categories: updatedCategories }),
-        });
-      } catch (err) {
-        console.error('Saqlashda xatolik', err);
-      }
-    },
-    [token]
-  );
+  const syncData = useCallback(async (updatedCategories) => {
+    try {
+      await fetch('/api/words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categories: updatedCategories }),
+      });
+    } catch (err) {
+      console.error('Saqlashda xatolik', err);
+    }
+  }, []);
 
   const activeCategory = categories[activeCatIndex] || { name: '', words: [] };
   const displayName = username || phone || 'Foydalanuvchi';
@@ -300,11 +297,11 @@ export function AppProvider({ children }) {
 
       fetch('/api/categories', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ categoryId: cat._id, name: clean }),
       }).catch((err) => console.error("Kategoriyani tahrirlashda xatolik", err));
     },
-    [categories, token]
+    [categories]
   );
 
   // A4 (docs/AUDIT_FINDINGS.md): ilgari native `confirm()` ishlatilardi — WordTable va chat
@@ -350,10 +347,10 @@ export function AppProvider({ children }) {
 
     fetch('/api/categories', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ categoryId: cat._id }),
     }).catch((err) => console.error("Kategoriyani o'chirishda xatolik", err));
-  }, [categories, categoryDeleteIdx, token]);
+  }, [categories, categoryDeleteIdx]);
 
   // B3 (docs/AUDIT_FINDINGS.md): bitta so'z qo'shish ilgari butun `categories` massivini
   // qayta yozardi (`syncData`) — katta hujjatni har safar to'liq yuborish/saqlash, va ikkita
@@ -373,7 +370,7 @@ export function AppProvider({ children }) {
       try {
         const res = await fetch('/api/words/add', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ categoryId: cat._id, words: [{ word: cleanWord, syns: synsArray }] }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -385,7 +382,7 @@ export function AppProvider({ children }) {
       }
       return true;
     },
-    [categories, activeCatIndex, token, refreshCategories]
+    [categories, activeCatIndex, refreshCategories]
   );
 
   // Bir yoki bir nechta so'zni barqaror _id bo'yicha o'chiradi (granular endpoint — butun massivni
@@ -404,14 +401,14 @@ export function AppProvider({ children }) {
       try {
         await fetch('/api/words', {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ categoryId: cat._id, wordIds }),
         });
       } catch (err) {
         console.error("So'zlarni o'chirishda xatolik", err);
       }
     },
-    [categories, activeCatIndex, token]
+    [categories, activeCatIndex]
   );
 
   // "Bekor qilish" toast bosilganda o'chirilgan so'zlarni qayta tiklaydi.
@@ -421,109 +418,100 @@ export function AppProvider({ children }) {
       try {
         await fetch('/api/words/add', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ categoryId, words: words.map((w) => ({ word: w.word, syns: w.syns })) }),
         });
       } finally {
         await refreshCategories();
       }
     },
-    [token, refreshCategories]
+    [refreshCategories]
   );
 
   // VOCABLY-TZ.md §4.1/FAZA 1 — bitta so'zni AI bilan boyitish (ta'rif, misollar,
   // kollokatsiya, CEFR va h.k. — src/app/api/words/enrich). Muvaffaqiyatli bo'lsa
   // qaytgan so'zni to'g'ridan-to'g'ri local state'ga qo'yamiz (refreshCategories
   // shart emas — server allaqachon yangilangan so'zning o'zini qaytaradi).
-  const enrichWord = useCallback(
-    async (categoryId, wordId) => {
-      const res = await fetch('/api/words/enrich', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ categoryId, wordId }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) return { error: data?.error || "Boyitib bo'lmadi", requestId: data?.requestId || null };
+  const enrichWord = useCallback(async (categoryId, wordId) => {
+    const res = await fetch('/api/words/enrich', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categoryId, wordId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: data?.error || "Boyitib bo'lmadi", requestId: data?.requestId || null };
 
-      setCategories((prev) =>
-        prev.map((c) =>
-          c._id !== categoryId
-            ? c
-            : { ...c, words: c.words.map((w) => (w._id === wordId ? { ...w, enrichment: data.word.enrichment } : w)) }
-        )
-      );
-      return { word: data.word };
-    },
-    [token]
-  );
+    setCategories((prev) =>
+      prev.map((c) =>
+        c._id !== categoryId
+          ? c
+          : { ...c, words: c.words.map((w) => (w._id === wordId ? { ...w, enrichment: data.word.enrichment } : w)) }
+      )
+    );
+    return { word: data.word };
+  }, []);
 
   // TZ-vocably-v2.md §D5 (BUG-008) — bir so'rovda 10 tagacha so'zni birga boyitish
   // (src/app/api/words/enrich-batch). WordTable.jsx bir nechta bunday chaqiruvni
   // parallel yuboradi. Har bir so'z natijasi mustaqil (birontasi xato bo'lsa ham
   // qolganlari saqlanadi) — shuning uchun natija massivini qaytaramiz, xato
   // bo'lganlarini chaqiruvchi o'zi ajratib oladi.
-  const enrichWordsBatch = useCallback(
-    async (categoryId, wordIds) => {
-      const res = await fetch('/api/words/enrich-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ categoryId, wordIds }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        return wordIds.map((wordId) => ({ wordId, error: data?.error || "Boyitib bo'lmadi", requestId: data?.requestId || null }));
-      }
+  const enrichWordsBatch = useCallback(async (categoryId, wordIds) => {
+    const res = await fetch('/api/words/enrich-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categoryId, wordIds }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return wordIds.map((wordId) => ({ wordId, error: data?.error || "Boyitib bo'lmadi", requestId: data?.requestId || null }));
+    }
 
-      const results = Array.isArray(data.results) ? data.results : [];
-      const succeeded = results.filter((r) => r.success);
-      if (succeeded.length > 0) {
-        setCategories((prev) =>
-          prev.map((c) =>
-            c._id !== categoryId
-              ? c
-              : {
-                  ...c,
-                  words: c.words.map((w) => {
-                    const match = succeeded.find((r) => r.wordId === w._id);
-                    return match ? { ...w, enrichment: match.enrichment } : w;
-                  }),
-                }
-          )
-        );
-      }
-      return results;
-    },
-    [token]
-  );
-
-  // V6 "Mnemonika ustaxonasi" — foydalanuvchining o'z mnemonikasini saqlaydi
-  // (src/app/api/words/mnemonic, models.js'dagi userMnemonicUz izohiga q.).
-  const saveMnemonic = useCallback(
-    async (categoryId, wordId, userMnemonicUz) => {
-      const res = await fetch('/api/words/mnemonic', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ categoryId, wordId, userMnemonicUz }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) return { error: data?.error || "Saqlab bo'lmadi" };
-
+    const results = Array.isArray(data.results) ? data.results : [];
+    const succeeded = results.filter((r) => r.success);
+    if (succeeded.length > 0) {
       setCategories((prev) =>
         prev.map((c) =>
           c._id !== categoryId
             ? c
             : {
                 ...c,
-                words: c.words.map((w) =>
-                  w._id !== wordId ? w : { ...w, enrichment: { ...w.enrichment, userMnemonicUz: data.userMnemonicUz } }
-                ),
+                words: c.words.map((w) => {
+                  const match = succeeded.find((r) => r.wordId === w._id);
+                  return match ? { ...w, enrichment: match.enrichment } : w;
+                }),
               }
         )
       );
-      return { success: true };
-    },
-    [token]
-  );
+    }
+    return results;
+  }, []);
+
+  // V6 "Mnemonika ustaxonasi" — foydalanuvchining o'z mnemonikasini saqlaydi
+  // (src/app/api/words/mnemonic, models.js'dagi userMnemonicUz izohiga q.).
+  const saveMnemonic = useCallback(async (categoryId, wordId, userMnemonicUz) => {
+    const res = await fetch('/api/words/mnemonic', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categoryId, wordId, userMnemonicUz }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: data?.error || "Saqlab bo'lmadi" };
+
+    setCategories((prev) =>
+      prev.map((c) =>
+        c._id !== categoryId
+          ? c
+          : {
+              ...c,
+              words: c.words.map((w) =>
+                w._id !== wordId ? w : { ...w, enrichment: { ...w.enrichment, userMnemonicUz: data.userMnemonicUz } }
+              ),
+            }
+      )
+    );
+    return { success: true };
+  }, []);
 
   const value = {
     loadingApp,
@@ -535,13 +523,14 @@ export function AppProvider({ children }) {
     enrichWordsBatch,
     saveMnemonic,
     activeCategory,
-    token,
+    isAuthed,
     username,
     phone,
     displayName,
     chatAccess,
     chatUsername,
     chatRole,
+    chatUserId,
     fetchUserData,
     refreshCategories,
     syncData,
@@ -587,7 +576,7 @@ export function AppProvider({ children }) {
               <Button
                 onClick={() => {
                   setLoadingApp(true);
-                  fetchUserData(token);
+                  fetchUserData();
                 }}
               >
                 <RotateCcw size={16} /> Qayta urinish

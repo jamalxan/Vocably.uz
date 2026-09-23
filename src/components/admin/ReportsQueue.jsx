@@ -11,7 +11,7 @@ const STATUS_FILTERS = [
   { value: 'all', label: 'Barchasi' },
 ];
 
-export default function ReportsQueue({ token }) {
+export default function ReportsQueue() {
   const [reports, setReports] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -24,9 +24,7 @@ export default function ReportsQueue({ token }) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/admin/chat/reports?status=${statusFilter}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`/api/admin/chat/reports?status=${statusFilter}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Reportlarni yuklab bo\'lmadi');
       setReports(data.reports || []);
@@ -36,7 +34,7 @@ export default function ReportsQueue({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token, statusFilter]);
+  }, [statusFilter]);
 
   useEffect(() => {
     load();
@@ -47,8 +45,7 @@ export default function ReportsQueue({ token }) {
     setLoadingMore(true);
     try {
       const res = await fetch(
-        `/api/admin/chat/reports?status=${statusFilter}&before=${encodeURIComponent(nextCursor)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `/api/admin/chat/reports?status=${statusFilter}&before=${encodeURIComponent(nextCursor)}`
       );
       const data = await res.json();
       setReports((prev) => [...prev, ...(data.reports || [])]);
@@ -64,7 +61,7 @@ export default function ReportsQueue({ token }) {
     try {
       const res = await fetch(`/api/admin/chat/reports/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {

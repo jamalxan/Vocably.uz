@@ -55,7 +55,7 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
     try {
       const res = await fetch(`/api/ai/sessions/${sessionId}/confirm-add`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ categoryId: selectedCatId, words: cleanWords }),
       });
       const data = await res.json();

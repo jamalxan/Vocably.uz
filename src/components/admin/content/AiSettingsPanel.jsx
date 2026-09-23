@@ -11,7 +11,7 @@ import { Loader2, Save, DollarSign } from 'lucide-react';
 // "google/gemini-2.5-pro") — kalit ulanganda `/models` qo'shilib, matn
 // maydoni dropdown'ga almashtirilishi mumkin, boshqa hech narsa
 // o'zgarmaydi (worker/router.js allaqachon shu formatdagi model ID kutadi).
-export default function AiSettingsPanel({ token }) {
+export default function AiSettingsPanel() {
   const [configs, setConfigs] = useState([]);
   const [costs, setCosts] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,8 +23,8 @@ export default function AiSettingsPanel({ token }) {
     setLoading(true);
     try {
       const [configRes, costsRes] = await Promise.all([
-        fetch('/api/admin/ai/config', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/ai/costs', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/ai/config'),
+        fetch('/api/admin/ai/costs'),
       ]);
       const configData = await configRes.json();
       const costsData = await costsRes.json();
@@ -36,7 +36,7 @@ export default function AiSettingsPanel({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -53,7 +53,7 @@ export default function AiSettingsPanel({ token }) {
       const d = drafts[taskKey];
       const res = await fetch('/api/admin/ai/config', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           taskKey,
           primary: d.primary,

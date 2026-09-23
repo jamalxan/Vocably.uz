@@ -4,14 +4,14 @@ import { Loader2, AlertTriangle } from 'lucide-react';
 
 // TZ-vocably-v2.md §15.2 — "Statistika: har savol bo'yicha to'g'ri javob %.
 // 95% dan yuqori yoki 10% dan past bo'lsa — savol shubhali, belgilanadi."
-export default function TestStats({ token, testId }) {
+export default function TestStats({ testId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/admin/exam-tests/${testId}/stats`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/admin/exam-tests/${testId}/stats`)
       .then((r) => r.json())
       .then((d) => {
         if (active) setData(d);
@@ -25,7 +25,7 @@ export default function TestStats({ token, testId }) {
     return () => {
       active = false;
     };
-  }, [token, testId]);
+  }, [testId]);
 
   if (loading) {
     return (

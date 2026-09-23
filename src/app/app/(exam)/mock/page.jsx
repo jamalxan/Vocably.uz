@@ -9,9 +9,9 @@ import MockShell from '@/features/exam/mock/MockShell';
 // tasodifiy tanlanadi (src/app/api/exam/attempts/route.js). Practice-mode mock
 // (vaqt bosimisiz) yangi dvigatelda hali qurilmagan — shu tugma qo'shilmadi.
 export default function MockPage() {
-  const { token, displayName } = useApp();
+  const { isAuthed, displayName } = useApp();
 
-  if (!token) {
+  if (!isAuthed) {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 

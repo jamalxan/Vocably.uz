@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User as UserIcon } from 'lucide-react';
 
-export default function UsersTable({ token }) {
+export default function UsersTable() {
   const [users, setUsers] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -15,10 +15,7 @@ export default function UsersTable({ token }) {
     async (signal) => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/admin/chat/users?q=${encodeURIComponent(q)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal,
-        });
+        const res = await fetch(`/api/admin/chat/users?q=${encodeURIComponent(q)}`, { signal });
         const data = await res.json();
         if (res.ok && !signal?.aborted) {
           setUsers(data.users || []);
@@ -30,7 +27,7 @@ export default function UsersTable({ token }) {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [token, q]
+    [q]
   );
 
   const loadMore = async () => {
@@ -38,8 +35,7 @@ export default function UsersTable({ token }) {
     setLoadingMore(true);
     try {
       const res = await fetch(
-        `/api/admin/chat/users?q=${encodeURIComponent(q)}&before=${encodeURIComponent(nextCursor)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `/api/admin/chat/users?q=${encodeURIComponent(q)}&before=${encodeURIComponent(nextCursor)}`
       );
       const data = await res.json();
       if (res.ok) {
@@ -66,7 +62,7 @@ export default function UsersTable({ token }) {
     try {
       const res = await fetch(`/api/admin/chat/users/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       const data = await res.json();

@@ -12,7 +12,7 @@ import { Bot, Check, ChevronDown, Loader2, RotateCcw, Send, Settings2, User } fr
 // chaqiradi, mock emas. Suhbat faqat shu komponent state'ida yashaydi
 // (DB'ga saqlanmaydi) — bu ataylab shunday: bu sinov maydonchasi, kontent
 // manbai emas.
-export default function AiPlaygroundChat({ token, taskKeys }) {
+export default function AiPlaygroundChat({ taskKeys }) {
   const [taskKey, setTaskKey] = useState(taskKeys[0] || '');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
@@ -59,7 +59,7 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
     try {
       const res = await fetch('/api/admin/ai/playground', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           taskKey,
           systemPrompt: systemPrompt.trim() || undefined,

@@ -36,7 +36,10 @@ export async function isPushSubscribed() {
   }
 }
 
-export async function subscribeToPush(token) {
+// AUTH_MIGRATION_MAP.md — token endi parametr sifatida qabul qilinmaydi va
+// header'ga qo'lda biriktirilmaydi; server httpOnly cookie orqali autentifikatsiya
+// qiladi (src/lib/auth.js), brauzer buni same-origin so'rovga o'zi qo'shadi.
+export async function subscribeToPush() {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   if (!pushSupported() || !publicKey) return { error: "Brauzeringiz qo'llab-quvvatlamaydi" };
 
@@ -53,7 +56,7 @@ export async function subscribeToPush(token) {
 
   const res = await fetch('/api/push/subscribe', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subscription: subscription.toJSON() }),
   });
   if (!res.ok) return { error: 'Obuna saqlanmadi' };
@@ -61,7 +64,7 @@ export async function subscribeToPush(token) {
   return { success: true };
 }
 
-export async function unsubscribeFromPush(token) {
+export async function unsubscribeFromPush() {
   if (!pushSupported()) return { success: true };
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager.getSubscription();
@@ -71,7 +74,7 @@ export async function unsubscribeFromPush(token) {
   await sub.unsubscribe();
   await fetch('/api/push/unsubscribe', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ endpoint }),
   }).catch(() => {});
 

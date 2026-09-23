@@ -18,7 +18,10 @@ function timeAgo(dateStr) {
 // Sidebar'dan mustaqil, dashboard header'ida (barcha view'larda ko'rinadigan yagona
 // joy) — yangi chat xabari va admin e'lonlari haqida qo'ng'iroq belgisi + ro'yxat.
 // Real brauzer push (Web Push API) alohida, foydalanuvchi aniq yoqqandagina yoqiladi.
-export default function NotificationBell({ token, onOpenFriends }) {
+// AUTH_MIGRATION_MAP.md — `token` prop olib tashlandi, endi httpOnly cookie
+// orqali autentifikatsiya qilinadi (bu komponent faqat AppShell ichida,
+// autentifikatsiyadan o'tgan foydalanuvchi uchun render qilinadi).
+export default function NotificationBell({ onOpenFriends }) {
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -34,9 +37,8 @@ export default function NotificationBell({ token, onOpenFriends }) {
   openRef.current = open;
 
   const load = useCallback(async () => {
-    if (!token) return;
     try {
-      const res = await fetch('/api/notifications?limit=15', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/notifications?limit=15');
       const data = await res.json();
       if (res.ok) {
         if (!openRef.current) setItems(data.notifications || []);
@@ -47,7 +49,7 @@ export default function NotificationBell({ token, onOpenFriends }) {
     } finally {
       setLoaded(true);
     }
-  }, [token]);
+  }, []);
 
   // BUG-031 — sahifa ko'rinmasa (boshqa tab/oyna) so'rov yubormaymiz, qaytib
   // ko'ringanda darhol yangilaymiz (fon intervali kutilmaydi).
@@ -127,15 +129,13 @@ export default function NotificationBell({ token, onOpenFriends }) {
     const wasUnread = items.find((n) => n._id === id)?.read === false;
     setItems((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
     if (wasUnread) setUnreadCount((n) => Math.max(0, n - 1));
-    fetch(`/api/notifications/${id}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    fetch(`/api/notifications/${id}`, { method: 'PATCH' }).catch(() => {});
   };
 
   const markAllRead = async () => {
     setItems([]);
     setUnreadCount(0);
-    fetch('/api/notifications/read-all', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(
-      () => {}
-    );
+    fetch('/api/notifications/read-all', { method: 'POST' }).catch(() => {});
   };
 
   const handleClickItem = (n) => {
@@ -151,7 +151,7 @@ export default function NotificationBell({ token, onOpenFriends }) {
   const enablePush = async () => {
     setSubscribing(true);
     try {
-      const result = await subscribeToPush(token);
+      const result = await subscribeToPush();
       setPushState(result?.success ? 'granted' : await getPushPermissionState());
     } catch {
       setPushState(await getPushPermissionState().catch(() => 'default'));

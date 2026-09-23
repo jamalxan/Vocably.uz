@@ -25,14 +25,14 @@ function SectionLabel({ children }) {
   );
 }
 
-export default function AdminStats({ token }) {
+export default function AdminStats() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
+    fetch('/api/admin/stats')
       .then(async (r) => {
         const data = await r.json().catch(() => ({}));
         if (!r.ok || data?.error) throw new Error(data?.error || 'Statistika yuklanmadi');
@@ -50,7 +50,7 @@ export default function AdminStats({ token }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, []);
 
   if (loading) {
     return (

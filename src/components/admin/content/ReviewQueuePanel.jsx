@@ -18,7 +18,7 @@ const REASON_LABEL = {
   word_limit_violation: 'So\'z limiti buzilgan',
 };
 
-export default function ReviewQueuePanel({ token }) {
+export default function ReviewQueuePanel() {
   const [items, setItems] = useState([]);
   const [counts, setCounts] = useState({ blocker: 0, warning: 0 });
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ export default function ReviewQueuePanel({ token }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/review?status=${statusFilter}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/admin/review?status=${statusFilter}`);
       const data = await res.json();
       if (res.ok) {
         setItems(data.items || []);
@@ -41,7 +41,7 @@ export default function ReviewQueuePanel({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token, statusFilter]);
+  }, [statusFilter]);
 
   useEffect(() => {
     load();
@@ -58,7 +58,7 @@ export default function ReviewQueuePanel({ token }) {
       try {
         const res = await fetch(`/api/admin/review/${selected.id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action }),
         });
         if (!res.ok) {
@@ -73,7 +73,7 @@ export default function ReviewQueuePanel({ token }) {
         setBusy(false);
       }
     },
-    [selected, busy, token, load]
+    [selected, busy, load]
   );
 
   // TZ §11.3 — "Klaviatura: J/K — keyingi/oldingi element, A — qabul

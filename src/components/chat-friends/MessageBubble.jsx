@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Check, CheckCheck, Download, FileText, Flag, MoreHorizontal, Pencil, Reply, Trash2, X } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
 import { findSticker } from '@/lib/stickers';
 import { useChat } from '@/context/ChatContext';
@@ -77,8 +76,7 @@ function ImageLightbox({ url, onClose }) {
 }
 
 function ImageBubble({ media }) {
-  const { token } = useApp();
-  const { url, error } = useAuthedMediaUrl(media.key, token);
+  const { url, error } = useAuthedMediaUrl(media.key);
   const [open, setOpen] = useState(false);
   if (error) return <MediaError />;
   if (!url) return <div className="w-40 max-w-full h-32 bg-primary-soft rounded-lg animate-pulse" />;
@@ -99,8 +97,7 @@ function ImageBubble({ media }) {
 }
 
 function VideoBubble({ media }) {
-  const { token } = useApp();
-  const { url, error } = useAuthedMediaUrl(media.key, token);
+  const { url, error } = useAuthedMediaUrl(media.key);
   if (error) return <MediaError />;
   if (!url) return <div className="w-56 max-w-full h-40 bg-primary-soft rounded-lg animate-pulse" />;
   return (
@@ -115,16 +112,14 @@ function VideoBubble({ media }) {
 }
 
 function VoiceBubble({ media }) {
-  const { token } = useApp();
-  const { url, error } = useAuthedMediaUrl(media.key, token);
+  const { url, error } = useAuthedMediaUrl(media.key);
   if (error) return <MediaError />;
   if (!url) return <div className="w-48 max-w-full h-10 bg-primary-soft rounded-full animate-pulse" />;
   return <audio src={url} controls className="block w-56 max-w-full h-10" />;
 }
 
 function FileBubble({ media }) {
-  const { token } = useApp();
-  const { url, error } = useAuthedMediaUrl(media.key, token);
+  const { url, error } = useAuthedMediaUrl(media.key);
   const inner = (
     <>
       <FileText size={16} className="flex-shrink-0" />

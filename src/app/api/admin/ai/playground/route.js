@@ -1,4 +1,4 @@
-import { requireAdminUser } from '@/lib/chatAuth';
+import { requireAdminUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { getTaskConfig, recordAiCall, hashInput } from '@/lib/contentAgent/aiCallStore';
 import { callTask, AiRouterError } from '@/lib/contentAgent/aiRouter';
@@ -31,8 +31,15 @@ const MAX_HISTORY_MESSAGES = 20; // sinov chat cheksiz o'smasin — narx nazorat
 
 export async function POST(req) {
   try {
-    const { error, status } = await requireAdminUser(req);
+    const { error, status, user } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
+
+    // Boshqa AI endpointlari (words/enrich, ai/chat) kabi narx nazorati —
+    // bu yerda avval yo'q edi, admin hisobi buzilsa cheksiz AI chaqiruviga
+    // yo'l qo'yardi (audit topilmasi).
+    if (!(await checkRateLimit(user._id, 'admin-ai-playground', 30))) {
+      return NextResponse.json({ error: "Juda ko'p so'rov. Biroz kuting." }, { status: 429 });
+    }
 
     const body = await req.json().catch(() => ({}));
     const { taskKey, systemPrompt, messages } = body;

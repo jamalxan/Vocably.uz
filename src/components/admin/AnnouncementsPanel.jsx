@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2, Megaphone, Send } from 'lucide-react';
 
-export default function AnnouncementsPanel({ token }) {
+export default function AnnouncementsPanel() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
@@ -13,13 +13,13 @@ export default function AnnouncementsPanel({ token }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/announcements', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/admin/announcements');
       const data = await res.json();
       if (res.ok) setAnnouncements(data.announcements || []);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -37,7 +37,7 @@ export default function AnnouncementsPanel({ token }) {
     try {
       const res = await fetch('/api/admin/announcements', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title.trim(), body: body.trim() }),
       });
       const data = await res.json();

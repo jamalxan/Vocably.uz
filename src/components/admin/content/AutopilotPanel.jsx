@@ -22,7 +22,7 @@ const ACTION_LABELS = {
 // uchinchi tabi. `agent_actions`/`AutomationPolicy` hali bo'sh bo'lishi
 // mumkin (orchestrator qurilmagan — M2-M6 kutmoqda), shuning uchun bo'sh
 // holat ("hali hech narsa yo'q") aniq ko'rsatiladi, xato sifatida emas.
-export default function AutopilotPanel({ token }) {
+export default function AutopilotPanel() {
   const [policy, setPolicy] = useState(null);
   const [draft, setDraft] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -35,8 +35,8 @@ export default function AutopilotPanel({ token }) {
     setLoading(true);
     try {
       const [policyRes, summaryRes] = await Promise.all([
-        fetch('/api/admin/automation/policy', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/agent-actions/summary', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/automation/policy'),
+        fetch('/api/admin/agent-actions/summary'),
       ]);
       const policyData = await policyRes.json();
       const summaryData = await summaryRes.json();
@@ -48,7 +48,7 @@ export default function AutopilotPanel({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -60,7 +60,7 @@ export default function AutopilotPanel({ token }) {
     try {
       const res = await fetch('/api/admin/automation/policy', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           scope: 'global',
           level: draft.level,
@@ -93,7 +93,7 @@ export default function AutopilotPanel({ token }) {
       const url = policy?.paused ? '/api/admin/automation/resume' : '/api/admin/automation/pause';
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: 'admin_manual' }),
       });
       const data = await res.json().catch(() => ({}));

@@ -39,18 +39,6 @@ function writeStored(key: string, value: string) {
   }
 }
 
-// Loyihada auth FAQAT `Authorization: Bearer <token>` header orqali (JWT hali
-// localStorage'da — TZ-vocably-v2.md BUG-030, Sprint 5'da httpOnly cookie'ga
-// o'tkaziladi). `useAutosave.ts` ham shu funksiyani ishlatadi.
-export function getStoredAuthToken(): string | null {
-  if (!isBrowser()) return null;
-  try {
-    return localStorage.getItem('token');
-  } catch {
-    return null;
-  }
-}
-
 export interface EssayState {
   text: string;
   wordCount: number;
@@ -65,12 +53,10 @@ async function patchAnswers(
     essays?: { task1?: EssayState; task2?: EssayState };
   }
 ): Promise<boolean> {
-  const token = getStoredAuthToken();
-  if (!token) return false;
   try {
     const res = await fetch(`/api/exam/attempts/${attemptId}/answers`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
     return res.ok;

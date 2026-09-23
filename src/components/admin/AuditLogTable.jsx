@@ -10,27 +10,24 @@ const ACTORS = [
 
 // docs/ai-content-agent-tz-avtopilot.md §7.4 — "Aktyor: Hammasi / Admin /
 // AI agent" filtri.
-export default function AuditLogTable({ token }) {
+export default function AuditLogTable() {
   const [actor, setActor] = useState('admin');
   const [logs, setLogs] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(
-    (actorValue) => {
-      setLoading(true);
-      fetch(`/api/admin/audit-log?actor=${actorValue}`, { headers: { Authorization: `Bearer ${token}` } })
-        .then((r) => r.json())
-        .then((d) => {
-          setLogs(d.logs || []);
-          setNextCursor(d.nextCursor || null);
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    },
-    [token]
-  );
+  const load = useCallback((actorValue) => {
+    setLoading(true);
+    fetch(`/api/admin/audit-log?actor=${actorValue}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setLogs(d.logs || []);
+        setNextCursor(d.nextCursor || null);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     load(actor);
@@ -40,9 +37,7 @@ export default function AuditLogTable({ token }) {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/admin/audit-log?actor=${actor}&before=${encodeURIComponent(nextCursor)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`/api/admin/audit-log?actor=${actor}&before=${encodeURIComponent(nextCursor)}`);
       const data = await res.json();
       setLogs((prev) => [...prev, ...(data.logs || [])]);
       setNextCursor(data.nextCursor || null);

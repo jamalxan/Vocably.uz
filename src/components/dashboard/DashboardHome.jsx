@@ -23,39 +23,36 @@ const ActivityChart = dynamic(() => import('./ActivityChart'), {
 // spec §5.4: dashboard bitta so'rov bilan ochiladi — barcha bloklar shu bitta javobdan o'qiydi.
 export default function DashboardHome() {
   const router = useRouter();
-  const { token, displayName, setActiveCatIndex, startPracticeQueue } = useApp();
+  const { isAuthed, displayName, setActiveCatIndex, startPracticeQueue } = useApp();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(
-    async (signal) => {
-      setLoading(true);
-      setError(false);
-      try {
-        const res = await fetch('/api/dashboard', { headers: { Authorization: `Bearer ${token}` }, signal });
-        if (!res.ok) throw new Error();
-        const json = await res.json();
-        if (!signal?.aborted) setData(json);
-      } catch {
-        if (!signal?.aborted) setError(true);
-      } finally {
-        if (!signal?.aborted) setLoading(false);
-      }
-    },
-    [token]
-  );
+  const load = useCallback(async (signal) => {
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await fetch('/api/dashboard', { signal });
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      if (!signal?.aborted) setData(json);
+    } catch {
+      if (!signal?.aborted) setError(true);
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, []);
 
   // Token almashsa/unmount bo'lsa eski so'rov bekor qilinadi — eski javob yangisini bosmasin.
   useEffect(() => {
-    if (!token) {
+    if (!isAuthed) {
       setLoading(false);
       return undefined;
     }
     const ctrl = new AbortController();
     load(ctrl.signal);
     return () => ctrl.abort();
-  }, [token, load]);
+  }, [isAuthed, load]);
 
   const goToReview = () => {
     router.push('/app/lugat/takrorlash');

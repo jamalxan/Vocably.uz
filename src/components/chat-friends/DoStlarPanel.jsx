@@ -110,14 +110,14 @@ function DoStlarShell({ onActiveChange }) {
 // chatAccess=false bo'lganda nav elementini umuman ko'rsatmaydi, bu yerdagi
 // tekshiruv — himoyaning ikkinchi qatlami, to'g'ridan-to'g'ri URL kiritilsa ham ishlaydi).
 export default function DoStlarPanel({ onActiveChange }) {
-  const { token, chatAccess } = useApp();
+  const { chatUserId, chatAccess } = useApp();
 
   if (!chatAccess) {
     return <p className="text-sm text-muted text-center py-12">Bu bo'lim uchun ruxsatingiz yo'q.</p>;
   }
 
   return (
-    <ChatProvider token={token}>
+    <ChatProvider myUserId={chatUserId}>
       <DoStlarShell onActiveChange={onActiveChange} />
     </ChatProvider>
   );

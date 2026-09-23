@@ -38,13 +38,13 @@ function formatMinutes(min) {
   return m ? `${h} soat ${m} daq` : `${h} soat`;
 }
 
-export default function AdminActivity({ token }) {
+export default function AdminActivity() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('/api/admin/activity', { headers: { Authorization: `Bearer ${token}` } })
+    fetch('/api/admin/activity')
       .then((r) => r.json())
       .then((data) => {
         if (data?.error) setError(data.error);
@@ -52,7 +52,7 @@ export default function AdminActivity({ token }) {
       })
       .catch(() => setError('Yuklashda xatolik'))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   if (loading) {
     return (

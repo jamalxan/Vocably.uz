@@ -37,7 +37,7 @@ function uploadWithProgress(url, file, onProgress) {
   });
 }
 
-export default function NewBookWizard({ token }) {
+export default function NewBookWizard() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
@@ -77,7 +77,7 @@ export default function NewBookWizard({ token }) {
     try {
       const res = await fetch('/api/admin/books', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: meta.title.trim(),
           publisher: meta.publisher.trim(),

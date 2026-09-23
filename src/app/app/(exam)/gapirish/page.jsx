@@ -9,9 +9,9 @@ import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 // (avval `/app/gapirish-beta`da qurilgan, endi asosiy yo'lga ko'chirildi).
 export default function GapirishPage() {
   const router = useRouter();
-  const { token } = useApp();
+  const { isAuthed } = useApp();
 
-  if (!token) {
+  if (!isAuthed) {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 

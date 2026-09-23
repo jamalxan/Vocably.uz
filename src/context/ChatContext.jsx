@@ -1,14 +1,22 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { connectChatSocket } from '@/lib/socketClient';
-import { getJwtUserId } from '@/lib/jwtClient';
 
 const ChatContext = createContext(null);
 
 // Do'stlar bo'limiga xos holat — global AppContext'ga qo'shilmaydi, chunki bu
 // hidden/gated funksiya: faqat chatAccess bo'lgan userlarda, va faqat "Do'stlar"
 // bo'limi ochilganda mount qilinadi (docs/ chat plani).
-export function ChatProvider({ token, children }) {
+//
+// AUTH_MIGRATION_MAP.md — `token` prop endi yo'q (REST so'rovlar httpOnly
+// cookie orqali ishlaydi). O'rniga `myUserId` (AppContext#chatUserId, real
+// `/api/chat/me` javobidan) — faqat "bu xabar meniki emasmi" kabi UI
+// taqqoslashlar uchun, xavfsizlik qarori uchun EMAS. realtime-server/ esa
+// alohida, cross-origin xizmat bo'lgani va cookie'ga ega bo'lmagani uchun
+// haqiqiy (lekin 60 soniyalik, faqat shu maqsad uchun) tokenga muhtoj —
+// buni har ulanishda `/api/chat/socket-ticket`dan (cookie orqali) olamiz,
+// hech qachon localStorage'ga yozmaymiz.
+export function ChatProvider({ myUserId, children }) {
   const [conversations, setConversations] = useState([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
   // Ro'yxat yuklanmasa "suhbat yo'q" emas, xato + "Qayta yuklash" ko'rsatiladi.
@@ -53,16 +61,19 @@ export function ChatProvider({ token, children }) {
   const replyingToRef = useRef(null);
   replyingToRef.current = replyingTo;
   const myIdRef = useRef(null);
-  myIdRef.current = getJwtUserId(token);
+  myIdRef.current = myUserId;
   const typingTimersRef = useRef({});
   // Server bir sahifada 50 ta xabar qaytaradi — kamroq kelsa, eskisi qolmagan.
   const hasMoreOlderRef = useRef(true);
   const lastTypingEmitRef = useRef({});
 
-  const authHeaders = useCallback(
-    (extra = {}) => ({ Authorization: `Bearer ${token}`, ...extra }),
-    [token]
-  );
+  // AUTH_MIGRATION_MAP.md — bu funksiya ilgari Authorization header qo'shardi.
+  // Endi cookie orqali autentifikatsiya qilingani uchun faqat berilgan qo'shimcha
+  // header'larni (masalan Content-Type) o'zgarishsiz qaytaradi — pastdagi barcha
+  // chaqiruvchi joylarni (25+ fetch) birma-bir tahrirlamaslik uchun ataylab
+  // saqlab qolingan, xatti-harakati esa endi to'g'ri (hech qanday header
+  // qo'lda biriktirilmaydi).
+  const authHeaders = useCallback((extra = {}) => extra, []);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -596,72 +607,97 @@ export function ChatProvider({ token, children }) {
   // Realtime: mavjud bo'lsa socket orqali jonli push, aks holda (yoki uzilganda)
   // ochiq suhbatni har 5s'da qayta so'raymiz — chat hech qachon socket'ga qattiq
   // bog'liq bo'lmasligi kerak (docs/ chat plani §2).
+  //
+  // AUTH_MIGRATION_MAP.md — realtime-server/ alohida (cross-origin) xizmat
+  // bo'lgani va Next.js'ning httpOnly cookie'siga ega bo'lmagani uchun socket
+  // ulanishi HAQIQIY tokenga muhtoj. Uni endi har ulanishda cookie orqali
+  // autentifikatsiya qilingan `/api/chat/socket-ticket`dan olamiz — 60
+  // soniyalik umr bilan, hech qachon localStorage'ga yozilmaydi (faqat shu
+  // effekt closure'ida, xotirada).
   useEffect(() => {
-    const socket = connectChatSocket(token);
-    socketRef.current = socket;
-    if (!socket) return undefined;
+    let cancelled = false;
+    let socket = null;
 
-    socket.on('connect', () => {
-      setSocketConnected(true);
-      queryPresenceForKnownUsers();
-    });
-    socket.on('disconnect', () => setSocketConnected(false));
-    socket.on('message:new', ({ conversationId, message }) => {
-      if (String(conversationId) === String(activeIdRef.current)) {
-        appendMessage(message);
-        // Suhbat hozir ochiq turibdi — kelgan zahoti "o'qildi" deb belgilaymiz
-        // (Telegram uslubi: chat ochiq bo'lsa yangi xabar darhol o'qilgan hisoblanadi),
-        // LEKIN faqat tab/oyna haqiqatan ham ko'rinib turgan bo'lsa (foydalanuvchi
-        // boshqa tabda yoki oynani kichraytirgan bo'lsa, xabar tab qayta fokusga
-        // qaytmaguncha "o'qilmagan" holida qoladi — pastdagi visibilitychange
-        // effekti o'sha paytda orqada qolganini tutib oladi, avvalgi xato manbai:
-        // yashirin tabda ham xabar darhol "o'qilgan" deb ko'rsatilardi).
-        if (!document.hidden) markRead(conversationId);
-      }
-      loadConversations();
-    });
-    // Men yuborgan xabar(lar) boshqa tomonda o'qilganda kelib, bitta ptichkani
-    // ikkitaga aylantiradi — faqat hozir ochiq suhbatga tegishli bo'lsa.
-    socket.on('message:read', ({ conversationId, readAt } = {}) => {
-      if (!conversationId || String(conversationId) !== String(activeIdRef.current)) return;
-      // Faqat MEN yuborgan (hali readAt'siz) xabarlarni belgilaydi — boshqa
-      // tomonning o'zi yuborgan xabarlariga tegmaydi (ular UI'da tick ko'rsatmaydi,
-      // lekin noto'g'ri lokal holat qoldirmaslik uchun aniq cheklaymiz).
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.readAt || String(m.senderId) !== String(myIdRef.current) ? m : { ...m, readAt }
-        )
-      );
-    });
-    socket.on('presence:update', ({ userId, online }) => {
-      setLivePresence((prev) => ({ ...prev, [String(userId)]: online }));
-    });
-    // Boshqa tomon yozayotganini (yoki ovozli/video xabar yozib turganini)
-    // bildiradi — 3s ichida yana kelmasa "yozmoqda..." o'zi tozalanadi (aniq
-    // "to'xtatdi" hodisasi yo'q, bu soddaroq va uzilishlarga chidamli). Uzun
-    // yozuvlarda (voice/video) jo'natuvchi shu 3s oynasidan tez-tez (2s'da bir)
-    // qayta yuboradi, shuning uchun butun yozuv davomida ko'rinib turadi.
-    socket.on('typing', ({ conversationId, kind } = {}) => {
-      if (!conversationId) return;
-      clearTimeout(typingTimersRef.current[conversationId]);
-      setTypingByConversation((prev) => ({ ...prev, [conversationId]: kind || 'text' }));
-      typingTimersRef.current[conversationId] = setTimeout(() => {
-        setTypingByConversation((prev) => {
-          if (!prev[conversationId]) return prev;
-          const next = { ...prev };
-          delete next[conversationId];
-          return next;
-        });
-      }, 3000);
-    });
+    fetch('/api/chat/socket-ticket', { method: 'POST' })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(({ ticket }) => {
+        if (cancelled) return;
+        socket = connectChatSocket(ticket);
+        socketRef.current = socket;
+        if (!socket) return;
+        attachSocketHandlers(socket);
+      })
+      .catch(() => {
+        // Chipta olinmadi (masalan tarmoq xatosi) — chat REST orqali
+        // ishlayveradi (docs/ chat plani §2, "socket butunlay o'chib qolsa ham").
+      });
+
+    // Socket hodisa handlerlari alohida funksiyaga chiqarildi — chipta
+    // so'ralib bo'lingandan keyin, yuqoridagi .then() ichida chaqiriladi.
+    function attachSocketHandlers(socket) {
+      socket.on('connect', () => {
+        setSocketConnected(true);
+        queryPresenceForKnownUsers();
+      });
+      socket.on('disconnect', () => setSocketConnected(false));
+      socket.on('message:new', ({ conversationId, message }) => {
+        if (String(conversationId) === String(activeIdRef.current)) {
+          appendMessage(message);
+          // Suhbat hozir ochiq turibdi — kelgan zahoti "o'qildi" deb belgilaymiz
+          // (Telegram uslubi: chat ochiq bo'lsa yangi xabar darhol o'qilgan hisoblanadi),
+          // LEKIN faqat tab/oyna haqiqatan ham ko'rinib turgan bo'lsa (foydalanuvchi
+          // boshqa tabda yoki oynani kichraytirgan bo'lsa, xabar tab qayta fokusga
+          // qaytmaguncha "o'qilmagan" holida qoladi — pastdagi visibilitychange
+          // effekti o'sha paytda orqada qolganini tutib oladi, avvalgi xato manbai:
+          // yashirin tabda ham xabar darhol "o'qilgan" deb ko'rsatilardi).
+          if (!document.hidden) markRead(conversationId);
+        }
+        loadConversations();
+      });
+      // Men yuborgan xabar(lar) boshqa tomonda o'qilganda kelib, bitta ptichkani
+      // ikkitaga aylantiradi — faqat hozir ochiq suhbatga tegishli bo'lsa.
+      socket.on('message:read', ({ conversationId, readAt } = {}) => {
+        if (!conversationId || String(conversationId) !== String(activeIdRef.current)) return;
+        // Faqat MEN yuborgan (hali readAt'siz) xabarlarni belgilaydi — boshqa
+        // tomonning o'zi yuborgan xabarlariga tegmaydi (ular UI'da tick ko'rsatmaydi,
+        // lekin noto'g'ri lokal holat qoldirmaslik uchun aniq cheklaymiz).
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.readAt || String(m.senderId) !== String(myIdRef.current) ? m : { ...m, readAt }
+          )
+        );
+      });
+      socket.on('presence:update', ({ userId, online }) => {
+        setLivePresence((prev) => ({ ...prev, [String(userId)]: online }));
+      });
+      // Boshqa tomon yozayotganini (yoki ovozli/video xabar yozib turganini)
+      // bildiradi — 3s ichida yana kelmasa "yozmoqda..." o'zi tozalanadi (aniq
+      // "to'xtatdi" hodisasi yo'q, bu soddaroq va uzilishlarga chidamli). Uzun
+      // yozuvlarda (voice/video) jo'natuvchi shu 3s oynasidan tez-tez (2s'da bir)
+      // qayta yuboradi, shuning uchun butun yozuv davomida ko'rinib turadi.
+      socket.on('typing', ({ conversationId, kind } = {}) => {
+        if (!conversationId) return;
+        clearTimeout(typingTimersRef.current[conversationId]);
+        setTypingByConversation((prev) => ({ ...prev, [conversationId]: kind || 'text' }));
+        typingTimersRef.current[conversationId] = setTimeout(() => {
+          setTypingByConversation((prev) => {
+            if (!prev[conversationId]) return prev;
+            const next = { ...prev };
+            delete next[conversationId];
+            return next;
+          });
+        }, 3000);
+      });
+    }
 
     return () => {
-      socket.disconnect();
+      cancelled = true;
+      socket?.disconnect();
       Object.values(typingTimersRef.current).forEach(clearTimeout);
       typingTimersRef.current = {};
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     clearInterval(pollRef.current);

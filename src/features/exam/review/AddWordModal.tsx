@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Check, X, Loader2 } from 'lucide-react';
-import { getStoredAuthToken } from '../state/examStore';
 import { useDialogFocus } from '../state/useDialogFocus';
 import Button from '@/components/ui/Button';
 
@@ -14,12 +13,10 @@ import Button from '@/components/ui/Button';
 // keyin foydalanuvchi o'sha yerdan normal ishlatadi — bu yerda ikkinchi
 // marta qurilmaydi.
 async function authedFetch(url: string, init?: RequestInit): Promise<Response> {
-  const token = getStoredAuthToken();
   return fetch(url, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers || {}),
     },
   });

@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Send, Paperclip, Loader2, X, Pencil, Reply, FileText } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
-import { getJwtUserId } from '@/lib/jwtClient';
 import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import { VoiceRecorderButton } from './VoiceRecorder';
 import VideoRecorderButton from './VideoRecorder';
@@ -27,7 +26,7 @@ export default function Composer() {
     activeConversation,
     sendTyping,
   } = useChat();
-  const { token: myToken } = useApp();
+  const { chatUserId: myId } = useApp();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -237,7 +236,6 @@ export default function Composer() {
     });
   };
 
-  const myId = getJwtUserId(myToken);
   const replySenderLabel = replyingTo
     ? String(replyingTo.senderId) === String(myId)
       ? 'Siz'

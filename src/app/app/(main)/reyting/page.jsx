@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Trophy, Medal, RotateCcw } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
 import Skeleton from '@/components/ui/Skeleton';
 
 const PERIODS = [
@@ -16,7 +15,6 @@ const MEDAL_COLOR = ['text-warning', 'text-muted', 'text-accent'];
 // (izoh: src/app/api/gamification/leaderboard/route.js) — hozircha barcha
 // foydalanuvchilar bo'yicha umumiy reyting.
 export default function ReytingPage() {
-  const { token } = useApp();
   const [period, setPeriod] = useState('week');
   const [rows, setRows] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,9 +24,7 @@ export default function ReytingPage() {
     setLoading(true);
     setError(false);
     try {
-      const res = await fetch(`/api/gamification/leaderboard?period=${period}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`/api/gamification/leaderboard?period=${period}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Xatolik');
       setRows(data.rows || []);
@@ -37,7 +33,7 @@ export default function ReytingPage() {
     } finally {
       setLoading(false);
     }
-  }, [period, token]);
+  }, [period]);
 
   useEffect(() => {
     load();

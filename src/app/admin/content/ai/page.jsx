@@ -1,6 +1,5 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { useAdmin } from '@/context/AdminContext';
 import { Bot, Loader2, MessageSquare, Settings } from 'lucide-react';
 import AiSettingsPanel from '@/components/admin/content/AiSettingsPanel';
 import AiPlaygroundChat from '@/components/admin/content/AiPlaygroundChat';
@@ -12,7 +11,6 @@ import AutopilotPanel from '@/components/admin/content/AutopilotPanel';
 // ikkalasi ham kerak: chat sozlamalarni SINASH uchun, forma esa ularni
 // O'ZGARTIRISH uchun.
 export default function AdminContentAiPage() {
-  const { token } = useAdmin();
   const [tab, setTab] = useState('chat');
   const [taskKeys, setTaskKeys] = useState([]);
   const [loadingKeys, setLoadingKeys] = useState(true);
@@ -20,7 +18,7 @@ export default function AdminContentAiPage() {
   const loadTaskKeys = useCallback(async () => {
     setLoadingKeys(true);
     try {
-      const res = await fetch('/api/admin/ai/config', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/admin/ai/config');
       const data = await res.json();
       if (res.ok) setTaskKeys((data.configs || []).map((c) => c.taskKey));
     } catch {
@@ -28,11 +26,11 @@ export default function AdminContentAiPage() {
     } finally {
       setLoadingKeys(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
-    if (token) loadTaskKeys();
-  }, [token, loadTaskKeys]);
+    loadTaskKeys();
+  }, [loadTaskKeys]);
 
   return (
     <div className="space-y-3">
@@ -53,10 +51,10 @@ export default function AdminContentAiPage() {
         ) : taskKeys.length === 0 ? (
           <p className="text-sm text-muted py-8 text-center">TaskKey topilmadi.</p>
         ) : (
-          <AiPlaygroundChat token={token} taskKeys={taskKeys} />
+          <AiPlaygroundChat taskKeys={taskKeys} />
         ))}
-      {tab === 'settings' && <AiSettingsPanel token={token} />}
-      {tab === 'autopilot' && <AutopilotPanel token={token} />}
+      {tab === 'settings' && <AiSettingsPanel />}
+      {tab === 'autopilot' && <AutopilotPanel />}
     </div>
   );
 }

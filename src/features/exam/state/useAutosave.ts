@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { useExamStore, getStoredAuthToken } from './examStore';
+import { useExamStore } from './examStore';
 
 const DEBOUNCE_MS = 800;
 const SNAPSHOT_INTERVAL_MS = 20000;
@@ -17,12 +17,11 @@ const SNAPSHOT_INTERVAL_MS = 20000;
 // bilan ishlaydi, bo'lim almashish faqat Mock orkestratsiyasida bor edi (Faza 3,
 // TZ §19 item 15), o'sha yerda qo'shiladi.
 //
-// ⚠️ `navigator.sendBeacon` ATAYLAB ishlatilmadi: u custom HTTP header
-// qo'sha olmaydi, bu loyihada esa autentifikatsiya FAQAT
-// `Authorization: Bearer <token>` header orqali ishlaydi (JWT hali
-// localStorage'da — BUG-030, Sprint 5'da httpOnly cookie'ga o'tkaziladi).
-// `fetch(url, { keepalive: true })` xuddi shu maqsadga (sahifa yopilayotganda
-// ham so'rovni yakunlash) xizmat qiladi VA header qo'shishga ruxsat beradi.
+// ⚠️ `navigator.sendBeacon` ishlatilmadi: `fetch(url, { keepalive: true })`
+// xuddi shu maqsadga (sahifa yopilayotganda ham so'rovni yakunlash) xizmat
+// qiladi va httpOnly cookie brauzer tomonidan har ikkalasida ham avtomatik
+// yuboriladi — AUTH_MIGRATION_MAP.md'dan keyin bu ikkisi orasida amaliy farq
+// yo'q, lekin `fetch` allaqachon ishlatilgani uchun o'zgartirilmadi.
 export function useAutosave(attemptId: string | null) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -53,15 +52,13 @@ export function useAutosave(attemptId: string | null) {
     const onBeforeUnload = () => {
       const state = useExamStore.getState();
       if (state.dirtyKeys.size === 0 && !state.flaggedDirty) return;
-      const token = getStoredAuthToken();
-      if (!token) return;
 
       const dirtyAnswers: Record<string, unknown> = {};
       for (const key of state.dirtyKeys) dirtyAnswers[key] = state.answers[key];
 
       fetch(`/api/exam/attempts/${attemptId}/answers`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           answers: dirtyAnswers,
           flagged: Array.from(state.flagged),
