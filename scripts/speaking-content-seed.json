@@ -1,0 +1,134 @@
+{
+  "vocably-practice-test-1": {
+    "durationSec": 780,
+    "part1Questions": [
+      "Can you tell me a little about where you live?",
+      "Do you live in a house or an apartment?",
+      "What do you like most about your neighbourhood?",
+      "Is there anything you would change about it?",
+      "Do you work or are you a student?",
+      "What do you enjoy most about your work or studies?",
+      "What did you want to be when you were a child?",
+      "How do you usually spend your free time?",
+      "Did you have a favourite hobby as a child?",
+      "Do you prefer spending free time alone or with other people?"
+    ],
+    "part2CueCard": {
+      "topic": "Describe a book you have read that you enjoyed.",
+      "bulletPoints": [
+        "what the book was about",
+        "when and where you read it",
+        "why you decided to read it",
+        "and explain why you enjoyed it"
+      ],
+      "prepSec": 60,
+      "speakSec": 120
+    },
+    "part3Questions": [
+      "What kinds of books are most popular in your country?",
+      "Do you think reading habits have changed in recent years? Why?",
+      "How do children benefit from reading books at a young age?",
+      "Do you think people will still read printed books in the future, or only digital ones?",
+      "Some people say films are better than books for telling a story. Do you agree?"
+    ]
+  },
+  "vocably-practice-test-2": {
+    "durationSec": 780,
+    "part1Questions": [
+      "Do you live with your family or on your own?",
+      "How much time do you usually spend with your family?",
+      "What do you usually do together as a family?",
+      "What does a typical day look like for you?",
+      "Is your daily routine different on weekends?",
+      "What is your favourite meal of the day?",
+      "Do you prefer eating at home or eating out?",
+      "What kind of food do you enjoy most?",
+      "Have you ever tried cooking a new dish? How did it go?",
+      "Is food an important part of celebrations in your culture?"
+    ],
+    "part2CueCard": {
+      "topic": "Describe a memorable journey or trip you have taken.",
+      "bulletPoints": [
+        "where you went",
+        "who you went with",
+        "what you did during the trip",
+        "and explain why the trip was memorable for you"
+      ],
+      "prepSec": 60,
+      "speakSec": 120
+    },
+    "part3Questions": [
+      "Why do you think people enjoy travelling to new places?",
+      "What are the benefits of travelling for young people?",
+      "Do you think tourism has more advantages or disadvantages for a country?",
+      "How has travelling changed over the last twenty years?",
+      "Do you think it is better to travel alone or in a group? Why?"
+    ]
+  },
+  "vocably-practice-test-3": {
+    "durationSec": 780,
+    "part1Questions": [
+      "What hobbies or interests do you have?",
+      "How did you first become interested in this hobby?",
+      "How much time do you spend on your hobbies each week?",
+      "Do you use technology much in your daily life?",
+      "What device do you use most often — a phone, a computer, or something else?",
+      "Has technology made your life easier or more complicated?",
+      "What is the weather like in your country at this time of year?",
+      "What is your favourite season? Why?",
+      "Does the weather affect your mood or your plans?",
+      "Do you prefer hot weather or cold weather?"
+    ],
+    "part2CueCard": {
+      "topic": "Describe a person who has had a positive influence on your life.",
+      "bulletPoints": [
+        "who this person is",
+        "how you know them",
+        "what they have done that influenced you",
+        "and explain why this influence has been important to you"
+      ],
+      "prepSec": 60,
+      "speakSec": 120
+    },
+    "part3Questions": [
+      "What qualities make someone a good role model?",
+      "Do you think famous people, like celebrities, have a responsibility to be good role models?",
+      "How do parents influence the values of their children?",
+      "Do you think teachers have as much influence on young people as parents do?",
+      "Has social media changed who young people look up to nowadays?"
+    ]
+  },
+  "vocably-practice-test-4": {
+    "durationSec": 780,
+    "part1Questions": [
+      "Can you describe the area where you grew up?",
+      "What kind of shops are there near where you live?",
+      "Do you enjoy shopping? Why or why not?",
+      "Do you prefer shopping online or in physical shops?",
+      "What kind of music do you like to listen to?",
+      "Do you play any musical instruments?",
+      "Do you listen to music while you study or work?",
+      "Has your taste in music changed since you were younger?",
+      "Do you often go to concerts or live music events?",
+      "Is music an important part of celebrations in your country?"
+    ],
+    "part2CueCard": {
+      "topic": "Describe a skill you would like to learn in the future.",
+      "bulletPoints": [
+        "what the skill is",
+        "how you would learn it",
+        "how much time it would take to learn",
+        "and explain why you want to learn this skill"
+      ],
+      "prepSec": 60,
+      "speakSec": 120
+    },
+    "part3Questions": [
+      "What skills do you think are most useful for young people to learn today?",
+      "Do you think schools should teach practical skills as well as academic subjects?",
+      "How has the internet changed the way people learn new skills?",
+      "Do you think it's harder to learn new skills as an adult compared to a child?",
+      "What role does motivation play in successfully learning something new?"
+    ]
+  }
+}

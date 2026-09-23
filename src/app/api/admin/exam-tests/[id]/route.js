@@ -49,27 +49,31 @@ export async function PATCH(req, { params }) {
       test.markModified('rights');
     }
 
-    // Publish qilinayotganda — HAR DOIM qayta validatsiya (content o'zgarmagan
-    // bo'lsa ham, chunki avval draft holida xatolik bilan saqlangan bo'lishi
-    // mumkin edi). Faqat unpublish qilish (isPublished: false) validatsiyasiz.
+    // Publish qilinayotganda YOKI allaqachon nashr etilgan testning kontenti
+    // o'zgartirilayotganda — HAR DOIM qayta validatsiya. Faqat "isPublished:
+    // true" bosilgandagina emas: N-04 (SpeakingSectionEditor.jsx) kabi
+    // "sections"ni ALOHIDA (isPublished'ga tegmasdan) PATCH qiluvchi yo'llar
+    // paydo bo'lgach, faqat shu shartga tayanish nashr etilgan testga
+    // klient-tarafdagi "Tekshirish" bosilmasa ham buzuq kontent yozib
+    // qo'yilishiga yo'l ochib qo'yardi (server-tarafda hech qanday tekshiruv
+    // ishlamas edi). Faqat unpublish qilish (isPublished: false) validatsiyasiz.
+    const willBePublished = isPublished === false ? false : isPublished === true ? true : test.isPublished;
     let issues = [];
-    if (isPublished === true) {
+    if (willBePublished && (sections !== undefined || isPublished === true)) {
       issues = validateTest(test.toObject());
       if (hasBlockingErrors(issues)) {
-        return NextResponse.json({ error: 'Validatsiya xatoliklari bor — publish qilinmadi', issues }, { status: 422 });
+        return NextResponse.json({ error: 'Validatsiya xatoliklari bor — saqlanmadi', issues }, { status: 422 });
       }
-      test.isPublished = true;
-      // AUDIT EX-06/N-06 (Sprint 1) — recomputed on every (re)publish, never
-      // user-settable directly.
+      // AUDIT EX-06/N-06 (Sprint 1) — recomputed whenever content/publish
+      // state of a published test changes, never user-settable directly.
       test.isMockEligible = isMockEligible(test.toObject());
       // AUDIT N-10 (Sprint 1) — persist validator findings into the admin
       // review queue (both severities, not just blockers).
       await syncValidationIssuesToReviewQueue(String(test._id), issues);
-    } else if (isPublished === false) {
-      // Unpublish leaves `isMockEligible` as-is — it reflects content shape,
-      // not publish state.
-      test.isPublished = false;
     }
+
+    if (isPublished === true) test.isPublished = true;
+    else if (isPublished === false) test.isPublished = false; // isMockEligible left as-is — reflects content shape, not publish state.
 
     await test.save();
     await writeAuditLog(req, admin._id, 'exam_test.update', 'ExamTest', test._id, { isPublished: test.isPublished });

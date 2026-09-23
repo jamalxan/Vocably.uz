@@ -30,6 +30,8 @@ export async function GET(req) {
         hasReading: !!t.sections?.reading,
         hasListening: !!t.sections?.listening,
         hasWriting: !!t.sections?.writing,
+        // AUDIT N-04 (Sprint 2) — Speaking section indicator badge (mirrors R/L/W).
+        hasSpeaking: !!t.sections?.speaking,
         // AUDIT EX-06/N-06 — Sprint 1.
         isMockEligible: !!t.isMockEligible,
         // AUDIT N-12 — Sprint 1.

@@ -1,8 +1,9 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, BookOpen, Trash2, Eye, EyeOff, BarChart3, Copy } from 'lucide-react';
+import { Loader2, BookOpen, Trash2, Eye, EyeOff, BarChart3, Copy, Mic } from 'lucide-react';
 import NewTestForm from './NewTestForm';
 import TestStats from './TestStats';
+import SpeakingSectionEditor from './SpeakingSectionEditor';
 import ValidationIssuesList from './ValidationIssuesList';
 
 function SectionBadges({ test }) {
@@ -11,6 +12,7 @@ function SectionBadges({ test }) {
       {test.hasReading && <span className="px-1.5 py-0.5 rounded bg-bg text-[11px] leading-none font-semibold text-muted">R</span>}
       {test.hasListening && <span className="px-1.5 py-0.5 rounded bg-bg text-[11px] leading-none font-semibold text-muted">L</span>}
       {test.hasWriting && <span className="px-1.5 py-0.5 rounded bg-bg text-[11px] leading-none font-semibold text-muted">W</span>}
+      {test.hasSpeaking && <span className="px-1.5 py-0.5 rounded bg-bg text-[11px] leading-none font-semibold text-muted">S</span>}
     </div>
   );
 }
@@ -58,6 +60,7 @@ export default function ExamTestsPanel() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [statsFor, setStatsFor] = useState(null);
+  const [speakingEditorFor, setSpeakingEditorFor] = useState(null);
   // Qator ostida ko'rsatiladigan xato (alert() o'rniga): { id, message, issues }
   const [rowError, setRowError] = useState(null);
 
@@ -174,6 +177,16 @@ export default function ExamTestsPanel() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => setSpeakingEditorFor(speakingEditorFor === test.id ? null : test.id)}
+                    title="Speaking bo'limi"
+                    aria-label="Speaking bo'limi"
+                    aria-expanded={speakingEditorFor === test.id}
+                    className="p-2 min-w-11 min-h-11 md:min-w-0 md:min-h-0 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors"
+                  >
+                    <Mic size={16} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => togglePublish(test)}
                     disabled={busyId === test.id}
                     title={test.isPublished ? 'Draftga qaytarish' : 'Nashr qilish'}
@@ -213,6 +226,17 @@ export default function ExamTestsPanel() {
               {statsFor === test.id && (
                 <div className="px-4 sm:px-5 pb-4">
                   <TestStats testId={test.id} />
+                </div>
+              )}
+              {speakingEditorFor === test.id && (
+                <div className="px-4 sm:px-5 pb-4">
+                  <SpeakingSectionEditor
+                    testId={test.id}
+                    onSaved={() => {
+                      load();
+                      setSpeakingEditorFor(null);
+                    }}
+                  />
                 </div>
               )}
             </div>
