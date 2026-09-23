@@ -383,6 +383,16 @@ export interface WritingScore {
   graderModel?: string; // haqiqatan javob bergan provayder (masalan 'groq', 'gemini')
   graderVersion?: string; // baholash prompt/sxemasi versiyasi (writingGrader.ts#GRADER_VERSION)
   underMinWords?: boolean; // insho task.minWords'dan kam yozilgan — TA/TR bahosi shunga qarab jarimalangan
+  // AUDIT N-13 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md, Sprint 1) — qaysi IELTS
+  // band-descriptor rubrika revisiyasi ishlatilgani. Bugun `graderVersion`
+  // bilan bir xil qiymat (writingGrader.ts#GRADER_VERSION) — tushunchalar
+  // sal farqli (prompt/sxema versiyasi vs. rubrika revisiyasi), lekin hozircha
+  // bittagina rubrika kuzatiladi, shuning uchun ikkalasi bir manbadan keladi.
+  rubricVersion?: string;
+  // 0-1, grader modelning o'z bahosiga qanchalik ishonchi bor — hozirgi AI
+  // provayder zanjirida (aiJson.js) bunday signal umuman yo'q, shuning uchun
+  // amalda hamisha `undefined` (writingGrader.ts'dagi izohga q.).
+  confidence?: number;
 }
 
 // Eski (pre-exam-engine) `/api/speaking/submit`dagi javob shakli bilan ATAYLAB

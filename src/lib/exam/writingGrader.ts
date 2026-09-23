@@ -156,6 +156,14 @@ export async function gradeEssay(task: WritingTask, text: string): Promise<Writi
     graderModel: provider,
     graderVersion: GRADER_VERSION,
     underMinWords: wordCount < task.minWords,
+    // N-13 — only one rubric revision is tracked today, so it reuses the same
+    // constant as graderVersion (see the comment on WritingScore.rubricVersion).
+    rubricVersion: GRADER_VERSION,
+    // N-13 — `generateJsonWithMeta` (src/lib/aiJson.js) returns only
+    // `{ data, provider }`; none of the four provider chains it wraps
+    // (Groq/Gemini/Cerebras/OpenRouter, via streamOpenAiCompatible /
+    // getGeminiClient) surface a confidence/logprob-like signal, so this is
+    // left undefined rather than fabricating a number.
   };
 }
 
