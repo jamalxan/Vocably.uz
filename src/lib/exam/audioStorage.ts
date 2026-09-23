@@ -59,6 +59,21 @@ export async function getAudioFileMeta(fileId: string): Promise<AudioFileMeta | 
   };
 }
 
+/** EX-02 (audio-based pronunciation grader, speakingGrader.ts) uchun — butun
+ * faylni bir marta xotiraga yig'adi, chunki Gemini `inlineData`si base64
+ * qilingan TO'LIQ baytlarni talab qiladi (oqim emas). Pastdagi HTTP download
+ * route'i esa faqat baytlarni pipe qiladi, hech qachon buferga yig'maydi —
+ * shuning uchun bu yordamchi u yerda ishlatilmaydi. */
+export async function downloadAudioBuffer(fileId: string): Promise<Buffer> {
+  const stream = await openAudioDownloadStream(fileId);
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+    stream.on('error', reject);
+  });
+}
+
 /** `[start, end]` (ikkalasi ham inklyuziv, HTTP Range semantikasi) berilsa
  * faqat shu baytlar oralig'ini oqib beradi — brauzer `<audio>` elementi
  * odatda `Range` so'rovi yuboradi, buni qo'llab-quvvatlamasak ba'zi

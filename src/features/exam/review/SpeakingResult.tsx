@@ -66,7 +66,9 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">Speaking natijasi</p>
         <p className="text-5xl font-bold text-brand-text mt-2 tabular-nums">{s.band.toFixed(1)}</p>
         <p className="text-[11px] text-warning bg-warning-soft inline-block rounded-lg px-3 py-1.5 mt-3">
-          ⚠️ Talaffuz balli fonema darajasida emas — faqat matn (Whisper transkripti) asosidagi taxminiy kuzatuv.
+          {s.pronunciation
+            ? '⚠️ Talaffuz bahosi AI (audio) asosida — rasmiy IELTS pronunciation assessment emas, taxminiy baho.'
+            : '⚠️ Talaffuz balli fonema darajasida emas — faqat matn (Whisper transkripti) asosidagi taxminiy kuzatuv.'}
         </p>
       </div>
 
@@ -80,10 +82,20 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
             <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-accent-soft text-accent text-xs font-bold">{s[key].band}</span>
           </div>
         ))}
-        <div className="bg-surface border border-border rounded-xl p-3">
-          <p className="text-[11px] font-semibold text-muted uppercase mb-0.5">Talaffuz (taxminiy)</p>
-          <p className="text-xs text-muted">{s.pronunciationNote}</p>
-        </div>
+        {s.pronunciation ? (
+          <div className="bg-surface border border-border rounded-xl p-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold text-muted uppercase mb-0.5">Pronunciation</p>
+              <p className="text-xs text-muted">{s.pronunciation.note}</p>
+            </div>
+            <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-accent-soft text-accent text-xs font-bold">{s.pronunciation.band}</span>
+          </div>
+        ) : (
+          <div className="bg-surface border border-border rounded-xl p-3">
+            <p className="text-[11px] font-semibold text-muted uppercase mb-0.5">Talaffuz (taxminiy)</p>
+            <p className="text-xs text-muted">{s.pronunciationNote}</p>
+          </div>
+        )}
       </div>
 
       {s.strengths.length > 0 && (

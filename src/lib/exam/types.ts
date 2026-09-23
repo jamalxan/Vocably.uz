@@ -409,6 +409,13 @@ export interface SpeakingScore {
   // ulanmagan, §20.1'dagi "bepul tarif" zaxirasi) — shuning uchun ball emas,
   // faqat matn asosidagi kuzatuv.
   pronunciationNote: string;
+  // EX-02 — YANGI, haqiqiy audio asosidagi baho (Gemini multimodal, speakingGrader.ts
+  // assessPronunciation()). Faqat mos yozuv topilgan VA Gemini audio chaqiruvi
+  // muvaffaqiyatli bo'lganda mavjud bo'ladi — bo'lmasa umuman qaytarilmaydi
+  // (eski, audio-siz baholangan urinishlar bilan orqaga moslik uchun). Yuqoridagi
+  // `pronunciationNote` bundan MUSTAQIL — eski, har doim mavjud, faqat matn asosidagi
+  // kuzatuv, bu yerda o'zgartirilmagan.
+  pronunciation?: { band: number; note: string };
   strengths: string[];
   corrections: { original: string; suggestion: string }[];
   nextStepsUz: string[];

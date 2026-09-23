@@ -89,6 +89,30 @@ async function viaGemini(prompt, schema) {
   return JSON.parse(result.response.text());
 }
 
+// EX-02 (speakingGrader.ts — audio-based pronunciation assessment) uchun
+// GEMINI-ONLY: yuqoridagi viaGroq/viaCerebras/viaOpenRouter uchtasi ham
+// OpenAI-mos `/chat/completions` API'lari — bu faylning ularni chaqirish
+// naqshi FAQAT matn (`content: string`) yuboradi, audio inlineData emas.
+// Gemini esa multimodal `generateContent`'ni qo'llab-quvvatlaydi (xuddi
+// src/app/api/ai/chat/route.js'da rasm uchun ishlatilgani kabi) — shuning
+// uchun bu yerda 4 provayderlik zaxira zanjiri YO'Q, faqat Gemini.
+export async function generateJsonWithAudio(prompt, schema, audioParts) {
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+  return withRetry(async () => {
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }, ...audioParts.map((a) => ({ inlineData: { mimeType: a.mimeType, data: a.data } }))],
+        },
+      ],
+      generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
+    });
+    return JSON.parse(result.response.text());
+  });
+}
+
 const PROVIDER_FNS = {
   groq: (prompt) => viaGroq(prompt),
   gemini: (prompt, schema) => viaGemini(prompt, schema),
