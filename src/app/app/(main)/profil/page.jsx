@@ -1,11 +1,17 @@
 'use client';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { LogOut, Sun, Moon, Monitor, Flame, Trophy } from 'lucide-react';
+import { LogOut, Sun, Moon, Monitor, Flame, Trophy, Target } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
+
+// EDU-01a (VOCABLY_TZ_FINAL...2026-09-20.md §11 "Onboarding") — target band
+// 5.0-9.0, 0.5 qadam bilan (TZ shakli).
+const BAND_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9];
+const inputClass =
+  'w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink placeholder:text-muted outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition-colors';
 
 // Ilgari mavjud emas edi — foydalanuvchi haqidagi ma'lumot va "Chiqish" faqat
 // sidebar footer'ida bir necha piksel joyda edi. Endi mobil pastki tab bar
@@ -22,6 +28,68 @@ export default function ProfilPage() {
   const { theme, setTheme } = useTheme();
   const [gami, setGami] = useState(null);
   const [gamiFailed, setGamiFailed] = useState(false);
+
+  // EDU-01a — Onboarding/IELTS profil maydonlari. Sahifaning qolgan qismi
+  // hech qanday tahrirlash routega ega emas edi (faqat mavzu/chiqish) —
+  // shuning uchun bu yerda alohida, o'z holatiga ega kichik forma.
+  const [prepLoading, setPrepLoading] = useState(true);
+  const [prepFailed, setPrepFailed] = useState(false);
+  const [prep, setPrep] = useState({
+    targetBand: '',
+    examType: '',
+    examDate: '',
+    currentLevel: '',
+    dailyStudyMinutes: '',
+  });
+  const [prepSaving, setPrepSaving] = useState(false);
+  const [prepSaved, setPrepSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/profile')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setPrep({
+          targetBand: data.targetBand ?? '',
+          examType: data.examType ?? '',
+          examDate: data.examDate ? data.examDate.slice(0, 10) : '',
+          currentLevel: data.currentLevel ?? '',
+          dailyStudyMinutes: data.dailyStudyMinutes ?? '',
+        });
+      })
+      .catch(() => !cancelled && setPrepFailed(true))
+      .finally(() => !cancelled && setPrepLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const savePrep = async (e) => {
+    e.preventDefault();
+    setPrepSaving(true);
+    setPrepSaved(false);
+    setPrepFailed(false);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetBand: prep.targetBand === '' ? null : Number(prep.targetBand),
+          examType: prep.examType === '' ? null : prep.examType,
+          examDate: prep.examDate === '' ? null : prep.examDate,
+          currentLevel: prep.currentLevel === '' ? null : prep.currentLevel,
+          dailyStudyMinutes: prep.dailyStudyMinutes === '' ? null : Number(prep.dailyStudyMinutes),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setPrepSaved(true);
+    } catch {
+      setPrepFailed(true);
+    } finally {
+      setPrepSaving(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +177,96 @@ export default function ProfilPage() {
           )}
         </section>
       )}
+
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5 flex items-center gap-1.5">
+          <Target size={13} /> IELTS tayyorgarlik
+        </h2>
+        {prepLoading ? (
+          <div className="space-y-2" aria-hidden="true">
+            <Skeleton className="h-11 w-full rounded-xl" />
+            <Skeleton className="h-11 w-full rounded-xl" />
+          </div>
+        ) : (
+          <form onSubmit={savePrep} className="bg-surface border border-border rounded-2xl shadow-card p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="block text-xs font-medium text-muted mb-1.5">Target band</span>
+                <select
+                  className={inputClass}
+                  value={prep.targetBand}
+                  onChange={(e) => setPrep((p) => ({ ...p, targetBand: e.target.value }))}
+                >
+                  <option value="">O'rnatilmagan</option>
+                  {BAND_OPTIONS.map((b) => (
+                    <option key={b} value={b}>
+                      {b.toFixed(1)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="block text-xs font-medium text-muted mb-1.5">Imtihon turi</span>
+                <select
+                  className={inputClass}
+                  value={prep.examType}
+                  onChange={(e) => setPrep((p) => ({ ...p, examType: e.target.value }))}
+                >
+                  <option value="">Tanlanmagan</option>
+                  <option value="academic">Academic</option>
+                  <option value="general">General Training</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="block text-xs font-medium text-muted mb-1.5">Imtihon sanasi</span>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={prep.examDate}
+                  onChange={(e) => setPrep((p) => ({ ...p, examDate: e.target.value }))}
+                />
+              </label>
+
+              <label className="block">
+                <span className="block text-xs font-medium text-muted mb-1.5">Joriy daraja</span>
+                <select
+                  className={inputClass}
+                  value={prep.currentLevel}
+                  onChange={(e) => setPrep((p) => ({ ...p, currentLevel: e.target.value }))}
+                >
+                  <option value="">Tanlanmagan</option>
+                  <option value="beginner">Boshlang'ich</option>
+                  <option value="intermediate">O'rta</option>
+                  <option value="advanced">Yuqori</option>
+                </select>
+              </label>
+
+              <label className="block col-span-2">
+                <span className="block text-xs font-medium text-muted mb-1.5">Kunlik mashg'ulot (daqiqa)</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="1440"
+                  placeholder="masalan, 30"
+                  className={inputClass}
+                  value={prep.dailyStudyMinutes}
+                  onChange={(e) => setPrep((p) => ({ ...p, dailyStudyMinutes: e.target.value }))}
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button type="submit" disabled={prepSaving}>
+                {prepSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+              </Button>
+              {prepSaved && <span className="text-xs text-accent font-medium">Saqlandi</span>}
+              {prepFailed && <span className="text-xs text-danger font-medium">Saqlanmadi, qayta urinib ko'ring</span>}
+            </div>
+          </form>
+        )}
+      </section>
 
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5">Ko'rinish</h2>

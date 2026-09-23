@@ -8,6 +8,7 @@ import ExamShell from '../shell/ExamShell';
 import PartGap from '../listening/PartGap';
 import CueCard from './CueCard';
 import RecordingPane from './RecordingPane';
+import MicCheck, { type MicCheckStatus } from './MicCheck';
 import ConfirmFinishModal from '../mock/ConfirmFinishModal';
 import { ExamLoadError, ExamLoading, SubmitErrorBanner } from '../shell/ExamStatus';
 import type { AttemptResult, SanitizedTest, SpeakingRecording } from '@/lib/exam/types';
@@ -54,6 +55,13 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
   // qayta yozib olishda ham xuddi shu — foydalanuvchi navbatdan tashqari
   // "Tayyorman" deb to'xtata olmaydi, chunki bu haqiqiy imtihon amaliyoti.
   const [part2Phase, setPart2Phase] = useState<'prep' | 'record'>('prep');
+  // task item 4 — Speaking'ning devayce/mic pre-flight gate'i. RecordingPane
+  // o'zi ham getUserMedia so'raydi (birinchi yozib olishda) — bu holat shuni
+  // TAKRORLAMAYDI, faqat savol/recording UI mount bo'lishidan OLDIN bitta
+  // marta tekshirib, aniq "ruxsat kerak" ekranini ko'rsatadi (aks holda
+  // foydalanuvchi savollarni ko'rib chiqqandan keyin kutilmagan bloklanish
+  // bilan to'qnashardi).
+  const [micStatus, setMicStatus] = useState<MicCheckStatus>('checking');
 
   const init = useExamStore((s) => s.init);
   const reset = useExamStore((s) => s.reset);
@@ -151,6 +159,30 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
     const step = steps[stepIndex];
     if (step?.part === 2 && !recordedKeys.has(stepKey(step))) setPart2Phase('prep');
   }, [stepIndex, steps, recordedKeys]);
+
+  // task item 4 — pre-flight mic gate. Ataylab test yuklanishidan MUSTAQIL
+  // (parallel) ishga tushadi — foydalanuvchi ruxsat dialogini ilovaning
+  // qolgan qismi yuklanayotganda ko'radi, ketma-ket kutish o'rniga. Stream
+  // darhol to'xtatiladi (`getTracks().forEach(t => t.stop())`) — bu faqat
+  // TEKSHIRUV, haqiqiy yozib olish RecordingPane o'zi qayta so'raydi.
+  const checkMic = useCallback(async () => {
+    setMicStatus('checking');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setMicStatus('ok');
+    } catch {
+      setMicStatus('denied');
+    }
+  }, []);
+
+  useEffect(() => {
+    checkMic();
+  }, [checkMic]);
+
+  if (micStatus !== 'ok') {
+    return <MicCheck status={micStatus} onRetry={checkMic} />;
+  }
 
   if (loadError) {
     return <ExamLoadError message={loadError} />;

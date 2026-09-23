@@ -53,29 +53,89 @@ const PUBLISH_SCOPE_MAP: Record<string, string> = { public: 'public', internal: 
  * `Question.answer.accepted`ga BIRIKTIRADI. Raqam mos kelmasa (parse_reading
  * chiqargan savol raqami answer key'da yo'q) — bloklovchi emas, faqat shu
  * savolning `accepted`si bo'sh qoladi (keyin `validate.ts` buni error
- * sifatida ushlaydi — "Kamida 1 ta accepted javob bo'lishi kerak"). */
-function mergeAnswerKey(passages: ParseReadingOutput['tests'][number]['passages'], answerKey: { number: number; accepted: string[] }[]): void {
+ * sifatida ushlaydi — "Kamida 1 ta accepted javob bo'lishi kerak").
+ *
+ * AI-04 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md) tekshiruvi — TESKARI
+ * yo'nalish (javob kalitida bor, lekin shu raqamli savol parse qilingan
+ * kontentda YO'Q — masalan answer key boshqa nashr/bosqichga tegishli
+ * sahifadan noto'g'ri ajratilgan bo'lsa) ilgari BUTUNLAY jim yutilardi —
+ * `byNumber`da ishlatilmay qolgan yozuv hech qayerga qayd etilmasdi.
+ * Endi qaysi raqamlar HAQIQATDA bitta savolga bog'langani qaytariladi —
+ * chaqiruvchi (`runAssemble`) qolganlarini (`unmatched`) review navbatiga
+ * yozadi (`reason:'missing_answer'` — bu qiymat sxemada/UI'da
+ * (`ReviewQueuePanel.jsx#REASON_LABEL`) ALLAQACHON bor edi, lekin hech
+ * qayerda yaratilmasdi). */
+export function mergeAnswerKey(
+  passages: ParseReadingOutput['tests'][number]['passages'],
+  answerKey: { number: number; accepted: string[] }[]
+): Set<number> {
   const byNumber = new Map(answerKey.map((a) => [a.number, a.accepted] as const));
+  const matched = new Set<number>();
   for (const passage of passages) {
     for (const group of passage.questionGroups) {
       for (const question of group.questions) {
         const accepted = byNumber.get(question.number);
-        if (accepted?.length) question.answer = { accepted };
+        if (accepted?.length) {
+          question.answer = { accepted };
+          matched.add(question.number);
+        }
       }
     }
   }
+  return matched;
 }
 
-function mergeListeningAnswerKey(parts: ParseListeningOutput['tests'][number]['parts'], answerKey: { number: number; accepted: string[] }[]): void {
+export function mergeListeningAnswerKey(
+  parts: ParseListeningOutput['tests'][number]['parts'],
+  answerKey: { number: number; accepted: string[] }[]
+): Set<number> {
   const byNumber = new Map(answerKey.map((a) => [a.number, a.accepted] as const));
+  const matched = new Set<number>();
   for (const part of parts) {
     for (const group of part.questionGroups) {
       for (const question of group.questions) {
         const accepted = byNumber.get(question.number);
-        if (accepted?.length) question.answer = { accepted };
+        if (accepted?.length) {
+          question.answer = { accepted };
+          matched.add(question.number);
+        }
       }
     }
   }
+  return matched;
+}
+
+/** AI-04 — `answerKey` ro'yxatidagi, lekin `matched`ga tushmagan (hech qaysi
+ * savolga BIRIKTIRILMAGAN) raqamlar uchun `ReviewItem('missing_answer',
+ * 'warning')` yaratadi. Bloklovchi EMAS (ehtimol javob kaliti to'g'ri,
+ * lekin parse_reading/parse_listening shu savolni umuman chiqarmagan —
+ * bu holat allaqachon boshqa yo'l bilan (parse bosqichining o'zi) ko'rinadi;
+ * bu yerda faqat admin'ga signal — "javob kaliti X-savol uchun javob
+ * beradi, lekin testda bunday raqamli savol topilmadi"). */
+export async function flagUnmatchedAnswerKeyEntries(
+  ReviewItemModel: any,
+  bookId: unknown,
+  testId: string,
+  sectionKey: 'reading' | 'listening',
+  answerKey: { number: number; accepted: string[] }[],
+  matched: Set<number>
+): Promise<void> {
+  const unmatched = answerKey.filter((a) => a.accepted.length > 0 && !matched.has(a.number));
+  await Promise.all(
+    unmatched.map((a) =>
+      ReviewItemModel.create({
+        bookId,
+        testId,
+        target: { sectionKey, questionNumber: a.number },
+        reason: 'missing_answer',
+        severity: 'warning',
+        evidence: {
+          rawText: `Javob kaliti ${a.number}-savol uchun javob beradi ("${a.accepted.join(', ')}"), lekin ${sectionKey === 'reading' ? 'Reading' : 'Listening'} bo'limida shu raqamli savol topilmadi — javob kaliti boshqa test/nashrga tegishli bo'lishi yoki savol parse qilinmagan bo'lishi mumkin. Qo'lda tekshiring.`,
+        },
+        status: 'open',
+      })
+    )
+  );
 }
 
 export interface AssembleOutput {
@@ -127,8 +187,10 @@ export async function runAssemble(ctx: StageContext): Promise<AssembleOutput> {
     const speakingTest = parseSpeaking.tests.find((t) => t.index === index);
     const answerKeyTest = answerKey.tests.find((t) => t.index === index);
 
-    if (readingTest && answerKeyTest) mergeAnswerKey(readingTest.passages, answerKeyTest.reading);
-    if (listeningTest && answerKeyTest) mergeListeningAnswerKey(listeningTest.parts, answerKeyTest.listening);
+    let readingMatched: Set<number> | null = null;
+    let listeningMatched: Set<number> | null = null;
+    if (readingTest && answerKeyTest) readingMatched = mergeAnswerKey(readingTest.passages, answerKeyTest.reading);
+    if (listeningTest && answerKeyTest) listeningMatched = mergeListeningAnswerKey(listeningTest.parts, answerKeyTest.listening);
 
     // Audio: kontent-asosli moslashtirish natijasi (yuqoridagi fayl izohiga q.).
     const audioSource = processAudio.byTestIndex?.[index];
@@ -229,6 +291,15 @@ export async function runAssemble(ctx: StageContext): Promise<AssembleOutput> {
       testId = String(created._id);
     }
     testIds.push(testId);
+
+    // AI-04 — javob kalitida bor, lekin hech qaysi savolga bog'lanmagan
+    // (parse qilingan kontentda topilmagan) raqamlar uchun review navbati.
+    if (answerKeyTest && readingMatched) {
+      await flagUnmatchedAnswerKeyEntries(ReviewItemModel, book._id, testId, 'reading', answerKeyTest.reading, readingMatched);
+    }
+    if (answerKeyTest && listeningMatched) {
+      await flagUnmatchedAnswerKeyEntries(ReviewItemModel, book._id, testId, 'listening', answerKeyTest.listening, listeningMatched);
+    }
 
     // Audio kontent bo'yicha tasdiqlanmagan (order-fallback) bo'lsa — admin
     // ko'rib chiqishi uchun ochiq `ReviewItem` ('warning', 'blocker' EMAS:

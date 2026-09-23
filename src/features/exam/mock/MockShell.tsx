@@ -2,7 +2,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useExamStore } from '../state/examStore';
-import { fetchTestPreview, createMockAttempt, fetchAttempt, fetchActiveMock, type ActiveMockInfo, type TestPreview } from '../state/attemptsApi';
+import {
+  fetchTestPreview,
+  createMockAttempt,
+  fetchAttempt,
+  fetchActiveMock,
+  goToMockSection as goToMockSectionApi,
+  type ActiveMockInfo,
+  type TestPreview,
+} from '../state/attemptsApi';
+import { useIntegrityEvents } from '../state/useIntegrityEvents';
 import IntroScreen from './IntroScreen';
 import ConfirmFinishModal from './ConfirmFinishModal';
 import MockResult from './MockResult';
@@ -11,6 +20,7 @@ import ListeningSection from '../listening/ListeningSection';
 import ReadingSection from '../reading/ReadingSection';
 import WritingSection from '../writing/WritingSection';
 import type { AttemptResult, ExamSectionKey, SanitizedTest } from '@/lib/exam/types';
+import { DEFAULT_MOCK_KIND, type MockKind } from '@/lib/exam/mockKind';
 
 // TZ-vocably-v2.md §19 Faza 3 item 15 — "Bo'lim orkestratsiyasi, intro, o'tish
 // ekranlari". §9.1: Intro → Listening → "tugadi" (10s) → Reading → "tugadi"
@@ -77,6 +87,13 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
   const [transitionInfo, setTransitionInfo] = useState<{ completed: ExamSectionKey; next: ExamSectionKey } | null>(null);
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  // AUDIT Sprint 2/§52.1 — tanlangan (yoki davom ettirilayotgan urinishning
+  // haqiqiy) mock rejimi. Server javobidan olinadi (`data.attempt.mockKind`) —
+  // IntroScreen'dagi tanlov faqat "Boshlash" bosilganda ishlatiladi, shundan
+  // keyin YAGONA haqiqat manbai server (masalan "Davom ettirish" bosilganda
+  // eski urinishning ASL rejimi qaytadi, joriy UI tanlovidan qat'i nazar).
+  const [mockKind, setMockKind] = useState<MockKind>(DEFAULT_MOCK_KIND);
+  const [switchingSection, setSwitchingSection] = useState(false);
 
   useEffect(() => {
     if (!testId) {
@@ -103,16 +120,34 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
     };
   }, [testId]);
 
-  const handleStart = async (fresh?: boolean) => {
+  // §52.1/§52.2 — `kind` IntroScreen'dagi tanlov (Practice/Exam/Secure).
+  // Boshlangandan keyin YAGONA haqiqat manbai `data.attempt.mockKind` (server
+  // javobi) — "Davom ettirish" bosilganda bu eski urinishning ASL rejimi
+  // bo'lishi mumkin, `kind`dan farqli.
+  const handleStart = async (fresh?: boolean, kind: MockKind = DEFAULT_MOCK_KIND) => {
     setStarting(true);
     setStartError('');
     try {
-      const { attemptId: newAttemptId } = await createMockAttempt(testId, fresh);
+      const { attemptId: newAttemptId } = await createMockAttempt(testId, fresh, kind);
       const data = await fetchAttempt(newAttemptId);
+      const resolvedKind = (data.attempt.mockKind as MockKind) || DEFAULT_MOCK_KIND;
       setAttemptId(newAttemptId);
       setSections(data.attempt.sections as ExamSectionKey[]);
       setCurrentSection(data.attempt.currentSection as ExamSectionKey);
       setFullTest(data.test);
+      setMockKind(resolvedKind);
+      // §52.2 — "distraction-free fullscreen exam environment" Exam/Secure
+      // uchun (Practice'da majburlanmaydi). Ba'zi brauzer/kontekstlarda
+      // (masalan iframe, yoki bevosita foydalanuvchi gesti bo'lmasa) rad
+      // etilishi mumkin — try/catch bilan JIMGINA o'tkazib yuboriladi,
+      // imtihon baribir boshlanadi (§52.2 talabi — bloklamaydi).
+      if (resolvedKind !== 'practice' && typeof document !== 'undefined' && document.documentElement.requestFullscreen) {
+        try {
+          await document.documentElement.requestFullscreen();
+        } catch {
+          // Rad etildi — jimgina davom etamiz.
+        }
+      }
       setPhase('section');
     } catch {
       setStartError("Imtihonni boshlab bo'lmadi. Qayta urinib ko'ring.");
@@ -120,6 +155,41 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
       setStarting(false);
     }
   };
+
+  // AUDIT Sprint 2/§52.1 — "Practice Mock: erkin navigation". Faqat
+  // `mockKind==='practice'`da chaqiriladi (pastdagi UI shart shunga qarab
+  // ko'rsatiladi) — `goToMockSection` (attemptServer.ts) baribir server-side
+  // qayta tekshiradi, bu himoya faqat UI qulayligi uchun. `currentSection`
+  // o'zgarishi kifoya: pastdagi render bo'limlarni ALOHIDA komponent sifatida
+  // shart bilan tanlaydi (masalan Reading -> Listening), shuning uchun
+  // maqsad komponent YANGIDAN mount bo'ladi va o'z holatini serverdan qayta
+  // yuklaydi (yangilangan `endsAt` bilan) — qo'lda qo'shimcha sync shart emas.
+  const handleGoToSection = useCallback(
+    async (target: ExamSectionKey) => {
+      if (!attemptId || target === currentSection || switchingSection) return;
+      setSwitchingSection(true);
+      try {
+        await goToMockSectionApi(attemptId, target);
+        setCurrentSection(target);
+      } catch {
+        // Jimgina e'tiborsiz qoldiriladi — foydalanuvchi joriy bo'limda qoladi.
+      } finally {
+        setSwitchingSection(false);
+      }
+    },
+    [attemptId, currentSection, switchingSection]
+  );
+
+  // AUDIT Sprint 2/§52.6 — halollik logi FAQAT `mode:'mock'`da (bu shell
+  // shunday) va FAQAT haqiqiy urinish sessiyasi davomida (section/transition
+  // fazalarida) — intro/result'da yo'q (hali urinish boshlanmagan yoki
+  // allaqachon tugagan). `useIntegrityEvents` o'zi `level==='practice'`da
+  // hech narsa biriktirmaydi.
+  useIntegrityEvents({
+    attemptId,
+    active: !!attemptId && (phase === 'section' || phase === 'transition'),
+    level: mockKind,
+  });
 
   const handleSectionAdvanced = useCallback(async () => {
     if (!attemptId || !currentSection) return;
@@ -196,34 +266,63 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
 
   if (phase === 'section' && attemptId && currentSection) {
     const isFinal = sections.indexOf(currentSection) === sections.length - 1;
+    // §52.1 — Practice mock'da bo'limlar orasida erkin o'tish tugmalari.
+    // ExamShell `fixed inset-0` bilan butun ekranni qoplaydi (§5.1'dagi
+    // "imtihon ekrani ATAYLAB neytral" qoidasi — ExamShell/ExamHeader'ga
+    // tegilmadi), shuning uchun bu bar undan YUQORI z-index bilan alohida
+    // overlay sifatida chiziladi.
+    const practiceNav = mockKind === 'practice' && (
+      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-1.5 px-2 py-1.5 rounded-full shadow-lg bg-surface border border-border">
+        {sections.map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => handleGoToSection(key)}
+            disabled={switchingSection || key === currentSection}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default ${
+              key === currentSection ? 'bg-accent text-on-accent' : 'text-muted hover:text-ink hover:bg-bg'
+            }`}
+          >
+            {SECTION_LABEL[key]}
+          </button>
+        ))}
+      </div>
+    );
 
     if (currentSection === 'listening') {
       return (
-        <ListeningSection
-          attemptId={attemptId}
-          candidateName={candidateName}
-          candidateId={candidateIdFrom(attemptId)}
-          isFinal={isFinal}
-          onSectionAdvanced={handleSectionAdvanced}
-          onSubmitted={handleSubmitted}
-        />
+        <>
+          {practiceNav}
+          <ListeningSection
+            attemptId={attemptId}
+            candidateName={candidateName}
+            candidateId={candidateIdFrom(attemptId)}
+            isFinal={isFinal}
+            onSectionAdvanced={handleSectionAdvanced}
+            onSubmitted={handleSubmitted}
+          />
+        </>
       );
     }
     if (currentSection === 'reading') {
       return (
-        <ReadingSection
-          attemptId={attemptId}
-          candidateName={candidateName}
-          candidateId={candidateIdFrom(attemptId)}
-          isFinal={isFinal}
-          onSectionAdvanced={handleSectionAdvanced}
-          onSubmitted={handleSubmitted}
-        />
+        <>
+          {practiceNav}
+          <ReadingSection
+            attemptId={attemptId}
+            candidateName={candidateName}
+            candidateId={candidateIdFrom(attemptId)}
+            isFinal={isFinal}
+            onSectionAdvanced={handleSectionAdvanced}
+            onSubmitted={handleSubmitted}
+          />
+        </>
       );
     }
     if (currentSection === 'writing') {
       return (
         <>
+          {practiceNav}
           <WritingSection
             attemptId={attemptId}
             candidateName={candidateName}

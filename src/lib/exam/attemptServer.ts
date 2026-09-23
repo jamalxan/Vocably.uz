@@ -4,7 +4,7 @@
 // faqat Mongoose bilan gaplashish bor. YANGI `ExamAttempt`/`ExamTest` modellari
 // bilan ishlaydi (`@/lib/models`) — eski `ExamSession`ga TEGMAYDI.
 import crypto from 'crypto';
-import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel, ExamTestVersion as ExamTestVersionModel } from '@/lib/models';
+import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel, ExamTestVersion as ExamTestVersionModel, User as UserModel } from '@/lib/models';
 import { isCorrect, isSetCorrect, listeningBand, readingBand, officialStyleOverallBand } from './scoring';
 import { sanitizeForExam } from './sanitize';
 import { gradeEssay, combineWritingBand } from './writingGrader';
@@ -39,6 +39,7 @@ const MOCK_SECTION_ORDER: ExamSectionKey[] = ['listening', 'reading', 'writing']
 const ExamAttempt: any = ExamAttemptModel;
 const ExamTest: any = ExamTestModel;
 const ExamTestVersion: any = ExamTestVersionModel;
+const User: any = UserModel;
 
 export class ExamAttemptError extends Error {
   status: number;
@@ -263,6 +264,49 @@ export async function advanceMockSection(attemptId: string, userId: string, reas
   return ExamAttempt.findById(attemptId);
 }
 
+/** AUDIT Sprint 2/§52.1 — "Practice Mock: erkin navigation". `advanceMockSection`
+ * yuqorida FAQAT oldinga, bitta qadam ilgarilaydi (real IELTS oqimi) — bu
+ * funksiya esa Practice mock uchun ATAYLAB gate qilingan istisno: foydalanuvchi
+ * `attempt.sections` ichidagi ISTALGAN bo'limga (oldinga ham, orqaga ham)
+ * to'g'ridan-to'g'ri sakray oladi. Faqat `mockKind === 'practice'`da ishlaydi
+ * — Exam/Secure mock uchun 403 (bu funksiya section-locking qoidasini
+ * BUZMAYDI, faqat Practice uchun ALOHIDA yo'l).
+ *
+ * Bo'lim taymeri qayta boshlanadi (to'liq `durationSec` bilan) — schema
+ * hozircha har bo'lim uchun ALOHIDA "qancha sarflangan" saqlamaydi (faqat
+ * joriy bo'limning `sectionStartedAt`/`endsAt`), shuning uchun qisman
+ * sarflangan vaqtni saqlab qolish qo'shimcha schema o'zgarishi talab qiladi —
+ * Practice mock'da baribir vaqt bosimi maqsad emas (§52.1: "pause/review
+ * mumkin"), shuning uchun bu soddalashtirish qabul qilinadi. */
+export async function goToMockSection(attemptId: string, userId: string, targetSection: ExamSectionKey) {
+  const attempt = await getOwnedAttempt(attemptId, userId);
+  if (attempt.mode !== 'mock' || attempt.status !== 'in_progress') {
+    throw new ExamAttemptError('Urinish mock holatida emas', 400);
+  }
+  if (attempt.mockKind !== 'practice') {
+    throw new ExamAttemptError("Bo'limlar orasida erkin o'tish faqat Practice mock'da mumkin", 403);
+  }
+
+  const sections: ExamSectionKey[] = attempt.sections || [];
+  if (!sections.includes(targetSection)) {
+    throw new ExamAttemptError(`Bu urinishda "${targetSection}" bo'limi yo'q`, 400);
+  }
+  if (targetSection === attempt.currentSection) return attempt;
+
+  const test = await resolveTestForAttempt(attempt);
+  const duration = (test?.sections as any)?.[targetSection]?.durationSec;
+  if (typeof duration !== 'number') {
+    throw new ExamAttemptError(`Testda "${targetSection}" bo'limi yo'q`, 400);
+  }
+
+  const now = new Date();
+  await ExamAttempt.updateOne(
+    { _id: attemptId, status: 'in_progress' },
+    { $set: { currentSection: targetSection, sectionStartedAt: now, endsAt: new Date(now.getTime() + duration * 1000) } }
+  );
+  return ExamAttempt.findById(attemptId);
+}
+
 /** Bitta konteyner (passage yoki listening part) ichidagi savollarni tekislab
  * chiqaradi — `wordLimit`/`type` guruh darajasida turadi, har savolga shu
  * yerda tarqatiladi. `type` — TZ §19 Faza 3 item 17 (natija analitikasi,
@@ -327,6 +371,143 @@ export function scoreSection(test: Test, attemptAnswers: Record<string, AnswerVa
   return { raw, total, perContainer, perQuestion };
 }
 
+// ============================================================================
+// EDU-03 (VOCABLY_TZ_FINAL...2026-09-20.md §10.5 "Error-driven vocabulary" /
+// VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md EDU-03) — "IELTS savolida xato
+// qilindi -> shu xato bilan bog'liq vocabulary avtomatik SRSga qo'shiladi."
+//
+// Bu kodbazada savollar hozircha aniq per-question vocabulary teglariga ega
+// EMAS (Question/QuestionGroup — types.ts — bunday maydonni umuman
+// bildirmaydi), shuning uchun to'liq "AI aniqlagan xato so'zi" o'rniga eng
+// HALOL va CHEGARALANGAN yechim tanlandi: NOTO'G'RI javob berilgan Reading
+// savolining `locatorParagraph`i ko'rsatgan xuddi shu paragrafdan 2-4 ta
+// "kamroq uchraydigan" content-so'zni SOF, DETERMINISTIK heuristika bilan
+// (AI chaqiruvisiz) ajratib olamiz. Faqat READING uchun: Listening'da
+// `locatorParagraph`ning ekvivalenti yo'q (transkript vaqt-bog'liq segment,
+// paragraf emas) — shuning uchun Listening bu bosqichda ATAYLAB QOLDIRILDI.
+// ============================================================================
+
+// Juda kichik, funktsional-so'zlar ro'yxati — lingvistik jihatdan TO'LIQ EMAS,
+// faqat heuristikani "the", "with" kabi juda keng tarqalgan so'zlardan
+// tozalash uchun yetarli (uzunlik filtri — pastda — asosiy ishni qiladi).
+const ERROR_VOCAB_STOPWORDS = new Set([
+  'about', 'after', 'again', 'against', 'almost', 'along', 'already', 'although', 'always',
+  'among', 'another', 'around', 'because', 'become', 'before', 'being', 'below', 'between',
+  'could', 'during', 'each', 'either', 'every', 'first', 'from', 'further', 'having',
+  'however', 'into', 'itself', 'least', 'might', 'more', 'most', 'much', 'never', 'often',
+  'other', 'others', 'ought', 'over', 'own', 'perhaps', 'rather', 'same', 'shall', 'should',
+  'since', 'some', 'still', 'such', 'than', 'that', 'their', 'them', 'then', 'there', 'these',
+  'they', 'this', 'those', 'though', 'through', 'toward', 'towards', 'under', 'until', 'upon',
+  'very', 'were', 'what', 'when', 'where', 'whether', 'which', 'while', 'whose',
+  'with', 'within', 'without', 'would',
+]);
+
+function stripHtmlToText(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ');
+}
+
+function tokenizeContentWords(text: string): string[] {
+  return text.toLowerCase().match(/[a-z]+/g) || [];
+}
+
+// Minimal, faqat shu funksiya uchun kerakli shakl — to'liq `Test` turini
+// import qilish o'rniga (test qulayligi uchun: fake bo'lak obyekt kifoya).
+interface ErrorVocabReadingShape {
+  sections: {
+    reading?: {
+      passages?: {
+        paragraphs?: { label?: string; html: string }[];
+        questionGroups?: { questions?: { number: number; locatorParagraph?: string }[] }[];
+      }[];
+    };
+  };
+}
+
+/** Sof, deterministik funksiya (DB/AI'siz) — shuning uchun to'g'ridan-to'g'ri
+ * birlik-test qilinadi (`buildAnswersPatchSetOps`dagi kabi naqsh). Faqat
+ * `correct: false` bo'lgan savollarni ko'rib chiqadi; savol/paragraf/
+ * `locatorParagraph` topilmasa yoki `test`da Reading bo'lmasa, xatosiz
+ * bo'sh massiv qaytaradi — chaqiruvchi (submitAttempt) hech qachon bu
+ * yerdan uloqtirilgan xatoga qolmasligi kerak. */
+export function extractErrorVocabulary(
+  test: ErrorVocabReadingShape | null | undefined,
+  perQuestion: { number: number; correct: boolean }[] | null | undefined
+): string[] {
+  const passages = test?.sections?.reading?.passages;
+  if (!Array.isArray(passages) || !Array.isArray(perQuestion)) return [];
+
+  const wrongNumbers = new Set(perQuestion.filter((p) => p && p.correct === false).map((p) => p.number));
+  if (wrongNumbers.size === 0) return [];
+
+  const words = new Set<string>();
+  for (const passage of passages) {
+    for (const group of passage.questionGroups || []) {
+      for (const q of group.questions || []) {
+        if (!wrongNumbers.has(q.number) || !q.locatorParagraph) continue;
+        const paragraph = (passage.paragraphs || []).find((p) => p.label === q.locatorParagraph);
+        if (!paragraph?.html) continue;
+
+        // Heuristika: uzunroq so'zlar odatda kamroq uchraydigan content-so'zlar
+        // (funktsional so'zlar deyarli har doim qisqa) — AI/chastota lug'ati
+        // yo'qligida bu oddiy, deterministik va yetarlicha oqilona proksi.
+        const candidates = [...new Set(tokenizeContentWords(stripHtmlToText(paragraph.html)))]
+          .filter((w) => w.length >= 5 && !ERROR_VOCAB_STOPWORDS.has(w))
+          .sort((a, b) => b.length - a.length || a.localeCompare(b));
+
+        candidates.slice(0, 4).forEach((w) => words.add(w));
+      }
+    }
+  }
+
+  return [...words];
+}
+
+const ERROR_VOCAB_CATEGORY_NAME = "Xato asosida qo'shilgan so'zlar";
+
+/** `extractErrorVocabulary` topgan so'zlarni foydalanuvchining lug'atiga
+ * qo'shadi — har foydalanuvchida FAQAT BIR marta yaratiladigan maxsus
+ * kategoriyaga (mavjud bo'lsa o'shaning o'ziga, `categories/route.js`dagi
+ * bilan bir xil `push`+`save` naqshi). Istalgan boshqa kategoriyada
+ * allaqachon bor so'z QAYTA qo'shilmaydi. `POST /api/words/add`dan farqli —
+ * bu yerda tarjima (`syns`) shart emas: chaqiruv AI'siz, sinxron va
+ * submitAttempt oqimini SEKINLASHTIRMASLIGI kerak. */
+async function autoAddErrorVocabulary(userId: string, newWordsRaw: string[]): Promise<void> {
+  const wanted = [...new Set(newWordsRaw.map((w) => w.trim().toLowerCase()).filter(Boolean))];
+  if (wanted.length === 0) return;
+
+  const user = await User.findById(userId).select('categories');
+  if (!user) return;
+
+  const existing = new Set<string>();
+  for (const cat of user.categories || []) {
+    for (const w of cat.words || []) {
+      if (w?.word) existing.add(String(w.word).trim().toLowerCase());
+    }
+  }
+  const toAdd = wanted.filter((w) => !existing.has(w));
+  if (toAdd.length === 0) return;
+
+  let category = (user.categories || []).find((c: any) => c.name === ERROR_VOCAB_CATEGORY_NAME);
+  if (!category) {
+    user.categories.push({ name: ERROR_VOCAB_CATEGORY_NAME, words: [] });
+    category = user.categories[user.categories.length - 1];
+  }
+
+  for (const w of toAdd) {
+    category.words.push({
+      word: w,
+      syns: [],
+      // EDU-02 (models.js WordEnrichmentSchema) — bu so'z aynan Reading
+      // xatosidan kelib chiqqani ma'lum, shuning uchun shu bitta taxonomy
+      // maydoni to'ldiriladi; band-daraja/to'liq taxonomy hali content-
+      // kurasiya vazifasi (bu yerda QILINMAYDI).
+      enrichment: { ieltsSkillTag: 'reading' },
+    });
+  }
+
+  await user.save();
+}
+
 /** Idempotent submit+baholash — `./server.ts#finalize`dagi bilan bir xil atomik
  * naqsh (`status: 'in_progress' -> 'submitted'`): ikki marta chaqirilsa
  * (parallel tab, tarmoq qayta urinishi, taymer + foydalanuvchi bir vaqtda)
@@ -384,12 +565,16 @@ export async function submitAttempt(attemptId: string, userId: string, reason: s
     perQuestion: [],
   };
 
+  // EDU-03 — pastda, Reading skorlangandan keyin, shu bo'limning perQuestion'idan
+  // xato-asosidagi lug'atni ajratib olish uchun ishlatiladi (faqat Reading).
+  let readingPerQuestionForVocab: AttemptResult['perQuestion'] | null = null;
   if (test?.sections.reading && attemptSections.includes('reading')) {
     const scored = scoreSection(test, attemptAnswers, 'reading');
     const { band, estimated } = readingBand(scored.raw, test.module, test.bandTable?.reading);
     sectionBands.reading = band;
     result.reading = { raw: scored.raw, band, bandEstimated: estimated, perPassage: scored.perContainer };
     perQuestion = perQuestion.concat(scored.perQuestion);
+    readingPerQuestionForVocab = scored.perQuestion;
   }
   if (test?.sections.listening && attemptSections.includes('listening')) {
     const scored = scoreSection(test, attemptAnswers, 'listening');
@@ -416,6 +601,21 @@ export async function submitAttempt(attemptId: string, userId: string, reason: s
   const hasPendingWriting = attemptSections.includes('writing');
   const hasPendingSpeaking = attemptSections.includes('speaking');
   const status = hasPendingWriting || hasPendingSpeaking ? 'submitted' : 'graded';
+
+  // EDU-03 (yuqoridagi katta izohga q.) — Reading'da xato qilingan savollar
+  // paragrafidan so'z ajratib, foydalanuvchi SRS deka'siga qo'shadi. BU HECH
+  // QACHON asosiy submit/baholash oqimini TO'XTATMASLIGI kerak — shuning
+  // uchun alohida try/catch, faqat log qiladi (natijaga ta'sir qilmaydi).
+  if (test && readingPerQuestionForVocab) {
+    try {
+      const errorWords = extractErrorVocabulary(test, readingPerQuestionForVocab);
+      if (errorWords.length > 0) {
+        await autoAddErrorVocabulary(userId, errorWords);
+      }
+    } catch (err) {
+      console.error('[EDU-03] xato-asosidagi lug\'at qo\'shishda xatolik', err);
+    }
+  }
 
   await ExamAttempt.updateOne({ _id: attemptId }, { $set: { result, status } });
   return result;

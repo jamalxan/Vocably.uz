@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ArrowLeft, ArrowRight, Upload, FileText, Music, X, ShieldAlert } from 'lucide-react';
+import { detectSourceFormat, SOURCE_FORMAT_MIME } from '@/lib/contentAgent/sourceFormat';
 
 // TZ-vocably-v2.md (AI Content Ingestion Agent) §11.1 — "Yangi kitob — 4
 // qadamli sehrgar". M1 doirasida faqat YUKLASH ishlaydi (§19 M1 qabul
@@ -62,7 +63,18 @@ export default function NewBookWizard() {
   const handlePdfPick = (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (file) setPdfFile(file);
+    if (!file) return;
+    // §50.2 — endi PDF YOKI DOCX qabul qilinadi. `accept` atributi hamma
+    // brauzer/OS'da qattiq cheklamaydi (masalan "Barcha fayllar" tanlansa),
+    // shuning uchun bu yerda ham xuddi server (`@/lib/contentAgent/
+    // sourceFormat`, BIR XIL funksiya) bilan tekshiriladi — noto'g'ri fayl
+    // R2'ga yuklanguncha emas, TANLASH paytidayoq rad etiladi.
+    if (!detectSourceFormat({ filename: file.name, mimeType: file.type })) {
+      setError("Faqat PDF yoki DOCX fayl qabul qilinadi.");
+      return;
+    }
+    setError('');
+    setPdfFile(file);
   };
   const handleAudioPick = (e) => {
     const files = Array.from(e.target.files || []);
@@ -87,7 +99,11 @@ export default function NewBookWizard() {
           licence: meta.licence,
           licenceNote: meta.licenceNote.trim(),
           publishScope: meta.publishScope,
-          pdf: { mimeType: pdfFile.type || 'application/pdf', size: pdfFile.size },
+          pdf: {
+            mimeType: pdfFile.type || SOURCE_FORMAT_MIME[detectSourceFormat({ filename: pdfFile.name, mimeType: pdfFile.type }) || 'pdf'],
+            size: pdfFile.size,
+            filename: pdfFile.name,
+          },
           audio: audioFiles.map((f) => ({ mimeType: f.type || 'audio/mpeg', size: f.size, filename: f.name })),
         }),
       });
@@ -143,23 +159,29 @@ export default function NewBookWizard() {
         {step === 0 && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-ink mb-2">PDF kitob</label>
+              <label className="block text-sm font-semibold text-ink mb-2">Kitob fayli (PDF yoki DOCX)</label>
               {pdfFile ? (
                 <div className="flex items-center gap-2.5 px-3 py-2.5 bg-bg rounded-lg text-sm">
                   <FileText size={16} className="text-accent flex-shrink-0" />
                   <span className="flex-1 min-w-0 truncate">{pdfFile.name}</span>
                   <span className="text-xs text-muted flex-shrink-0">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB</span>
-                  <button onClick={() => setPdfFile(null)} aria-label="PDF'ni olib tashlash" className="min-w-11 min-h-11 -my-3 -mr-3 flex items-center justify-center rounded-lg text-muted hover:text-danger flex-shrink-0">
+                  <button onClick={() => setPdfFile(null)} aria-label="Faylni olib tashlash" className="min-w-11 min-h-11 -my-3 -mr-3 flex items-center justify-center rounded-lg text-muted hover:text-danger flex-shrink-0">
                     <X size={14} />
                   </button>
                 </div>
               ) : (
                 <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg py-8 px-3 text-center cursor-pointer hover:border-accent/40 focus-within:ring-2 focus-within:ring-accent transition-colors">
                   <Upload size={22} className="text-muted" />
-                  <span className="text-sm text-muted">PDF faylni tanlang (maks. 500 MB)</span>
-                  <input type="file" accept="application/pdf" className="sr-only" onChange={handlePdfPick} />
+                  <span className="text-sm text-muted">PDF yoki DOCX faylni tanlang (maks. 500 MB)</span>
+                  <input
+                    type="file"
+                    accept={`${SOURCE_FORMAT_MIME.pdf},.pdf,${SOURCE_FORMAT_MIME.docx},.docx`}
+                    className="sr-only"
+                    onChange={handlePdfPick}
+                  />
                 </label>
               )}
+              {error && <p className="mt-2 text-xs text-danger">{error}</p>}
             </div>
             <div>
               <label className="block text-sm font-semibold text-ink mb-2">Audio fayllar (ixtiyoriy)</label>
@@ -279,11 +301,11 @@ export default function NewBookWizard() {
               <p><span className="text-muted">Modul:</span> <span className="text-ink">{meta.module}</span></p>
               <p><span className="text-muted">Litsenziya:</span> <span className="text-ink">{LICENCE_OPTIONS.find((o) => o.value === meta.licence)?.label}</span></p>
               <p><span className="text-muted">Nashr doirasi:</span> <span className="text-ink">{SCOPE_OPTIONS.find((o) => o.value === meta.publishScope)?.label}</span></p>
-              <p><span className="text-muted">Fayllar:</span> <span className="text-ink">1 PDF + {audioFiles.length} audio</span></p>
+              <p><span className="text-muted">Fayllar:</span> <span className="text-ink">1 {pdfFile?.name?.toLowerCase().endsWith('.docx') ? 'DOCX' : 'PDF'} + {audioFiles.length} audio</span></p>
             </div>
             {submitting && (
               <div className="space-y-1.5">
-                <p className="text-xs text-muted">PDF: {Math.round((uploadProgress.pdf || 0) * 100)}%</p>
+                <p className="text-xs text-muted">Hujjat: {Math.round((uploadProgress.pdf || 0) * 100)}%</p>
                 {audioFiles.map((f, i) => (
                   <p key={i} className="text-xs text-muted">{f.name}: {Math.round((uploadProgress[i] || 0) * 100)}%</p>
                 ))}

@@ -1,19 +1,26 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bot, Check, ChevronDown, Loader2, RotateCcw, Send, Settings2, User } from 'lucide-react';
+import { ArrowLeft, Bot, Check, ChevronDown, Loader2, RotateCcw, Send, Settings2, User } from 'lucide-react';
+import { TASK_KEY_LABEL } from './AiSettingsPanel';
 
 // TZ-vocably-v2.md §11.5 — "AI sozlamalari" ekranining chat ko'rinishidagi
 // sinov qatlami. Ataylab ODDIY AI CHATGA O'XSHAYDI (foydalanuvchi talabi):
-// taskKey admin uchun avtomatik tanlanadi (ro'yxatdagi birinchisi) — admin
-// suhbatni boshlashdan oldin HECH NARSANI tanlashi shart emas, buni
-// o'zgartirish faqat ixtiyoriy, kichik "Model" tugmasi ortida yashiringan
-// (ChatGPT'ning model-switcher naqshiga yaqin), katta majburiy dropdown
-// sifatida emas. `/api/admin/ai/playground` haqiqiy `aiRouter.callTask`ni
-// chaqiradi, mock emas. Suhbat faqat shu komponent state'ida yashaydi
-// (DB'ga saqlanmaydi) — bu ataylab shunday: bu sinov maydonchasi, kontent
-// manbai emas.
+// suhbatni boshlashdan oldin admin HECH QANDAY TEXNIK KALITNI ko'rmaydi —
+// AI-02 (audit) buni "book.segment taskKey'li sinov chat default ekran"
+// deb tanqid qildi. Shuning uchun taskKey boshida TANLANMAGAN: default
+// holat — "Qaysi vazifani sinab ko'rmoqchisiz?" so'rovi bilan
+// TASK_KEY_LABEL'dan olingan inson o'qiy oladigan variantlar ro'yxati
+// (AiSettingsPanel.jsx bilan bir xil map, bu yerda takrorlanmagan). Vazifa
+// tanlangandan keyingina haqiqiy sinov chati ochiladi — o'sha chat/sinov
+// funksionalligining o'zi o'zgarmagan, faqat boshlang'ich ekran o'zgardi.
+// Chatning o'zidagi kichik "model" almashtirgich (taskKey'ni chat ichida
+// almashtirish) ilgarigidek qoladi — bu ixtiyoriy, ilg'or foydalanish
+// uchun, majburiy emas. `/api/admin/ai/playground` haqiqiy
+// `aiRouter.callTask`ni chaqiradi, mock emas. Suhbat faqat shu komponent
+// state'ida yashaydi (DB'ga saqlanmaydi) — bu ataylab shunday: bu sinov
+// maydonchasi, kontent manbai emas.
 export default function AiPlaygroundChat({ taskKeys }) {
-  const [taskKey, setTaskKey] = useState(taskKeys[0] || '');
+  const [taskKey, setTaskKey] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [messages, setMessages] = useState([]); // [{role:'user'|'assistant'|'error', content}]
@@ -88,6 +95,38 @@ export default function AiPlaygroundChat({ taskKeys }) {
     }
   };
 
+  // AI-02 — default ekran: texnik taskKey ro'yxati emas, oddiy savol +
+  // inson o'qiy oladigan variantlar. Vazifa tanlanmaguncha chat ochilmaydi.
+  if (!taskKey) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface shadow-card overflow-hidden px-4 py-8 text-center gap-4"
+        style={{ height: 'calc(100dvh - 210px)', minHeight: 400, maxHeight: 760 }}
+      >
+        <div className="w-11 h-11 rounded-2xl bg-accent-soft flex items-center justify-center">
+          <Bot size={22} className="text-accent" />
+        </div>
+        <div>
+          <p className="text-base font-semibold text-ink">Qaysi vazifani sinab ko'rmoqchisiz?</p>
+          <p className="text-sm text-muted mt-1">Vazifani tanlang, keyin u bilan chat sifatida suhbatlashib sinaysiz.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-xl">
+          {taskKeys.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setTaskKey(k)}
+              className="text-left px-3.5 py-2.5 rounded-xl border border-border hover:border-accent/50 hover:bg-accent-soft transition-colors"
+            >
+              <p className="text-sm font-semibold text-ink">{TASK_KEY_LABEL[k] || k}</p>
+              <p className="text-[11px] text-muted font-mono mt-0.5 break-all">{k}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex flex-col rounded-2xl border border-border bg-surface shadow-card overflow-hidden relative"
@@ -99,18 +138,28 @@ export default function AiPlaygroundChat({ taskKeys }) {
           type="button"
           onClick={() => setModelMenuOpen((v) => !v)}
           aria-expanded={modelMenuOpen}
-          className="min-w-0 flex items-center gap-1.5 px-2.5 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-mono font-semibold text-ink bg-bg hover:bg-accent-soft transition-colors"
+          title={taskKey}
+          className="min-w-0 flex items-center gap-1.5 px-2.5 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-semibold text-ink bg-bg hover:bg-accent-soft transition-colors"
         >
           <Bot size={13} className="text-accent flex-shrink-0" />
-          <span className="truncate">{taskKey}</span>
+          <span className="truncate">{TASK_KEY_LABEL[taskKey] || taskKey}</span>
           <ChevronDown size={12} className={`text-muted transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setTaskKey('')}
+          title="Vazifani almashtirish (boshlang'ich ekranga qaytish)"
+          aria-label="Vazifani almashtirish (boshlang'ich ekranga qaytish)"
+          className="ml-auto p-1.5 min-w-11 min-h-11 md:min-w-0 md:min-h-0 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors flex-shrink-0"
+        >
+          <ArrowLeft size={14} />
         </button>
         <button
           type="button"
           onClick={resetChat}
           title="Suhbatni tozalash"
           aria-label="Suhbatni tozalash"
-          className="ml-auto p-1.5 min-w-11 min-h-11 md:min-w-0 md:min-h-0 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors flex-shrink-0"
+          className="p-1.5 min-w-11 min-h-11 md:min-w-0 md:min-h-0 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors flex-shrink-0"
         >
           <RotateCcw size={14} />
         </button>
@@ -119,7 +168,7 @@ export default function AiPlaygroundChat({ taskKeys }) {
           <>
             <div className="fixed inset-0 z-20" onClick={() => setModelMenuOpen(false)} />
             <div className="absolute left-3 sm:left-4 top-full mt-1 z-30 w-72 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-card py-1.5 max-h-80 overflow-y-auto">
-              <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">Sinov uchun model (taskKey)</p>
+              <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">Sinov uchun vazifa</p>
               {taskKeys.map((k) => (
                 <button
                   key={k}
@@ -129,9 +178,12 @@ export default function AiPlaygroundChat({ taskKeys }) {
                     setModelMenuOpen(false);
                     resetChat();
                   }}
-                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-mono text-left text-ink hover:bg-accent-soft transition-colors"
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-ink hover:bg-accent-soft transition-colors"
                 >
-                  {k}
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold truncate">{TASK_KEY_LABEL[k] || k}</span>
+                    <span className="block text-[10px] font-mono text-muted truncate">{k}</span>
+                  </span>
                   {k === taskKey && <Check size={13} className="text-accent flex-shrink-0" />}
                 </button>
               ))}

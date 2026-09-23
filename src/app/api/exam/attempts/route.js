@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { ExamTest, ExamAttempt } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getOrCreateTestVersion } from '@/lib/exam/attemptServer';
+import { normalizeMockKind } from '@/lib/exam/mockKind';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -19,8 +20,10 @@ function mockSectionsFor(test) {
 }
 
 /** Bitta test hujjatidan mock attempt yaratadi — testId aniq berilgan yoki
- * tasodifiy tanlangan bo'lishidan qat'i nazar BIR XIL yo'l bilan ishlaydi. */
-async function createMockAttemptForTest(userId, test) {
+ * tasodifiy tanlangan bo'lishidan qat'i nazar BIR XIL yo'l bilan ishlaydi.
+ * `mockKind` — AUDIT Sprint 2/§52.1 (Practice/Exam/Secure) — chaqiruvchi
+ * tomonidan ALLAQACHON normallashtirilgan/tasdiqlangan bo'lishi kerak. */
+async function createMockAttemptForTest(userId, test, mockKind) {
   const sections = mockSectionsFor(test);
   if (sections.length === 0) {
     return { error: "Testda listening/reading/writing bo'limlaridan birontasi yo'q" };
@@ -36,6 +39,7 @@ async function createMockAttemptForTest(userId, test) {
     testId: test._id,
     testVersionId,
     mode: 'mock',
+    mockKind,
     sections,
     currentSection: firstSection,
     status: 'in_progress',
@@ -74,12 +78,19 @@ export async function POST(req) {
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
-    const { testId, mode = 'section', section, abandonExisting } = await req.json().catch(() => ({}));
+    const { testId, mode = 'section', section, abandonExisting, mockKind: mockKindInput } = await req.json().catch(() => ({}));
     if (!['section', 'mock', 'practice'].includes(mode)) {
       return NextResponse.json({ error: "mode faqat 'section', 'mock' yoki 'practice' bo'lishi mumkin" }, { status: 400 });
     }
     if ((mode === 'section' || mode === 'practice') && !testId) {
       return NextResponse.json({ error: 'testId shart' }, { status: 400 });
+    }
+    // AUDIT Sprint 2/§52.1 — `mockKind` faqat `mode:'mock'`ga tegishli, lekin
+    // validatsiya barcha yo'llardan oldin, bitta joyda (noto'g'ri qiymat
+    // boshqa `mode`larda ham jim yutilmasligi kerak).
+    const mockKind = normalizeMockKind(mockKindInput);
+    if (mockKind === null) {
+      return NextResponse.json({ error: "mockKind faqat 'practice', 'exam' yoki 'secure' bo'lishi mumkin" }, { status: 400 });
     }
 
     await connectToDatabase();
@@ -122,7 +133,7 @@ export async function POST(req) {
         ]);
         if (!randomTest) return NextResponse.json({ error: "Hozircha mock uchun test yo'q." }, { status: 404 });
 
-        const { attempt, error } = await createMockAttemptForTest(userId, randomTest);
+        const { attempt, error } = await createMockAttemptForTest(userId, randomTest, mockKind);
         if (error) return NextResponse.json({ error }, { status: 400 });
         return NextResponse.json({ attemptId: String(attempt._id) });
       }
@@ -138,7 +149,7 @@ export async function POST(req) {
       const existing = await ExamAttempt.findOne({ userId, testId, mode: 'mock', status: 'in_progress' });
       if (existing) return NextResponse.json({ attemptId: String(existing._id) });
 
-      const { attempt, error } = await createMockAttemptForTest(userId, test);
+      const { attempt, error } = await createMockAttemptForTest(userId, test, mockKind);
       if (error) return NextResponse.json({ error }, { status: 400 });
       return NextResponse.json({ attemptId: String(attempt._id) });
     }

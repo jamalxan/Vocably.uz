@@ -1,11 +1,12 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Loader2, RotateCcw, Target } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { fetchAttempt, fetchAttemptResult, gradeWriting } from '../state/attemptsApi';
 import ReviewScreen from '../review/ReviewScreen';
 import ResultAnalytics from '../review/ResultAnalytics';
+import { recommendNextPractice } from '@/lib/exam/mockRecommendation';
 import type { AttemptResult, AttemptReviewDetail } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §19 Faza 3 item 15's scope stops at orchestration — this is
@@ -122,6 +123,15 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
   const writingPending = result.writing == null;
   const anyEstimated =
     (result.listening?.band != null && result.listening?.bandEstimated) || (result.reading?.band != null && result.reading?.bandEstimated);
+  // §52.7 "skill-by-skill weaknesses" + "recommended next practice" — sof,
+  // deterministik hisoblash (mockRecommendation.ts), yangi AI chaqiruvi YO'Q.
+  // Writing hali baholanmagan bo'lsa ham (`writingPending`) ishlaydi — mavjud
+  // 1-2 band bilan ham eng past ko'rsatkichni topadi, to'liq bo'lgach o'zi yangilanadi.
+  const recommendation = recommendNextPractice({
+    listening: result.listening?.band ?? null,
+    reading: result.reading?.band ?? null,
+    writing: result.writing?.band ?? null,
+  });
 
   return (
     <div className="max-w-md mx-auto p-6 sm:p-10">
@@ -138,6 +148,16 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
         <SectionRow label="Writing" band={result.writing?.band} />
       </div>
       {anyEstimated && <p className="text-[11px] text-muted mt-2">{ESTIMATED_NOTE}.</p>}
+
+      {/* §52.7 — "skill-by-skill weaknesses" + "recommended next practice".
+          Boshqa (question-type/vocabulary weaknesses, readiness trend)
+          analytics.ts infratuzilmasi kerak bo'lgani uchun ATAYLAB YO'Q. */}
+      {recommendation && (
+        <div className="mt-4 flex items-start gap-2 px-3 py-2.5 bg-accent/5 border border-accent/20 rounded-lg text-xs text-ink">
+          <Target size={15} className="flex-shrink-0 mt-0.5 text-accent" />
+          {recommendation.message}
+        </div>
+      )}
 
       {writingPending && (
         <div className="mt-4 text-center">

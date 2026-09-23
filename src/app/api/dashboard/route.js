@@ -3,6 +3,7 @@ import { User, ReviewEvent } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { cardFromStats, localDateWithCutoff, LEECH_THRESHOLD } from '@/lib/srs';
+import { getAttemptHistory } from '@/lib/exam/attemptServer';
 import { NextResponse } from 'next/server';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -36,7 +37,10 @@ export async function GET(req) {
     // Faqat o'qish uchun (bu route hech qachon userni saqlamaydi) — .lean() hydratsiya
     // xarajatini o'tkazib yuboradi, katta `categories` massivi uchun sezilarli farq qiladi.
     const user = await User.findById(userId)
-      .select('categories reviewStreak longestReviewStreak lastReviewDate timezone dailyGoal')
+      .select(
+        'categories reviewStreak longestReviewStreak lastReviewDate timezone dailyGoal ' +
+          'targetBand examType examDate currentLevel dailyStudyMinutes'
+      )
       .lean();
     if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
 
@@ -150,7 +154,26 @@ export async function GET(req) {
 
     const totalReviewsAllTime = await ReviewEvent.countDocuments({ userId });
 
+    // EDU-01b (VOCABLY_TZ_FINAL...2026-09-20.md §11 "Dashboard": "Target Band: 7.0 /
+    // Current Estimate: 6.0 / Days Left: 43"). Dashboard bitta so'rov bilan ochilishi
+    // kerak (spec §5.4, shu faylning boshidagi izoh) — shuning uchun yangi alohida
+    // endpoint o'rniga shu bitta chaqiruvda qo'shiladi. "Current estimate" — eng oddiy
+    // oqilona proksi (task ta'rifi bo'yicha): foydalanuvchining ENG SO'NGGI baholangan
+    // (graded) urinishining overall band'i — to'liq adaptiv bashorat emas.
+    const [latestGraded] = await getAttemptHistory(userId, 1);
+    const currentEstimate = latestGraded?.overall ?? null;
+    const daysLeft = user.examDate ? Math.ceil((new Date(user.examDate).getTime() - now.getTime()) / DAY_MS) : null;
+
     return NextResponse.json({
+      examPrep: {
+        targetBand: user.targetBand ?? null,
+        examType: user.examType ?? null,
+        examDate: user.examDate ? new Date(user.examDate).toISOString() : null,
+        currentLevel: user.currentLevel ?? null,
+        dailyStudyMinutes: user.dailyStudyMinutes ?? null,
+        currentEstimate,
+        daysLeft,
+      },
       streak: {
         current: user.reviewStreak || 0,
         longest: Math.max(user.longestReviewStreak || 0, user.reviewStreak || 0),

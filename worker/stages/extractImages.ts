@@ -12,6 +12,7 @@
 import { ContentAsset } from '@/lib/models';
 import { getObjectBuffer, putObject } from '@/lib/storage/r2';
 import { extractEmbeddedImages } from '../lib/pdf';
+import { detectSourceFormat } from '@/lib/contentAgent/sourceFormat';
 import { runAiStage } from '../lib/aiStageRunner';
 import { requireStageOutput } from '../lib/dependencies';
 import { UnrecoverableStageError } from '../lib/errors';
@@ -52,6 +53,19 @@ export async function runExtractImages(ctx: StageContext): Promise<ExtractImages
   const book = await (ContentBook as any).findById(ctx.job.bookId).lean();
   if (!book?.source?.pdfAssetId) throw new UnrecoverableStageError('ContentBook.source.pdfAssetId yo\'q');
   const pdfAsset = await ContentAssetModel.findById(book.source.pdfAssetId).lean();
+
+  // §50.2 — manba DOCX bo'lsa (`@/lib/contentAgent/sourceFormat`, `extract.ts`
+  // bilan BIR XIL detektsiya), bu yerda hech narsa qilinmaydi: DOCX ichiga
+  // o'rnatilgan rasmlarni chiqarish shu sessiya doirasiga kirmaydi (faqat
+  // matn ajratish — TZ), va PDF-ga xos `extractEmbeddedImages` DOCX
+  // baytlarida CHIQARIB TASHLAYDI (xato). `assemble.ts` bu bosqich
+  // natijasini ALLAQACHON ixtiyoriy deb ko'radi (`extract_images` yo'q
+  // bo'lsa `{images:[]}` bilan davom etadi) — shuning uchun bo'sh natija
+  // qaytarish HECH NIMANI buzmaydi, faqat foydasiz retry-loop'ning oldini
+  // oladi.
+  const format = detectSourceFormat({ mimeType: pdfAsset.storage.contentType, filename: pdfAsset.storage.key });
+  if (format !== 'pdf') return { images: [] };
+
   const pdfBuffer = await getObjectBuffer(pdfAsset.storage.key);
 
   const embedded = await extractEmbeddedImages(pdfBuffer);

@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import HeroCard from './HeroCard';
 import StreakCard from './StreakCard';
+import ExamPrepCard from './ExamPrepCard';
 import KpiRow from './KpiRow';
 import MasteryBreakdown from './MasteryBreakdown';
 import LeechList from './LeechList';
@@ -78,6 +79,7 @@ export default function DashboardHome() {
           <Skeleton className="lg:col-span-2 h-[176px] rounded-2xl" />
           <Skeleton className="h-[176px] rounded-2xl" />
         </div>
+        <Skeleton className="h-[104px] rounded-2xl" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-[92px] rounded-xl" />
@@ -126,6 +128,8 @@ export default function DashboardHome() {
           dates={data.activity7?.map((d) => d.date)}
         />
       </div>
+
+      <ExamPrepCard examPrep={data.examPrep} />
 
       <KpiRow today={data.today} deltas={data.deltas} totals={data.totals} />
 

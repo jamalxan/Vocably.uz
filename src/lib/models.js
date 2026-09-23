@@ -70,6 +70,16 @@ const WordEnrichmentSchema = new mongoose.Schema(
     audioUrl: { uk: { type: String, default: '' }, us: { type: String, default: '' } },
     imageUrl: { type: String, default: '' },
     aiEnrichedAt: { type: Date, default: null },
+    // EDU-02 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md — "taxonomy/band/skill yo'q")
+    // — IELTS lug'at-ko'nikma bog'lanishi uchun DATA MODEL. Qaysi so'z qaysi
+    // band/ko'nikmaga tegishli ekanini TO'LDIRISH alohida KONTENT-KURASIYA
+    // vazifasi (bu o'zgarishda ATAYLAB QILINMAGAN — real IELTS taxonomy'ni
+    // to'g'ri joylashtirish AI kod chaqiruvi emas, lingvistik kontent ishi).
+    // Bu yerda faqat sxema imkoniyati qo'shilmoqda — EDU-03 (xato-asosida
+    // avtomatik qo'shilgan so'zlar) shu maydonga yoza oladi, kelgusida to'liq
+    // taxonomy curation qilinganda ham struktura tayyor turadi.
+    ieltsSkillTag: { type: String, enum: ['reading', 'listening', 'writing', 'speaking', null], default: null },
+    ieltsBandLevel: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -160,6 +170,18 @@ const UserSchema = new mongoose.Schema({
   // XP o'zgarganda avtomatik to'g'ri chiqadi, ikkalasi sinxronsizlanib qolmaydi.
   xp: { type: Number, default: 0 },
   badges: [{ key: { type: String, required: true }, earnedAt: { type: Date, default: Date.now } }],
+  // EDU-01a (VOCABLY_TZ_FINAL...2026-09-20.md §11 "Onboarding") — IELTS
+  // tayyorgarlik profili. Barchasi ixtiyoriy/`default: null` — mavjud
+  // foydalanuvchilar buni to'ldirmagan holatda ham hech narsa buzilmaydi
+  // (Profil sahifasida "O'rnatilmagan" sifatida so'raladi, Dashboard shunga
+  // moslashib ko'rsatadi/berkitadi — hech narsani BLOKLAMAYDI).
+  targetBand: { type: Number, min: 5, max: 9, default: null }, // 5.0-9.0, 0.5 qadam bilan
+  examType: { type: String, enum: ['academic', 'general', null], default: null },
+  examDate: { type: Date, default: null },
+  // Erkin matn emas — kichik, oddiy enum (TZ "Current level"ni qat'iy
+  // formatlamagan, MVP doirasida shu uchtasi yetarli).
+  currentLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced', null], default: null },
+  dailyStudyMinutes: { type: Number, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -741,14 +763,15 @@ export const ExamTestVersion = mongoose.models.ExamTestVersion || mongoose.model
 // AUDIT PERF/xavfsizlik (VOCABLY_TZ_FINAL... 2026-09-20 §23, "Event log:
 // Arbitrary `type`ni enum bilan whitelist qilish") — avvalgi versiyada
 // `events[].type` ISTALGAN string qabul qilardi (faqat "bo'sh emasmi"
-// tekshirilardi, route.js). Klient hali `/event`ni umuman chaqirmasa ham
-// (qidiruv bilan tasdiqlandi — bu integrity-log UI hali ulanmagan),
-// backend qabul qiladigan qiymatlar TO'PLAMI ochiq bo'lib qolishi kerak
-// emas — TZ §14 o'zi aniq nomlagan uchtasi (tab switch, fullscreen exit,
-// paste) + ular bilan tabiiy juftlashadigan qarama-qarshi holatlar.
-// `route.js` (`/api/exam/attempts/[id]/event`) HAM shu ro'yxatni import
-// qilib, Mongoose validatsiya xatosi sifatida emas, aniq 400 bilan rad
-// etadi — ikkala qatlam (API + schema) bitta ro'yxatni baham ko'radi.
+// tekshirilardi, route.js). Backend qabul qiladigan qiymatlar TO'PLAMI ochiq
+// bo'lib qolishi kerak emas — TZ §14/§52.6 o'zi aniq nomlagan uchtasi (tab
+// switch, fullscreen exit, paste) + ular bilan tabiiy juftlashadigan
+// qarama-qarshi holatlar. `route.js` (`/api/exam/attempts/[id]/event`) HAM
+// shu ro'yxatni import qilib, Mongoose validatsiya xatosi sifatida emas, aniq
+// 400 bilan rad etadi — ikkala qatlam (API + schema) bitta ro'yxatni baham
+// ko'radi. AUDIT Sprint 2/§52.6 — bu endpoint endi client tomonidan
+// HAQIQATDA chaqiriladi (useIntegrityEvents.ts, mode:'mock' mock urinishlar
+// uchun, faqat mockKind !== 'practice'da) — avval qurilgan-lekin-ulanmagan edi.
 export const ATTEMPT_EVENT_TYPES = ['visibility_hidden', 'visibility_visible', 'fullscreen_exit', 'fullscreen_enter', 'paste', 'copy', 'blur', 'focus'];
 
 const ExamAttemptSchema = new mongoose.Schema(
@@ -766,6 +789,13 @@ const ExamAttemptSchema = new mongoose.Schema(
     // bilan yaratiladi (POST /attempts route.js) va tarix grafigiga qo'shilmaydi
     // (getAttemptHistory, attemptServer.ts) — bu "haqiqiy" urinish emas.
     mode: { type: String, enum: ['mock', 'section', 'practice'], default: 'section' },
+    // AUDIT Sprint 2/§52.1 — "Mock rejimlari: Practice / Exam Simulation /
+    // Secure Mock" — faqat `mode:'mock'` uchun ma'noga ega (boshqa `mode`larda
+    // ishlatilmaydi, default qiymatida qoladi). `'exam'` default — mavjud
+    // eski mock urinishlar (shu maydon qo'shilishidan OLDIN yaratilgan) ilgari
+    // amalda bo'lgan qat'iy-timer/section-locking xatti-harakatini saqlab
+    // qoladi (orqaga moslik — attempts/route.js va attemptServer.ts izohiga q.).
+    mockKind: { type: String, enum: ['practice', 'exam', 'secure'], default: 'exam' },
     sections: [{ type: String, enum: ['listening', 'reading', 'writing', 'speaking'] }],
     currentSection: { type: String, enum: ['listening', 'reading', 'writing', 'speaking'], required: true },
     status: { type: String, enum: ['in_progress', 'submitted', 'graded', 'expired', 'abandoned'], default: 'in_progress' },
@@ -969,7 +999,11 @@ export const ContentBook = mongoose.models.ContentBook || mongoose.model('Conten
 // bu yerda faqat metama'lumot + `storage.key`.
 const ContentAssetSchema = new mongoose.Schema({
   bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', default: null },
-  kind: { type: String, enum: ['pdf', 'audio', 'image', 'page_render'], required: true },
+  // §50.2 — 'docx' MongoDB TZ_V2 AUDIT'dagi ko'p-format talabiga javoban
+  // qo'shildi (PDF'ning muqobili — bitta kitobga bitta manba hujjat, xuddi
+  // 'pdf' kabi `ContentBook.source.pdfAssetId`ga yoziladi, faqat matn
+  // formati farq qiladi — src/lib/contentAgent/sourceFormat.ts izohiga q.).
+  kind: { type: String, enum: ['pdf', 'docx', 'audio', 'image', 'page_render'], required: true },
   storage: {
     bucket: { type: String, required: true },
     key: { type: String, required: true },

@@ -1,15 +1,21 @@
 'use client';
+import { useState } from 'react';
 import Link from 'next/link';
-import { Headphones, BookOpen, PenLine, AlertTriangle, Loader2, Monitor, RotateCcw, ArrowLeft } from 'lucide-react';
+import { Headphones, BookOpen, PenLine, AlertTriangle, Loader2, Monitor, RotateCcw, ArrowLeft, ShieldCheck, GraduationCap, Timer } from 'lucide-react';
 import type { ActiveMockInfo, TestPreview } from '../state/attemptsApi';
 import { useIsMobile } from '../state/useIsMobile';
+import { MOCK_KINDS, DEFAULT_MOCK_KIND, type MockKind } from '@/lib/exam/mockKind';
 
 // TZ-vocably-v2.md §9.2 — Mock intro ekrani. "Bu yerda premium dizayn qiling"
 // (§9.2 sarlavhasi) — imtihon HALI boshlanmagan, shuning uchun §5.1 qoidasi
 // bo'yicha ilovaning o'z (Deep Merlot) uslubida, `[data-exam]` ICHIDA EMAS.
 export interface IntroScreenProps {
   test: TestPreview;
-  onStart: (fresh?: boolean) => void;
+  // AUDIT Sprint 2/§52.1 — "Mock rejimlari" tanlovi endi shu ekranda: chaqiruvchi
+  // (MockShell.tsx) tanlangan `mockKind`ni `POST /api/exam/attempts`ga
+  // shu bilan birga yuboradi. `fresh` — mavjud (resumeInfo) urinishni davom
+  // ettirish o'rniga chinakam yangisini boshlash (avvalgi xatti-harakat, o'zgarmagan).
+  onStart: (fresh: boolean | undefined, mockKind: MockKind) => void;
   starting?: boolean;
   // VOCABLY-TZ.md §1.1/"Attempt boshqaruvi" auditi — bo'lmasa yo'q (yangi mock),
   // bor bo'lsa foydalanuvchiga aniq tanlov ko'rsatiladi: "Davom ettirish" yoki
@@ -21,6 +27,26 @@ export interface IntroScreenProps {
 
 const SECTION_LABEL_UZ: Record<string, string> = { listening: 'Listening', reading: 'Reading', writing: 'Writing' };
 
+// §52.1 — uchta mock rejimi. Tartib ataylab shu: eng "yumshoq"dan eng
+// "qattiq"gacha (Practice → Exam → Secure), UI'da chapdan o'ngga o'sib boradi.
+const MOCK_KIND_INFO: Record<MockKind, { label: string; description: string; Icon: typeof ShieldCheck }> = {
+  practice: {
+    label: 'Mashq',
+    description: "Erkin navigatsiya, bo'limlar orasida orqaga qaytish mumkin. Vaqt bosimi kamroq.",
+    Icon: GraduationCap,
+  },
+  exam: {
+    label: 'Imtihon simulyatsiyasi',
+    description: "Qat'iy taymer, bo'limlar tartibi qat'iy (orqaga qaytib bo'lmaydi).",
+    Icon: Timer,
+  },
+  secure: {
+    label: 'Xavfsiz rejim',
+    description: "Imtihon qoidalari + fokus/tab almashish kuzatuvi (halollik logi).",
+    Icon: ShieldCheck,
+  },
+};
+
 function formatMinutes(sec: number): number {
   return Math.round(sec / 60);
 }
@@ -30,6 +56,7 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
   const totalSec = (listening?.durationSec || 0) + (reading?.durationSec || 0) + (writing?.durationSec || 0);
   const totalMin = formatMinutes(totalSec);
   const isMobile = useIsMobile();
+  const [mockKind, setMockKind] = useState<MockKind>(DEFAULT_MOCK_KIND);
 
   return (
     <div className="fixed inset-0 z-40 bg-bg overflow-y-auto">
@@ -93,10 +120,43 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
             </span>
           </div>
 
+          {/* §52.1 — "Practice / Exam Simulation / Secure Mock" tanlovi. Resume
+              bo'lsa ham ko'rsatiladi: "Davom ettirish" o'zining eski
+              rejimida davom etadi (tanlov ta'sir qilmaydi), lekin "Yangi
+              tasodifiy mock boshlash" shu tanlov bilan boshlanadi. */}
+          <div className="mt-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">Mock rejimi</p>
+            <div className="grid grid-cols-1 gap-2">
+              {MOCK_KINDS.map((kind) => {
+                const info = MOCK_KIND_INFO[kind];
+                const selected = mockKind === kind;
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => setMockKind(kind)}
+                    aria-pressed={selected}
+                    className={`flex items-start gap-3 text-left px-3 py-2.5 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                      selected ? 'border-accent bg-accent/5' : 'border-border hover:bg-bg'
+                    }`}
+                  >
+                    <info.Icon size={17} className={`flex-shrink-0 mt-0.5 ${selected ? 'text-accent' : 'text-muted'}`} />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-ink">{info.label}</span>
+                      <span className="block text-xs text-muted mt-0.5">{info.description}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="mt-5 space-y-1.5">
             {[
               "Boshlangandan keyin taymer to'xtamaydi.",
-              "Bo'limlar orasida orqaga qaytib bo'lmaydi.",
+              mockKind === 'practice'
+                ? "Mashq rejimida bo'limlar orasida orqaga qaytish mumkin."
+                : "Bo'limlar orasida orqaga qaytib bo'lmaydi.",
               'Naushnik tayyorlang.',
             ].map((warning) => (
               <p key={warning} className="flex items-start gap-2 text-xs text-muted">
@@ -120,7 +180,7 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
           )}
 
           <button
-            onClick={() => onStart(false)}
+            onClick={() => onStart(false, mockKind)}
             disabled={starting}
             className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent hover:bg-accent-hover disabled:opacity-60 disabled:hover:bg-accent text-on-accent font-semibold rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
@@ -130,7 +190,7 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
 
           {resumeInfo && (
             <button
-              onClick={() => onStart(true)}
+              onClick={() => onStart(true, mockKind)}
               disabled={starting}
               className="mt-2.5 w-full min-h-11 flex items-center justify-center gap-2 px-4 py-2.5 bg-transparent hover:bg-bg disabled:opacity-60 text-muted hover:text-ink font-medium rounded-lg text-xs transition-colors border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >

@@ -30,6 +30,7 @@ export async function GET(req, { params }) {
         id: String(attempt._id),
         testId: String(attempt.testId),
         mode: attempt.mode,
+        mockKind: attempt.mockKind,
         sections: attempt.sections,
         currentSection: attempt.currentSection,
         status: attempt.status,

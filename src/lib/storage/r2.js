@@ -42,8 +42,19 @@ const BUCKET = () => {
 // TZ §4.3 — ruxsat etilgan manba fayl turlari va maksimal hajm. Bular kitob/
 // audio MANBASI uchun (chat media'nikidan farqli, kattaroq — kitob PDF'i
 // ~35MB, audio ~100MB bo'lishi mumkin).
+//
+// §50.2 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md) — 'docx' PDF bilan BIR XIL
+// qoida bilan ("bitta kitobga bitta manba hujjat") qo'shildi. Qaysi format
+// ekanini yakuniy hal qiluvchi mantiq — `src/lib/contentAgent/sourceFormat.ts`
+// (`detectSourceFormat`) — bu yerda faqat MIME ro'yxati, chunki
+// `validateSourceUpload` `kind`ni chaqiruvchidan (allaqachon aniqlangan)
+// oladi, o'zi aniqlamaydi.
 export const ALLOWED_SOURCE = {
   pdf: { mimePrefix: 'application/pdf', maxBytes: 500 * 1024 * 1024 },
+  docx: {
+    mimePrefix: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    maxBytes: 500 * 1024 * 1024,
+  },
   audio: { mimePrefix: 'audio/', maxBytes: 300 * 1024 * 1024 },
   image: { mimePrefix: 'image/', maxBytes: 20 * 1024 * 1024 },
 };
@@ -51,18 +62,19 @@ export const ALLOWED_SOURCE = {
 export function validateSourceUpload(kind, mimeType, size) {
   const rule = ALLOWED_SOURCE[kind];
   if (!rule) return "Noto'g'ri fayl turi";
-  const matches = kind === 'pdf' ? mimeType === rule.mimePrefix : mimeType?.startsWith(rule.mimePrefix);
+  const matches = kind === 'pdf' || kind === 'docx' ? mimeType === rule.mimePrefix : mimeType?.startsWith(rule.mimePrefix);
   if (!matches) return 'Fayl turi mos kelmadi';
   if (!size || size <= 0 || size > rule.maxBytes) return "Fayl hajmi ruxsat etilgan chegaradan katta";
   return null;
 }
 
 // TZ §4.2 — bucket tuzilmasi. `kind` bo'yicha to'g'ri prefiks tanlanadi;
-// PDF manba fayli har doim `books/{bookId}/source.pdf` (bitta kitobga bitta
-// asl PDF), audio/rasm esa tasodifiy UUID bilan (bitta kitobda bir nechta
-// audio fayl bo'lishi mumkin).
+// PDF/DOCX manba fayli har doim `books/{bookId}/source.{pdf|docx}` (bitta
+// kitobga bitta asl hujjat), audio/rasm esa tasodifiy UUID bilan (bitta
+// kitobda bir nechta audio fayl bo'lishi mumkin).
 export function buildSourceKey(bookId, kind, mimeType) {
   if (kind === 'pdf') return `books/${bookId}/source.pdf`;
+  if (kind === 'docx') return `books/${bookId}/source.docx`;
   const subtype = mimeType?.split('/')[1]?.split(';')[0];
   const ext = (subtype || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 8);
   const prefix = kind === 'audio' ? 'audio/raw' : 'images';

@@ -7,6 +7,7 @@ import type {
   SanitizedTest,
   SpeakingRecording,
 } from '@/lib/exam/types';
+import type { MockKind } from '@/lib/exam/mockKind';
 
 // TZ-vocably-v2.md §4 — `/api/exam/attempts/*` uchun yupqa klient. Barcha
 // bo'lim modullari (Reading — allaqachon, Listening/Writing Faza 2'da) shu bir
@@ -45,6 +46,7 @@ export interface AttemptStateResponse {
     id: string;
     testId: string;
     mode: string;
+    mockKind?: MockKind;
     sections: string[];
     currentSection: string;
     status: string;
@@ -129,10 +131,11 @@ export async function fetchSectionStatuses(section: string): Promise<Record<stri
  * chinakam yangi tasodifiy test bilan boshlanadi (VOCABLY-TZ.md "Attempt
  * boshqaruvi" auditi — aks holda "Imtihonni boshlash" jimgina eski
  * urinishni davom ettirar edi, go'yo Listening o'tkazib yuborilgandek). */
-export async function createMockAttempt(testId?: string, abandonExisting?: boolean): Promise<{ attemptId: string }> {
+export async function createMockAttempt(testId?: string, abandonExisting?: boolean, mockKind?: MockKind): Promise<{ attemptId: string }> {
   const body: Record<string, unknown> = { mode: 'mock' };
   if (testId) body.testId = testId;
   if (abandonExisting) body.abandonExisting = true;
+  if (mockKind) body.mockKind = mockKind;
   const res = await authedFetch('/api/exam/attempts', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -163,6 +166,20 @@ export async function fetchActiveMock(): Promise<ActiveMockInfo | null> {
 export async function advanceMockSection(attemptId: string): Promise<{ currentSection: string; status: string; endsAt: string }> {
   const res = await authedFetch(`/api/exam/attempts/${attemptId}/section/next`, { method: 'POST' });
   if (!res.ok) throw new Error("Keyingi bo'limga o'tib bo'lmadi");
+  return res.json();
+}
+
+/** AUDIT Sprint 2/§52.1 — Practice mock'da bo'limlar orasida ERKIN (oldinga
+ * HAM orqaga HAM) o'tish, `advanceMockSection`dan farqli. Server bu faqat
+ * `mockKind:'practice'`da ruxsat etilishini tekshiradi (403 aks holda) —
+ * bu yerda qo'shimcha tekshiruv YO'Q, chaqiruvchi (MockShell.tsx) UI'da
+ * tugmani faqat Practice'da ko'rsatadi. */
+export async function goToMockSection(attemptId: string, targetSection: string): Promise<{ currentSection: string; status: string; endsAt: string }> {
+  const res = await authedFetch(`/api/exam/attempts/${attemptId}/section/go`, {
+    method: 'POST',
+    body: JSON.stringify({ targetSection }),
+  });
+  if (!res.ok) throw new Error("Bo'limga o'tib bo'lmadi");
   return res.json();
 }
 

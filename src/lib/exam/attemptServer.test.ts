@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildAnswersPatchSetOps } from './attemptServer';
+import { buildAnswersPatchSetOps, extractErrorVocabulary } from './attemptServer';
 
 // AUDIT PERF-01 — bu faqat `buildAnswersPatchSetOps` (sof funksiya) sinaydi,
 // `patchAttemptAnswers`ning O'ZINI EMAS (u DB'ga yozadi — bu faylning
@@ -60,5 +60,72 @@ describe('buildAnswersPatchSetOps', () => {
       lastQuestion: 5,
       'essays.task2': { text: 'essay', wordCount: 250, updatedAt: now },
     });
+  });
+});
+
+// EDU-03 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md — "Error-driven curriculum") —
+// `extractErrorVocabulary` ham sof funksiya (DB/AI'siz), `buildAnswersPatchSetOps`
+// bilan bir xil naqsh bo'yicha to'g'ridan-to'g'ri sinaladi. `autoAddErrorVocabulary`
+// (DB'ga yozadi) va `submitAttempt` bog'lanishi bu yerda sinalmaydi.
+describe('extractErrorVocabulary', () => {
+  const fakeTest = (paragraphHtml: string, locatorParagraph = 'A') => ({
+    sections: {
+      reading: {
+        passages: [
+          {
+            paragraphs: [{ label: 'A', html: paragraphHtml }],
+            questionGroups: [{ questions: [{ number: 1, locatorParagraph }] }],
+          },
+        ],
+      },
+    },
+  });
+
+  it('extracts a small, deterministic word list from the wrong question\'s paragraph', () => {
+    const test = fakeTest(
+      '<p>The archaeological excavation uncovered remarkable artefacts beneath the ancient settlement.</p>'
+    );
+    const words = extractErrorVocabulary(test, [{ number: 1, correct: false }]);
+    expect(words.length).toBeGreaterThan(0);
+    expect(words.length).toBeLessThanOrEqual(4);
+    // Faqat uzun (>=5 harf), stop-so'z bo'lmagan so'zlar bo'lishi kerak.
+    for (const w of words) {
+      expect(w.length).toBeGreaterThanOrEqual(5);
+      expect(/^[a-z]+$/.test(w)).toBe(true);
+    }
+    // Deterministik — ikkinchi chaqiruv bir xil natija berishi kerak.
+    expect(extractErrorVocabulary(test, [{ number: 1, correct: false }])).toEqual(words);
+  });
+
+  it('returns nothing when the question was answered correctly', () => {
+    const test = fakeTest('<p>The archaeological excavation uncovered remarkable artefacts.</p>');
+    expect(extractErrorVocabulary(test, [{ number: 1, correct: true }])).toEqual([]);
+  });
+
+  it('returns nothing when the question has no locatorParagraph', () => {
+    const test = {
+      sections: {
+        reading: {
+          passages: [
+            {
+              paragraphs: [{ label: 'A', html: '<p>The archaeological excavation uncovered remarkable artefacts.</p>' }],
+              questionGroups: [{ questions: [{ number: 1 }] }], // locatorParagraph yo'q
+            },
+          ],
+        },
+      },
+    };
+    expect(extractErrorVocabulary(test, [{ number: 1, correct: false }])).toEqual([]);
+  });
+
+  it('returns nothing gracefully when there is no reading section at all', () => {
+    expect(extractErrorVocabulary({ sections: {} }, [{ number: 1, correct: false }])).toEqual([]);
+    expect(extractErrorVocabulary(null, [{ number: 1, correct: false }])).toEqual([]);
+    expect(extractErrorVocabulary(undefined, undefined)).toEqual([]);
+  });
+
+  it('returns nothing when the locatorParagraph label does not match any paragraph', () => {
+    const test = fakeTest('<p>The archaeological excavation uncovered remarkable artefacts.</p>', 'Z');
+    expect(extractErrorVocabulary(test, [{ number: 1, correct: false }])).toEqual([]);
   });
 });

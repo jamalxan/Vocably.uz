@@ -4,6 +4,7 @@ import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { ContentBook, ContentAsset } from '@/lib/models';
 import { validateSourceUpload, buildSourceKey, presignSourceUpload } from '@/lib/storage/r2';
+import { detectSourceFormat } from '@/lib/contentAgent/sourceFormat';
 import { NextResponse } from 'next/server';
 
 // TZ-vocably-v2.md (AI Content Ingestion Agent) §11.1/§12/§21 M1 — "1-qadam:
@@ -31,7 +32,7 @@ export async function POST(req) {
       licence,
       licenceNote = '',
       publishScope = 'private',
-      pdf, // { mimeType, size }
+      pdf, // { mimeType, size, filename? } — tarixiy nom, endi PDF YOKI DOCX bo'lishi mumkin (§50.2)
       audio = [], // [{ mimeType, size }]
     } = body;
 
@@ -45,9 +46,17 @@ export async function POST(req) {
       );
     }
     if (!pdf?.mimeType || !pdf?.size) {
-      return NextResponse.json({ error: 'PDF fayl ma\'lumoti (mimeType, size) majburiy' }, { status: 400 });
+      return NextResponse.json({ error: "Manba hujjat ma'lumoti (mimeType, size) majburiy" }, { status: 400 });
     }
-    const pdfValidationError = validateSourceUpload('pdf', pdf.mimeType, pdf.size);
+    // §50.2 — endi PDF YOKI DOCX qabul qilinadi. `detectSourceFormat`
+    // (`@/lib/contentAgent/sourceFormat`) ikkalasini ham bir xil mantiq
+    // bilan aniqlaydi — worker/stages/extract.ts ham xuddi shu funksiyani
+    // ishlatadi (bitta manba, farq qilish xavfi yo'q).
+    const sourceFormat = detectSourceFormat({ mimeType: pdf.mimeType, filename: pdf.filename });
+    if (!sourceFormat) {
+      return NextResponse.json({ error: "Fayl turi qo'llab-quvvatlanmaydi — faqat PDF yoki DOCX" }, { status: 400 });
+    }
+    const pdfValidationError = validateSourceUpload(sourceFormat, pdf.mimeType, pdf.size);
     if (pdfValidationError) return NextResponse.json({ error: pdfValidationError }, { status: 400 });
     for (const a of audio) {
       const err = validateSourceUpload('audio', a.mimeType, a.size);
@@ -62,7 +71,7 @@ export async function POST(req) {
     // smoke-testda qo'lda topilib, qo'lda tozalangan).
     const bookId = new mongoose.Types.ObjectId();
 
-    const pdfKey = buildSourceKey(bookId, 'pdf', pdf.mimeType);
+    const pdfKey = buildSourceKey(bookId, sourceFormat, pdf.mimeType);
     const pdfUploadUrl = await presignSourceUpload(pdfKey, pdf.mimeType);
 
     const audioPresigned = [];
@@ -89,7 +98,7 @@ export async function POST(req) {
 
     const pdfAsset = await ContentAsset.create({
       bookId: book._id,
-      kind: 'pdf',
+      kind: sourceFormat,
       storage: { bucket: process.env.R2_BUCKET || '', key: pdfKey, bytes: pdf.size, contentType: pdf.mimeType },
     });
     book.source.pdfAssetId = pdfAsset._id;
