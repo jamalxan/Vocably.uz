@@ -16,10 +16,8 @@ module.exports = {
         // platformaning emoji shriftiga tushadi, shunda emoji hech qachon lotin harflari
         // shriftidan (glyph yo'qligi sababli) render bo'lmaydi.
         chat: ['var(--font-body)', 'var(--font-emoji)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        // Standart Tailwind font-mono'ni almashtiradi — statistika raqamlari (streak,
-        // KPI, mastery, forecast), jadval indekslari va ID'lar generik tizim mono
-        // shrifti o'rniga brendning premium mono shriftida (IBM Plex Mono) chiqadi.
-        // Mavjud barcha `font-mono` klasslari o'zgarishsiz avtomatik yangilanadi.
+        // Faqat kod bloklari, ID va JSON uchun (IBM Plex Mono). Statistika raqamlari
+        // endi asosiy shriftda (Poppins) + tabular-nums.
         mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       boxShadow: {

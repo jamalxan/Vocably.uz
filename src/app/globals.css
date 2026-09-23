@@ -12,6 +12,10 @@
  * ========================================================================== */
 :root {
   color-scheme: light;
+  /* Yagona shrift (Poppins, layout.jsx) — barcha rollar bitta shriftga ishora qiladi. */
+  --font-display: var(--font-body);
+  --font-luxury: var(--font-body);
+  --font-word: var(--font-body);
   --color-bg: 243 237 230;             /* #F3EDE6 — sahifa foni */
   --color-bg-sunken: 235 227 218;      /* #EBE3DA — chuqurroq zona (masalan AppShell fon ostki qatlami) */
   --color-surface: 250 246 242;        /* #FAF6F2 — karta foni */

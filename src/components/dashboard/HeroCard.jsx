@@ -14,7 +14,7 @@ export default function HeroCard({ due, newAvailable, reviews, goal, goalPct, on
     <div className="bg-surface rounded-2xl shadow-card border border-border p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-6">
       <ProgressRing value={reviews} max={goal}>
         <div className="text-center">
-          <p className="text-lg font-bold text-ink font-mono tabular-nums leading-none">
+          <p className="text-lg font-bold text-ink tabular-nums leading-none">
             {reviews}/{goal}
           </p>
           <p className="text-[11px] leading-tight text-muted mt-1">bugungi maqsad</p>

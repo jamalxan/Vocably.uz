@@ -1,53 +1,23 @@
 import '@/app/globals.css';
-import { Plus_Jakarta_Sans, Inter, Playfair_Display, IBM_Plex_Mono, Source_Serif_4 } from 'next/font/google';
+import { Poppins, IBM_Plex_Mono } from 'next/font/google';
 import { ThemeProvider, themeInitScript } from '@/context/ThemeContext';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 
-const display = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-
-const body = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+// Butun ilova uchun yagona shrift — Poppins. Sarlavha/matn/logotip/so'z
+// o'zgaruvchilari (--font-display, --font-luxury, --font-word) globals.css'da
+// shu --font-body'ga ulangan, shuning uchun komponentlardagi klasslar o'zgarmaydi.
+const poppins = Poppins({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-body',
   display: 'swap',
 });
 
-// Premium/hashamatli sarlavhalar uchun (Bosh sahifa salomlashuvi, Admin panel) —
-// butun ilova bo'ylab bir xil brend ovozi bo'lishi uchun shu yerda, global yuklanadi.
-const luxury = Playfair_Display({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-luxury',
-  display: 'swap',
-});
-
-// Statistika raqamlari, IPA, ID kabi "tabular" matnlar uchun — Tailwind'ning
-// standart font-mono (generik tizim shrifti, system-ui bilan bir xil darajada
-// "arzon" ko'rinadi) o'rniga brendning o'z premium mono shrifti (tailwind.config.js
-// bu klaviaturani 'mono' kaliti ostida almashtiradi — mavjud font-mono ishlatgan
-// barcha joylar avtomatik yangilanadi, komponentlarni o'zgartirish shart emas).
+// Faqat kod bloklari, ID va JSON maydonlari uchun (font-mono).
 const mono = IBM_Plex_Mono({
   subsets: ['latin'],
-  // 600/700 — KPI/streak raqamlari font-semibold/font-bold font-mono (soxta qalinlik bo'lmasin).
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600'],
   variable: '--font-mono',
-  display: 'swap',
-});
-
-// FAQAT o'rganilayotgan so'zning o'zi uchun (flashcard old tarafi, test/tez
-// so'rov/yozish savoli) — lug'at kitobidagi bosh so'z kabi ajralib turadigan
-// serif, qolgan hamma joyda font-display (geometrik sans) qoladi. Aynan shu
-// maqsad uchun docs/VOCABLY_REDESIGN_SPEC.md'da rejalashtirilgan edi, lekin
-// hech qachon ulanmagan qolib ketgan edi.
-const word = Source_Serif_4({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-word',
   display: 'swap',
 });
 
@@ -103,7 +73,7 @@ export default function RootLayout({ children }) {
     // suppressHydrationWarning: <body> boshidagi bloklovchi skript hydration'dan oldin
     // data-theme atributini o'rnatishi mumkin — bu server/klient farqi kutilgan va
     // zararsiz, React shu haqidagi ogohlantirishni shu yerda bosib qo'ymasa bo'ladi.
-    <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable} ${mono.variable} ${word.variable}`} suppressHydrationWarning>
+    <html lang="uz" className={`${poppins.variable} ${mono.variable}`} suppressHydrationWarning>
       <body className="bg-bg text-ink min-h-dvh antialiased font-body" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>{children}</ThemeProvider>

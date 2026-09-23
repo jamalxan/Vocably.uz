@@ -337,7 +337,7 @@ export default function WordTable() {
                       />
                     </label>
                   </td>
-                  <td className="hidden sm:table-cell py-3.5 px-4 sm:px-6 text-muted font-mono text-xs">{w.idx + 1}</td>
+                  <td className="hidden sm:table-cell py-3.5 px-4 sm:px-6 text-muted tabular-nums text-xs">{w.idx + 1}</td>
                   <td className="py-3.5 px-3 sm:px-6 min-w-0 [overflow-wrap:anywhere]">
                     <Link
                       href={`/app/lugat/soz/${w._id}`}
