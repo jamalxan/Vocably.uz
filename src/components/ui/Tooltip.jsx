@@ -1,7 +1,8 @@
 // Faqat CSS bilan ishlaydigan yengil tooltip (JS pozitsiyalash kutubxonasi yo'q,
-// shuning uchun hech qanday tashqi paket qo'shilmaydi). AppShell'ning planshet
-// "rail" holatida (72px, faqat ikonka) har bir nav elementi label'ini shu bilan
-// ko'rsatadi. `side="right"` — rail chap tomonda bo'lgani uchun standart.
+// shuning uchun hech qanday tashqi paket qo'shilmaydi). `side="right"` — standart.
+// aria-hidden: nom trigger'ning o'z aria-label'idan o'qiladi (ikki marta o'qilmasin).
+// Hover faqat haqiqiy hover bor qurilmalarda — sensorli ekranda tapdan keyin osilib qolmaydi.
+// Diqqat: overflow-hidden ota ichida (masalan planshet rail) kesilib qoladi.
 export default function Tooltip({ label, side = 'right', children, className = '' }) {
   const position =
     side === 'right'
@@ -14,8 +15,8 @@ export default function Tooltip({ label, side = 'right', children, className = '
     <span className={`relative inline-flex group ${className}`}>
       {children}
       <span
-        role="tooltip"
-        className={`pointer-events-none absolute z-50 whitespace-nowrap px-2 py-1 rounded-md bg-primary text-on-primary text-xs font-medium opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 group-focus-within:opacity-100 group-focus-within:scale-100 transition-all duration-150 ${position}`}
+        aria-hidden="true"
+        className={`pointer-events-none absolute z-50 whitespace-nowrap px-2 py-1 rounded-md bg-primary text-on-primary text-xs font-medium opacity-0 scale-95 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-hover:scale-100 group-has-[:focus-visible]:opacity-100 group-has-[:focus-visible]:scale-100 transition-[opacity,transform] duration-150 ${position}`}
       >
         {label}
       </span>

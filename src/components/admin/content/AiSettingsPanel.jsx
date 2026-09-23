@@ -17,6 +17,7 @@ export default function AiSettingsPanel({ token }) {
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState(null);
   const [drafts, setDrafts] = useState({});
+  const [saveErrors, setSaveErrors] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,9 +48,10 @@ export default function AiSettingsPanel({ token }) {
 
   const save = async (taskKey) => {
     setSavingKey(taskKey);
+    setSaveErrors((prev) => ({ ...prev, [taskKey]: '' }));
     try {
       const d = drafts[taskKey];
-      await fetch('/api/admin/ai/config', {
+      const res = await fetch('/api/admin/ai/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -61,7 +63,14 @@ export default function AiSettingsPanel({ token }) {
           costCapUsd: Number(d.costCapUsd),
         }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSaveErrors((prev) => ({ ...prev, [taskKey]: data.error || "Saqlab bo'lmadi" }));
+        return;
+      }
       await load();
+    } catch {
+      setSaveErrors((prev) => ({ ...prev, [taskKey]: "Tarmoq xatosi — qayta urinib ko'ring" }));
     } finally {
       setSavingKey(null);
     }
@@ -95,45 +104,52 @@ export default function AiSettingsPanel({ token }) {
           const d = drafts[c.taskKey] || {};
           return (
             <div key={c.taskKey} className="px-4 py-3.5 bg-surface border border-border rounded-xl">
-              <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-sm font-semibold text-ink font-mono">{c.taskKey}</span>
-                {c.isCustomised && <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-accent-soft text-accent">o'zgartirilgan</span>}
+              <div className="flex flex-wrap items-center gap-2 mb-2.5">
+                <span className="text-sm font-semibold text-ink font-mono break-all">{c.taskKey}</span>
+                {c.isCustomised && <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-accent-soft text-accent">o'zgartirilgan</span>}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 <input
                   value={d.primary || ''}
                   onChange={(e) => updateDraft(c.taskKey, 'primary', e.target.value)}
                   placeholder="asosiy model"
-                  className="col-span-2 px-2.5 py-1.5 bg-bg rounded-lg text-xs outline-none focus:ring-2 ring-accent/40"
+                  aria-label={`${c.taskKey}: asosiy model`}
+                  className="col-span-2 min-w-0 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent focus:ring-2 ring-accent/40"
                 />
                 <input
                   value={d.fallback || ''}
                   onChange={(e) => updateDraft(c.taskKey, 'fallback', e.target.value)}
                   placeholder="fallback (vergul bilan)"
-                  className="col-span-2 px-2.5 py-1.5 bg-bg rounded-lg text-xs outline-none focus:ring-2 ring-accent/40"
+                  aria-label={`${c.taskKey}: fallback modellar (vergul bilan)`}
+                  className="col-span-2 min-w-0 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent focus:ring-2 ring-accent/40"
                 />
                 <button
                   onClick={() => save(c.taskKey)}
                   disabled={savingKey === c.taskKey}
-                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent rounded-lg text-xs font-semibold transition-colors"
+                  className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1 px-2.5 py-1.5 min-h-11 md:min-h-0 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent rounded-lg text-xs font-semibold transition-colors"
                 >
                   {savingKey === c.taskKey ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Saqlash
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                <label className="text-[11px] text-muted flex items-center gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                <label className="text-[11px] text-muted flex flex-col gap-1">
                   temp
-                  <input type="number" step="0.1" min="0" max="1" value={d.temperature ?? ''} onChange={(e) => updateDraft(c.taskKey, 'temperature', e.target.value)} className="w-full px-2 py-1 bg-bg rounded text-xs outline-none" />
+                  <input type="number" step="0.1" min="0" max="1" value={d.temperature ?? ''} onChange={(e) => updateDraft(c.taskKey, 'temperature', e.target.value)} className="w-full px-2 py-2.5 md:py-1 bg-bg border border-border rounded text-base md:text-xs text-ink outline-none focus:border-accent" />
                 </label>
-                <label className="text-[11px] text-muted flex items-center gap-1.5">
+                <label className="text-[11px] text-muted flex flex-col gap-1">
                   maxTokens
-                  <input type="number" value={d.maxTokens ?? ''} onChange={(e) => updateDraft(c.taskKey, 'maxTokens', e.target.value)} className="w-full px-2 py-1 bg-bg rounded text-xs outline-none" />
+                  <input type="number" value={d.maxTokens ?? ''} onChange={(e) => updateDraft(c.taskKey, 'maxTokens', e.target.value)} className="w-full px-2 py-2.5 md:py-1 bg-bg border border-border rounded text-base md:text-xs text-ink outline-none focus:border-accent" />
                 </label>
-                <label className="text-[11px] text-muted flex items-center gap-1.5">
+                <label className="text-[11px] text-muted flex flex-col gap-1">
                   costCap $
-                  <input type="number" step="0.05" value={d.costCapUsd ?? ''} onChange={(e) => updateDraft(c.taskKey, 'costCapUsd', e.target.value)} className="w-full px-2 py-1 bg-bg rounded text-xs outline-none" />
+                  <input type="number" step="0.05" value={d.costCapUsd ?? ''} onChange={(e) => updateDraft(c.taskKey, 'costCapUsd', e.target.value)} className="w-full px-2 py-2.5 md:py-1 bg-bg border border-border rounded text-base md:text-xs text-ink outline-none focus:border-accent" />
                 </label>
               </div>
+              {saveErrors[c.taskKey] && (
+                <p role="alert" className="mt-2 text-xs text-danger">
+                  {saveErrors[c.taskKey]}
+                </p>
+              )}
             </div>
           );
         })}

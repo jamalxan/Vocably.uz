@@ -36,77 +36,78 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
     onSelect(c);
   };
 
+  // Qator — alohida <button> (Enter/Space, fokus halqasi tabiiy), o'chirish tugmasi esa
+  // uning ICHIDA emas, yonida (ichma-ich interaktiv element bo'lmasin).
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={handleClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onSelect(c);
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onDeleteRequest(c);
-      }}
-      onPointerDown={startPress}
-      onPointerUp={cancelPress}
-      onPointerLeave={cancelPress}
-      onPointerCancel={cancelPress}
-      className={`group w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left transition-colors cursor-pointer select-none ${
+      className={`group relative flex items-center rounded-lg transition-colors ${
         selected ? 'bg-accent-soft' : 'hover:bg-bg'
       }`}
     >
-      <div className="relative flex-shrink-0">
-        <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">
-          {(c.otherUser?.username || '?')[0]?.toUpperCase()}
-        </div>
-        {/* Onlayn belgisi — 2026-09-10 so'rovi: avval `border-surface` edi, lekin bu
-            qator haqiqatda `bg-bg` fonida turadi (ConversationList'ning o'zi alohida
-            fon bermaydi) — mos kelmagan ramka nuqtani "kesib olingan" his qildirmay,
-            xira ko'rsatardi. Endi to'g'ri fon (`border-bg`) + semantik `success` rang. */}
-        {online && (
-          <span
-            title="Onlayn"
-            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-bg"
-          />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1 min-w-0">
-            <p className={`text-sm truncate ${c.unreadCount > 0 ? 'font-bold text-ink' : 'font-medium text-ink'}`}>
-              {c.otherUser?.nickname || `@${c.otherUser?.username || 'noma\'lum'}`}
-            </p>
-            {c.muted && <BellOff size={11} className="text-muted flex-shrink-0" />}
-          </span>
-          {/* BUG-024: backend `lastMessageAt: null` qaytarishi mumkin (foydalanuvchi
-              suhbatni tozalagan, hali yangi xabar kelmagan) — bunday holatda vaqt
-              yorlig'i umuman ko'rsatilmaydi. */}
-          {c.lastMessageAt && <span className="text-[10px] text-muted flex-shrink-0">{formatRelativeTime(c.lastMessageAt)}</span>}
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          {typing ? (
-            <p className="text-xs text-accent italic truncate">{TYPING_LABEL[typing] || TYPING_LABEL.text}</p>
-          ) : (
-            <p className={`text-xs truncate ${c.unreadCount > 0 ? 'text-ink font-semibold' : 'text-muted'}`}>
-              {c.lastMessagePreview || ''}
-            </p>
-          )}
-          {c.unreadCount > 0 && (
-            <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-on-accent text-[10px] font-bold flex items-center justify-center">
-              {c.unreadCount > 99 ? '99+' : c.unreadCount}
-            </span>
-          )}
-        </div>
-      </div>
       <button
-        onClick={(e) => {
-          e.stopPropagation();
+        type="button"
+        onClick={handleClick}
+        onContextMenu={(e) => {
+          e.preventDefault();
           onDeleteRequest(c);
         }}
+        onPointerDown={startPress}
+        onPointerUp={cancelPress}
+        onPointerLeave={cancelPress}
+        onPointerCancel={cancelPress}
+        aria-current={selected ? 'true' : undefined}
+        className="flex-1 min-w-0 flex items-center gap-2.5 pl-2.5 pr-1 lg:pr-2.5 py-2.5 rounded-lg text-left cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        <span className="relative flex-shrink-0">
+          <span className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">
+            {(c.otherUser?.username || '?')[0]?.toUpperCase()}
+          </span>
+          {/* Onlayn belgisi — 2026-09-10 so'rovi: avval `border-surface` edi, lekin bu
+              qator haqiqatda `bg-bg` fonida turadi (ConversationList'ning o'zi alohida
+              fon bermaydi) — mos kelmagan ramka nuqtani "kesib olingan" his qildirmay,
+              xira ko'rsatardi. Endi to'g'ri fon (`border-bg`) + semantik `success` rang. */}
+          {online && (
+            <span
+              title="Onlayn"
+              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-bg"
+            />
+          )}
+        </span>
+        <span className="block min-w-0 flex-1">
+          <span className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1 min-w-0">
+              <span className={`block text-sm truncate ${c.unreadCount > 0 ? 'font-bold text-ink' : 'font-medium text-ink'}`}>
+                {c.otherUser?.nickname || `@${c.otherUser?.username || 'noma\'lum'}`}
+              </span>
+              {c.muted && <BellOff size={11} className="text-muted flex-shrink-0" />}
+            </span>
+            {/* BUG-024: backend `lastMessageAt: null` qaytarishi mumkin (foydalanuvchi
+                suhbatni tozalagan, hali yangi xabar kelmagan) — bunday holatda vaqt
+                yorlig'i umuman ko'rsatilmaydi. */}
+            {c.lastMessageAt && <span className="text-[11px] text-muted flex-shrink-0">{formatRelativeTime(c.lastMessageAt)}</span>}
+          </span>
+          <span className="flex items-center justify-between gap-2">
+            {typing ? (
+              <span className="block text-xs text-accent italic truncate">{TYPING_LABEL[typing] || TYPING_LABEL.text}</span>
+            ) : (
+              <span className={`block text-xs truncate ${c.unreadCount > 0 ? 'text-ink font-semibold' : 'text-muted'}`}>
+                {c.lastMessagePreview || ''}
+              </span>
+            )}
+            {c.unreadCount > 0 && (
+              <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-on-accent text-[11px] font-bold flex items-center justify-center">
+                {c.unreadCount > 99 ? '99+' : c.unreadCount}
+              </span>
+            )}
+          </span>
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onDeleteRequest(c)}
         title="Suhbatni tozalash"
         aria-label="Suhbatni tozalash"
-        className="p-1 text-muted hover:text-accent transition-colors flex-shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+        className="flex-shrink-0 inline-flex items-center justify-center w-11 h-11 lg:w-auto lg:h-auto lg:p-1 lg:mr-2.5 rounded-lg text-muted hover:text-accent transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <Trash2 size={14} />
       </button>
@@ -115,8 +116,16 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
 }
 
 export default function ConversationList({ onSelect, selectedId }) {
-  const { conversations, loadingConversations, socketConnected, deleteConversation, livePresence, typingByConversation } =
-    useChat();
+  const {
+    conversations,
+    loadingConversations,
+    conversationsError,
+    loadConversations,
+    socketConnected,
+    deleteConversation,
+    livePresence,
+    typingByConversation,
+  } = useChat();
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   useLiveClock();
@@ -134,7 +143,12 @@ export default function ConversationList({ onSelect, selectedId }) {
     <div className="w-full lg:w-72 flex-shrink-0 border-r border-border flex flex-col h-full bg-surface">
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <h3 className="text-sm font-bold text-ink">Do'stlar</h3>
-        <span title={socketConnected ? 'Onlayn' : 'Oflayn (yangilanish bilan)'} className="text-muted">
+        <span
+          role="status"
+          title={socketConnected ? 'Onlayn' : 'Oflayn (yangilanish bilan)'}
+          aria-label={socketConnected ? 'Onlayn' : 'Oflayn (yangilanish bilan)'}
+          className="text-muted"
+        >
           {socketConnected ? <Wifi size={13} className="text-success" /> : <WifiOff size={13} />}
         </span>
       </div>
@@ -150,7 +164,19 @@ export default function ConversationList({ onSelect, selectedId }) {
             <Loader2 size={18} className="animate-spin text-muted" />
           </div>
         )}
-        {!loadingConversations && conversations.length === 0 && (
+        {!loadingConversations && conversationsError && conversations.length === 0 && (
+          <div className="text-center px-4 py-6">
+            <p className="text-sm text-danger font-medium mb-2">Suhbatlarni yuklab bo'lmadi.</p>
+            <button
+              type="button"
+              onClick={loadConversations}
+              className="min-h-11 px-3 text-xs font-semibold text-accent hover:underline"
+            >
+              Qayta yuklash
+            </button>
+          </div>
+        )}
+        {!loadingConversations && !conversationsError && conversations.length === 0 && (
           <p className="text-center text-xs text-muted px-4 py-6">
             Hozircha suhbat yo'q. Yuqoridan username qidirib, yozishni boshlang.
           </p>

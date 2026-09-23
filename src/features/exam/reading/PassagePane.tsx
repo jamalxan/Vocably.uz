@@ -1,5 +1,5 @@
 'use client';
-import { useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { SanitizedPassage, Highlight } from '@/lib/exam/types';
 import ParagraphLabel from './ParagraphLabel';
 import HighlightMenu from '../highlight/HighlightMenu';
@@ -11,10 +11,11 @@ import { computeOffsets } from '../highlight/highlightDom';
 // position: sticky; top: 0 ... scroll paytida qaysi passage ekanligi ko'rinib
 // turadi."
 const LABEL_TRIGGER_TYPES = new Set(['matching_headings', 'matching_information']);
+const NO_HIGHLIGHTS: Highlight[] = [];
 
 type MenuState =
   | { mode: 'select'; x: number; y: number; paragraphIndex: number; start: number; end: number }
-  | { mode: 'mark'; x: number; y: number; highlightId: string };
+  | { mode: 'mark'; x: number; y: number; highlightId: string; viaKeyboard?: boolean };
 
 export interface PassagePaneProps {
   passage: SanitizedPassage;
@@ -24,24 +25,64 @@ export interface PassagePaneProps {
   onSetNote: (highlightId: string, note: string) => void;
 }
 
+// Joriy `window.getSelection()`ni belgilanadigan {paragraphIndex, start,
+// end}ga o'giradi — o'ng-tugma menyusi VA Alt+H klaviatura yorlig'i
+// IKKALASI ham shu bitta yo'ldan foydalanadi (pastga q.).
+function resolveSelection(fallbackTarget: HTMLElement): { paragraphIndex: number; start: number; end: number } | null {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+  const paragraphEl = (range.startContainer.parentElement || fallbackTarget)?.closest<HTMLElement>('[data-paragraph-index]');
+  if (!paragraphEl) return null;
+  const offsets = computeOffsets(paragraphEl, range);
+  if (!offsets) return null;
+  return { paragraphIndex: Number(paragraphEl.dataset.paragraphIndex), start: offsets.start, end: offsets.end };
+}
+
 export default function PassagePane({ passage, highlights, onAddHighlight, onRemoveHighlight, onSetNote }: PassagePaneProps) {
   const showLabels = passage.questionGroups.some((g) => LABEL_TRIGGER_TYPES.has(g.type));
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [noteEditor, setNoteEditor] = useState<{ x: number; y: number; highlightId: string } | null>(null);
+  const articleRef = useRef<HTMLElement>(null);
 
-  // Joriy `window.getSelection()`ni belgilanadigan {paragraphIndex, start,
-  // end}ga o'giradi — o'ng-tugma menyusi VA Alt+H klaviatura yorlig'i
-  // IKKALASI ham shu bitta yo'ldan foydalanadi (pastga q.).
-  const resolveSelection = (fallbackTarget: HTMLElement): { paragraphIndex: number; start: number; end: number } | null => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null;
-    const range = sel.getRangeAt(0);
-    const paragraphEl = (range.startContainer.parentElement || fallbackTarget)?.closest<HTMLElement>('[data-paragraph-index]');
-    if (!paragraphEl) return null;
-    const offsets = computeOffsets(paragraphEl, range);
-    if (!offsets) return null;
-    return { paragraphIndex: Number(paragraphEl.dataset.paragraphIndex), start: offsets.start, end: offsets.end };
-  };
+  // Paragraf bo'yicha barqaror massivlar — har render'da yangi `filter()` massivi
+  // ParagraphLabel'da DOM'ni qayta o'rab, foydalanuvchining matn tanlovini o'chirardi.
+  const highlightsByParagraph = useMemo(() => {
+    const map = new Map<number, Highlight[]>();
+    for (const h of highlights) {
+      if (h.passageOrder !== passage.order) continue;
+      const list = map.get(h.paragraphIndex);
+      if (list) list.push(h);
+      else map.set(h.paragraphIndex, [h]);
+    }
+    return map;
+  }, [highlights, passage.order]);
+
+  // Sensorli ekranlarda mouseup/contextmenu ishonchli kelmaydi — uzoq bosib
+  // tanlangan matn `selectionchange` orqali aniqlanib, menyu tanlov ostida ochiladi.
+  useEffect(() => {
+    if (!window.matchMedia('(pointer: coarse)').matches) return undefined;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onSelectionChange = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        const article = articleRef.current;
+        const sel = window.getSelection();
+        if (!article || !sel || sel.isCollapsed || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        if (!article.contains(range.commonAncestorContainer)) return;
+        const resolved = resolveSelection(article);
+        if (!resolved) return;
+        const rect = range.getBoundingClientRect();
+        setMenu({ mode: 'select', x: rect.left, y: rect.bottom + 8, ...resolved });
+      }, 400);
+    };
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', onSelectionChange);
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
   // TZ §6.3 — "O'ng tugma → kontekst menyusi... faqat passage paneli ichida
   // bloklanadi." Ikki holat bor: mavjud belgi (<mark>) ustida — olib
@@ -93,10 +134,27 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
     }
   };
 
+  // Sensorli ekranda o'ng tugma yo'q — mavjud belgiga tegish uning menyusini ochadi.
+  const handleClick = (e: MouseEvent<HTMLElement>) => {
+    if (!window.matchMedia('(pointer: coarse)').matches) return;
+    const markEl = (e.target as HTMLElement).closest<HTMLElement>('mark[data-highlight-id]');
+    const highlightId = markEl?.getAttribute('data-highlight-id');
+    if (!markEl || !highlightId) return;
+    const rect = markEl.getBoundingClientRect();
+    setMenu({ mode: 'mark', x: rect.left, y: rect.bottom + 4, highlightId });
+  };
+
   return (
-    <article onContextMenu={handleContextMenu} onMouseUp={handleMouseUp} onKeyDown={handleKeyDown}>
+    <article
+      ref={articleRef}
+      onContextMenu={handleContextMenu}
+      onMouseUp={handleMouseUp}
+      onKeyDown={handleKeyDown}
+      onClick={handleClick}
+    >
+      {/* Manfiy offsetlar panel paddingiga mos: MobileTabs (<768) px-4 sm:px-6 py-4, SplitPane px-7 py-6. */}
       <div
-        className="sticky -top-6 sm:-top-6 -mx-6 sm:-mx-7 px-6 sm:px-7 pt-6 pb-3 mb-4 z-10"
+        className="sticky -top-4 md:-top-6 -mx-4 sm:-mx-6 md:-mx-7 px-4 sm:px-6 md:px-7 pt-4 md:pt-6 pb-3 mb-4 z-10"
         style={{ background: 'var(--exam-bg)' }}
       >
         <h1 className="text-[1.25em] font-bold leading-[1.3]" style={{ color: 'var(--exam-text)' }}>
@@ -118,9 +176,9 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
             label={showLabels ? p.label : undefined}
             html={p.html}
             paragraphIndex={i}
-            highlights={highlights.filter((h) => h.passageOrder === passage.order && h.paragraphIndex === i)}
+            highlights={highlightsByParagraph.get(i) || NO_HIGHLIGHTS}
             onActivateHighlight={(highlightId, rect) =>
-              setMenu({ mode: 'mark', x: rect.left, y: rect.bottom + 4, highlightId })
+              setMenu({ mode: 'mark', x: rect.left, y: rect.bottom + 4, highlightId, viaKeyboard: true })
             }
           />
         ))}
@@ -132,7 +190,11 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
           y={menu.y}
           mode="select"
           onClose={() => setMenu(null)}
-          onHighlight={() => onAddHighlight(menu.paragraphIndex, menu.start, menu.end)}
+          onHighlight={() => {
+            onAddHighlight(menu.paragraphIndex, menu.start, menu.end);
+            // Tanlov tozalanadi — aks holda menyu (mouseup/selectionchange) qayta ochiladi.
+            window.getSelection()?.removeAllRanges();
+          }}
         />
       )}
       {menu && menu.mode === 'mark' && (
@@ -140,6 +202,7 @@ export default function PassagePane({ passage, highlights, onAddHighlight, onRem
           x={menu.x}
           y={menu.y}
           mode="mark"
+          autoFocus={menu.viaKeyboard}
           onClose={() => setMenu(null)}
           onRemove={() => onRemoveHighlight(menu.highlightId)}
           onAddNote={() => setNoteEditor({ x: menu.x, y: menu.y, highlightId: menu.highlightId })}

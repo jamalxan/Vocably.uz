@@ -25,6 +25,8 @@ export interface AudioEngineProps {
   onPositionChange: (sec: number) => void;
   onEnded: () => void;
   onDurationKnown?: (sec: number) => void;
+  // play() rad etilsa (avtoplay bloki) yoki audio yuklanmasa/xato bersa.
+  onPlaybackError?: () => void;
 }
 
 // Faqat practice rejimda kerak (ListeningPracticeSection.tsx — ±10s tugmalari)
@@ -32,15 +34,25 @@ export interface AudioEngineProps {
 // dasturiy seek imkoniyatining o'zi shart emas.
 export interface AudioEngineHandle {
   seekBy: (deltaSec: number) => void;
+  // Foydalanuvchi tugmasi (user gesture) ichidan qayta ishga tushirish; xato
+  // bo'lgan bo'lsa audio qayta yuklanadi va oxirgi pozitsiyadan davom etadi.
+  retryPlay: () => Promise<boolean>;
 }
 
 const AudioEngine = forwardRef<AudioEngineHandle, AudioEngineProps>(function AudioEngine(
-  { src, mode, volume, playbackRate = 1, startPositionSec, play, onPositionChange, onEnded, onDurationKnown },
+  { src, mode, volume, playbackRate = 1, startPositionSec, play, onPositionChange, onEnded, onDurationKnown, onPlaybackError },
   ref
 ) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const lastKnownTimeRef = useRef(startPositionSec);
   const positionAppliedRef = useRef(false);
+  const pendingSeekRef = useRef<number | null>(null);
+  const playRef = useRef(play);
+  const onPlaybackErrorRef = useRef(onPlaybackError);
+  useEffect(() => {
+    playRef.current = play;
+    onPlaybackErrorRef.current = onPlaybackError;
+  });
 
   // Har `src` (yangi part) uchun boshlang'ich pozitsiyani FAQAT bir marta
   // qo'llaymiz — `loadedmetadata`gacha `currentTime` o'rnatib bo'lmaydi.
@@ -55,7 +67,12 @@ const AudioEngine = forwardRef<AudioEngineHandle, AudioEngineProps>(function Aud
     if (!audio) return undefined;
 
     const onLoadedMetadata = () => {
-      if (!positionAppliedRef.current) {
+      if (pendingSeekRef.current != null) {
+        // retryPlay() — xatodan keyin qayta yuklangan audio oxirgi joydan davom etadi.
+        lastKnownTimeRef.current = pendingSeekRef.current;
+        audio.currentTime = pendingSeekRef.current;
+        pendingSeekRef.current = null;
+      } else if (!positionAppliedRef.current) {
         audio.currentTime = startPositionSec;
         positionAppliedRef.current = true;
       }
@@ -90,7 +107,12 @@ const AudioEngine = forwardRef<AudioEngineHandle, AudioEngineProps>(function Aud
       }
     };
 
+    const onError = () => {
+      if (playRef.current) onPlaybackErrorRef.current?.();
+    };
+
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('error', onError);
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('seeking', onSeeking);
     audio.addEventListener('pause', onPause);
@@ -98,6 +120,7 @@ const AudioEngine = forwardRef<AudioEngineHandle, AudioEngineProps>(function Aud
 
     return () => {
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('error', onError);
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('seeking', onSeeking);
       audio.removeEventListener('pause', onPause);
@@ -133,9 +156,11 @@ const AudioEngine = forwardRef<AudioEngineHandle, AudioEngineProps>(function Aud
     const audio = audioRef.current;
     if (!audio) return;
     if (play) {
-      audio.play().catch(() => {
-        // Avtoplay bloklandi — VolumeCheck ekrani aynan shu muammoni hal
-        // qilish uchun mavjud (user gesture beradi).
+      audio.play().catch((err) => {
+        // Avtoplay bloklandi yoki audio yuklanmadi — chaqiruvchi "qayta
+        // boshlash" tugmasini ko'rsatadi. AbortError (pause/load) xato emas.
+        if (err?.name === 'AbortError') return;
+        onPlaybackErrorRef.current?.();
       });
     } else if (mode === 'practice') {
       audio.pause();
@@ -150,6 +175,20 @@ const AudioEngine = forwardRef<AudioEngineHandle, AudioEngineProps>(function Aud
         if (!audio) return;
         const max = Number.isFinite(audio.duration) ? audio.duration : Infinity;
         audio.currentTime = Math.min(max, Math.max(0, audio.currentTime + deltaSec));
+      },
+      retryPlay: async () => {
+        const audio = audioRef.current;
+        if (!audio) return false;
+        if (audio.error) {
+          pendingSeekRef.current = lastKnownTimeRef.current;
+          audio.load();
+        }
+        try {
+          await audio.play();
+          return true;
+        } catch {
+          return false;
+        }
       },
     }),
     []

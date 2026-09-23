@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { X, Search, Trash2, Pencil, AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ConfirmModal from '../ConfirmModal';
+import IconButton from '../ui/IconButton';
 
 function formatRelativeTime(dateStr) {
   if (!dateStr) return '';
@@ -57,14 +58,17 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary/60 backdrop-blur-sm">
-        <div className="bg-surface rounded-2xl shadow-premium border border-border w-full max-w-lg flex flex-col max-h-[80vh]">
-          <div className="flex items-center gap-3 p-4 border-b border-border flex-shrink-0">
-            <h3 className="font-bold text-ink font-display flex-1">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="all-chat-sessions-title"
+          className="bg-surface rounded-2xl shadow-premium border border-border w-full max-w-lg flex flex-col max-h-[min(80dvh,calc(100dvh-2rem))]"
+        >
+          <div className="flex items-center gap-3 pl-4 pr-2 py-2 border-b border-border flex-shrink-0">
+            <h3 id="all-chat-sessions-title" className="font-bold text-ink font-display flex-1">
               Barcha suhbatlar <span className="text-muted font-normal text-sm">({chatSessions.length})</span>
             </h3>
-            <button onClick={onClose} aria-label="Yopish" className="p-1.5 text-muted hover:text-ink hover:bg-bg rounded-lg">
-              <X size={16} />
-            </button>
+            <IconButton icon={X} label="Yopish" size="lg" onClick={onClose} />
           </div>
 
           <form onSubmit={(e) => e.preventDefault()} className="relative p-3 flex-shrink-0">
@@ -75,7 +79,8 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
               placeholder="Suhbat nomi bo'yicha qidirish..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm outline-none focus:border-accent"
+              aria-label="Suhbat qidirish"
+              className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-base md:text-sm bg-surface outline-none focus:border-accent"
             />
           </form>
 
@@ -86,7 +91,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
             {filtered.map((s) => (
               <div
                 key={s.id}
-                className={`group flex items-center gap-2 rounded-lg px-3 py-2 transition-colors ${
+                className={`group flex items-center gap-1 lg:gap-2 rounded-lg pl-3 pr-1 lg:px-3 py-1 lg:py-2 transition-colors ${
                   currentSessionId === s.id ? 'bg-accent-soft' : 'hover:bg-bg'
                 }`}
               >
@@ -100,7 +105,8 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                       onKeyDown={(e) => {
                         if (e.key === 'Escape') setRenamingId(null);
                       }}
-                      className="w-full px-2 py-1 border border-accent/30 rounded text-sm outline-none"
+                      aria-label="Suhbat nomi"
+                      className="w-full px-2 py-1 border border-accent/30 rounded text-base md:text-sm bg-surface outline-none"
                     />
                   </form>
                 ) : (
@@ -113,7 +119,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                       >
                         {s.title}
                       </p>
-                      <p className="text-[10px] text-muted mt-0.5">
+                      <p className="text-[11px] text-muted mt-0.5">
                         {formatRelativeTime(s.updatedAt)} · {s.messageCount} ta xabar
                       </p>
                     </button>
@@ -122,7 +128,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                         setRenamingId(s.id);
                         setRenameValue(s.title);
                       }}
-                      className="p-1.5 text-muted hover:text-accent hover:bg-surface rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      className="min-w-11 min-h-11 lg:min-w-0 lg:min-h-0 p-1.5 flex items-center justify-center flex-shrink-0 text-muted hover:text-accent hover:bg-surface rounded opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 transition-opacity"
                       title="Nomini o'zgartirish"
                       aria-label="Suhbat nomini o'zgartirish"
                     >
@@ -130,7 +136,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                     </button>
                     <button
                       onClick={() => setConfirmDeleteId(s.id)}
-                      className="p-1.5 text-muted hover:text-accent hover:bg-surface rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      className="min-w-11 min-h-11 lg:min-w-0 lg:min-h-0 p-1.5 flex items-center justify-center flex-shrink-0 text-muted hover:text-accent hover:bg-surface rounded opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 transition-opacity"
                       title="O'chirish"
                       aria-label="Suhbatni o'chirish"
                     >
@@ -152,8 +158,8 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                   <Trash2 size={13} /> Barcha suhbatlarni o'chirish
                 </button>
               ) : (
-                <div className="bg-accent-soft border border-accent/25 rounded-lg p-3">
-                  <p className="flex items-start gap-2 text-xs text-red-700 mb-3">
+                <div className="bg-danger-soft border border-danger/25 rounded-lg p-3">
+                  <p role="alert" className="flex items-start gap-2 text-xs text-danger mb-3">
                     <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
                     <span>
                       Barcha {chatSessions.length} ta suhbat butunlay o'chiriladi va tiklab bo'lmaydi.
@@ -162,13 +168,13 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setWipeStep(0)}
-                      className="flex-1 py-2 bg-surface hover:bg-bg border border-border text-muted rounded-lg text-xs font-semibold transition-colors"
+                      className="flex-1 py-2.5 md:py-2 bg-surface hover:bg-bg border border-border text-muted rounded-lg text-xs font-semibold transition-colors"
                     >
                       Bekor qilish
                     </button>
                     <button
                       onClick={() => setWipeStep(2)}
-                      className="flex-1 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold transition-colors"
+                      className="flex-1 py-2.5 md:py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-xs font-semibold transition-colors"
                     >
                       Ha, hammasini o'chir
                     </button>

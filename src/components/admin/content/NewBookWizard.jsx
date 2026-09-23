@@ -114,23 +114,32 @@ export default function NewBookWizard({ token }) {
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center gap-2 mb-6">
+      <ol className="flex items-center gap-2 mb-2 sm:mb-6">
         {STEPS.map((label, i) => (
-          <div key={label} className="flex items-center gap-2 flex-1">
+          <li
+            key={label}
+            aria-current={i === step ? 'step' : undefined}
+            className={`flex items-center gap-2 min-w-0 ${i < STEPS.length - 1 ? 'flex-1' : ''}`}
+          >
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                i === step ? 'bg-accent text-on-accent' : i < step ? 'bg-success text-on-accent' : 'bg-bg text-muted'
+                i === step ? 'bg-accent text-on-accent' : i < step ? 'bg-success-soft text-success border border-success/30' : 'bg-bg text-muted'
               }`}
             >
               {i + 1}
             </div>
-            <span className={`text-xs font-medium ${i === step ? 'text-ink' : 'text-muted'}`}>{label}</span>
-            {i < STEPS.length - 1 && <div className="flex-1 h-px bg-border" />}
-          </div>
+            {/* Telefonda yorliqlar yashirin — faqat faol qadam nomi pastda ko'rsatiladi. */}
+            <span className={`hidden sm:inline text-xs font-medium whitespace-nowrap ${i === step ? 'text-ink' : 'text-muted'}`}>{label}</span>
+            <span className="sr-only sm:hidden">{label}</span>
+            {i < STEPS.length - 1 && <div className="flex-1 min-w-3 h-px bg-border" />}
+          </li>
         ))}
-      </div>
+      </ol>
+      <p className="sm:hidden mb-4 text-xs font-medium text-ink" aria-hidden="true">
+        {step + 1}/{STEPS.length} — {STEPS[step]}
+      </p>
 
-      <div className="bg-surface border border-border rounded-xl p-6">
+      <div className="bg-surface border border-border rounded-xl p-4 sm:p-6">
         {step === 0 && (
           <div className="space-y-4">
             <div>
@@ -140,15 +149,15 @@ export default function NewBookWizard({ token }) {
                   <FileText size={16} className="text-accent flex-shrink-0" />
                   <span className="flex-1 min-w-0 truncate">{pdfFile.name}</span>
                   <span className="text-xs text-muted flex-shrink-0">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB</span>
-                  <button onClick={() => setPdfFile(null)} aria-label="PDF'ni olib tashlash" className="text-muted hover:text-danger flex-shrink-0">
+                  <button onClick={() => setPdfFile(null)} aria-label="PDF'ni olib tashlash" className="min-w-11 min-h-11 -my-3 -mr-3 flex items-center justify-center rounded-lg text-muted hover:text-danger flex-shrink-0">
                     <X size={14} />
                   </button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg py-8 cursor-pointer hover:border-accent/40 transition-colors">
+                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg py-8 px-3 text-center cursor-pointer hover:border-accent/40 focus-within:ring-2 focus-within:ring-accent transition-colors">
                   <Upload size={22} className="text-muted" />
                   <span className="text-sm text-muted">PDF faylni tanlang (maks. 500 MB)</span>
-                  <input type="file" accept="application/pdf" className="hidden" onChange={handlePdfPick} />
+                  <input type="file" accept="application/pdf" className="sr-only" onChange={handlePdfPick} />
                 </label>
               )}
             </div>
@@ -160,15 +169,15 @@ export default function NewBookWizard({ token }) {
                     <Music size={15} className="text-accent flex-shrink-0" />
                     <span className="flex-1 min-w-0 truncate">{f.name}</span>
                     <span className="text-xs text-muted flex-shrink-0">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
-                    <button onClick={() => removeAudio(i)} aria-label="Audio faylni olib tashlash" className="text-muted hover:text-danger flex-shrink-0">
+                    <button onClick={() => removeAudio(i)} aria-label="Audio faylni olib tashlash" className="min-w-11 min-h-11 -my-3 -mr-3 flex items-center justify-center rounded-lg text-muted hover:text-danger flex-shrink-0">
                       <X size={14} />
                     </button>
                   </div>
                 ))}
               </div>
-              <label className="flex items-center justify-center gap-2 border border-dashed border-border rounded-lg py-3 cursor-pointer hover:border-accent/40 transition-colors text-sm text-muted">
+              <label className="flex items-center justify-center gap-2 border border-dashed border-border rounded-lg py-3 cursor-pointer hover:border-accent/40 focus-within:ring-2 focus-within:ring-accent transition-colors text-sm text-muted">
                 <Upload size={15} /> Audio fayl(lar) qo'shish
-                <input type="file" accept="audio/*" multiple className="hidden" onChange={handleAudioPick} />
+                <input type="file" accept="audio/*" multiple className="sr-only" onChange={handleAudioPick} />
               </label>
             </div>
           </div>
@@ -182,7 +191,7 @@ export default function NewBookWizard({ token }) {
                 value={meta.title}
                 onChange={(e) => setMeta((m) => ({ ...m, title: e.target.value }))}
                 placeholder="Cambridge IELTS 19"
-                className="w-full px-3 py-2.5 bg-bg rounded-lg text-sm outline-none focus:ring-2 ring-accent/40"
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent focus:ring-2 ring-accent/40"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -191,7 +200,7 @@ export default function NewBookWizard({ token }) {
                 <input
                   value={meta.publisher}
                   onChange={(e) => setMeta((m) => ({ ...m, publisher: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-bg rounded-lg text-sm outline-none focus:ring-2 ring-accent/40"
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent focus:ring-2 ring-accent/40"
                 />
               </div>
               <div>
@@ -200,7 +209,7 @@ export default function NewBookWizard({ token }) {
                   type="number"
                   value={meta.volume}
                   onChange={(e) => setMeta((m) => ({ ...m, volume: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-bg rounded-lg text-sm outline-none focus:ring-2 ring-accent/40"
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent focus:ring-2 ring-accent/40"
                 />
               </div>
             </div>
@@ -209,7 +218,7 @@ export default function NewBookWizard({ token }) {
               <select
                 value={meta.module}
                 onChange={(e) => setMeta((m) => ({ ...m, module: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-bg rounded-lg text-sm outline-none focus:ring-2 ring-accent/40"
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent focus:ring-2 ring-accent/40"
               >
                 <option value="academic">Academic</option>
                 <option value="general">General Training</option>
@@ -221,7 +230,7 @@ export default function NewBookWizard({ token }) {
               <select
                 value={meta.licence}
                 onChange={(e) => setMeta((m) => ({ ...m, licence: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-bg rounded-lg text-sm outline-none focus:ring-2 ring-accent/40"
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent focus:ring-2 ring-accent/40"
               >
                 {LICENCE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -233,7 +242,7 @@ export default function NewBookWizard({ token }) {
               <select
                 value={meta.publishScope}
                 onChange={(e) => setMeta((m) => ({ ...m, publishScope: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-bg rounded-lg text-sm outline-none focus:ring-2 ring-accent/40"
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent focus:ring-2 ring-accent/40"
               >
                 {SCOPE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>

@@ -1,10 +1,12 @@
 'use client';
 
+// SRS holat tokenlari — ikkala temada ham bir-biridan va fondan ajralib turadi
+// (bg-primary dark'da invert bo'lmaydi, bg-border esa fonga singib ketardi).
 const SEGMENTS = [
-  { key: 'new', label: 'Yangi', color: 'bg-border' },
-  { key: 'learning', label: "O'rganilmoqda", color: 'bg-accent/40' },
-  { key: 'young', label: 'Mustahkam', color: 'bg-accent' },
-  { key: 'mastered', label: "O'zlashtirilgan", color: 'bg-primary' },
+  { key: 'new', label: 'Yangi', color: 'bg-srs-new' },
+  { key: 'learning', label: "O'rganilmoqda", color: 'bg-srs-learning' },
+  { key: 'young', label: 'Mustahkam', color: 'bg-srs-review' },
+  { key: 'mastered', label: "O'zlashtirilgan", color: 'bg-srs-mastered' },
 ];
 
 export default function MasteryBreakdown({ mastery }) {

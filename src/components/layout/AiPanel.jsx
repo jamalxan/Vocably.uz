@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { Sparkles, X, Maximize2, Minimize2 } from 'lucide-react';
 import AiChat from '@/components/AiChat';
 import IconButton from '@/components/ui/IconButton';
+import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
 
 // VOCABLY-TZ.md §12.1 — AI Tutor endi istalgan sahifadan ⌘K (Ctrl+K) yoki
 // suzuvchi tugma bilan ochiladigan sirg'aluvchi panel (desktop: 420px, mobil:
@@ -52,6 +53,19 @@ export default function AiPanel() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // Dialog: fokus ichkariga o'tadi, Tab ichida qoladi, yopilganda qaytadi.
+  const panelRef = useDialogFocus(open);
+
+  // Panel ochiq paytda orqadagi sahifa scroll bo'lmasin.
+  useEffect(() => {
+    if (!open) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   // /app/ai'ning o'zida (to'liq sahifa) qo'shimcha suzuvchi tugma/panel keraksiz —
   // ikkalasi bir vaqtda ustma-ust chiqmasin.
   // Mock imtihon FAOL sessiyasida (masalan /app/mock/<id>, lekin natija sahifasi
@@ -70,7 +84,7 @@ export default function AiPanel() {
         onClick={() => setOpen(true)}
         aria-label="AI yordamchini ochish (Ctrl+K)"
         title="AI yordamchi (Ctrl+K)"
-        className="fixed z-40 right-4 sm:right-6 bottom-20 md:bottom-6 w-12 h-12 rounded-full bg-accent hover:bg-accent-hover text-on-accent shadow-glow flex items-center justify-center transition-transform hover:scale-105"
+        className="fixed z-40 right-4 sm:right-6 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-6 w-12 h-12 rounded-full bg-accent hover:bg-accent-hover text-on-accent shadow-glow flex items-center justify-center transition-transform hover:scale-105"
       >
         <Sparkles size={20} />
       </button>
@@ -79,14 +93,20 @@ export default function AiPanel() {
         <div className="fixed inset-0 z-50 flex justify-end">
           {!fullscreen && <div className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={closePanel} />}
           <div
-            className={`relative h-full bg-bg shadow-2xl flex flex-col ${
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="AI yordamchi"
+            tabIndex={-1}
+            className={`relative h-full bg-bg shadow-2xl flex flex-col pb-[env(safe-area-inset-bottom)] outline-none ${
               fullscreen ? 'w-full' : 'w-full sm:w-[420px] animate-[slideIn_200ms_ease-out]'
             }`}
           >
             <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
               <button
+                type="button"
                 onClick={() => setFullscreen((v) => !v)}
-                className="flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors"
+                className="flex items-center gap-1.5 px-2 -ml-2 min-h-11 md:min-h-9 rounded-lg text-xs text-muted hover:text-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 {fullscreen ? (
                   <>
@@ -98,7 +118,7 @@ export default function AiPanel() {
                   </>
                 )}
               </button>
-              <IconButton icon={X} label="Yopish" size="sm" onClick={closePanel} />
+              <IconButton icon={X} label="Yopish" onClick={closePanel} />
             </div>
             <div className="flex-1 min-h-0">
               <AiChat contextHint={contextHintForPath(pathname)} />

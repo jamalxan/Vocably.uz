@@ -12,8 +12,10 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/app',
     display: 'standalone',
     background_color: '#F3EDE6',
-    theme_color: '#4A1226',
-    orientation: 'portrait-primary',
+    // layout.jsx viewport themeColor (light) bilan bir xil — o'rnatilgan ilova va
+    // brauzer tabi bir xil rangda. orientation ATAYLAB yo'q: planshet/landshaft
+    // (imtihon SplitPane, chat) keng ekranda ishlashi kerak.
+    theme_color: '#F3EDE6',
     lang: 'uz',
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

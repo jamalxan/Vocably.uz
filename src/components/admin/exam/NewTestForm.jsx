@@ -32,7 +32,7 @@ instruction: Do the following statements agree with the information given in Rea
 1. Glass was first made in Mesopotamia. | TRUE | para:A
 2. The Romans invented glassblowing. | NOT GIVEN`;
 
-export default function NewTestForm({ onCreated }) {
+export default function NewTestForm({ token, onCreated }) {
   const [method, setMethod] = useState('json');
 
   const [jsonText, setJsonText] = useState('');
@@ -79,7 +79,7 @@ export default function NewTestForm({ onCreated }) {
     try {
       const res = await fetch('/api/admin/exam-tests/ai-generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ rawText }),
       });
       const data = await res.json();
@@ -129,7 +129,7 @@ export default function NewTestForm({ onCreated }) {
     try {
       const res = await fetch('/api/admin/exam-tests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify(draft),
       });
       const data = await res.json();
@@ -167,7 +167,8 @@ export default function NewTestForm({ onCreated }) {
             key={m.key}
             type="button"
             onClick={() => setMethod(m.key)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            aria-pressed={method === m.key}
+            className={`flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-semibold transition-colors ${
               method === m.key ? 'bg-accent text-on-accent' : 'bg-bg text-muted hover:text-ink'
             }`}
           >
@@ -182,18 +183,18 @@ export default function NewTestForm({ onCreated }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Test sarlavhasi"
-            className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+            className="px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent"
           />
           <input
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="slug (masalan cambridge-19-test-1)"
-            className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+            className="px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent"
           />
           <select
             value={moduleType}
             onChange={(e) => setModuleType(e.target.value)}
-            className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+            className="px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent"
           >
             <option value="academic">Academic</option>
             <option value="general">General Training</option>
@@ -201,7 +202,7 @@ export default function NewTestForm({ onCreated }) {
           <select
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value)}
-            className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+            className="px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent"
           >
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
@@ -217,7 +218,7 @@ export default function NewTestForm({ onCreated }) {
             <select
               value={sourceType}
               onChange={(e) => setSourceType(e.target.value)}
-              className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+              className="px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent"
             >
               <option value="own">Own — o&apos;zim yozganman</option>
               <option value="licensed">Licensed — litsenziya bilan</option>
@@ -228,7 +229,7 @@ export default function NewTestForm({ onCreated }) {
             <select
               value={publishScope}
               onChange={(e) => setPublishScope(e.target.value)}
-              className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+              className="px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent"
             >
               <option value="public">Public — barcha foydalanuvchi</option>
               <option value="organization">Organization — faqat tashkilot ichida</option>
@@ -241,19 +242,19 @@ export default function NewTestForm({ onCreated }) {
                 value={publisher}
                 onChange={(e) => setPublisher(e.target.value)}
                 placeholder="Nashriyot (masalan Cambridge University Press)"
-                className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+                className="px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent"
               />
               <input
                 value={licence}
                 onChange={(e) => setLicence(e.target.value)}
                 placeholder="Litsenziya (masalan CC-BY-4.0 yoki shartnoma raqami)"
-                className="px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+                className="px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent"
               />
               <input
                 value={licenceNote}
                 onChange={(e) => setLicenceNote(e.target.value)}
                 placeholder="Izoh (ixtiyoriy)"
-                className="sm:col-span-2 px-3 py-2 bg-bg border border-border rounded-lg text-sm text-ink outline-none focus:border-accent"
+                className="sm:col-span-2 px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent"
               />
             </div>
           )}
@@ -273,7 +274,7 @@ export default function NewTestForm({ onCreated }) {
             onChange={(e) => setJsonText(e.target.value)}
             placeholder='{"slug": "...", "title": "...", "module": "academic", "sections": {...}}'
             rows={10}
-            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs font-mono text-ink outline-none focus:border-accent resize-y"
+            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-xs font-mono text-ink outline-none focus:border-accent resize-y"
           />
           {jsonParseError && <p className="text-xs text-danger mt-1">JSON xato: {jsonParseError}</p>}
         </div>
@@ -286,7 +287,7 @@ export default function NewTestForm({ onCreated }) {
             onChange={(e) => setDslText(e.target.value)}
             placeholder={DSL_PLACEHOLDER}
             rows={10}
-            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs font-mono text-ink outline-none focus:border-accent resize-y"
+            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-xs font-mono text-ink outline-none focus:border-accent resize-y"
           />
           <button
             type="button"
@@ -305,7 +306,7 @@ export default function NewTestForm({ onCreated }) {
             onChange={(e) => setRawText(e.target.value)}
             placeholder="Xom passage matni + javob kaliti (formatlanmagan holda, masalan: 1. TRUE  2. NOT GIVEN  3. FALSE...)"
             rows={10}
-            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs text-ink outline-none focus:border-accent resize-y"
+            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent resize-y"
           />
           <button
             type="button"

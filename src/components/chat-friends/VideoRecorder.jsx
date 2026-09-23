@@ -127,6 +127,14 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
     return () => {
       unmountedRef.current = true;
       clearInterval(timerRef.current);
+      // Kamera/mikrofon ochiq qolmasin (masalan panel yozuv paytida yopilsa).
+      const rec = mediaRecorderRef.current;
+      if (rec) {
+        rec.onstop = null;
+        rec.ondataavailable = null;
+        if (rec.state === 'recording') rec.stop();
+      }
+      streamRef.current?.getTracks().forEach((t) => t.stop());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -234,7 +242,7 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
           className={`w-full h-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`}
         />
         <span className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent-soft0 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-danger motion-safe:animate-pulse" />
           {mm}:{ss}
         </span>
       </div>
@@ -245,31 +253,34 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
           qolib, asosiy harakat ekanligi vizual ravshan bo'lib qoladi. */}
       <div className="flex items-center gap-4">
         <button
+          type="button"
           onClick={cancel}
           disabled={flipping}
           title="Bekor qilish"
           aria-label="Video yozishni bekor qilish"
-          className="p-3 bg-surface/10 hover:bg-surface/20 disabled:opacity-40 text-white rounded-full transition-colors touch-manipulation"
+          className="p-3 bg-on-primary/10 hover:bg-on-primary/20 disabled:opacity-40 text-on-primary rounded-full transition-colors touch-manipulation"
         >
           <X size={20} />
         </button>
         {canFlip && (
           <button
+            type="button"
             onClick={flipCamera}
             disabled={flipping}
             title="Kamerani almashtirish (yozuv qaytadan boshlanadi)"
             aria-label={facing === 'user' ? 'Orqa kameraga o‘tish' : 'Old kameraga o‘tish'}
-            className="p-3 bg-surface/10 hover:bg-surface/20 text-white rounded-full transition-colors touch-manipulation disabled:opacity-40"
+            className="p-3 bg-on-primary/10 hover:bg-on-primary/20 text-on-primary rounded-full transition-colors touch-manipulation disabled:opacity-40"
           >
             <SwitchCamera size={20} className={flipping ? 'animate-spin' : ''} />
           </button>
         )}
         <button
+          type="button"
           onClick={stop}
           disabled={flipping}
           title="Yuborish"
           aria-label="Yozuvni tugatib yuborish"
-          className="p-4 bg-accent hover:bg-accent-hover disabled:opacity-40 text-white rounded-full transition-colors touch-manipulation"
+          className="p-4 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent rounded-full transition-colors touch-manipulation"
         >
           <Square size={22} />
         </button>
@@ -283,10 +294,11 @@ export default function VideoRecorderButton({ onRecorded }) {
   return (
     <>
       <button
+        type="button"
         onClick={() => setActive(true)}
         title="Video xabar"
         aria-label="Video xabar yozish"
-        className="p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
+        className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
       >
         <Video size={18} />
       </button>

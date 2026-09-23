@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import type { WordLimit } from '@/lib/exam/types';
 import FlagToggle from './FlagToggle';
 
@@ -21,11 +22,18 @@ function countWords(s: string): number {
 export default function GapInput({ questionNumber, value, onChange, wordLimit, className = '' }: GapInputProps) {
   const wordCount = wordLimit ? countWords(value) : 0;
   const overLimit = !!wordLimit && wordCount > wordLimit.maxWords;
+  const [focused, setFocused] = useState(false);
+  // Chegara rangi render'da hisoblanadi — resume/qayta render'da ham to'g'ri.
+  const borderColor = overLimit
+    ? 'var(--exam-danger)'
+    : focused || value
+      ? 'var(--exam-accent)'
+      : 'var(--exam-input-border)';
 
   return (
     <span data-question-number={questionNumber} className={`inline-flex flex-col align-middle mx-0.5 ${className}`}>
       <span className="inline-flex items-baseline gap-1">
-        <sup className="text-[10px]" style={{ color: 'var(--exam-muted)' }}>
+        <sup style={{ color: 'var(--exam-muted)', fontSize: 'max(0.7em, 11px)' }}>
           {questionNumber}
         </sup>
         <FlagToggle questionNumber={questionNumber} />
@@ -38,27 +46,25 @@ export default function GapInput({ questionNumber, value, onChange, wordLimit, c
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
-          className="inline-block outline-none bg-transparent text-center"
+          // <768px: kamida 16px (iOS focus-zoom bo'lmasin), aks holda atrofdagi matn o'lchami.
+          className="inline-block outline-none bg-transparent text-center text-[length:max(16px,1em)] md:text-[length:1em]"
           style={{
-            minWidth: 130,
+            minWidth: 'min(130px, 38vw)',
             border: 'none',
-            borderBottom: `1.5px solid ${overLimit ? 'var(--exam-danger)' : 'var(--exam-input-border)'}`,
-            font: 'inherit',
+            borderBottom: `1.5px solid ${borderColor}`,
+            fontFamily: 'inherit',
+            fontWeight: 'inherit',
+            lineHeight: 'inherit',
             padding: '2px 4px',
             color: 'var(--exam-text)',
+            boxShadow: focused ? `0 2px 0 0 ${overLimit ? 'var(--exam-danger)' : 'var(--exam-accent)'}` : 'none',
           }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderBottomColor = 'var(--exam-accent)';
-            e.currentTarget.style.boxShadow = '0 2px 0 0 var(--exam-accent)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderBottomColor = overLimit ? 'var(--exam-danger)' : value ? 'var(--exam-accent)' : 'var(--exam-input-border)';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
         />
       </span>
       {overLimit && (
-        <span className="text-[10px] leading-tight" style={{ color: 'var(--exam-danger)' }}>
+        <span className="leading-tight" style={{ color: 'var(--exam-danger)', fontSize: 'max(0.7em, 11px)' }}>
           Ko&apos;pi bilan {wordLimit!.maxWords} ta so&apos;z
         </span>
       )}

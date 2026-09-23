@@ -133,12 +133,16 @@ export default function ExamShell({
 
       {/* §5.4 taymer ogohlantirishlari — aria-live ExamTimer ichida, bu yerda
           faqat vizual banner. */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] flex flex-col gap-2 items-center">
+      {/* Footer navigatsiyasi (64px + safe-area) ustida turadi va bosishlarni to'smaydi. */}
+      <div
+        className="fixed left-1/2 -translate-x-1/2 z-[70] flex flex-col gap-2 items-center pointer-events-none w-max max-w-[calc(100vw-2rem)]"
+        style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}
+      >
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="px-4 py-2 rounded-lg shadow-lg text-sm font-medium text-white"
-            style={{ background: 'var(--exam-text)' }}
+            className="px-4 py-2 rounded-lg shadow-lg text-sm font-medium text-center"
+            style={{ background: 'var(--exam-text)', color: 'var(--exam-bg)' }}
           >
             {t.message}
           </div>

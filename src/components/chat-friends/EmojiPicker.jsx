@@ -94,10 +94,17 @@ function useResponsiveColumns() {
   return columns;
 }
 
+// Pastki "sheet" ilovaning md chegarasigacha (<768) — 640–767px telefonlar ham sheet oladi.
+// Picker faqat bosilgandan keyin mount bo'ladi (SSR'da emas), shuning uchun boshlang'ich
+// qiymat darhol matchMedia'dan olinadi — birinchi kadrda desktop popover "miltillamaydi".
+const MOBILE_QUERY = '(max-width: 767px)';
+
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches
+  );
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 639px)');
+    const mq = window.matchMedia(MOBILE_QUERY);
     const apply = () => setIsMobile(mq.matches);
     apply();
     mq.addEventListener('change', apply);
@@ -149,10 +156,11 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
           <Frimousse.Search
             ref={searchInputRef}
             placeholder="Emoji qidirish..."
-            className="w-full pl-8 pr-2.5 py-1.5 bg-bg border border-border rounded-lg text-sm text-ink placeholder:text-muted/70 outline-none focus:border-accent transition-colors"
+            aria-label="Emoji qidirish"
+            className="w-full pl-8 pr-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-sm text-ink placeholder:text-muted/70 outline-none focus:border-accent transition-colors"
           />
         </div>
-        <Frimousse.SkinToneSelector className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-bg transition-colors emoji" />
+        <Frimousse.SkinToneSelector aria-label="Teri rangi" className="flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-lg hover:bg-bg transition-colors emoji" />
       </div>
 
       {/* Kategoriya tablari — bosilganda mos sarlavhaga scroll qiladi. */}
@@ -161,7 +169,8 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
           type="button"
           onClick={() => viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
           title="Yaqinda ishlatilgan"
-          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-bg hover:text-accent transition-colors"
+          aria-label="Yaqinda ishlatilgan"
+          className="flex-shrink-0 w-11 h-11 md:w-7 md:h-7 flex items-center justify-center rounded-lg text-muted hover:bg-bg hover:text-accent transition-colors"
         >
           <Clock size={14} />
         </button>
@@ -170,8 +179,9 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
             key={label}
             type="button"
             title={meta.uz}
+            aria-label={meta.uz}
             onClick={() => headerRefs.current[label]?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg emoji hover:bg-bg transition-colors"
+            className="flex-shrink-0 w-11 h-11 md:w-7 md:h-7 flex items-center justify-center rounded-lg emoji hover:bg-bg transition-colors"
           >
             {meta.icon}
           </button>
@@ -252,10 +262,15 @@ export default function EmojiPicker({ onPick, onClose, triggerRef }) {
     if (isMobile && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isMobile]);
 
+  // Emoji panjarasi yuqoriga scroll qilingan bo'lsa, pastga surish — scroll, yopish emas.
   const handleTouchStart = (e) => {
+    const vp = viewportRef.current;
+    if (vp && vp.contains(e.target) && vp.scrollTop > 0) {
+      touchStartY.current = null;
+      return;
+    }
     touchStartY.current = e.touches[0].clientY;
   };
   const handleTouchEnd = (e) => {
@@ -274,7 +289,7 @@ export default function EmojiPicker({ onPick, onClose, triggerRef }) {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           className="relative w-full bg-surface rounded-t-2xl shadow-card flex flex-col"
-          style={{ height: '60vh', paddingBottom: 'env(safe-area-inset-bottom)' }}
+          style={{ height: '60dvh', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-border" />
@@ -288,7 +303,9 @@ export default function EmojiPicker({ onPick, onClose, triggerRef }) {
   return (
     <div
       ref={rootRef}
-      className="absolute bottom-full mb-2 right-0 w-80 h-96 bg-surface border border-border rounded-2xl shadow-card flex flex-col overflow-hidden z-20"
+      // lg'dan past (ro'yxat yo'q, suhbat to'liq kenglikda) — tugmadan o'ngga ochiladi,
+      // aks holda chap chetdan ekrandan tashqariga chiqib ketardi.
+      className="absolute bottom-full mb-2 left-0 lg:left-auto lg:right-0 w-80 max-w-[calc(100vw-2rem)] h-96 max-h-[60dvh] bg-surface border border-border rounded-2xl shadow-card flex flex-col overflow-hidden z-20"
     >
       <PickerBody onPick={onPick} headerRefs={headerRefs} viewportRef={viewportRef} columns={columns} />
     </div>

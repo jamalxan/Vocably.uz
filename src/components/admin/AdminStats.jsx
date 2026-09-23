@@ -6,11 +6,11 @@ const TYPE_LABELS = { text: 'Matn', image: 'Rasm', video: 'Video', voice: 'Ovozl
 
 function StatCard({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-2xl bg-surface border border-border p-5 shadow-card hover:border-accent/40 transition-colors duration-300">
+    <div className="min-w-0 rounded-2xl bg-surface border border-border p-4 sm:p-5 shadow-card hover:border-accent/40 transition-colors duration-300">
       <div className="w-11 h-11 rounded-xl bg-accent-soft border border-accent/20 text-accent flex items-center justify-center mb-4">
         <Icon size={19} strokeWidth={2} />
       </div>
-      <p className="font-luxury text-3xl text-ink tabular-nums leading-none">{value}</p>
+      <p className="font-luxury text-2xl sm:text-3xl text-ink tabular-nums leading-tight break-words">{value}</p>
       <p className="text-xs text-muted mt-2 tracking-wide">{label}</p>
     </div>
   );
@@ -28,12 +28,28 @@ function SectionLabel({ children }) {
 export default function AdminStats({ token }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then(setStats)
-      .finally(() => setLoading(false));
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || data?.error) throw new Error(data?.error || 'Statistika yuklanmadi');
+        return data;
+      })
+      .then((data) => {
+        if (!cancelled) setStats(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || 'Statistika yuklanmadi');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   if (loading) {
@@ -43,7 +59,7 @@ export default function AdminStats({ token }) {
       </div>
     );
   }
-  if (!stats) return <p className="text-sm text-muted text-center py-8">Statistika yuklanmadi</p>;
+  if (error || !stats) return <p className="text-sm text-muted text-center py-8">{error || 'Statistika yuklanmadi'}</p>;
 
   return (
     <div className="space-y-9">

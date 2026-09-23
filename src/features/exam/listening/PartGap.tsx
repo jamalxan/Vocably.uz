@@ -14,6 +14,8 @@ export interface PartGapProps {
   durationSec: number;
   message: string;
   onComplete: () => void;
+  // 'banner' — savollar ustida ixcham sticky satr (savollar ko'rinib turadi).
+  variant?: 'full' | 'banner';
 }
 
 function formatTime(sec: number): string {
@@ -23,7 +25,7 @@ function formatTime(sec: number): string {
   return `${m}:${String(rem).padStart(2, '0')}`;
 }
 
-export default function PartGap({ durationSec, message, onComplete }: PartGapProps) {
+export default function PartGap({ durationSec, message, onComplete, variant = 'full' }: PartGapProps) {
   const [remaining, setRemaining] = useState(durationSec);
 
   useEffect(() => {
@@ -41,12 +43,29 @@ export default function PartGap({ durationSec, message, onComplete }: PartGapPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durationSec]);
 
+  // Faqat xabar e'lon qilinadi — har soniyada o'zgaruvchi taymer aria-live'dan tashqarida.
+  if (variant === 'banner') {
+    return (
+      <div
+        className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b"
+        style={{ background: 'var(--exam-instruction)', borderColor: 'var(--exam-chrome-border)' }}
+      >
+        <p className="min-w-0 text-sm font-semibold break-words" style={{ color: 'var(--exam-text)' }} role="status">
+          {message}
+        </p>
+        <p className="flex-shrink-0 text-xl font-bold tabular-nums" style={{ color: 'var(--exam-accent)' }} aria-hidden="true">
+          {formatTime(remaining)}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6" role="status" aria-live="polite">
-      <p className="text-base font-semibold" style={{ color: 'var(--exam-text)' }}>
+    <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
+      <p className="text-base font-semibold" style={{ color: 'var(--exam-text)' }} role="status">
         {message}
       </p>
-      <p className="text-3xl font-bold tabular-nums" style={{ color: 'var(--exam-accent)' }}>
+      <p className="text-3xl font-bold tabular-nums" style={{ color: 'var(--exam-accent)' }} aria-hidden="true">
         {formatTime(remaining)}
       </p>
     </div>

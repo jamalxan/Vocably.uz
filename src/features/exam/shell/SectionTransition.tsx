@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useExamStore } from '../state/examStore';
 
 // TZ-vocably-v2.md §9.1 — "'Listening tugadi' ekrani (10s sanoq)" / "'Reading
 // tugadi' ekrani (10s)". Real imtihonda tanaffus yo'q — bu uzoq tanaffus emas,
@@ -16,6 +17,10 @@ export interface SectionTransitionProps {
 
 export default function SectionTransition({ completedLabel, nextLabel, onComplete }: SectionTransitionProps) {
   const [remaining, setRemaining] = useState(TRANSITION_SEC);
+  const highContrast = useExamStore((s) => s.highContrast);
+  // Live region mount'dan keyin to'ldiriladi — aks holda ekran o'qigich e'lon qilmaydi.
+  const [announce, setAnnounce] = useState(false);
+  useEffect(() => setAnnounce(true), []);
 
   useEffect(() => {
     const start = Date.now();
@@ -32,11 +37,20 @@ export default function SectionTransition({ completedLabel, nextLabel, onComplet
   }, [completedLabel, nextLabel]);
 
   return (
-    <div data-exam="" className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-2 text-center px-6" style={{ background: 'var(--exam-bg)' }}>
-      <p className="text-lg font-bold" style={{ color: 'var(--exam-text)' }}>
+    <div
+      data-exam=""
+      data-exam-contrast={highContrast ? 'high' : undefined}
+      className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-2 text-center px-6"
+      style={{ background: 'var(--exam-bg)' }}
+    >
+      {/* Ekran o'qigich uchun bir marta e'lon; har soniyalik raqam live region'dan tashqarida. */}
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announce ? `${completedLabel} tugadi. ${nextLabel} bo'limi ${TRANSITION_SEC} soniyadan keyin boshlanadi.` : ''}
+      </p>
+      <p className="text-lg font-bold" aria-hidden="true" style={{ color: 'var(--exam-text)' }}>
         {completedLabel} tugadi
       </p>
-      <p className="text-sm" style={{ color: 'var(--exam-muted)' }}>
+      <p className="text-sm" aria-hidden="true" style={{ color: 'var(--exam-muted)' }}>
         {nextLabel} bo&apos;limi {remaining} soniyadan keyin boshlanadi
       </p>
     </div>

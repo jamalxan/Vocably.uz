@@ -2,6 +2,10 @@
 import { Volume2, Settings, HelpCircle, Monitor } from 'lucide-react';
 import ExamTimer from './ExamTimer';
 
+// Hover foni matn rangidan olinadi — yuqori kontrast rejimida ham ko'rinadi.
+export const EXAM_ICON_BTN =
+  'flex items-center justify-center rounded-lg hover:bg-[color:color-mix(in_srgb,var(--exam-text)_10%,transparent)] focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]';
+
 // TZ-vocably-v2.md §5.4 — ExamHeader (balandligi 56px).
 // ┌──────────────────────────────────────────────────────────────────┐
 // │ 👤 Ism · ID 0012345 │  ⏱ 42:17  │ 🔊──── ⚙ ? 🖥 │
@@ -36,11 +40,11 @@ export default function ExamHeader({
 }: ExamHeaderProps) {
   return (
     <header
-      className="sticky top-0 z-50 h-14 flex-shrink-0 flex items-center justify-between gap-4 px-4 sm:px-6 border-b"
+      className="sticky top-0 z-50 h-14 flex-shrink-0 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 border-b"
       style={{ background: 'var(--exam-chrome)', borderColor: 'var(--exam-chrome-border)' }}
     >
       <div className="min-w-0 flex-1 flex items-center gap-2 text-[13px]" style={{ color: 'var(--exam-muted)' }}>
-        <span className="truncate font-medium" style={{ color: 'var(--exam-text)' }}>
+        <span className="truncate font-medium" title={candidateName} style={{ color: 'var(--exam-text)' }}>
           {candidateName}
         </span>
         <span className="hidden sm:inline">· ID {candidateId}</span>
@@ -71,7 +75,7 @@ export default function ExamHeader({
           onClick={onOpenSettings}
           aria-label="Settings"
           title="Settings"
-          className="flex items-center justify-center rounded-lg hover:bg-black/5"
+          className={EXAM_ICON_BTN}
           style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
         >
           <Settings size={18} />
@@ -81,7 +85,7 @@ export default function ExamHeader({
           onClick={onOpenHelp}
           aria-label="Help"
           title="Help"
-          className="flex items-center justify-center rounded-lg hover:bg-black/5"
+          className={EXAM_ICON_BTN}
           style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
         >
           <HelpCircle size={18} />
@@ -91,7 +95,7 @@ export default function ExamHeader({
           onClick={onToggleTimerHidden}
           aria-label={timerHidden ? 'Show timer' : 'Hide timer'}
           title={timerHidden ? 'Show timer' : 'Hide timer'}
-          className="flex items-center justify-center rounded-lg hover:bg-black/5"
+          className={EXAM_ICON_BTN}
           style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
         >
           <Monitor size={18} />

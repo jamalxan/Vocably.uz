@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import Button from '@/components/ui/Button';
 import { fetchAttemptResult } from '../state/attemptsApi';
 import ReviewScreen from './ReviewScreen';
 import ResultAnalytics from './ResultAnalytics';
@@ -47,10 +49,17 @@ export default function SectionResult({ attemptId, result, sectionKey, label }: 
     }
   };
 
-  if (reviewDetail) return <ReviewScreen detail={reviewDetail} />;
+  if (reviewDetail) return <ReviewScreen detail={reviewDetail} onBack={() => setReviewDetail(null)} />;
 
   if (!result || !section) {
-    return <div className="p-8 text-center text-sm text-muted">Natija topilmadi.</div>;
+    return (
+      <div className="p-8 text-center text-sm text-muted">
+        <p>Natija topilmadi.</p>
+        <Link href="/app" className="inline-flex items-center min-h-11 mt-2 text-sm font-semibold text-accent hover:underline">
+          Bosh sahifaga qaytish
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -62,14 +71,10 @@ export default function SectionResult({ attemptId, result, sectionKey, label }: 
       </p>
 
       {reviewError && <p className="text-xs text-danger mt-3">{reviewError}</p>}
-      <button
-        onClick={openReview}
-        disabled={loadingReview}
-        className="mt-5 mx-auto flex items-center gap-1.5 px-4 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-semibold rounded-lg"
-      >
+      <Button type="button" onClick={openReview} disabled={loadingReview} className="mt-5">
         {loadingReview && <Loader2 size={14} className="animate-spin" />}
         Javoblarni ko&apos;rib chiqish
-      </button>
+      </Button>
 
       <ResultAnalytics perQuestion={result.perQuestion} metric={sectionKey} />
     </div>

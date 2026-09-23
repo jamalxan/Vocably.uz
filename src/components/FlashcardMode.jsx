@@ -6,6 +6,7 @@ import { speakText } from '@/lib/speech';
 import { cardFromStats, nextReviewState, dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
+import Badge from './ui/Badge';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -21,10 +22,10 @@ function formatDuration(ms) {
 }
 
 const RATING_BUTTONS = [
-  { rating: 1, key: '1', label: 'Bilmadim', emoji: '🔁', className: 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700' },
-  { rating: 2, key: '2', label: 'Qiynaldim', emoji: '😓', className: 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700' },
-  { rating: 3, key: '3', label: 'Bildim', emoji: '✅', className: 'bg-green-50 hover:bg-green-100 border-green-200 text-green-700' },
-  { rating: 4, key: '4', label: 'Juda oson', emoji: '⚡', className: 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700' },
+  { rating: 1, key: '1', label: 'Bilmadim', emoji: '🔁', className: 'bg-danger-soft border-danger/25 hover:border-danger/60 text-danger' },
+  { rating: 2, key: '2', label: 'Qiynaldim', emoji: '😓', className: 'bg-warning-soft border-warning/25 hover:border-warning/60 text-warning' },
+  { rating: 3, key: '3', label: 'Bildim', emoji: '✅', className: 'bg-success-soft border-success/25 hover:border-success/60 text-success' },
+  { rating: 4, key: '4', label: 'Juda oson', emoji: '⚡', className: 'bg-info-soft border-info/25 hover:border-info/60 text-info' },
 ];
 
 // 6.1.1 (VOCABLY-TZ.md) — to'liq qayta yozildi: 3D flip animatsiya, 4 tugmali baholash
@@ -41,6 +42,7 @@ export default function FlashcardMode() {
   const [muted, setMuted] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [complete, setComplete] = useState(false);
+  const [setupError, setSetupError] = useState('');
 
   const dueWords = useMemo(
     () => dueWordsInCategory(activeCategory.words || []),
@@ -53,7 +55,8 @@ export default function FlashcardMode() {
   }, [activeCatIndex, writeResetNonce]);
 
   const beginSession = (selected) => {
-    if (selected.length === 0) return alert("Avval so'z qo'shing");
+    if (selected.length === 0) return setSetupError("Avval so'z qo'shing");
+    setSetupError('');
     setWords(selected);
     setCardIndex(0);
     setFlipped(false);
@@ -68,7 +71,7 @@ export default function FlashcardMode() {
     const sliceFrom = Math.max(1, range.from) - 1;
     const sliceTo = Math.min(all.length, range.to);
     const selected = all.slice(sliceFrom, sliceTo);
-    if (selected.length === 0) return alert("Oraliq noto'g'ri");
+    if (selected.length === 0) return setSetupError("Oraliq noto'g'ri");
     beginSession(selected);
   };
 
@@ -115,6 +118,8 @@ export default function FlashcardMode() {
       if (e.target instanceof HTMLElement) {
         const tag = e.target.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+        // Fokusdagi tugma/havola Enter/Space'ni o'zi bajaradi (masalan baholash tugmasi).
+        if ((e.key === ' ' || e.key === 'Enter') && (tag === 'BUTTON' || tag === 'A')) return;
       }
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
@@ -143,8 +148,12 @@ export default function FlashcardMode() {
       <RangeSetupForm
         title="Kartochka oraliqlari"
         range={range}
-        onRangeChange={setRange}
+        onRangeChange={(r) => {
+          setRange(r);
+          setSetupError('');
+        }}
         onSubmit={startFlashcards}
+        error={setupError}
         maxWords={activeCategory.words?.length || 0}
         onQuickStart={startDueQueue}
         quickStartCount={dueWords.length}
@@ -161,14 +170,18 @@ export default function FlashcardMode() {
           </span>
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => setMuted((m) => !m)}
               aria-label={muted ? 'Ovozni yoqish' : "Ovozni o'chirish"}
               title={muted ? 'Ovozni yoqish' : "Ovozni o'chirish"}
-              className="text-muted hover:text-accent transition-colors"
+              className="inline-flex items-center justify-center w-11 h-11 -my-3.5 md:w-8 md:h-8 md:-my-2 rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
-            <button onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
+            <button
+              onClick={() => setActive(false)}
+              className="inline-flex items-center min-h-11 -my-3.5 md:min-h-0 md:my-0 text-accent hover:text-accent-hover font-semibold"
+            >
               Oraliqni o'zgartirish
             </button>
           </div>
@@ -176,8 +189,11 @@ export default function FlashcardMode() {
 
         <div className="w-full h-64 sm:h-72" style={{ perspective: '1200px' }}>
           <div
+            role="button"
+            tabIndex={0}
+            aria-label={flipped ? 'Kartani old tarafga qaytarish' : "Javobni ko'rish"}
             onClick={() => setFlipped((v) => !v)}
-            className="relative w-full h-full cursor-pointer select-none transition-transform duration-[400ms]"
+            className="relative w-full h-full cursor-pointer select-none rounded-2xl transition-transform duration-[400ms] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
             style={{
               transformStyle: 'preserve-3d',
               transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -205,9 +221,9 @@ export default function FlashcardMode() {
               </p>
               {current?.pronunciation && <p className="text-sm text-muted italic mt-1">{current.pronunciation}</p>}
               {current?.enrichment?.cefr && (
-                <span className="mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-accent-soft text-accent">
+                <Badge tone="accent" className="mt-2">
                   {current.enrichment.cefr}
-                </span>
+                </Badge>
               )}
               <p className="text-xs text-muted mt-6 font-semibold">
                 Ko'rish uchun bosing <span className="hidden sm:inline">(yoki Space)</span>
@@ -237,17 +253,17 @@ export default function FlashcardMode() {
               <button
                 key={b.rating}
                 onClick={() => answer(b.rating)}
-                className={`flex flex-col items-center gap-0.5 py-2.5 rounded-xl border font-semibold text-xs transition-colors ${b.className}`}
+                className={`flex flex-col items-center gap-0.5 px-1 py-2.5 min-w-0 rounded-xl border font-semibold text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${b.className}`}
               >
                 <span className="text-base leading-none">{b.emoji}</span>
-                <span>{b.label}</span>
-                <span className="text-[10px] font-normal opacity-70">{previews?.[b.rating]}</span>
+                <span className="max-w-full break-words text-center">{b.label}</span>
+                <span className="text-[11px] leading-4 font-normal opacity-80">{previews?.[b.rating]}</span>
               </button>
             ))}
           </div>
         ) : (
-          <div className="mt-6 w-full h-[62px] flex items-center justify-center">
-            <p className="text-[10px] text-muted hidden sm:block">Klaviatura: Space — ochish, 1-4 — baholash</p>
+          <div className="mt-6 w-full h-[74px] flex items-center justify-center">
+            <p className="text-[11px] text-muted hidden sm:block">Klaviatura: Space — ochish, 1-4 — baholash</p>
           </div>
         )}
       </div>

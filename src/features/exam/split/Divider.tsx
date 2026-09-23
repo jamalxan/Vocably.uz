@@ -99,10 +99,10 @@ export default function Divider({
       onDoubleClick={() => onRatioChange(0.5)}
       onKeyDown={onKeyDown}
       className="relative flex-shrink-0 w-1.5 cursor-col-resize touch-none focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
-      style={{ background: 'var(--exam-chrome-border)', boxShadow: 'none' }}
+      style={{ background: 'var(--exam-chrome-border)' }}
     >
       {/* Sudrash zonasini kengaytiradi — 6px chiziqning o'ziga aniq tegish shart emas. */}
-      <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
+      <div className="absolute inset-y-0 -left-3 -right-3 [@media(pointer:coarse)]:-left-4 [@media(pointer:coarse)]:-right-4" />
     </div>
   );
 }

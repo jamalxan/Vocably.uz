@@ -9,6 +9,7 @@ import ExamShell from '../shell/ExamShell';
 import SplitPane from '../split/SplitPane';
 import PassagePane from './PassagePane';
 import QuestionGroupBlock from '../questions/QuestionGroupBlock';
+import { ExamLoadError, ExamLoading, SubmitErrorBanner } from '../shell/ExamStatus';
 import type { AttemptResult, SanitizedTest } from '@/lib/exam/types';
 import type { QuestionGroupNav } from '../shell/ExamFooterNav';
 
@@ -48,6 +49,7 @@ export default function ReadingSection({
 }: ReadingSectionProps) {
   const [test, setTest] = useState<SanitizedTest | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const init = useExamStore((s) => s.init);
@@ -85,7 +87,7 @@ export default function ReadingSection({
             onSectionAdvanced?.();
           }
         } catch {
-          setLoadError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
+          setSubmitError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
           setSubmitting(false);
         }
       })();
@@ -140,19 +142,16 @@ export default function ReadingSection({
   }, [test, attemptId, reconcileFromHeartbeat, doSubmit]);
 
   if (loadError) {
-    return (
-      <div className="p-8 text-center text-sm text-danger" data-exam="">
-        {loadError}
-      </div>
-    );
+    return <ExamLoadError message={loadError} />;
   }
   if (!test?.sections.reading) {
-    return (
-      <div className="p-8 text-center text-sm" style={{ color: 'var(--exam-muted)' }} data-exam="">
-        Yuklanmoqda...
-      </div>
-    );
+    return <ExamLoading />;
   }
+
+  const retrySubmit = () => {
+    setSubmitError(null);
+    doSubmit();
+  };
 
   const passages = test.sections.reading.passages;
   const activePassage =
@@ -203,6 +202,7 @@ export default function ReadingSection({
           kerak edi (§5.5) — currentQuestion o'zgarishini shu yerda kuzatib,
           shu savolga scroll qilamiz. */}
       <ScrollToQuestion currentQuestion={currentQuestion} />
+      {submitError && <SubmitErrorBanner message={submitError} onRetry={retrySubmit} retrying={submitting} />}
     </ExamShell>
   );
 }

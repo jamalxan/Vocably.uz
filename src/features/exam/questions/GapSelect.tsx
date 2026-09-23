@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import type { BankItem } from '@/lib/exam/types';
 import FlagToggle from './FlagToggle';
 
@@ -17,9 +18,11 @@ export interface GapSelectProps {
 }
 
 export default function GapSelect({ questionNumber, value, onChange, bank, className = '' }: GapSelectProps) {
+  const [focused, setFocused] = useState(false);
+  const borderColor = focused || value ? 'var(--exam-accent)' : 'var(--exam-input-border)';
   return (
     <span data-question-number={questionNumber} className={`inline-flex items-baseline gap-1 mx-0.5 ${className}`}>
-      <sup className="text-[10px]" style={{ color: 'var(--exam-muted)' }}>
+      <sup style={{ color: 'var(--exam-muted)', fontSize: 'max(0.7em, 11px)' }}>
         {questionNumber}
       </sup>
       <FlagToggle questionNumber={questionNumber} />
@@ -28,16 +31,19 @@ export default function GapSelect({ questionNumber, value, onChange, bank, class
         onChange={(e) => onChange(e.target.value)}
         aria-label={`Question ${questionNumber} answer`}
         data-answered={value ? 'true' : 'false'}
-        className="inline-block outline-none bg-transparent text-sm"
-        style={{ border: 'none', borderBottom: `1.5px solid var(--exam-input-border)`, font: 'inherit', padding: '2px 4px', color: 'var(--exam-text)' }}
-        onFocus={(e) => {
-          e.currentTarget.style.borderBottomColor = 'var(--exam-accent)';
-          e.currentTarget.style.boxShadow = '0 2px 0 0 var(--exam-accent)';
+        // Native select eng uzun variant kengligini oladi — panel'dan chiqib ketmasin.
+        className="inline-block min-w-0 max-w-full sm:max-w-[16rem] outline-none bg-transparent text-[length:max(16px,1em)] md:text-[length:1em]"
+        style={{
+          border: 'none',
+          borderBottom: `1.5px solid ${borderColor}`,
+          fontFamily: 'inherit',
+          lineHeight: 'inherit',
+          padding: '2px 4px',
+          color: 'var(--exam-text)',
+          boxShadow: focused ? '0 2px 0 0 var(--exam-accent)' : 'none',
         }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderBottomColor = value ? 'var(--exam-accent)' : 'var(--exam-input-border)';
-          e.currentTarget.style.boxShadow = 'none';
-        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
       >
         <option value="">—</option>
         {bank.map((b) => (

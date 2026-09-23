@@ -33,7 +33,8 @@ const luxury = Playfair_Display({
 // barcha joylar avtomatik yangilanadi, komponentlarni o'zgartirish shart emas).
 const mono = IBM_Plex_Mono({
   subsets: ['latin'],
-  weight: ['400', '500'],
+  // 600/700 — KPI/streak raqamlari font-semibold/font-bold font-mono (soxta qalinlik bo'lmasin).
+  weight: ['400', '500', '600', '700'],
   variable: '--font-mono',
   display: 'swap',
 });
@@ -93,7 +94,7 @@ export const viewport = {
   viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#F3EDE6' },
-    { media: '(prefers-color-scheme: dark)', color: '#17090E' },
+    { media: '(prefers-color-scheme: dark)', color: '#14090D' }, // = --color-bg (dark)
   ],
 };
 
@@ -103,7 +104,7 @@ export default function RootLayout({ children }) {
     // data-theme atributini o'rnatishi mumkin — bu server/klient farqi kutilgan va
     // zararsiz, React shu haqidagi ogohlantirishni shu yerda bosib qo'ymasa bo'ladi.
     <html lang="uz" className={`${display.variable} ${body.variable} ${luxury.variable} ${mono.variable} ${word.variable}`} suppressHydrationWarning>
-      <body className="bg-bg text-ink min-h-screen antialiased font-body" suppressHydrationWarning>
+      <body className="bg-bg text-ink min-h-dvh antialiased font-body" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>{children}</ThemeProvider>
         <ServiceWorkerRegister />

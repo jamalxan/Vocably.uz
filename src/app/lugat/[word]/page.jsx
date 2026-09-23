@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Volume2, ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import { SEO_WORDS, getSeoWord } from '@/lib/seoWords';
 import SpeakWordButton from '@/components/landing/SpeakWordButton';
+import LandingHeader from '@/components/landing/LandingHeader';
 
 // VOCABLY-TZ.md §17.3 — ochiq, statik generatsiya qilinadigan so'z sahifalari
 // (uzun-dumli qidiruv trafigi uchun). src/lib/seoWords.js'dagi izohga q.: bu
@@ -47,20 +48,16 @@ export default function SeoWordPage({ params }) {
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <header className="px-4 sm:px-6 py-4 flex items-center justify-between max-w-2xl mx-auto">
-        <Link href="/lugat" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent transition-colors">
+      <LandingHeader />
+
+      <main className="px-4 sm:px-6 pt-2 pb-6 max-w-2xl mx-auto">
+        <Link href="/lugat" className="inline-flex items-center gap-1.5 min-h-11 text-sm text-muted hover:text-accent transition-colors mb-2">
           <ArrowLeft size={15} /> Boshqa so'zlar
         </Link>
-        <Link href="/" className="font-luxury text-lg font-bold text-ink">
-          Voc<span className="text-accent">ably</span>
-        </Link>
-      </header>
-
-      <main className="px-4 sm:px-6 py-6 max-w-2xl mx-auto">
         <div className="bg-surface border border-border rounded-3xl shadow-card p-6 sm:p-8 mb-6">
           <div className="flex items-start justify-between gap-3 mb-2">
-            <div>
-              <h1 className="text-4xl font-bold text-ink font-word">{w.word}</h1>
+            <div className="min-w-0 flex-1">
+              <h1 lang="en" className="text-[1.75rem] leading-tight sm:text-4xl font-bold text-ink font-word break-words hyphens-auto">{w.word}</h1>
               <p className="text-sm text-muted italic mt-1">{w.ipa}</p>
             </div>
             <SpeakWordButton word={w.word} />
@@ -72,18 +69,18 @@ export default function SeoWordPage({ params }) {
           </div>
 
           <div className="mt-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted mb-1.5">Tarjima</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">Tarjima</p>
             <p className="text-base text-ink">{w.translations.join(', ')}</p>
           </div>
 
           <div className="mt-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted mb-1.5">Ta'rif</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">Ta'rif</p>
             <p className="text-sm text-ink">{w.definitionEn}</p>
             <p className="text-sm text-muted mt-1">{w.definitionUz}</p>
           </div>
 
           <div className="mt-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted mb-1.5">Misollar</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">Misollar</p>
             <div className="space-y-2">
               {w.examples.map((ex, i) => (
                 <div key={i} className="bg-bg rounded-lg p-3 text-sm">
@@ -95,7 +92,7 @@ export default function SeoWordPage({ params }) {
           </div>
 
           <div className="mt-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted mb-1.5">Kollokatsiya</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">Kollokatsiya</p>
             <div className="flex flex-wrap gap-1.5">
               {w.collocations.map((c, i) => (
                 <span key={i} className="px-2 py-0.5 rounded-full text-[11px] bg-primary-soft text-ink">
@@ -106,23 +103,23 @@ export default function SeoWordPage({ params }) {
           </div>
 
           <div className="mt-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted mb-1.5">So'z oilasi</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">So'z oilasi</p>
             <p className="text-sm text-ink">{w.wordFamily.map((f) => `${f.form} (${f.pos})`).join(' · ')}</p>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted mb-1.5">Sinonimlar</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">Sinonimlar</p>
               <p className="text-sm text-ink">{w.synonymsEn.join(', ')}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted mb-1.5">Antonimlar</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">Antonimlar</p>
               <p className="text-sm text-ink">{w.antonyms.join(', ')}</p>
             </div>
           </div>
 
           <div className="mt-4 bg-accent-soft rounded-lg p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-accent mb-1">Mnemonika</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-accent mb-1">Mnemonika</p>
             <p className="text-sm text-ink">{w.mnemonicUz}</p>
           </div>
         </div>

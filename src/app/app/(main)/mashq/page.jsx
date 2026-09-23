@@ -16,14 +16,14 @@ export default function MashqPage() {
           <Link
             key={s.key}
             href={s.href}
-            className="flex items-center gap-3 p-4 bg-surface border border-border rounded-2xl shadow-card hover:shadow-premium hover:-translate-y-0.5 transition-all duration-200"
+            className="flex items-center gap-3 p-4 bg-surface border border-border rounded-2xl shadow-card hover:shadow-premium motion-safe:hover:-translate-y-0.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
           >
             <div className="w-11 h-11 rounded-xl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
               <s.icon size={20} />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-ink">{s.label}</p>
-              <p className="text-xs text-muted truncate">{s.description}</p>
+              <p className="text-xs text-muted line-clamp-2">{s.description}</p>
             </div>
           </Link>
         ))}

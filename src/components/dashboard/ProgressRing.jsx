@@ -1,7 +1,7 @@
 'use client';
 
 // Kunlik maqsad halqasi (spec §3.1 "imzo element" / §3.5 ProgressRing). To'lganda yashilga
-// o'tadi — foydalanuvchi maqsadga yetganini bir qarashda ko'radi.
+// (--color-success, dark'da ham ko'rinadi) o'tadi — maqsadga yetganini bir qarashda ko'radi.
 export default function ProgressRing({ value, max, size = 128, strokeWidth = 10, children }) {
   const pct = max > 0 ? Math.min(1, value / max) : 0;
   const radius = (size - strokeWidth) / 2;
@@ -11,7 +11,7 @@ export default function ProgressRing({ value, max, size = 128, strokeWidth = 10,
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
         {/* rgb(var(--color-x)) — globals.css'dagi tokenlarga to'g'ridan-to'g'ri ishora (BUG-005/§B2
             hardcode-hex tuzatilishi). Bu CSS custom property, shuning uchun tema almashganda
             hech qanday JS'siz avtomatik yangilanadi. */}
@@ -21,7 +21,7 @@ export default function ProgressRing({ value, max, size = 128, strokeWidth = 10,
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={done ? 'rgb(var(--color-primary))' : 'rgb(var(--color-accent))'}
+          stroke={done ? 'rgb(var(--color-success))' : 'rgb(var(--color-accent))'}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}

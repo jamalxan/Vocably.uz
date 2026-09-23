@@ -7,7 +7,7 @@ import type { QuestionTypeProps } from '../QuestionRenderer';
 // (§6.5, ikkalasi bo'lsa raqam ikki marta chiqib qolardi).
 export default function ShortAnswer({ group, question, value, onChange }: QuestionTypeProps) {
   return (
-    <p className="text-sm" style={{ color: 'var(--exam-text)' }}>
+    <p className="text-[0.875em]" style={{ color: 'var(--exam-text)' }}>
       {/* eslint-disable-next-line react/no-danger */}
       <span dangerouslySetInnerHTML={{ __html: question.promptHtml || '' }} />{' '}
       <GapInput

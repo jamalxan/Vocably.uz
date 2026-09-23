@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { RotateCcw, Loader2 } from 'lucide-react';
+import Button from '@/components/ui/Button';
 import { gradeWriting } from '../state/attemptsApi';
 import WritingScoreCard from './WritingScoreCard';
 import type { AttemptResult } from '@/lib/exam/types';
@@ -43,14 +44,10 @@ export default function WritingResult({ attemptId, result, onRegraded }: Writing
           baholashda xatolik yuz berdi.
         </p>
         {error && <p className="text-xs text-danger mt-2">{error}</p>}
-        <button
-          onClick={regrade}
-          disabled={regrading}
-          className="mt-4 mx-auto flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-semibold rounded-lg"
-        >
+        <Button type="button" onClick={regrade} disabled={regrading} className="mt-4">
           {regrading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
           Qayta baholash
-        </button>
+        </Button>
       </div>
     );
   }

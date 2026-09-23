@@ -15,7 +15,10 @@ export default function TaskPane({ task }: TaskPaneProps) {
         Writing Task {task.order}
       </p>
       {/* eslint-disable-next-line react/no-danger */}
-      <div dangerouslySetInnerHTML={{ __html: task.promptHtml }} />
+      <div
+        className="overflow-x-auto break-words [&_img]:max-w-full [&_img]:h-auto [&_table]:w-full [&_pre]:whitespace-pre-wrap"
+        dangerouslySetInnerHTML={{ __html: task.promptHtml }}
+      />
 
       {task.imageUrl && (
         <div className="mt-4">

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import {
-  ArrowRight, Sparkles, RotateCw, BookOpenText, Ear, Mic, PenLine, Target,
+  ArrowRight, ArrowDown, Sparkles, RotateCw, BookOpenText, Ear, Mic, PenLine, Target,
   Trophy, Layers, Zap, CheckCircle2, Globe, Palette,
 } from 'lucide-react';
 import LandingHeader from '@/components/landing/LandingHeader';
@@ -105,6 +105,7 @@ export default function LandingPage() {
 
       <LandingHeader />
 
+      <main>
       {/* ============ HERO ============ */}
       <section className="relative px-4 sm:px-6 pt-10 sm:pt-16 pb-20 sm:pb-28">
         <div className="max-w-3xl mx-auto text-center">
@@ -177,11 +178,14 @@ export default function LandingPage() {
               { step: 'T+3 kun', label: 'Speaking / Writing', body: "So'zni o'zingiz ishlatib gapirasiz yoki yozasiz" },
             ].map((s, i) => (
               <div key={s.step} className="flex-1 bg-surface border border-border rounded-2xl p-4 relative">
-                <span className="text-[10px] font-bold text-accent uppercase tracking-wider">{s.step}</span>
+                <span className="text-[11px] font-bold text-accent uppercase tracking-wider">{s.step}</span>
                 <p className="text-sm font-semibold text-ink mt-1">{s.label}</p>
                 <p className="text-xs text-muted mt-1">{s.body}</p>
                 {i < 3 && (
-                  <ArrowRight size={14} className="hidden sm:block absolute top-1/2 -right-2 -translate-y-1/2 text-border" />
+                  <>
+                    <ArrowRight size={14} aria-hidden="true" className="hidden sm:block absolute z-10 top-1/2 -right-[15px] -translate-y-1/2 box-content p-0.5 rounded-full bg-bg text-accent/70" />
+                    <ArrowDown size={14} aria-hidden="true" className="sm:hidden absolute z-10 left-1/2 -bottom-[15px] -translate-x-1/2 box-content p-0.5 rounded-full bg-bg text-accent/70" />
+                  </>
                 )}
               </div>
             ))}
@@ -281,6 +285,7 @@ export default function LandingPage() {
           </Link>
         </div>
       </section>
+      </main>
 
       <LandingFooter />
     </div>

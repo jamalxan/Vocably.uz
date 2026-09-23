@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { createAttempt } from '@/features/exam/state/attemptsApi';
 import TestPicker from '@/features/exam/shell/TestPicker';
+import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 
 // TZ-vocably-v2.md §20 migratsiyasi YAKUNLANDI — bu endi yangi exam engine
 // (avval `/app/gapirish-beta`da qurilgan, endi asosiy yo'lga ko'chirildi).
@@ -23,5 +24,10 @@ export default function GapirishPage() {
     }
   };
 
-  return <TestPicker sectionKey="speaking" title="Speaking — testni tanlang" onPicked={handlePicked} />;
+  return (
+    <div>
+      <ExamBackLink />
+      <TestPicker sectionKey="speaking" title="Speaking — testni tanlang" onPicked={handlePicked} />
+    </div>
+  );
 }

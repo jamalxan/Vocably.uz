@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import LandingHeader from '@/components/landing/LandingHeader';
 
 export const metadata = {
   title: 'Narxlar — Vocably',
@@ -15,11 +16,7 @@ export const metadata = {
 export default function NarxlarPage() {
   return (
     <div className="min-h-dvh bg-bg flex flex-col">
-      <header className="px-4 sm:px-6 py-4">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent transition-colors">
-          <ArrowLeft size={15} /> Bosh sahifa
-        </Link>
-      </header>
+      <LandingHeader />
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
         <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center text-on-accent shadow-glow mb-6">
           <Sparkles size={28} />

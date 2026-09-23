@@ -28,22 +28,19 @@ export interface ExamTimerProps {
 export default function ExamTimer({ remainingSec, hidden, onThresholdCrossed }: ExamTimerProps) {
   const announcedRef = useRef<Set<number>>(new Set());
 
-  useEffect(() => {
-    announcedRef.current = new Set();
-  }, []);
-
+  // Bir vaqtda bir nechta chegaradan o'tilgan bo'lsa (masalan, vaqti kam qolgan urinish
+  // qayta ochilganda) faqat eng dolzarbi ko'rsatiladi. Ref komponent bilan birga
+  // yaratiladi — alohida "reset" effekti StrictMode'da takroriy toast chiqarardi.
   useEffect(() => {
     const crossings: [number, string][] = [
-      [WARN_THRESHOLD_SEC, "10 daqiqa qoldi."],
-      [DANGER_THRESHOLD_SEC, "5 daqiqa qoldi."],
       [FINAL_THRESHOLD_SEC, "1 daqiqa qoldi."],
+      [DANGER_THRESHOLD_SEC, "5 daqiqa qoldi."],
+      [WARN_THRESHOLD_SEC, "10 daqiqa qoldi."],
     ];
-    for (const [threshold, message] of crossings) {
-      if (remainingSec <= threshold && !announcedRef.current.has(threshold)) {
-        announcedRef.current.add(threshold);
-        onThresholdCrossed?.(message);
-      }
-    }
+    const due = crossings.filter(([threshold]) => remainingSec <= threshold && !announcedRef.current.has(threshold));
+    if (!due.length) return;
+    for (const [threshold] of due) announcedRef.current.add(threshold);
+    onThresholdCrossed?.(due[0][1]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingSec]);
 
@@ -53,8 +50,9 @@ export default function ExamTimer({ remainingSec, hidden, onThresholdCrossed }: 
 
   if (hidden) {
     return (
-      <span className="text-[13px] font-semibold text-[var(--exam-muted)]" aria-label="Taymer yashirilgan">
-        ⏱ ——:——
+      <span className="text-[13px] font-semibold text-[var(--exam-muted)]">
+        <span aria-hidden="true">⏱ ——:——</span>
+        <span className="sr-only">Taymer yashirilgan</span>
       </span>
     );
   }
@@ -62,7 +60,6 @@ export default function ExamTimer({ remainingSec, hidden, onThresholdCrossed }: 
   return (
     <span
       role="timer"
-      aria-hidden="false"
       className={`text-[18px] font-semibold tabular-nums transition-colors ${
         isDanger
           ? `text-[var(--exam-danger)] ${justCrossedDanger ? 'animate-[exam-timer-pulse_600ms_ease-in-out_2]' : ''}`

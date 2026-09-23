@@ -1,13 +1,18 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { AlertTriangle, RotateCcw, LogOut } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
+import Button from '@/components/ui/Button';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const router = useRouter();
   const [loadingApp, setLoadingApp] = useState(true);
+  // Boshlang'ich /api/words yuklanmasa (401 dan boshqa xato) — sessiya o'chirilmaydi,
+  // "Qayta urinish" ekrani ko'rsatiladi.
+  const [appError, setAppError] = useState(false);
   const [categories, setCategories] = useState([]);
   const [activeCatIndex, setActiveCatIndex] = useState(0);
   const [reviewStreak, setReviewStreak] = useState(0);
@@ -59,16 +64,23 @@ export function AppProvider({ children }) {
 
   const fetchUserData = useCallback(
     async (jwtToken) => {
+      setAppError(false);
       try {
         const res = await fetch('/api/words', {
           headers: { Authorization: `Bearer ${jwtToken}` },
         });
+        // Faqat 401 (token yaroqsiz/muddati o'tgan) chiqishga olib keladi; tarmoq yoki
+        // server xatosida sessiya saqlanadi va foydalanuvchi qayta urinadi.
+        if (res.status === 401) {
+          logout();
+          return;
+        }
         if (!res.ok) throw new Error();
         const data = await res.json();
         setCategories(data.categories || []);
         setReviewStreak(data.reviewStreak || 0);
       } catch {
-        logout();
+        setAppError(true);
       } finally {
         setLoadingApp(false);
       }
@@ -184,11 +196,12 @@ export function AppProvider({ children }) {
       if (!clean) return;
       setChatSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: clean } : s)));
       try {
-        await fetch(`/api/ai/sessions/${id}`, {
+        const res = await fetch(`/api/ai/sessions/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ title: clean }),
         });
+        if (!res.ok) loadChatSessions();
       } catch {
         loadChatSessions();
       }
@@ -202,10 +215,11 @@ export function AppProvider({ children }) {
       // Faol suhbat o'chirilsa yangi bo'sh suhbatga o'tamiz.
       if (currentSessionId === id) startNewChatSession();
       try {
-        await fetch(`/api/ai/sessions/${id}`, {
+        const res = await fetch(`/api/ai/sessions/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) loadChatSessions();
       } catch {
         loadChatSessions();
       }
@@ -217,10 +231,11 @@ export function AppProvider({ children }) {
     setChatSessions([]);
     startNewChatSession();
     try {
-      await fetch('/api/ai/sessions', {
+      const res = await fetch('/api/ai/sessions', {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) loadChatSessions();
     } catch {
       loadChatSessions();
     }
@@ -299,12 +314,23 @@ export function AppProvider({ children }) {
   // ikkala chaqiruvchi ham bitta umumiy modaldan foydalanadi.
   const [categoryDeleteIdx, setCategoryDeleteIdx] = useState(null);
   const categoryPendingDelete = categoryDeleteIdx !== null ? categories[categoryDeleteIdx] : null;
+  // Native alert() o'rniga qisqa bildirishnoma (pastda render qilinadi, 3 soniyada yo'qoladi).
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(''), 3000);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   const handleDeleteCategory = useCallback(
     (idx) => {
       const cat = categories[idx];
       if (!cat) return;
-      if (categories.length <= 1) return alert('Kamida bitta kategoriya qolishi kerak');
+      if (categories.length <= 1) {
+        setNotice('Kamida bitta kategoriya qolishi kerak');
+        return;
+      }
       setCategoryDeleteIdx(idx);
     },
     [categories]
@@ -333,8 +359,8 @@ export function AppProvider({ children }) {
   // qayta yozardi (`syncData`) — katta hujjatni har safar to'liq yuborish/saqlash, va ikkita
   // ochiq tab bir vaqtda yozsa biri ikkinchisini "yutib" ketishi mumkin edi. Endi allaqachon
   // mavjud, indekslangan `$push` endpointidan (`/api/words/add`, AI oqimi ham shuni ishlatadi)
-  // foydalanadi — atomik, faqat qo'shilayotgan so'zni yozadi. Qaytish qiymati (`false`) bo'sh
-  // maydon holatini chaqiruvchi tomonda (WordTable) xabar ko'rsatish uchun ishlatiladi.
+  // foydalanadi — atomik, faqat qo'shilayotgan so'zni yozadi. `false` — bo'sh maydon YOKI
+  // saqlash muvaffaqiyatsiz bo'ldi (chaqiruvchi formani tozalamasligi kerak).
   const handleAddWord = useCallback(
     async (word, synsStr) => {
       const cleanWord = (word || '').trim();
@@ -350,9 +376,10 @@ export function AppProvider({ children }) {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ categoryId: cat._id, words: [{ word: cleanWord, syns: synsArray }] }),
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
         console.error("So'z qo'shishda xatolik", err);
+        return false;
       } finally {
         await refreshCategories();
       }
@@ -548,7 +575,40 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={value}>
-      {children}
+      {appError ? (
+        <div className="min-h-dvh bg-bg flex items-center justify-center p-4">
+          <div role="alert" className="w-full max-w-sm bg-surface border border-border rounded-2xl shadow-card p-6 text-center">
+            <div className="w-11 h-11 mx-auto mb-3 rounded-full bg-danger-soft text-danger flex items-center justify-center">
+              <AlertTriangle size={20} />
+            </div>
+            <h2 className="font-bold text-ink font-display mb-1">Ma&apos;lumotlarni yuklab bo&apos;lmadi</h2>
+            <p className="text-sm text-muted mb-5">Internet aloqasini tekshirib, qayta urinib ko&apos;ring.</p>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => {
+                  setLoadingApp(true);
+                  fetchUserData(token);
+                }}
+              >
+                <RotateCcw size={16} /> Qayta urinish
+              </Button>
+              <Button variant="ghost" onClick={logout}>
+                <LogOut size={16} /> Chiqish
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
+      {notice && (
+        <div
+          role="status"
+          className="fixed z-50 left-1/2 -translate-x-1/2 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-6 max-w-[calc(100vw-2rem)] px-4 py-2.5 rounded-xl bg-primary text-on-primary text-sm shadow-premium"
+        >
+          {notice}
+        </div>
+      )}
       <ConfirmModal
         open={!!categoryPendingDelete}
         title="Kategoriyani o'chirish"

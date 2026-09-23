@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Check, X, Pencil, AlertTriangle, AlertCircle, Inbox } from 'lucide-react';
 
 // TZ-vocably-v2.md (AI Content Ingestion Agent) §11.3 — "Tekshiruv navbati
@@ -25,6 +25,8 @@ export default function ReviewQueuePanel({ token }) {
   const [selectedId, setSelectedId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [statusFilter, setStatusFilter] = useState('open');
+  const [actionError, setActionError] = useState('');
+  const detailRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,13 +54,21 @@ export default function ReviewQueuePanel({ token }) {
     async (action) => {
       if (!selected || busy) return;
       setBusy(true);
+      setActionError('');
       try {
-        await fetch(`/api/admin/review/${selected.id}`, {
+        const res = await fetch(`/api/admin/review/${selected.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ action }),
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setActionError(data.error || "Amalni bajarib bo'lmadi");
+          return;
+        }
         await load();
+      } catch {
+        setActionError("Tarmoq xatosi — qayta urinib ko'ring");
       } finally {
         setBusy(false);
       }
@@ -89,16 +99,25 @@ export default function ReviewQueuePanel({ token }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [items, selectedIndex, resolve]);
 
+  // Mobil/planshetda ro'yxat tepada — tanlanganda detal ko'rinadigan joyga suriladi.
+  const selectItem = (id) => {
+    setSelectedId(id);
+    setActionError('');
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 1023px)').matches) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }));
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-lg font-bold text-ink font-display">Tekshiruv navbati</h2>
           <p className="text-sm text-muted mt-1">
             AI ishonchi past yoki validatsiya xatosi bo'lgan savol guruhlari. Klaviatura: J/K — o'tish, A — qabul, E — tuzatish.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold flex-shrink-0">
           <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-danger-soft text-danger">
             <AlertCircle size={13} /> {counts.blocker} blocker
           </span>
@@ -108,12 +127,13 @@ export default function ReviewQueuePanel({ token }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         {['open', 'fixed', 'accepted', 'rejected', 'all'].map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            aria-pressed={statusFilter === s}
+            className={`px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-semibold transition-colors ${
               statusFilter === s ? 'bg-accent text-on-accent' : 'text-muted hover:bg-bg'
             }`}
           >
@@ -132,18 +152,20 @@ export default function ReviewQueuePanel({ token }) {
           <p className="text-sm text-muted">Bu holatda element yo'q.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-4">
-          <div className="space-y-1.5 max-h-[600px] overflow-y-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+          <div className="space-y-1.5 max-h-[40dvh] lg:max-h-[600px] overflow-y-auto overscroll-contain">
             {items.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setSelectedId(item.id)}
+                onClick={() => selectItem(item.id)}
+                aria-current={item.id === selectedId ? 'true' : undefined}
                 className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${
                   item.id === selectedId ? 'border-accent bg-accent-soft/40' : 'border-border bg-surface hover:border-accent/30'
                 }`}
               >
                 <div className="flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.severity === 'blocker' ? 'bg-danger' : 'bg-warning'}`} />
+                  <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.severity === 'blocker' ? 'bg-danger' : 'bg-warning'}`} />
+                  <span className="sr-only">{item.severity}:</span>
                   <span className="text-xs font-semibold text-ink truncate">{REASON_LABEL[item.reason] || item.reason}</span>
                 </div>
                 <p className="text-[11px] text-muted mt-0.5 truncate">
@@ -155,9 +177,9 @@ export default function ReviewQueuePanel({ token }) {
           </div>
 
           {selected && (
-            <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div ref={detailRef} className="min-w-0 scroll-mt-24 bg-surface border border-border rounded-xl p-4 sm:p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${selected.severity === 'blocker' ? 'bg-danger-soft text-danger' : 'bg-warning-soft text-warning'}`}>
                     {selected.severity}
                   </span>
@@ -190,29 +212,34 @@ export default function ReviewQueuePanel({ token }) {
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex flex-wrap items-center gap-2 pt-1">
                 <button
                   onClick={() => resolve('accept')}
                   disabled={busy}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-success hover:opacity-90 disabled:opacity-40 text-on-accent rounded-lg text-sm font-semibold transition-opacity"
+                  className="flex items-center gap-1.5 px-4 py-2 min-h-11 md:min-h-0 bg-success-soft border border-success/30 text-success hover:bg-success/20 disabled:opacity-40 rounded-lg text-sm font-semibold transition-colors"
                 >
                   <Check size={15} /> Qabul qilish
                 </button>
                 <button
                   onClick={() => resolve('fix')}
                   disabled={busy}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-bg hover:bg-border disabled:opacity-40 text-ink rounded-lg text-sm font-semibold transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 min-h-11 md:min-h-0 bg-bg hover:bg-border disabled:opacity-40 text-ink rounded-lg text-sm font-semibold transition-colors"
                 >
                   <Pencil size={15} /> Tuzatildi deb belgilash
                 </button>
                 <button
                   onClick={() => resolve('reject')}
                   disabled={busy}
-                  className="flex items-center gap-1.5 px-4 py-2 text-danger hover:bg-danger-soft disabled:opacity-40 rounded-lg text-sm font-semibold transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 min-h-11 md:min-h-0 text-danger hover:bg-danger-soft disabled:opacity-40 rounded-lg text-sm font-semibold transition-colors"
                 >
                   <X size={15} /> Rad etish
                 </button>
               </div>
+              {actionError && (
+                <p role="alert" className="text-sm text-danger">
+                  {actionError}
+                </p>
+              )}
             </div>
           )}
         </div>

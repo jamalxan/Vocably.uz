@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowLeft, Sparkles } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowLeft, Sparkles, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import IconButton from '../ui/IconButton';
 import ConfirmModal from '../ConfirmModal';
 import AllChatSessionsModal from './AllChatSessionsModal';
 
@@ -23,6 +24,22 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [allModalOpen, setAllModalOpen] = useState(false);
   const listRef = useRef(null);
+  const closeBtnRef = useRef(null);
+
+  // Mobil drawer: ochilganda fokus "Yopish"ga o'tadi, Escape yopadi, yopilganda fokus qaytadi.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const prevFocus = document.activeElement;
+    closeBtnRef.current?.focus();
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus();
+    };
+  }, [sidebarOpen, setSidebarOpen]);
 
   useEffect(() => {
     if (!menuOpenId) return;
@@ -68,7 +85,10 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
 
       <aside
         ref={listRef}
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-72 sm:w-64 bg-primary text-on-primary flex flex-col flex-shrink-0 border-r border-on-primary/10 transform transition-transform duration-300 ease-out ${
+        role={sidebarOpen ? 'dialog' : undefined}
+        aria-modal={sidebarOpen ? 'true' : undefined}
+        aria-label="Suhbatlar"
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-[min(18rem,85vw)] lg:w-64 bg-primary text-on-primary flex flex-col flex-shrink-0 border-r border-on-primary/10 transform transition-transform duration-300 ease-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
@@ -84,6 +104,17 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
           )}
           <Sparkles size={15} className="text-accent flex-shrink-0" />
           <h2 className="text-sm font-semibold flex-1">Suhbatlar</h2>
+          {sidebarOpen && (
+            <IconButton
+              ref={closeBtnRef}
+              icon={X}
+              label="Yopish"
+              variant="ghost-on-primary"
+              size="lg"
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden -my-2 -mr-2"
+            />
+          )}
         </div>
 
         <div className="p-3 space-y-2 border-b border-on-primary/10">
@@ -104,7 +135,8 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Suhbat qidirish..."
-                className="w-full pl-8 pr-2.5 py-1.5 bg-primary-hover border border-on-primary/10 rounded-lg text-xs text-on-primary outline-none focus:border-accent/50 transition-colors placeholder:text-on-primary/40"
+                aria-label="Suhbat qidirish"
+                className="w-full pl-8 pr-2.5 py-1.5 bg-primary-hover border border-on-primary/10 rounded-lg text-base md:text-xs text-on-primary outline-none focus:border-accent/50 transition-colors placeholder:text-on-primary/40"
               />
             </div>
           )}
@@ -118,7 +150,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
             <p className="px-2.5 py-2 text-xs text-on-primary/40">Topilmadi</p>
           )}
 
-          {visible.map((s) =>
+          {visible.map((s, idx) =>
             renamingId === s.id ? (
               <form key={s.id} onSubmit={submitRename} className="px-1 py-0.5">
                 <input
@@ -129,7 +161,8 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') setRenamingId(null);
                   }}
-                  className="w-full px-2.5 py-1.5 bg-primary-hover border border-accent rounded-lg text-xs text-on-primary outline-none"
+                  aria-label="Suhbat nomi"
+                  className="w-full px-2.5 py-1.5 bg-primary-hover border border-accent rounded-lg text-base md:text-xs text-on-primary outline-none"
                 />
               </form>
             ) : (
@@ -137,7 +170,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                 <button
                   onClick={() => select(s.id)}
                   title={s.title}
-                  className={`w-full text-left pl-2.5 pr-8 py-2 rounded-lg text-xs truncate transition-colors ${
+                  className={`w-full text-left pl-2.5 pr-12 lg:pr-8 py-3 lg:py-2 rounded-lg text-xs truncate transition-colors ${
                     currentSessionId === s.id
                       ? 'bg-primary-hover text-on-primary font-medium'
                       : 'text-on-primary/60 hover:bg-primary-hover/60 hover:text-on-primary'
@@ -147,18 +180,25 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                 </button>
                 <button
                   onClick={() => setMenuOpenId(menuOpenId === s.id ? null : s.id)}
-                  className="absolute top-1/2 -translate-y-1/2 right-1.5 p-1 rounded text-on-primary/40 hover:text-on-primary hover:bg-primary-hover opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                  className="absolute top-1/2 -translate-y-1/2 right-0 lg:right-1.5 min-w-11 min-h-11 lg:min-w-0 lg:min-h-0 p-1 flex items-center justify-center rounded text-on-primary/60 lg:text-on-primary/40 hover:text-on-primary hover:bg-primary-hover opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 transition-opacity"
                   title="Amallar"
                   aria-label="Suhbat amallari"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpenId === s.id}
                 >
                   <MoreHorizontal size={13} />
                 </button>
 
                 {menuOpenId === s.id && (
-                  <div className="absolute z-20 right-1.5 top-8 w-40 bg-primary-hover border border-on-primary/15 rounded-lg shadow-xl overflow-hidden text-[11px]">
+                  <div
+                    className={`absolute z-20 right-1.5 w-44 bg-primary-hover border border-on-primary/15 rounded-lg shadow-xl overflow-hidden text-xs lg:text-[11px] ${
+                      // Ro'yxat oxiridagi qatorlarda menyu yuqoriga ochiladi (scroll ichida kesilmasin).
+                      visible.length > 3 && idx >= visible.length - 2 ? 'bottom-full mb-0.5' : 'top-full mt-0.5'
+                    }`}
+                  >
                     <button
                       onClick={() => startRename(s)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-on-primary/70 hover:bg-primary hover:text-on-primary transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-3 lg:py-2 text-on-primary/70 hover:bg-primary hover:text-on-primary transition-colors"
                     >
                       <Pencil size={12} /> Nomini o'zgartirish
                     </button>
@@ -167,7 +207,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                         setMenuOpenId(null);
                         setConfirmDeleteId(s.id);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-accent hover:bg-primary transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-3 lg:py-2 text-accent hover:bg-primary transition-colors"
                     >
                       <Trash2 size={12} /> O'chirish
                     </button>
@@ -180,7 +220,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
           {filtered.length > VISIBLE_LIMIT && (
             <button
               onClick={() => setAllModalOpen(true)}
-              className="w-full text-left px-2.5 py-2 rounded-lg text-[11px] text-accent hover:bg-primary-hover transition-colors"
+              className="w-full text-left px-2.5 py-3 lg:py-2 rounded-lg text-[11px] text-accent hover:bg-primary-hover transition-colors"
             >
               Barchasini ko'rish ({chatSessions.length})
             </button>

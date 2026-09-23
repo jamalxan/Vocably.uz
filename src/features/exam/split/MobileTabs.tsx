@@ -1,5 +1,5 @@
 'use client';
-import { useRef, type ReactNode, type TouchEvent } from 'react';
+import { useId, useRef, type KeyboardEvent, type ReactNode, type TouchEvent } from 'react';
 
 // TZ-vocably-v2.md §12.2 — "<768px: Tab rejimi... [Matn][Savollar ●]
 // segmented control, sticky... Tab'lar orasida swipe ishlaydi... Barcha
@@ -17,8 +17,14 @@ export interface MobileTabsProps {
 
 export default function MobileTabs({ left, right, rightPadded, tabs, active, onChange }: MobileTabsProps) {
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const idBase = useId();
 
   const onTouchStart = (e: TouchEvent) => {
+    // Matn maydoni/select ichidagi kursor sudrash tab almashtirmasin.
+    if ((e.target as Element).closest?.('textarea, input, select, [contenteditable="true"], [data-no-swipe]')) {
+      touchStart.current = null;
+      return;
+    }
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
   };
@@ -39,6 +45,14 @@ export default function MobileTabs({ left, right, rightPadded, tabs, active, onC
 
   const contentPadded = active === 0 || rightPadded;
 
+  const onTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const next = (active === 0 ? 1 : 0) as 0 | 1;
+    onChange(next);
+    document.getElementById(`${idBase}-tab-${next}`)?.focus();
+  };
+
   return (
     <div className="h-full min-w-0 flex flex-col">
       <div
@@ -52,8 +66,12 @@ export default function MobileTabs({ left, right, rightPadded, tabs, active, onC
             key={label}
             type="button"
             role="tab"
+            id={`${idBase}-tab-${i}`}
             aria-selected={active === i}
+            aria-controls={`${idBase}-panel`}
+            tabIndex={active === i ? 0 : -1}
             onClick={() => onChange(i as 0 | 1)}
+            onKeyDown={onTabKeyDown}
             className="flex-1 rounded-lg text-sm font-semibold transition-colors"
             style={{
               minHeight: 44,
@@ -67,6 +85,9 @@ export default function MobileTabs({ left, right, rightPadded, tabs, active, onC
         ))}
       </div>
       <div
+        id={`${idBase}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${idBase}-tab-${active}`}
         className={`flex-1 min-h-0 ${contentPadded ? 'overflow-y-auto overscroll-contain px-4 sm:px-6 py-4' : 'overflow-hidden'}`}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}

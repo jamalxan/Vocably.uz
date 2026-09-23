@@ -15,14 +15,16 @@ export default function LugatIndexPage() {
           <Link
             key={mode.key}
             href={mode.href}
-            className="flex items-center gap-3 p-4 bg-surface border border-border rounded-2xl shadow-card hover:shadow-premium hover:-translate-y-0.5 transition-all duration-200"
+            className="flex items-center gap-3 p-4 bg-surface border border-border rounded-2xl shadow-card hover:shadow-premium hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
           >
             <div className="w-10 h-10 rounded-xl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
               <mode.icon size={18} />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-ink">{mode.label}</p>
-              <p className="text-xs text-muted truncate">{mode.description}</p>
+              <p className="text-xs text-muted truncate" title={mode.description}>
+                {mode.description}
+              </p>
             </div>
           </Link>
         ))}

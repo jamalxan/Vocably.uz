@@ -11,6 +11,7 @@
  * Dark mode — pastdagi @media/[data-theme] bloklarida (ThemeContext.jsx boshqaradi).
  * ========================================================================== */
 :root {
+  color-scheme: light;
   --color-bg: 243 237 230;             /* #F3EDE6 — sahifa foni */
   --color-bg-sunken: 235 227 218;      /* #EBE3DA — chuqurroq zona (masalan AppShell fon ostki qatlami) */
   --color-surface: 250 246 242;        /* #FAF6F2 — karta foni */
@@ -45,6 +46,8 @@
   --color-border: 214 207 204;         /* #D6CFCC — chegaralar */
   --color-border-strong: 199 184 176;  /* #C7B8B0 — kuchliroq chegara (masalan faol input, ajratgich) */
   --color-on-accent: 255 255 255;      /* accent fon ustidagi matn */
+  --color-on-danger: 255 255 255;      /* danger fon ustidagi matn (dark'da to'q — pastga q.) */
+  --shadow-rgb: 74 18 38;              /* soyalar rangi (tailwind boxShadow, .card-hover) */
   --color-on-primary: 250 246 242;     /* primary (to'q) fon ustidagi matn */
   --color-brand-text: 74 18 38;        /* #4A1226 — TZ §B2 "brand-text" roli: sarlavha/katta raqam. Light'da
                                            --color-primary bilan bir xil (12.9:1 ✓); dark'da mustaqil ravishda
@@ -97,6 +100,9 @@
  * ========================================================================== */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-on-danger: 20 9 13;          /* #14090D — och danger fonida oq matn 2.3:1 edi */
+    --shadow-rgb: 0 0 0;
     /* BUG-003 tuzatilishi (TZ-vocably-v2.md §B2): sirt darajalari orasidagi ΔL juda
        kichik edi (bg/bg-sunken/surface deyarli bir xil qora bo'lib ko'rinardi) —
        qiymatlar TZ'ning qayta hisoblangan dark jadvalidan olindi. */
@@ -135,6 +141,9 @@
   }
 }
 :root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-on-danger: 20 9 13;
+  --shadow-rgb: 0 0 0;
   --color-bg: 20 9 13;
   --color-bg-sunken: 13 5 8;
   --color-surface: 31 18 24;
@@ -195,6 +204,23 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+/* Umumiy klaviatura fokus halqasi. :where() — specificity 0, shuning uchun
+   o'z fokus uslubi bor komponentlar (focus-visible:ring / outline-none) ustun turadi. */
+:where(:focus-visible) {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: 2px;
+}
+:where([data-exam]) :where(:focus-visible) {
+  outline-color: var(--exam-accent);
+}
+
+/* Imtihon ekrani doim och — scrollbar ham ilova dark tokeniga ergashmasin. */
+[data-exam] ::-webkit-scrollbar-thumb {
+  background: var(--exam-chrome-border);
+}
+[data-exam] {
+  scrollbar-color: var(--exam-chrome-border) transparent;
+}
 
 /* Sprint 4 "Premium" (TZ-vocably-v2.md §B4/§B5 item 7) — mikro-interaksiyalar:
    tugma bosilganda active:scale-[0.98] (Button.jsx), karta hover'da ko'tarilish
@@ -205,6 +231,8 @@ body {
   *, *::before, *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    /* cheksiz animatsiyalar (spin/pulse) har kadrda qayta boshlanib miltillamasin */
+    animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
 }
@@ -216,9 +244,12 @@ body {
 .card-hover {
   transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms cubic-bezier(.2,.8,.2,1);
 }
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 60px -15px rgba(74,18,38,.20);
+/* Faqat haqiqiy hover bor qurilmalarda — sensorli ekranda bosilgan karta "osilib" qolmasin. */
+@media (hover: hover) {
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 60px -15px rgb(var(--shadow-rgb) / .20);
+  }
 }
 
 /* TZ §B5 item 1 — "sahifa foniga juda nozik noise/grain overlay" (SVG
@@ -239,10 +270,28 @@ body {
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
+/* Mobilda (va reduced-transparency'da) o'chiq: butun ekranli blend qatlami har
+   scroll kadrida qayta kompozitsiya qilinadi, 2.5% effekt uchun qimmat. */
+@media (max-width: 767px), (prefers-reduced-transparency: reduce) {
+  .bg-grain::before {
+    display: none;
+  }
+}
 
-/* Mobil brauzerlarda inputlarni avtomatik zoom qilishning oldini olish */
-@media (max-width: 640px) {
+/* Mobil brauzerlarda (iOS) inputlarni avtomatik zoom qilishning oldini olish.
+   <768px va sensorli qurilmalarda (landshaft telefon ham). Kichik o'lcham klasslari
+   (text-xs/text-sm/text-[10-15px]) yuqoriroq specificity bilan bosib o'tiladi —
+   kattaroq (text-lg, text-2xl ...) inputlarga tegmaydi. Desktop o'zgarmaydi. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
   input, select, textarea {
+    font-size: 16px;
+  }
+  :is(input, select, textarea):is(
+      .text-xs, .text-sm,
+      [class~="text-[10px]"], [class~="text-[11px]"], [class~="text-[12px]"],
+      [class~="text-[13px]"], [class~="text-[14px]"], [class~="text-[15px]"],
+      [class~="sm:text-xs"], [class~="sm:text-sm"]
+    ) {
     font-size: 16px;
   }
 }
@@ -329,6 +378,14 @@ body {
   background: var(--exam-bg);
   color: var(--exam-text);
 }
+/* Imtihon ochiq paytda body foni ham imtihon palitrasida — iOS overscroll va
+   yuklanish holatlarida ortidagi qorong'i fon ko'rinmasin. */
+body:has([data-exam]) {
+  background: #ffffff;
+}
+body:has([data-exam][data-exam-contrast="high"]) {
+  background: #000000;
+}
 
 /* §6.3 / §19 Faza 3 item 19 — matn belgilash. `highlightDom.ts#applyHighlights`
    shu klass bilan `<mark>` yaratadi; eslatmasi bo'lsa `title` atributi orqali
@@ -354,6 +411,18 @@ body {
   --exam-input-border: #ffffff;
   --exam-answered-bg: #3a1420;
   --exam-highlight: #5c4a00;
+  /* Qora fonda #4a1226 ~1.1:1 edi — javob raqamlari, joriy savol chegarasi,
+     faol tab va fokus halqasi ko'rinmasdi. */
+  --exam-answered: #ffffff;
+  --exam-accent: #ff8fa3;
+  --exam-accent-soft: #ff8fa3;
+  --exam-focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.6);
+}
+/* Yorqin accent ustida oq matn o'qilmaydi — yuqori kontrastda to'ldirilgan
+   accent tugmalar matni qora bo'ladi. */
+[data-exam][data-exam-contrast="high"] .text-white[style*="var(--exam-accent)"],
+[data-exam][data-exam-contrast="high"] [style*="var(--exam-accent)"] > .text-white {
+  color: #000000;
 }
 
 /* §5.4 — 5 daqiqa chegarasiga yetganda taymer 2 marta pulsatsiya qiladi, keyin to'xtaydi

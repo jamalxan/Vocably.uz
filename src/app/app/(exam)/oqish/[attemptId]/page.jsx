@@ -1,7 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 import ReadingSection from '@/features/exam/reading/ReadingSection';
 import ReadingResult from '@/features/exam/review/ReadingResult';
 
@@ -13,7 +15,6 @@ function candidateIdFrom(attemptId) {
 
 export default function OqishAttemptPage() {
   const params = useParams();
-  const router = useRouter();
   const { token, displayName } = useApp();
   const [result, setResult] = useState(null);
   const [submitted, setSubmitted] = useState(false);
@@ -27,11 +28,21 @@ export default function OqishAttemptPage() {
   if (submitted) {
     return (
       <div>
+        <ExamBackLink width="max-w-2xl" />
         <ReadingResult attemptId={attemptId} result={result} />
-        <div className="text-center pb-10">
-          <button onClick={() => router.push('/app/oqish')} className="text-sm text-accent hover:underline font-semibold">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 pb-10">
+          <Link
+            href="/app/oqish"
+            className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-accent hover:underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
             Yangi urinish boshlash
-          </button>
+          </Link>
+          <Link
+            href="/app/mashq"
+            className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-muted hover:text-ink font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            Mashq bo&apos;limiga
+          </Link>
         </div>
       </div>
     );

@@ -1,6 +1,8 @@
 'use client';
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useDialogFocus } from '../state/useDialogFocus';
+import { EXAM_ICON_BTN } from './ExamHeader';
 
 // TZ-vocably-v2.md §5.4 — "? Yordam: savol turlari bo'yicha qisqa qo'llanma
 // (modal, taymer to'xtamaydi)". Kontent generic — har savol turi uchun maxsus
@@ -28,21 +30,24 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
+  const dialogRef = useDialogFocus<HTMLDivElement>(open);
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div
+        ref={dialogRef}
         role="dialog"
-        aria-label="Yordam"
+        aria-modal="true"
+        aria-labelledby="exam-help-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg border shadow-lg p-5 space-y-4"
+        className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-lg border shadow-lg p-5 space-y-4"
         style={{ background: 'var(--exam-bg)', borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Yordam</h2>
-          <button type="button" onClick={onClose} aria-label="Yopish" className="p-1 rounded hover:bg-black/5">
+          <h2 id="exam-help-title" className="text-base font-semibold">Yordam</h2>
+          <button type="button" onClick={onClose} aria-label="Yopish" className={`${EXAM_ICON_BTN} w-11 h-11 -m-2.5`}>
             <X size={18} />
           </button>
         </div>

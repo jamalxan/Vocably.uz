@@ -38,12 +38,17 @@ export default function MatchingBank({ group, answers, onAnswerChange, paragraph
       {group.questions.map((q) => {
         const value = answers[`q${q.number}`];
         return (
-          <div key={q.number} data-question-number={q.number} className="flex items-center gap-3 text-sm" style={{ color: 'var(--exam-text)' }}>
+          <div
+            key={q.number}
+            data-question-number={q.number}
+            // <640px: select prompt ostiga tushadi — gap tor ustunga siqilmaydi.
+            className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 text-[0.875em]"
+            style={{ color: 'var(--exam-text)' }}>
             <sup className="text-[11px] font-bold flex-shrink-0" style={{ color: 'var(--exam-muted)' }}>
               {q.number}
             </sup>
             <FlagToggle questionNumber={q.number} />
-            <span className="flex-1 min-w-0">
+            <span className="flex-1 min-w-0 break-words">
               {/* eslint-disable-next-line react/no-danger */}
               <span dangerouslySetInnerHTML={{ __html: q.promptHtml || '' }} />
             </span>
@@ -51,7 +56,7 @@ export default function MatchingBank({ group, answers, onAnswerChange, paragraph
               value={typeof value === 'string' ? value : ''}
               onChange={(e) => onAnswerChange(q.number, e.target.value || null)}
               aria-label={`Question ${q.number} answer`}
-              className="flex-shrink-0 max-w-[45%] rounded px-2 py-1 text-sm bg-transparent"
+              className="w-full sm:w-auto sm:flex-shrink-0 sm:max-w-[45%] min-h-11 sm:min-h-0 rounded px-2 py-1 text-[length:max(16px,1em)] md:text-[length:1em] bg-transparent"
               style={{ border: '1px solid var(--exam-input-border)', color: 'var(--exam-text)' }}
             >
               <option value="">—</option>

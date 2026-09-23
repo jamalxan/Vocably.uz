@@ -17,16 +17,25 @@ export default function ReportsQueue({ token }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('open');
+  const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin/chat/reports?status=${statusFilter}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setReports(data.reports || []);
-    setNextCursor(data.nextCursor || null);
-    setLoading(false);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/chat/reports?status=${statusFilter}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Reportlarni yuklab bo\'lmadi');
+      setReports(data.reports || []);
+      setNextCursor(data.nextCursor || null);
+    } catch (err) {
+      setError(err.message || 'Reportlarni yuklab bo\'lmadi');
+    } finally {
+      setLoading(false);
+    }
   }, [token, statusFilter]);
 
   useEffect(() => {
@@ -50,22 +59,36 @@ export default function ReportsQueue({ token }) {
   };
 
   const updateStatus = async (id, status) => {
-    await fetch(`/api/admin/chat/reports/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ status }),
-    });
-    load();
+    if (busyId) return;
+    setBusyId(id);
+    try {
+      const res = await fetch(`/api/admin/chat/reports/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Holatni o\'zgartirib bo\'lmadi');
+        return;
+      }
+      await load();
+    } catch {
+      setError('Tarmoq xatosi — qayta urinib ko\'ring');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
     <div>
-      <div className="flex gap-2 mb-5">
+      <div className="flex flex-wrap gap-2 mb-5">
         {STATUS_FILTERS.map(({ value, label }) => (
           <button
             key={value}
             onClick={() => setStatusFilter(value)}
-            className={`px-4 py-2 rounded-xl text-xs font-medium tracking-wide transition-colors ${
+            aria-pressed={statusFilter === value}
+            className={`px-4 py-2 min-h-11 md:min-h-0 rounded-xl text-xs font-medium tracking-wide transition-colors ${
               statusFilter === value ? 'bg-accent text-on-accent shadow-glow' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
@@ -74,34 +97,43 @@ export default function ReportsQueue({ token }) {
         ))}
       </div>
 
+      {error && (
+        <p role="alert" className="mb-4 text-sm text-danger">
+          {error}
+        </p>
+      )}
+
       {loading ? (
-        <Loader2 className="animate-spin text-accent" size={22} />
+        <div className="flex justify-center py-16">
+          <Loader2 className="animate-spin text-accent" size={22} />
+        </div>
       ) : (
         <div className="space-y-3">
           {reports.map((r) => (
             <div
               key={r._id}
-              className="rounded-2xl border border-border bg-surface shadow-card p-4 flex items-start justify-between gap-4"
+              className="rounded-2xl border border-border bg-surface shadow-card p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4"
             >
               <div className="min-w-0 flex items-start gap-3">
                 <div className="w-9 h-9 rounded-lg bg-accent-soft border border-accent/25 text-accent flex items-center justify-center flex-shrink-0">
                   <Flag size={15} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-ink">
+                  <p className="text-sm text-ink break-words">
                     <span className="font-semibold">@{r.reporter?.username || '?'}</span>
                     <span className="text-muted"> — {r.targetType}: </span>
-                    <span className="font-mono text-xs text-muted">{r.targetId}</span>
+                    <span className="font-mono text-xs text-muted break-all">{r.targetId}</span>
                   </p>
-                  <p className="text-sm text-muted mt-1">{r.reason}</p>
+                  <p className="text-sm text-muted mt-1 break-words">{r.reason}</p>
                   <p className="text-[11px] text-muted/70 mt-1.5">{new Date(r.createdAt).toLocaleString('uz-UZ')}</p>
                 </div>
               </div>
-              <div className="flex gap-1.5 flex-shrink-0">
+              <div className="flex flex-wrap gap-1.5 flex-shrink-0 sm:justify-end">
                 {r.status !== 'reviewed' && (
                   <button
                     onClick={() => updateStatus(r._id, 'reviewed')}
-                    className="px-3 py-1.5 bg-primary-soft border border-primary/15 text-ink rounded-lg text-xs font-medium hover:bg-primary/10 transition-colors"
+                    disabled={busyId === r._id}
+                    className="px-3 py-1.5 min-h-11 md:min-h-0 disabled:opacity-50 bg-primary-soft border border-primary/15 text-ink rounded-lg text-xs font-medium hover:bg-primary/10 transition-colors"
                   >
                     Ko'rildi
                   </button>
@@ -109,7 +141,8 @@ export default function ReportsQueue({ token }) {
                 {r.status !== 'actioned' && (
                   <button
                     onClick={() => updateStatus(r._id, 'actioned')}
-                    className="px-3 py-1.5 bg-accent-soft border border-accent/25 text-accent rounded-lg text-xs font-medium hover:bg-accent/15 transition-colors"
+                    disabled={busyId === r._id}
+                    className="px-3 py-1.5 min-h-11 md:min-h-0 disabled:opacity-50 bg-accent-soft border border-accent/25 text-accent rounded-lg text-xs font-medium hover:bg-accent/15 transition-colors"
                   >
                     Chora ko'rildi
                   </button>

@@ -34,7 +34,7 @@ export default function QuizCard({ quizAction }) {
         )}
       </div>
 
-      <div className="divide-y divide-border max-h-[420px] overflow-y-auto">
+      <div className="divide-y divide-border max-h-[min(420px,60dvh)] overflow-y-auto">
         {questions.map((q, qIndex) => {
           const selected = answers[qIndex];
           const isAnswered = selected != null;
@@ -56,9 +56,9 @@ export default function QuizCard({ quizAction }) {
                       key={opt}
                       onClick={() => selectOption(qIndex, opt)}
                       disabled={isAnswered}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 border rounded-lg text-sm text-left transition-colors disabled:cursor-default ${tone}`}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 border rounded-lg text-sm text-left transition-colors disabled:cursor-default ${tone}`}
                     >
-                      <span>{opt}</span>
+                      <span className="min-w-0 break-words">{opt}</span>
                       {isAnswered && isCorrectOpt && <Check size={14} className="flex-shrink-0" />}
                       {isAnswered && isSelectedOpt && !isCorrectOpt && <X size={14} className="flex-shrink-0" />}
                     </button>

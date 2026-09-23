@@ -58,12 +58,19 @@ function TypeRow({ type }: { type: TypeAccuracy }) {
   return (
     <li>
       <div className="flex items-baseline justify-between gap-2 mb-1">
-        <span className="text-sm text-ink">{QUESTION_TYPE_LABEL[type.type]}</span>
+        <span className="text-sm text-ink min-w-0 break-words">{QUESTION_TYPE_LABEL[type.type]}</span>
         <span className="text-xs text-muted tabular-nums shrink-0">
           {type.correct}/{type.total} ({pct}%)
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-border overflow-hidden">
+      <div
+        className="h-1.5 rounded-full bg-border overflow-hidden"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={QUESTION_TYPE_LABEL[type.type]}
+      >
         <div className={`h-full rounded-full ${accuracyBarColor(type.accuracy)}`} style={{ width: `${pct}%` }} />
       </div>
     </li>
@@ -152,13 +159,17 @@ export default function ResultAnalytics({ perQuestion, metric }: ResultAnalytics
           <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-3">
             {METRIC_LABEL[metric]} — oldingi urinishlar
           </p>
-          <div style={{ width: '100%', height: 160 }}>
+          <div
+            style={{ width: '100%', height: 160 }}
+            role="img"
+            aria-label={`${METRIC_LABEL[metric]} band: ${chartData.map((d) => `${d.label} — ${d.value != null ? d.value.toFixed(1) : '—'}`).join(', ')}`}
+          >
             <ResponsiveContainer>
               <LineChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="rgb(var(--color-border))" />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'rgb(var(--color-muted))' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'rgb(var(--color-muted))' }} axisLine={false} tickLine={false} minTickGap={16} />
                 <YAxis
-                  tick={{ fontSize: 10, fill: 'rgb(var(--color-muted))' }}
+                  tick={{ fontSize: 11, fill: 'rgb(var(--color-muted))' }}
                   axisLine={false}
                   tickLine={false}
                   domain={[0, 9]}

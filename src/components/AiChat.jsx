@@ -1,9 +1,10 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Loader2, Paperclip, X, Send, Mic, BookMarked } from 'lucide-react';
+import { Sparkles, Loader2, Paperclip, X, Send, Mic, BookMarked, PanelLeft } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ChatMessage from './chat/ChatMessage';
 import WordPicker, { toWordContext } from './ai/WordPicker';
+import IconButton from './ui/IconButton';
 
 // Bu til FAQAT mikrofon (SpeechRecognition, ovozli kiritish) uchun — matn yozishga ta'sir
 // qilmaydi, tanlagich faqat mikrofon yoqilganda ko'rinadi.
@@ -14,6 +15,38 @@ const RECOGNITION_LANGS = [
 ];
 const DEFAULT_RECOGNITION_LANG = 'en-US';
 const MAX_ATTACHED_IMAGES = 10;
+// Katta telefon rasmlari yuborishdan oldin kichraytiriladi (JSON body va state hajmi uchun).
+const MAX_IMAGE_DIM = 1600;
+const DOWNSCALE_MIN_BYTES = 1024 * 1024;
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result || null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+
+async function prepareImage(file) {
+  const original = await readFileAsDataUrl(file);
+  if (!original || file.type === 'image/gif' || file.size < DOWNSCALE_MIN_BYTES) return original;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    const resized = canvas.toDataURL('image/jpeg', 0.85);
+    return resized.length < original.length ? resized : original;
+  } catch {
+    return original;
+  }
+}
 // TZ-vocably-v2.md §D2.3 — avval bu tugmalar so'z tanlanmagan holda oddiy matn yuborar,
 // AI esa "qaysi so'zni nazarda tutyapsiz, yozib yuboring" deb javob berardi (BUG-007).
 // Endi har biri avval Word Picker'ni (min/max cheklov bilan) ochadi, so'ng tanlangan
@@ -133,7 +166,8 @@ function extractQuizAction(fullText) {
 // tabiiy tildagi jumla (masalan "Reading (Oqish) bo'limida"). AiPanel.jsx
 // (global sirg'aluvchi panel) usePathname() orqali hisoblab beradi; /app/ai
 // to'liq sahifasi bu propni bermaydi (umumiy, kontekstsiz suhbat).
-export default function AiChat({ contextHint } = {}) {
+// `onOpenSessions` — /app/ai sahifasi mobilda suhbatlar drawer'ini shu sarlavhadan ochadi.
+export default function AiChat({ contextHint, onOpenSessions } = {}) {
   // Suhbatlar ro'yxati alohida panelda (AiChatSessionsPanel) — bu yerda faqat joriy
   // suhbat xabarlari boshqariladi.
   const {
@@ -165,7 +199,10 @@ export default function AiChat({ contextHint } = {}) {
   // aktiv kategoriyadagi so'zlarni real vaqtda taklif qiladi.
   const [mentionQuery, setMentionQuery] = useState(null); // { text, start, end } yoki null
 
-  const [voiceSupported, setVoiceSupported] = useState(false);
+  // null — hali aniqlanmagan (SSR/birinchi render), shunda ogohlantirish miltillamaydi.
+  const [voiceSupported, setVoiceSupported] = useState(null);
+  // Sensorli ekranda Enter yangi qator qo'shadi, yuborish — faqat tugma orqali.
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
   const [recognitionLang, setRecognitionLang] = useState(DEFAULT_RECOGNITION_LANG);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [micListening, setMicListening] = useState(false);
@@ -178,9 +215,12 @@ export default function AiChat({ contextHint } = {}) {
   const textareaRef = useRef(null);
   const langMenuRef = useRef(null);
   const recognitionRef = useRef(null);
+  // Har bir AI so'rovining tartib raqami — suhbat almashtirilsa eski oqim e'tiborsiz qoldiriladi.
+  const requestSeqRef = useRef(0);
 
   useEffect(() => {
     setVoiceSupported(typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition));
+    setIsCoarsePointer(!!window.matchMedia?.('(pointer: coarse)').matches);
     const saved = localStorage.getItem(RECOGNITION_LANG_KEY);
     if (saved && RECOGNITION_LANGS.some((l) => l.code === saved)) setRecognitionLang(saved);
   }, []);
@@ -221,7 +261,8 @@ export default function AiChat({ contextHint } = {}) {
 
   const scrollToBottom = () => {
     if (stickToBottomRef.current && chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      chatEndRef.current.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'end' });
     }
   };
 
@@ -238,6 +279,9 @@ export default function AiChat({ contextHint } = {}) {
   // shu suhbat xabarlari yuklanadi.
   useEffect(() => {
     if (sessionOpenNonce === 0) return;
+    // Oqim davom etayotgan bo'lsa, uning qolgan qismi yangi suhbatga yozilmasin.
+    requestSeqRef.current += 1;
+    setChatLoading(false);
     if (!currentSessionId) {
       setMessages([]);
       return;
@@ -265,19 +309,12 @@ export default function AiChat({ contextHint } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionOpenNonce]);
 
-  const readFileAsDataUrl = (file) =>
-    new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
-
   // Bir nechta faylni qo'shadi, lekin umumiy soni MAX_ATTACHED_IMAGES dan oshmaydi.
   const attachImageFiles = async (files) => {
     const imageFiles = Array.from(files || []).filter((f) => f.type.startsWith('image/'));
     if (imageFiles.length === 0) return;
 
-    const dataUrls = await Promise.all(imageFiles.map(readFileAsDataUrl));
+    const dataUrls = (await Promise.all(imageFiles.map(prepareImage))).filter(Boolean);
     setAttachedImages((prev) => {
       const remaining = MAX_ATTACHED_IMAGES - prev.length;
       if (remaining <= 0) return prev;
@@ -364,6 +401,8 @@ export default function AiChat({ contextHint } = {}) {
   const lastRequestRef = useRef(null);
 
   const runAiRequest = async (text, imagesToSend, wordContextToSend) => {
+    const seq = ++requestSeqRef.current;
+    const isStale = () => requestSeqRef.current !== seq;
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -383,7 +422,7 @@ export default function AiChat({ contextHint } = {}) {
       }
 
       const newSessionId = res.headers.get('X-Session-Id');
-      if (newSessionId && newSessionId !== currentSessionId) {
+      if (!isStale() && newSessionId && newSessionId !== currentSessionId) {
         setCurrentSessionId(newSessionId);
       }
 
@@ -395,6 +434,7 @@ export default function AiChat({ contextHint } = {}) {
         const { done, value } = await reader.read();
         if (done) break;
         fullText += decoder.decode(value, { stream: true });
+        if (isStale()) continue;
         const { visibleText: afterQuiz } = extractQuizAction(fullText);
         const { visibleText: afterPending } = extractPendingAction(afterQuiz);
         const { visibleText } = extractAiError(afterPending);
@@ -403,6 +443,11 @@ export default function AiChat({ contextHint } = {}) {
           updated[updated.length - 1] = { ...updated[updated.length - 1], parts: [{ text: visibleText }] };
           return updated;
         });
+      }
+
+      if (isStale()) {
+        loadChatSessions();
+        return;
       }
 
       const { visibleText: afterQuiz, quizAction } = extractQuizAction(fullText);
@@ -425,6 +470,7 @@ export default function AiChat({ contextHint } = {}) {
       // Sidebar'dagi ro'yxat yangilansin (sarlavha/tartib o'zgargan bo'lishi mumkin).
       loadChatSessions();
     } catch (err) {
+      if (isStale()) return;
       setMessages((prev) => {
         const updated = [...prev];
         updated[updated.length - 1] = {
@@ -435,7 +481,7 @@ export default function AiChat({ contextHint } = {}) {
         return updated;
       });
     } finally {
-      setChatLoading(false);
+      if (!isStale()) setChatLoading(false);
     }
   };
 
@@ -558,10 +604,13 @@ export default function AiChat({ contextHint } = {}) {
   // IME (koreys/xitoy/yapon klaviaturasi) kompozitsiyasi paytida Enter xabarni yubormasligi kerak.
   const handleTextareaKeyDown = (e) => {
     if (e.key === 'Escape' && mentionQuery) {
+      // AiPanel'ning Escape tinglovchisi butun panelni yopib yubormasin.
+      e.stopPropagation();
       setMentionQuery(null);
       return;
     }
     if (e.key !== 'Enter' || e.shiftKey) return;
+    if (isCoarsePointer && !(mentionQuery && mentionSuggestions.length > 0)) return;
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     e.preventDefault();
     if (mentionQuery && mentionSuggestions.length > 0) {
@@ -590,10 +639,20 @@ export default function AiChat({ contextHint } = {}) {
           <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shadow-glow flex-shrink-0">
             <Sparkles size={18} className="text-on-accent" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-bold font-luxury text-on-primary leading-tight">Vocably AI</p>
             <p className="text-[11px] text-on-primary/55 leading-tight">Har doim yordamga tayyor</p>
           </div>
+          {onOpenSessions && (
+            <IconButton
+              icon={PanelLeft}
+              label="Suhbatlar ro'yxati"
+              variant="ghost-on-primary"
+              size="lg"
+              onClick={onOpenSessions}
+              className="lg:hidden flex-shrink-0 -mr-2"
+            />
+          )}
         </div>
 
         <div
@@ -614,7 +673,7 @@ export default function AiChat({ contextHint } = {}) {
               <p className="text-sm text-muted mt-1.5 max-w-sm mx-auto">
                 Men sizning Vocably yordamchingizman. Bugun sizga qanday yordam bera olaman?
               </p>
-              <p className="text-[10px] text-muted/70 mt-2">
+              <p className="text-[11px] text-ink-subtle mt-2">
                 Masalan: "arise" so'zini bir nechta gapda ishlatib ko'rsat, yoki rasm yuboring
               </p>
               {/* Tez amallar (TZ-vocably-v2.md §D2.3) — avval Word Picker'ni ochadi. */}
@@ -623,7 +682,7 @@ export default function AiChat({ contextHint } = {}) {
                   <button
                     key={qa.label}
                     onClick={() => openQuickAction(qa)}
-                    className="px-3 py-1.5 bg-surface border border-border hover:border-accent/40 hover:text-accent rounded-full text-xs text-muted transition-colors"
+                    className="px-3 py-2.5 md:py-1.5 bg-surface border border-border hover:border-accent/40 hover:text-accent rounded-full text-xs text-muted transition-colors"
                   >
                     {qa.label}
                   </button>
@@ -638,7 +697,7 @@ export default function AiChat({ contextHint } = {}) {
           )}
           {visibleMessages.map((msg, i) => (
             <ChatMessage
-              key={i}
+              key={`${sessionOpenNonce}-${i}`}
               msg={msg}
               index={i}
               categories={categories}
@@ -662,8 +721,8 @@ export default function AiChat({ contextHint } = {}) {
         </div>
 
         <div className="p-3 sm:p-4 border-t border-border">
-          {!voiceSupported && (
-            <p className="text-[10px] text-muted mb-2">
+          {voiceSupported === false && (
+            <p className="text-[11px] text-muted mb-2">
               Brauzeringiz ovozli kiritishni qo'llab-quvvatlamaydi — matn rejimida davom eting.
             </p>
           )}
@@ -674,7 +733,7 @@ export default function AiChat({ contextHint } = {}) {
                 type="button"
                 onClick={() => setMicError('')}
                 aria-label="Xatoni yopish"
-                className="flex-shrink-0 text-danger/70 hover:text-danger"
+                className="flex-shrink-0 p-2 -m-2 text-danger/70 hover:text-danger"
               >
                 <X size={12} />
               </button>
@@ -685,7 +744,7 @@ export default function AiChat({ contextHint } = {}) {
               chapga-o'ngga borsin, tugmalar ichida tursin"). Stiker/emoji ATAYLAB yo'q. */}
           <form
             onSubmit={handleFormSubmit}
-            className="relative w-full border border-border rounded-2xl bg-surface focus-within:border-accent transition-colors overflow-hidden"
+            className="relative w-full border border-border rounded-2xl bg-surface focus-within:border-accent transition-colors"
           >
             <input
               type="file"
@@ -703,7 +762,7 @@ export default function AiChat({ contextHint } = {}) {
                     key={word._id}
                     type="button"
                     onClick={() => selectMention({ word, category })}
-                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-bg transition-colors"
+                    className="w-full flex items-center justify-between gap-2 px-3 py-3 md:py-2 text-left text-xs hover:bg-bg transition-colors"
                   >
                     <span className="font-semibold text-ink">{word.word}</span>
                     <span className="text-muted truncate">{(word.syns || []).join(', ')}</span>
@@ -723,7 +782,7 @@ export default function AiChat({ contextHint } = {}) {
                       type="button"
                       onClick={() => removeWordChip(w.wordId)}
                       aria-label={`${w.word} so'zini olib tashlash`}
-                      className="hover:text-accent-hover"
+                      className="p-1.5 -m-1 hover:text-accent-hover"
                     >
                       <X size={11} />
                     </button>
@@ -734,16 +793,19 @@ export default function AiChat({ contextHint } = {}) {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={img} alt="Yuklanadigan rasm" className="h-16 rounded-lg border border-border" />
                     <button
+                      type="button"
                       onClick={() => removeAttachedImage(i)}
                       aria-label="Rasmni olib tashlash"
-                      className="absolute -top-1.5 -right-1.5 bg-primary-hover text-white rounded-full p-0.5"
+                      className="absolute -top-3 -right-3 p-1.5"
                     >
-                      <X size={11} />
+                      <span className="block bg-primary-hover text-on-primary rounded-full p-0.5">
+                        <X size={11} />
+                      </span>
                     </button>
                   </div>
                 ))}
                 {attachedImages.length > 0 && (
-                  <span className="self-center text-[10px] text-muted">
+                  <span className="self-center text-[11px] text-muted">
                     {attachedImages.length}/{MAX_ATTACHED_IMAGES}
                   </span>
                 )}
@@ -752,19 +814,23 @@ export default function AiChat({ contextHint } = {}) {
             <textarea
               ref={textareaRef}
               rows={1}
-              placeholder="Xabaringizni yozing... (@ — lug'atdan so'z, Shift+Enter — yangi qator)"
+              placeholder={
+                isCoarsePointer
+                  ? "Xabar yozing... (@ — lug'atdan so'z)"
+                  : "Xabaringizni yozing... (@ — lug'atdan so'z, Shift+Enter — yangi qator)"
+              }
               value={chatInput}
               onChange={handleChatInputChange}
               onPaste={handlePaste}
               onKeyDown={handleTextareaKeyDown}
-              className="w-full px-4 pt-3 pb-1 bg-transparent text-sm leading-5 outline-none resize-none"
+              className="w-full px-4 pt-3 pb-1 bg-transparent text-base md:text-sm leading-5 outline-none resize-none"
             />
             <div className="flex items-center justify-between gap-2 px-2 pb-2">
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={openManualPicker}
-                  className="p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors"
+                  className="p-3 md:p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors"
                   title="Lug'atdan so'z tanlash"
                   aria-label="Lug'atdan so'z tanlash"
                 >
@@ -774,7 +840,7 @@ export default function AiChat({ contextHint } = {}) {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={attachedImages.length >= MAX_ATTACHED_IMAGES}
-                  className="p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors disabled:opacity-30"
+                  className="p-3 md:p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors disabled:opacity-30"
                   title={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
                   aria-label={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
                 >
@@ -785,7 +851,7 @@ export default function AiChat({ contextHint } = {}) {
                     <button
                       type="button"
                       onClick={toggleMic}
-                      className={`p-2.5 rounded-xl transition-colors ${
+                      className={`p-3 md:p-2.5 rounded-xl transition-colors ${
                         micListening
                           ? 'text-accent bg-accent-soft animate-pulse'
                           : 'text-muted hover:text-accent hover:bg-accent-soft'
@@ -801,8 +867,10 @@ export default function AiChat({ contextHint } = {}) {
                       <button
                         type="button"
                         onClick={() => setLangMenuOpen((v) => !v)}
-                        className="absolute -top-1 -right-1 px-1 py-px rounded bg-accent hover:bg-accent-hover text-white text-[9px] font-bold leading-tight shadow"
+                        className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded bg-accent hover:bg-accent-hover text-on-accent text-[11px] font-bold leading-tight shadow"
                         title="Mikrofon tili"
+                        aria-label={`Mikrofon tili: ${activeLang.name}`}
+                        aria-expanded={langMenuOpen}
                       >
                         {activeLang.label}
                       </button>
@@ -810,7 +878,7 @@ export default function AiChat({ contextHint } = {}) {
 
                     {langMenuOpen && (
                       <div className="absolute bottom-full mb-2 left-0 z-30 w-40 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
-                        <p className="px-3 py-1.5 text-[9px] font-semibold text-muted uppercase tracking-wider bg-bg">
+                        <p className="px-3 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wider bg-bg">
                           Mikrofon tili
                         </p>
                         {RECOGNITION_LANGS.map((l) => (
@@ -818,7 +886,7 @@ export default function AiChat({ contextHint } = {}) {
                             key={l.code}
                             type="button"
                             onClick={() => changeRecognitionLang(l.code)}
-                            className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                            className={`w-full flex items-center gap-2 px-3 py-3 md:py-2 text-left text-xs transition-colors ${
                               recognitionLang === l.code
                                 ? 'bg-accent-soft text-accent font-semibold'
                                 : 'text-muted hover:bg-bg'
@@ -837,7 +905,7 @@ export default function AiChat({ contextHint } = {}) {
                 type="submit"
                 disabled={chatLoading || (!chatInput.trim() && attachedImages.length === 0)}
                 aria-label="Xabarni yuborish"
-                className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
+                className="min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-4 py-2 flex items-center justify-center bg-accent hover:bg-accent-hover text-on-accent rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
               >
                 <Send size={16} />
               </button>

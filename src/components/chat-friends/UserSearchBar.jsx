@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 
@@ -10,18 +10,25 @@ export default function UserSearchBar({ onOpen }) {
   const [searching, setSearching] = useState(false);
   const [opening, setOpening] = useState(false);
   const debounceRef = useRef(null);
+  // Eskiroq so'rov javobi yangisining ustiga yozilmasin.
+  const requestIdRef = useRef(0);
+
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   const onChange = (val) => {
     setQ(val);
     clearTimeout(debounceRef.current);
+    const reqId = ++requestIdRef.current;
     const clean = val.trim().toLowerCase();
     if (!clean) {
       setResult(undefined);
+      setSearching(false);
       return;
     }
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       const r = await searchUsername(clean);
+      if (reqId !== requestIdRef.current) return;
       setResult(r);
       setSearching(false);
     }, 350);
@@ -51,7 +58,8 @@ export default function UserSearchBar({ onOpen }) {
           // Panel torroq (masalan lg breakpoint atrofida) bo'lganda uzun matn
           // kesilib "...kiriti" bo'lib chiqardi — qisqaroq, mazmuni bir xil matn.
           placeholder="Username bo'yicha qidirish"
-          className="w-full pl-9 pr-3 py-2 bg-bg rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
+          aria-label="Username bo'yicha qidirish"
+          className="w-full pl-9 pr-3 py-2 bg-bg rounded-lg text-base md:text-sm text-ink placeholder:text-muted outline-none focus:ring-2 focus:ring-accent/20"
         />
         {searching && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted" />}
       </div>
@@ -60,9 +68,10 @@ export default function UserSearchBar({ onOpen }) {
         <div className="mt-2 p-2.5 bg-surface border border-border rounded-lg">
           {result ? (
             <button
+              type="button"
               onClick={handleOpen}
               disabled={opening}
-              className="w-full flex items-center gap-2.5 text-left disabled:opacity-50"
+              className="w-full min-h-11 flex items-center gap-2.5 text-left disabled:opacity-50"
             >
               <div className="w-8 h-8 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold flex-shrink-0">
                 {result.username[0]?.toUpperCase()}

@@ -16,12 +16,16 @@ export default function ForecastRow({ forecast }) {
           const heightPct = f.dueCount > 0 ? Math.max(8, (f.dueCount / max) * 100) : 4;
           return (
             <div key={f.date} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-              <span className="text-[11px] font-mono tabular-nums text-muted">{f.dueCount || ''}</span>
-              <div
-                className={`w-full rounded-md ${f.dueCount > 0 ? 'bg-accent/50' : 'bg-bg'}`}
-                style={{ height: `${heightPct}%` }}
-              />
-              <span className="text-[10px] text-muted">{DAY_SHORT[d.getDay()]}</span>
+              <span className="text-[11px] leading-none font-mono tabular-nums text-muted">{f.dueCount || ''}</span>
+              {/* Foiz balandlik faqat ustun maydoniga nisbatan — yorliqlar hisobga kirmasin. */}
+              <div className="flex-1 min-h-0 w-full flex items-end">
+                <div
+                  className={`w-full rounded-md ${f.dueCount > 0 ? 'bg-accent/50' : 'bg-bg'}`}
+                  style={{ height: `${heightPct}%` }}
+                  title={`${DAY_SHORT[d.getDay()]}: ${f.dueCount}`}
+                />
+              </div>
+              <span className="text-[11px] leading-none text-muted">{DAY_SHORT[d.getDay()]}</span>
             </div>
           );
         })}

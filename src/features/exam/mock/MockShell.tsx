@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useExamStore } from '../state/examStore';
 import { fetchTestPreview, createMockAttempt, fetchAttempt, fetchActiveMock, type ActiveMockInfo, type TestPreview } from '../state/attemptsApi';
 import IntroScreen from './IntroScreen';
@@ -59,6 +60,8 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
   const [phase, setPhase] = useState<Phase>('intro');
   const [testPreview, setTestPreview] = useState<TestPreview | null>(null);
   const [previewError, setPreviewError] = useState('');
+  // Boshlash xatosi intro ekranining ichida ko'rsatiladi (qayta urinish mumkin).
+  const [startError, setStartError] = useState('');
   const [starting, setStarting] = useState(false);
   // VOCABLY-TZ.md §1.1/"Attempt boshqaruvi" auditi — `undefined` = hali
   // so'ralmoqda (intro ekrani shu payt "Yuklanmoqda..." ko'rsatadi, aks holda
@@ -102,7 +105,7 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
 
   const handleStart = async (fresh?: boolean) => {
     setStarting(true);
-    setPreviewError('');
+    setStartError('');
     try {
       const { attemptId: newAttemptId } = await createMockAttempt(testId, fresh);
       const data = await fetchAttempt(newAttemptId);
@@ -112,7 +115,7 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
       setFullTest(data.test);
       setPhase('section');
     } catch {
-      setPreviewError("Imtihonni boshlab bo'lmadi. Qayta urinib ko'ring.");
+      setStartError("Imtihonni boshlab bo'lmadi. Qayta urinib ko'ring.");
     } finally {
       setStarting(false);
     }
@@ -160,14 +163,21 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
   }, [fullTest]);
 
   if (previewError) {
-    return <div className="p-8 text-center text-sm text-danger">{previewError}</div>;
+    return (
+      <div className="p-8 text-center text-sm">
+        <p className="text-danger">{previewError}</p>
+        <Link href="/app" className="inline-flex items-center min-h-11 mt-2 font-semibold text-accent hover:underline">
+          Bosh sahifaga qaytish
+        </Link>
+      </div>
+    );
   }
 
   if (phase === 'intro') {
     if (!testPreview || activeMock === undefined) {
       return <div className="p-8 text-center text-sm text-muted">Yuklanmoqda...</div>;
     }
-    return <IntroScreen test={testPreview} onStart={handleStart} starting={starting} resumeInfo={activeMock} />;
+    return <IntroScreen test={testPreview} onStart={handleStart} starting={starting} resumeInfo={activeMock} error={startError} />;
   }
 
   if (phase === 'transition' && transitionInfo) {
