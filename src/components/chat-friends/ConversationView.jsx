@@ -17,7 +17,36 @@ const HEADER_BTN =
 // Suhbat pastiga qanchalik yaqin bo'lsak ham "pastda" hisoblanadi — yangi xabar
 // kelganda avtomatik pastga tushishni davom ettirish uchun (undan uzoqda bo'lsa
 // esa faqat strelka/hisoblagich ko'rsatiladi, pastga zo'rlab surilmaydi).
-const NEAR_BOTTOM_PX = 80;
+// C-05 — 80px'dan 120px'ga oshirildi: strelka pastki chekkaga yaqinroq bo'lgan
+// ("deyarli pastda") holatlarda ham chiqavermasin — u ko'p hollarda aynan shu
+// paytda ko'rinib turgan oxirgi pufakcha ustiga tushardi.
+const NEAR_BOTTOM_PX = 120;
+
+const UZ_MONTHS = [
+  'yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun',
+  'iyul', 'avgust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr',
+];
+
+// C-06 — xabarlar orasidagi kun ajratgichi: "Bugun" / "Kecha" / "15-sentyabr"
+// (joriy yildan boshqa yil bo'lsa yil ham qo'shiladi).
+function formatDaySeparator(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return 'Bugun';
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return 'Kecha';
+  const label = `${d.getDate()}-${UZ_MONTHS[d.getMonth()]}`;
+  return d.getFullYear() === now.getFullYear() ? label : `${label} ${d.getFullYear()}`;
+}
+
+function DaySeparator({ label }) {
+  return (
+    <div className="flex items-center justify-center py-1.5 select-none">
+      <span className="px-2.5 py-1 rounded-full bg-surface-2 text-muted text-[11px] font-medium">{label}</span>
+    </div>
+  );
+}
 
 export default function ConversationView({ onBack }) {
   const {
@@ -74,8 +103,34 @@ export default function ConversationView({ onBack }) {
     const lastId = last ? String(last.id || last._id) : null;
 
     if (prevLenRef.current === 0) {
-      // Birinchi yuklanish (yoki suhbat almashtirilgan) — darhol (animatsiyasiz) pastga.
-      scrollToBottom('auto');
+      // C-04 — birinchi yuklanishda ENG PASTGA emas, birinchi o'qilmagan xabarga
+      // (bo'lsa) sirg'aladi, aks holda (hammasi o'qilgan) avvalgidek eng pastga.
+      // "O'qilmagan" — boshqa tomon yuborgan va hali `readAt`siz xabarlar (GET
+      // /messages javobi shu holatni aks ettiradi — o'qilgan deb belgilash
+      // fon rejimida, javob QAYTARILGANDAN keyin sodir bo'ladi, src/app/api/chat/
+      // conversations/[id]/messages/route.js GET izohiga qarang).
+      const unread = messages.filter((m) => String(m.senderId) !== String(myId) && !m.readAt);
+      const firstUnread = unread[0];
+      const firstUnreadId = firstUnread ? String(firstUnread.id || firstUnread._id) : null;
+      const el = firstUnreadId ? listRef.current?.querySelector(`[data-msg-id="${firstUnreadId}"]`) : null;
+      if (el) {
+        el.scrollIntoView({ behavior: 'auto', block: 'center' });
+        requestAnimationFrame(() => {
+          const listEl = listRef.current;
+          if (!listEl) return;
+          const distanceFromBottom = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight;
+          const nearBottom = distanceFromBottom < NEAR_BOTTOM_PX;
+          isNearBottomRef.current = nearBottom;
+          setIsNearBottom(nearBottom);
+          // C-05 — strelka ustidagi son: bu yerda "yangi kelgan" emas, "hali
+          // o'qilmagan" sonini ko'rsatadi (near-bottom bo'lsa strelka umuman
+          // ko'rinmaydi, shuning uchun bu holatda 0 qoldiriladi).
+          setNewMessageCount(nearBottom ? 0 : unread.length);
+        });
+      } else {
+        // O'qilmagan yo'q (yoki topilmadi) — avvalgidek darhol (animatsiyasiz) pastga.
+        scrollToBottom('auto');
+      }
     } else if (lastId && lastId !== prevLastIdRef.current) {
       // Ro'yxat oxiriga chindan ham yangi xabar qo'shildi.
       if (isNearBottomRef.current) {
@@ -89,7 +144,8 @@ export default function ConversationView({ onBack }) {
 
     prevLenRef.current = messages.length;
     prevLastIdRef.current = lastId;
-  }, [messages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, myId]);
 
   if (!activeConversation) {
     return <div className="hidden lg:flex flex-1 items-center justify-center text-sm text-muted">Suhbatni tanlang</div>;
@@ -217,16 +273,30 @@ export default function ConversationView({ onBack }) {
           berishi uchun bg-bg-sunken (§E2); avval alohida fon yo'q edi, sahifa foni bilan
           bir xil ko'rinardi. */}
       <div className="relative flex-1 min-h-0 bg-bg-sunken">
-        <div ref={listRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 py-3 space-y-2.5">
-          {messages.map((m) => (
-            <MessageBubble
-              key={m.id || m._id}
-              message={m}
-              isMine={String(m.senderId) === String(myId)}
-              myId={myId}
-              onJumpToReply={jumpToMessage}
-            />
-          ))}
+        {/* C-05 — pastki bo'shliq (pb-16) ataylab: pastga tushish strelkasi shu
+            konteynerning bottom-right burchagida (ekranga nisbatan) suzib turadi;
+            xabarlar oqimida shu bo'shliq bo'lmasa, suhbatning ENG OXIRGI xabari
+            aynan strelka joylashgan burchakka to'g'ri kelib, strelka uning ustini
+            yopib qo'yardi. */}
+        <div ref={listRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 pt-3 pb-16 space-y-2.5">
+          {messages.map((m, i) => {
+            const prev = messages[i - 1];
+            // C-06 — kun ajratgichi: ketma-ket ikkita xabar boshqa-boshqa kunga
+            // tegishli bo'lsa (yoki bu ro'yxatdagi birinchi xabar bo'lsa) oralarida.
+            const showDaySeparator =
+              !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
+            return (
+              <div key={m.id || m._id || m.clientMessageId}>
+                {showDaySeparator && <DaySeparator label={formatDaySeparator(m.createdAt)} />}
+                <MessageBubble
+                  message={m}
+                  isMine={String(m.senderId) === String(myId)}
+                  myId={myId}
+                  onJumpToReply={jumpToMessage}
+                />
+              </div>
+            );
+          })}
           <div ref={bottomRef} />
         </div>
 

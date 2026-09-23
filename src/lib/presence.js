@@ -56,14 +56,18 @@ export function formatRelativeTime(dateStr) {
   return new Date(dateStr).toLocaleDateString('uz-UZ');
 }
 
+// C-07 — suhbat sarlavhasidagi status matni. Ilgari (yoki boshqa joyda ishlatilsa)
+// faqat qisqa nisbiy vaqt ("19 daqiqa oldin") qaytarardi — ConversationView'da
+// username ostida bitta o'zi turgach, ma'nosi tushunarsiz edi ("nima 19 daqiqa
+// oldin?"). Endi Telegram uslubidagi to'liq jumla: "oxirgi marta ko'rilgan …".
 export function formatLastSeen(lastActiveAt, liveOnline) {
   if (isOnline(lastActiveAt, liveOnline)) return 'Onlayn';
   if (!lastActiveAt) return null;
 
   const diff = Date.now() - new Date(lastActiveAt).getTime();
-  if (diff < HOUR_MS) return `${Math.max(1, Math.round(diff / MINUTE_MS))} daqiqa oldin`;
-  if (diff < DAY_MS) return `${Math.round(diff / HOUR_MS)} soat oldin`;
+  if (diff < HOUR_MS) return `oxirgi marta ko'rilgan ${Math.max(1, Math.round(diff / MINUTE_MS))} daqiqa oldin`;
+  if (diff < DAY_MS) return `oxirgi marta ko'rilgan ${Math.round(diff / HOUR_MS)} soat oldin`;
   const days = Math.round(diff / DAY_MS);
-  if (days < 7) return `${days} kun oldin`;
-  return new Date(lastActiveAt).toLocaleDateString('uz-UZ');
+  if (days < 7) return `oxirgi marta ko'rilgan ${days} kun oldin`;
+  return `oxirgi marta ko'rilgan ${new Date(lastActiveAt).toLocaleDateString('uz-UZ')}`;
 }

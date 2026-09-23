@@ -383,9 +383,17 @@ const MessageSchema = new mongoose.Schema({
   editedAt: { type: Date, default: null },
   originalText: { type: String, default: null },
   flagged: { type: Boolean, default: false },
+  // C-16 — klient tomonidan yaratilgan vaqtinchalik id (UUID), "yuborilmoqda" holatini
+  // haqiqiy server _id kelgunga qadar kuzatish uchun. Shuningdek server tarafda oddiy
+  // idempotentlik: tarmoq uzilib client qayta yuborsa, xuddi shu clientMessageId bilan
+  // ikkinchi hujjat yaratilmaydi (pastdagi POST route'dagi tekshiruvga qarang).
+  clientMessageId: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 MessageSchema.index({ conversationId: 1, createdAt: -1 });
+// C-16 idempotentlik tekshiruvi (bir suhbat ichida clientMessageId bo'yicha) shu
+// indeksga tayanadi — `sparse` chunki eski xabarlarning aksariyatida bu maydon yo'q.
+MessageSchema.index({ conversationId: 1, clientMessageId: 1 }, { sparse: true });
 // admin/stats'dagi Message.aggregate($group by type) — indeks bo'lmasa har safar butun
 // kolleksiyani skanerlaydi; bu indeks bilan faqat indeksning o'zidan hisoblanadi (covered).
 MessageSchema.index({ type: 1 });

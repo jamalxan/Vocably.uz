@@ -50,6 +50,55 @@ export async function pushMessagesRead(userId, conversationId, readAt) {
   }
 }
 
+// C-11 — xabar tahrirlangandan keyin BOSHQA tomonning ochiq socket'iga real-vaqtda
+// yetkazadi (o'zi tahrirlagan kishi buni allaqachon o'zining optimistik UI
+// yangilanishidan ko'radi — shuning uchun faqat qabul qiluvchiga yuboriladi,
+// pushNewMessage bilan bir xil naqsh).
+export async function pushMessageEdited(recipientId, conversationId, message) {
+  const url = process.env.REALTIME_INTERNAL_URL;
+  const secret = process.env.REALTIME_SHARED_SECRET;
+  if (!url || !secret) return;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    await fetch(`${url.replace(/\/$/, '')}/internal/emit-edited`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': secret },
+      body: JSON.stringify({ recipientId: String(recipientId), conversationId, message }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+  } catch (err) {
+    console.error('[realtime] tahrirlash push yuborilmadi', err?.message || err);
+  }
+}
+
+// C-11 — xabar o'chirilgandan keyin (faqat `forEveryone` — ikkala tomonga tegishli
+// bo'lganda, oddiy "faqat men uchun" o'chirish boshqa tomonga hech qanday ta'sir
+// qilmaydi va bu yerga umuman chaqirilmaydi) BOSHQA tomonga real-vaqtda yetkazadi.
+// `silently: true` bo'lsa (admin o'z xabarini o'chirgan) — client xabarni ro'yxatdan
+// butunlay olib tashlaydi, aks holda "xabar o'chirildi" tombstone'iga aylantiradi.
+export async function pushMessageDeleted(recipientId, conversationId, messageId, silently) {
+  const url = process.env.REALTIME_INTERNAL_URL;
+  const secret = process.env.REALTIME_SHARED_SECRET;
+  if (!url || !secret) return;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    await fetch(`${url.replace(/\/$/, '')}/internal/emit-deleted`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': secret },
+      body: JSON.stringify({ recipientId: String(recipientId), conversationId, messageId: String(messageId), silently: !!silently }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+  } catch (err) {
+    console.error('[realtime] o\'chirish push yuborilmadi', err?.message || err);
+  }
+}
+
 export async function isUserOnline(userId) {
   const url = process.env.REALTIME_INTERNAL_URL;
   const secret = process.env.REALTIME_SHARED_SECRET;

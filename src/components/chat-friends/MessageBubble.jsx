@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Check, CheckCheck, Download, FileText, Flag, MoreHorizontal, Pencil, Reply, Trash2, X } from 'lucide-react';
+import { AlertCircle, Check, CheckCheck, Clock, Download, FileText, Flag, MoreHorizontal, Pencil, Reply, Trash2, X } from 'lucide-react';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
 import { findSticker } from '@/lib/stickers';
 import { useChat } from '@/context/ChatContext';
+import { isOnline } from '@/lib/presence';
 import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import DeleteMessageModal from './DeleteMessageModal';
 
@@ -229,22 +230,26 @@ function linkifyText(text) {
   return nodes;
 }
 
-// Xabar yuborilgan vaqt — har bir pufakcha tagida (Telegram/WhatsApp uslubi).
-// Bugungi kun uchun faqat soat:daqiqa, kechagi uchun "kecha", undan eski bo'lsa sana.
+// C-06 — xabar yuborilgan vaqt, har bir pufakcha tagida: ENDI har doim faqat
+// soat:daqiqa (Telegram/WhatsApp uslubi) — qaysi kun ekanligi endi bubble ichida
+// emas, ConversationView'dagi kun ajratgichida (day separator) ko'rsatiladi,
+// shuning uchun bu yerda sana/"kecha" qo'shilmaydi (avval izchil emas edi: eski
+// xabarlarda to'liq sana, yangilarida faqat soat — ikkalasi bir ekranda aralash ko'rinardi).
 function formatMessageTime(dateStr) {
   const d = new Date(dateStr);
-  const now = new Date();
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
-  if (d.toDateString() === now.toDateString()) return `${hh}:${mm}`;
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return `kecha ${hh}:${mm}`;
-  return `${d.toLocaleDateString('uz-UZ')} ${hh}:${mm}`;
+  return `${hh}:${mm}`;
 }
 
 export default function MessageBubble({ message, isMine, myId, onJumpToReply }) {
-  const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage } = useChat();
+  const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage, retryMessage, livePresence } = useChat();
+  // C-16 — "yetkazildi" (✓✓, rangsiz) holati boshqa tomonning HOZIRGI onlayn
+  // holatiga qarab taxmin qilinadi: ular socket orqali ulangan bo'lsa, xabar
+  // ularning brauzeriga real-vaqtda allaqachon yetib borgan (haqiqiy per-xabar
+  // "delivered" ACK'i yo'q — buning uchun alohida server infratuzilmasi kerak
+  // bo'lardi, lekin bu yondashuv to'rtta holatni ham ma'noli tarzda ko'rsatadi).
+  const otherOnline = isOnline(activeConversation?.otherUser?.lastActiveAt, livePresence[String(activeConversation?.otherUser?.id)]);
   const [reported, setReported] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -270,8 +275,12 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
   };
 
   const isPlain = !deleted && (message.type === 'sticker' || emojiOnly);
-  const canEdit = isMine && message.type === 'text' && !deleted;
-  const canReport = !isMine && !reported;
+  // C-16 — hali serverga saqlanmagan ("yuborilmoqda"/"yuborilmadi") xabarlarda
+  // haqiqiy server id yo'q, shuning uchun javob/tahrir/o'chirish/shikoyat amallari
+  // hali ko'rsatilmaydi (haqiqiy id kelgunga qadar).
+  const isPending = message._status === 'sending' || message._status === 'failed';
+  const canEdit = isMine && message.type === 'text' && !deleted && !isPending;
+  const canReport = !isMine && !reported && !isPending;
 
   const actions = [
     { key: 'reply', label: 'Javob berish', aria: 'Xabarga javob berish', Icon: Reply, onClick: () => startReply(message) },
@@ -345,7 +354,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
           )}
         </div>
 
-        {!deleted && (
+        {!deleted && !isPending && (
           <>
             {/* Mobil/planshet (<lg): bitta "..." tugmasi (44px) — amallar pastki menyuda. */}
             <button
@@ -376,12 +385,33 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
         )}
       </div>
 
-      <span className="flex items-center gap-0.5 text-[11px] text-muted mt-0.5 px-1 select-none">
+      <span className="flex items-center gap-1 text-[11px] text-muted mt-0.5 px-1 select-none">
         {formatMessageTime(message.createdAt)}
+        {/* C-16 — to'liq holat zanjiri: yuborilmoqda (soat) -> yuborildi (✓) ->
+            yetkazildi (✓✓, rangsiz) -> o'qildi (✓✓, rangli); xato bo'lsa "Qayta
+            yuborish" (tap orqali qayta urinish). */}
         {isMine && !deleted && (
-          message.readAt ? (
+          message._status === 'sending' ? (
+            <span title="Yuborilmoqda" aria-label="Yuborilmoqda" role="img" className="inline-flex">
+              <Clock size={12} />
+            </span>
+          ) : message._status === 'failed' ? (
+            <button
+              type="button"
+              onClick={() => retryMessage(message)}
+              title="Yuborilmadi — qayta yuborish uchun bosing"
+              className="inline-flex items-center gap-0.5 text-danger hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger rounded"
+            >
+              <AlertCircle size={12} />
+              Qayta yuborish
+            </button>
+          ) : message.readAt ? (
             <span title="O'qildi" aria-label="O'qildi" role="img" className="inline-flex">
               <CheckCheck size={13} className="text-accent" />
+            </span>
+          ) : otherOnline ? (
+            <span title="Yetkazildi" aria-label="Yetkazildi" role="img" className="inline-flex">
+              <CheckCheck size={13} />
             </span>
           ) : (
             <span title="Yuborildi" aria-label="Yuborildi" role="img" className="inline-flex">

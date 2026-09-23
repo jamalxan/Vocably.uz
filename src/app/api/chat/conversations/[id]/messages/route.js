@@ -8,10 +8,10 @@ import { pushNewMessage } from '@/lib/realtime';
 import { sendPushToUser } from '@/lib/webPush';
 import { markConversationRead } from '@/lib/chatRead';
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
+import { PREVIEW_BY_TYPE } from '@/lib/chatConstants';
 import { NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
-const PREVIEW_BY_TYPE = { image: '📷 Rasm', video: '🎬 Video', voice: '🎤 Ovozli xabar', file: '📎 Fayl', sticker: '😊 Stiker' };
 
 async function loadConversationForUser(conversationId, userId) {
   const convo = await Conversation.findById(conversationId);
@@ -125,7 +125,17 @@ export async function POST(req, { params }) {
     const body = await req.json();
     const { type } = body;
 
-    let doc = { conversationId: convo._id, senderId: user._id, type };
+    // C-16 — klient (Composer/ChatContext) har yuborishda o'zi UUID generatsiya qiladi.
+    // Tarmoq uzilib javob kelmasa-yu, xabar aslida saqlangan bo'lsa, client qayta
+    // urinib ko'rganda shu id bo'yicha eski hujjat topilib qaytariladi — ikkinchi
+    // dublikat yaratilmaydi (idempotentlik).
+    const clientMessageId = typeof body.clientMessageId === 'string' ? body.clientMessageId.slice(0, 100) : null;
+    if (clientMessageId) {
+      const existing = await Message.findOne({ conversationId: convo._id, clientMessageId }).lean();
+      if (existing) return NextResponse.json({ message: existing });
+    }
+
+    let doc = { conversationId: convo._id, senderId: user._id, type, clientMessageId };
     let preview;
 
     if (type === 'text') {

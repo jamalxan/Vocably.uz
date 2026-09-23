@@ -246,29 +246,103 @@ export function ChatProvider({ myUserId, children }) {
     [authHeaders]
   );
 
+  // C-16 — xabar yuborishning to'liq holat zanjiri: "yuborilmoqda" (soat) -> "yuborildi"
+  // (✓) -> "o'qildi" (✓✓, rangli). Chaqiruvchi (Composer.jsx) haqiqiy so'rov tugashini
+  // kutmasdan, matn/media darhol pufakcha sifatida ro'yxatga qo'shiladi (`_status:
+  // 'sending'`, vaqtinchalik `clientMessageId` bilan) — server javob bergach xuddi shu
+  // pufakcha (id bo'yicha topilib) haqiqiy hujjat bilan almashtiriladi (`_status: 'sent'`).
+  // Tarmoq xatosi bo'lsa pufakcha o'chmaydi, `_status: 'failed'`ga o'tadi — foydalanuvchi
+  // MessageBubble'dagi "Qayta yuborish" bosishi bilan xuddi shu clientMessageId bilan
+  // qayta yuboradi (server tarafda shu id allaqachon saqlangan bo'lsa — dublikat
+  // yaratilmaydi, src/app/api/chat/conversations/[id]/messages POST'dagi izohga qarang).
+  const genClientMessageId = () =>
+    (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `c${Date.now()}${Math.random().toString(16).slice(2)}`;
+
   const sendMessage = useCallback(
-    async (payload) => {
+    async (payload, existingClientId) => {
       if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
       const replyId = replyingToRef.current?.id;
       const conversationId = activeConversation.id;
+      const clientMessageId = existingClientId || genClientMessageId();
+
+      // Qayta urinish (retry) bo'lmasa — darhol "yuborilmoqda" optimistik pufakchasini qo'shamiz.
+      if (!existingClientId && String(activeIdRef.current) === String(conversationId)) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: clientMessageId,
+            clientMessageId,
+            conversationId,
+            senderId: myIdRef.current,
+            type: payload.type,
+            text: payload.text || '',
+            media: payload.media || null,
+            stickerId: payload.stickerId || null,
+            // Server javobidagi shaklga mos: `messageId` (`id` emas) — MessageBubble'dagi
+            // ReplyQuote shu maydonga qarab asl xabarga sakraydi (jumpToMessage).
+            replyTo: replyId
+              ? {
+                  messageId: replyId,
+                  senderId: replyingToRef.current.senderId,
+                  type: replyingToRef.current.type,
+                  text: replyingToRef.current.text,
+                }
+              : null,
+            createdAt: new Date().toISOString(),
+            _status: 'sending',
+          },
+        ]);
+      } else if (existingClientId) {
+        setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'sending' } : m)));
+      }
+
       try {
         const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(replyId ? { ...payload, replyTo: replyId } : payload),
+          body: JSON.stringify({ ...(replyId ? { ...payload, replyTo: replyId } : payload), clientMessageId }),
         });
         const data = await res.json();
-        if (!res.ok) return { error: data.error || "Xabar yuborilmadi" };
+        if (!res.ok) {
+          setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'failed' } : m)));
+          return { error: data.error || "Xabar yuborilmadi" };
+        }
         // Yuklash davomida boshqa suhbatga o'tilgan bo'lsa, xabar u yerga qo'shilmasin.
-        if (String(activeIdRef.current) === String(conversationId)) appendMessage(data.message);
+        if (String(activeIdRef.current) === String(conversationId)) {
+          const finalMsg = { ...data.message, clientMessageId, _status: 'sent' };
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => String(m.clientMessageId) === String(clientMessageId));
+            if (idx === -1) return prev.some((m) => String(m.id || m._id) === String(finalMsg.id || finalMsg._id)) ? prev : [...prev, finalMsg];
+            const next = [...prev];
+            next[idx] = finalMsg;
+            return next;
+          });
+        }
         loadConversations();
         if (replyId) setReplyingTo(null);
         return { message: data.message };
       } catch {
+        setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'failed' } : m)));
         return { error: 'Tarmoq xatoligi' };
       }
     },
-    [activeConversation, authHeaders, appendMessage, loadConversations]
+    [activeConversation, authHeaders, loadConversations]
+  );
+
+  // MessageBubble'dagi "Qayta yuborish" — xuddi shu clientMessageId bilan qayta
+  // yuboradi (server allaqachon saqlagan bo'lsa dublikat yaratmaydi).
+  const retryMessage = useCallback(
+    (failedMessage) => {
+      const clientMessageId = failedMessage.clientMessageId;
+      if (!clientMessageId) return;
+      const payload = { type: failedMessage.type };
+      if (failedMessage.type === 'text') payload.text = failedMessage.text;
+      else if (failedMessage.type === 'sticker') payload.stickerId = failedMessage.stickerId;
+      else if (failedMessage.media) payload.media = failedMessage.media;
+      if (failedMessage.text && failedMessage.type !== 'text') payload.text = failedMessage.text;
+      sendMessage(payload, clientMessageId);
+    },
+    [sendMessage]
   );
 
   const editMessage = useCallback(
@@ -386,14 +460,16 @@ export function ChatProvider({ myUserId, children }) {
     [activeConversation, authHeaders, sendMessage]
   );
 
+  // C-08 — endi bitta natija emas, prefix mos keladigan BARCHA foydalanuvchilar
+  // ro'yxati (src/app/api/chat/search/route.js).
   const searchUsername = useCallback(
     async (q) => {
       try {
         const res = await fetch(`/api/chat/search?username=${encodeURIComponent(q)}`, { headers: authHeaders() });
         const data = await res.json();
-        return res.ok ? data.result : null;
+        return res.ok ? data.results || [] : [];
       } catch {
-        return null;
+        return [];
       }
     },
     [authHeaders]
@@ -675,6 +751,42 @@ export function ChatProvider({ myUserId, children }) {
       // "to'xtatdi" hodisasi yo'q, bu soddaroq va uzilishlarga chidamli). Uzun
       // yozuvlarda (voice/video) jo'natuvchi shu 3s oynasidan tez-tez (2s'da bir)
       // qayta yuboradi, shuning uchun butun yozuv davomida ko'rinib turadi.
+      // C-11 — boshqa tomon xabarni tahrirlaganda (Composer/edit oqimi orqali,
+      // src/app/api/chat/conversations/[id]/messages/[messageId] PATCH'dagi
+      // pushMessageEdited) real-vaqtda yangi matnni ko'rsatamiz — avval bu event
+      // umuman yo'q edi, tahrirlangan matn faqat sahifa qayta yuklanganda ko'rinardi.
+      socket.on('message:edited', ({ conversationId, message } = {}) => {
+        if (!conversationId || !message) return;
+        if (String(conversationId) === String(activeIdRef.current)) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              String(m.id || m._id) === String(message.id)
+                ? { ...m, text: message.text, edited: true, editedAt: message.editedAt }
+                : m
+            )
+          );
+        }
+        loadConversations();
+      });
+      // C-11 — boshqa tomon xabarni "hamma uchun" o'chirganda (DELETE'dagi
+      // pushMessageDeleted) real-vaqtda darhol tombstone'ga aylantiradi (yoki
+      // `silently` bo'lsa butunlay olib tashlaydi) — avval bu event umuman yo'q
+      // edi, o'chirilgan xabar faqat sahifa qayta yuklanganda yo'qolardi.
+      socket.on('message:deleted', ({ conversationId, messageId, silently } = {}) => {
+        if (!conversationId || !messageId) return;
+        if (String(conversationId) === String(activeIdRef.current)) {
+          setMessages((prev) =>
+            silently
+              ? prev.filter((m) => String(m.id || m._id) !== String(messageId))
+              : prev.map((m) =>
+                  String(m.id || m._id) === String(messageId)
+                    ? { ...m, deletedForEveryone: true, text: '', media: null, stickerId: null }
+                    : m
+                )
+          );
+        }
+        loadConversations();
+      });
       socket.on('typing', ({ conversationId, kind } = {}) => {
         if (!conversationId) return;
         clearTimeout(typingTimersRef.current[conversationId]);
@@ -744,6 +856,7 @@ export function ChatProvider({ myUserId, children }) {
     closeConversation,
     openConversationByUsername,
     sendMessage,
+    retryMessage,
     editMessage,
     deleteMessage,
     editingMessage,

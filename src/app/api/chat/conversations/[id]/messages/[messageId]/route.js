@@ -2,9 +2,40 @@ import { connectToDatabase } from '@/lib/db';
 import { requireChatUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, Message } from '@/lib/models';
+import { pushMessageEdited, pushMessageDeleted } from '@/lib/realtime';
+import { PREVIEW_BY_TYPE } from '@/lib/chatConstants';
 import { NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
+
+// C-02 — xabar o'chirilgandan/tahrirlangandan keyin, agar u suhbatning ENG OXIRGI
+// xabari bo'lsa, ro'yxatdagi preview/vaqtni qayta hisoblaydi (aks holda hech narsa
+// qilmaydi — performance uchun har bir o'chirish/tahrirda butun suhbatni qayta
+// skanerlash shart emas). `deletedForEveryoneSilently` yoki `deletedForEveryone`
+// bo'lgan xabarlar "eng so'nggi ko'rinadigan xabar" sifatida hisobga olinmaydi —
+// ulardan oldingi haqiqiy (hali o'chirilmagan) xabar preview manbai bo'ladi.
+async function recomputeLastMessageIfNeeded(convo, changedMessageId) {
+  const latestOverall = await Message.findOne({ conversationId: convo._id }).sort({ createdAt: -1 }).select('_id').lean();
+  if (!latestOverall || String(latestOverall._id) !== String(changedMessageId)) return; // O'zgargan xabar hozir ham oxirgisi bo'lmasa — hech narsa o'zgarmagan.
+
+  const newLatest = await Message.findOne({
+    conversationId: convo._id,
+    deletedForEveryone: { $ne: true },
+    deletedForEveryoneSilently: { $ne: true },
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (!newLatest) {
+    convo.lastMessageAt = null;
+    convo.lastMessagePreview = '';
+  } else {
+    convo.lastMessageAt = newLatest.createdAt;
+    convo.lastMessagePreview =
+      newLatest.type === 'text' ? (newLatest.text || '').slice(0, 80) : PREVIEW_BY_TYPE[newLatest.type] || '';
+  }
+  await convo.save();
+}
 
 async function loadOwnMessage(conversationId, messageId, userId) {
   const convo = await Conversation.findById(conversationId);
@@ -45,13 +76,20 @@ export async function PATCH(req, { params }) {
     message.editedAt = new Date();
     await message.save();
 
-    // Suhbat ro'yxatidagi oxirgi xabar shu bo'lsa, preview'ni ham yangilaymiz.
-    if (convo.lastMessagePreview && String(convo._id) && message.type === 'text') {
-      const latest = await Message.findOne({ conversationId: convo._id }).sort({ createdAt: -1 }).select('_id');
-      if (latest && String(latest._id) === String(message._id)) {
-        convo.lastMessagePreview = cleanText.slice(0, 80);
-        await convo.save();
-      }
+    // C-02 — suhbat ro'yxatidagi oxirgi xabar shu bo'lsa, preview'ni ham yangilaymiz.
+    await recomputeLastMessageIfNeeded(convo, message._id);
+
+    // C-11 — boshqa tomonga real-vaqtda yetkazadi (avval bu event yo'q edi, u faqat
+    // sahifani qayta yuklaganda yangi matnni ko'rardi).
+    const otherId = convo.participantIds.find((id) => String(id) !== String(user._id));
+    if (otherId) {
+      pushMessageEdited(otherId, String(convo._id), {
+        id: message._id,
+        conversationId: convo._id,
+        text: message.text,
+        edited: true,
+        editedAt: message.editedAt,
+      });
     }
 
     return NextResponse.json({ message });
@@ -94,6 +132,19 @@ export async function DELETE(req, { params }) {
       message.deletedFor.push(user._id);
     }
     await message.save();
+
+    // C-02/C-11 — faqat `forEveryone` bo'lganda: bu shared (ikkala tomon uchun umumiy)
+    // lastMessagePreview/lastMessageAt'ga ta'sir qiladigan va boshqa tomonga ham
+    // tegishli bo'lgan yagona holat. Oddiy "faqat men uchun" o'chirish (deletedFor)
+    // boshqa tomonga hech qanday ta'sir qilmaydi — ular hali ham xabarni ko'raveradi,
+    // shuning uchun preview qayta hisoblanmaydi va socket eventi yuborilmaydi.
+    if (forEveryone) {
+      await recomputeLastMessageIfNeeded(convo, message._id);
+      const otherId = convo.participantIds.find((id) => String(id) !== String(user._id));
+      if (otherId) {
+        pushMessageDeleted(otherId, String(convo._id), message._id, silently);
+      }
+    }
 
     return NextResponse.json({ success: true, silently });
   } catch (err) {

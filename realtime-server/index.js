@@ -131,6 +131,31 @@ app.post('/internal/emit', requireInternalSecret, (req, res) => {
   res.json({ ok: true });
 });
 
+// C-11 — Next.js API xabar tahrirlangandan keyin (faqat matnli, faqat xabar egasi)
+// shu yerga chaqiradi — boshqa tomonning ochiq socket'iga yangi matn+editedAt'ni
+// darhol yetkazadi (avval bu event umuman yo'q edi, boshqa tomon faqat sahifani
+// qayta yuklaganda ko'rardi).
+app.post('/internal/emit-edited', requireInternalSecret, (req, res) => {
+  const { recipientId, conversationId, message } = req.body || {};
+  if (!recipientId || !conversationId || !message) {
+    return res.status(400).json({ error: 'recipientId, conversationId, message kerak' });
+  }
+  io.to(`user:${recipientId}`).emit('message:edited', { conversationId, message });
+  res.json({ ok: true });
+});
+
+// C-11 — Next.js API xabar o'chirilgandan keyin (faqat `forEveryone`) shu yerga
+// chaqiradi — boshqa tomonga darhol yetkazadi (`silently` bo'lsa butunlay olib
+// tashlanadi, aks holda "xabar o'chirildi" tombstone'iga aylantiriladi).
+app.post('/internal/emit-deleted', requireInternalSecret, (req, res) => {
+  const { recipientId, conversationId, messageId, silently } = req.body || {};
+  if (!recipientId || !conversationId || !messageId) {
+    return res.status(400).json({ error: 'recipientId, conversationId, messageId kerak' });
+  }
+  io.to(`user:${recipientId}`).emit('message:deleted', { conversationId, messageId, silently: !!silently });
+  res.json({ ok: true });
+});
+
 // Next.js API xabar(lar)ni "o'qildi" deb belgilagandan keyin shu yerga chaqiradi —
 // asl yuboruvchining xonasiga forward qilinadi, u o'z ekranida ptichkani darhol yangilaydi.
 app.post('/internal/read', requireInternalSecret, (req, res) => {

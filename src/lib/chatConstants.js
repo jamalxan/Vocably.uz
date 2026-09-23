@@ -24,3 +24,15 @@ export const TYPING_LABEL = {
   voice: 'ovoz yubormoqda...',
   video: 'video yubormoqda...',
 };
+
+// Matnsiz (media/stiker) xabarlar uchun suhbatlar ro'yxatidagi qisqa preview —
+// src/app/api/chat/conversations/[id]/messages/route.js (yangi xabar yozilganda)
+// va .../[messageId]/route.js (C-02 — o'chirilgandan keyin qayta hisoblashda)
+// ikkalasi ham shu bitta manbadan foydalanadi (ikkitasi mos kelmay qolmasin).
+export const PREVIEW_BY_TYPE = {
+  image: '📷 Rasm',
+  video: '🎬 Video',
+  voice: '🎤 Ovozli xabar',
+  file: '📎 Fayl',
+  sticker: '😊 Stiker',
+};
