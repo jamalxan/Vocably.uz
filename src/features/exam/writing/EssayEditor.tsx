@@ -87,7 +87,8 @@ export default function EssayEditor({ text, onTextChange, wordCount, minWords }:
         data-enable-grammarly="false"
         aria-label="Insho matni"
         className="flex-1 min-h-0 w-full resize-none outline-none focus-visible:shadow-[inset_var(--exam-focus-ring)]"
-        style={{ padding: 20, fontSize: 16, lineHeight: 1.7, color: 'var(--exam-text)', background: 'transparent' }}
+        // fontSize 'inherit' — ExamShell'dagi shrift o'lchami sozlamasi insho matniga ham ta'sir qilsin.
+        style={{ padding: 20, fontSize: 'inherit', lineHeight: 1.7, color: 'var(--exam-text)', background: 'transparent' }}
       />
       <div className="flex items-center justify-between px-3 py-2 border-t" style={{ borderColor: 'var(--exam-chrome-border)' }}>
         <WordCounter wordCount={wordCount} minWords={minWords} />

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Check, X, Trash2, Pencil, ListChecks, Save } from 'lucide-react';
+import { Check, X, Trash2, Pencil, ListChecks, Save, AlertTriangle } from 'lucide-react';
 import SparkleBurst from '../SparkleBurst';
 
 export default function PendingAddWordsCard({ pendingAction, categories, sessionId, onResolved }) {
@@ -87,8 +87,9 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
             setEditingIdx(null);
           }}
           disabled={celebrating}
-          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
-            selectMode ? 'bg-accent text-white' : 'text-accent hover:bg-accent-soft'
+          aria-pressed={selectMode}
+          className={`flex items-center gap-1 px-2.5 py-2 md:px-2 md:py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+            selectMode ? 'bg-accent text-on-accent' : 'text-accent hover:bg-accent-soft'
           }`}
         >
           <ListChecks size={12} /> {selectMode ? 'Tayyor' : 'Tanlash'}
@@ -102,46 +103,48 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
               <input
                 value={w.word}
                 onChange={(e) => updateWord(idx, 'word', e.target.value)}
-                className="w-full px-2 py-1.5 border border-border rounded-lg text-xs outline-none focus:border-accent"
+                className="w-full px-2 py-1.5 border border-border rounded-lg text-base md:text-xs bg-surface outline-none focus:border-accent"
                 placeholder="Inglizcha so'z"
               />
               <input
                 value={w.pronunciation}
                 onChange={(e) => updateWord(idx, 'pronunciation', e.target.value)}
-                className="w-full px-2 py-1.5 border border-border rounded-lg text-xs outline-none focus:border-accent italic"
+                className="w-full px-2 py-1.5 border border-border rounded-lg text-base md:text-xs bg-surface outline-none focus:border-accent italic"
                 placeholder="Talaffuz (masalan /əˈraɪz/)"
               />
               <input
                 value={w.synsText}
                 onChange={(e) => updateWord(idx, 'synsText', e.target.value)}
-                className="w-full px-2 py-1.5 border border-border rounded-lg text-xs outline-none focus:border-accent"
+                className="w-full px-2 py-1.5 border border-border rounded-lg text-base md:text-xs bg-surface outline-none focus:border-accent"
                 placeholder="Tarjimalar, vergul bilan"
               />
               <button
                 onClick={() => setEditingIdx(null)}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 md:py-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-xs font-semibold transition-colors"
               >
                 <Save size={12} /> Saqlash
               </button>
             </div>
           ) : (
             <div key={idx} className="border border-border rounded-lg px-3 py-2.5">
-              <div className="flex items-baseline gap-2">
-                <p className="font-bold text-ink">{w.word || '—'}</p>
-                {w.pronunciation && <p className="text-xs text-muted italic">{w.pronunciation}</p>}
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-ink min-w-0 break-words">{w.word || '—'}</p>
+                {w.pronunciation && <p className="text-xs text-muted italic min-w-0 break-words">{w.pronunciation}</p>}
                 {selectMode && (
-                  <div className="ml-auto flex gap-1 flex-shrink-0">
+                  <div className="ml-auto flex gap-1 flex-shrink-0 -my-1.5 md:my-0">
                     <button
                       onClick={() => setEditingIdx(idx)}
                       title="Tahrirlash"
-                      className="p-1 text-muted hover:text-accent hover:bg-accent-soft rounded transition-colors"
+                      aria-label={`${w.word || "So'z"}ni tahrirlash`}
+                      className="p-2.5 md:p-1 text-muted hover:text-accent hover:bg-accent-soft rounded transition-colors"
                     >
                       <Pencil size={12} />
                     </button>
                     <button
                       onClick={() => removeWord(idx)}
                       title="Ro'yxatdan olib tashlash"
-                      className="p-1 text-muted hover:text-accent hover:bg-accent-soft rounded transition-colors"
+                      aria-label={`${w.word || "So'z"}ni ro'yxatdan olib tashlash`}
+                      className="p-2.5 md:p-1 text-muted hover:text-danger hover:bg-danger-soft rounded transition-colors"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -171,9 +174,10 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
           <button
             key={c._id}
             onClick={() => setSelectedCatId(c._id)}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+            aria-pressed={selectedCatId === c._id}
+            className={`px-3 py-2 md:px-2.5 md:py-1 rounded-full text-xs font-medium border transition-colors ${
               selectedCatId === c._id
-                ? 'bg-accent border-accent text-white'
+                ? 'bg-accent border-accent text-on-accent'
                 : 'bg-surface border-border text-muted hover:border-accent/30'
             }`}
           >
@@ -182,20 +186,25 @@ export default function PendingAddWordsCard({ pendingAction, categories, session
         ))}
       </div>
 
-      {error && <p className="text-xs text-accent mb-2">{error}</p>}
+      {error && (
+        <p role="alert" className="flex items-start gap-1.5 text-xs text-danger mb-2">
+          <AlertTriangle size={13} className="flex-shrink-0 mt-px" />
+          {error}
+        </p>
+      )}
 
       <div className="flex gap-2">
         <button
           onClick={handleConfirm}
           disabled={submitting}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 md:py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-on-accent rounded-lg text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
         >
           <Check size={13} /> {submitting ? "Qo'shilmoqda..." : "Qo'shish"}
         </button>
         <button
           onClick={() => setResolved(true)}
           disabled={submitting}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-bg hover:bg-primary-soft text-muted rounded-lg text-xs font-semibold transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 md:py-2 bg-bg hover:bg-bg-sunken border border-border text-muted hover:text-ink disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
         >
           <X size={13} /> Bekor qilish
         </button>

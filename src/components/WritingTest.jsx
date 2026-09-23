@@ -36,6 +36,8 @@ export default function WritingTest() {
   // Har bir blank uchun { distance, match } — 6.1.3 qisman kredit ko'rsatish uchun.
   const [matchResults, setMatchResults] = useState([]);
   const answerInputRefs = useRef([]);
+  const submitRef = useRef(null);
+  const [setupError, setSetupError] = useState('');
 
   const dueWords = useMemo(
     () => dueWordsInCategory(activeCategory.words || []),
@@ -48,8 +50,18 @@ export default function WritingTest() {
     setWriteActive(false);
   }, [activeCatIndex, writeResetNonce]);
 
+  // Har savolda fokus birinchi inputga, tekshirilgach "Keyingi savol" tugmasiga o'tadi —
+  // mobil klaviatura yopilib qolmaydi, Enter bilan davom etish mumkin.
+  useEffect(() => {
+    if (!writeActive || writeFinished) return;
+    if (writeChecked) submitRef.current?.focus();
+    else answerInputRefs.current[0]?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [writeActive, writeCurIdx, writeChecked]);
+
   const beginSession = (selected) => {
-    if (selected.length === 0) return alert("Oraliq noto'g'ri");
+    if (selected.length === 0) return setSetupError("Oraliq noto'g'ri");
+    setSetupError('');
     const shuffled = [...selected].sort(() => Math.random() - 0.5);
     setWriteWords(shuffled);
     setWriteCurIdx(0);
@@ -64,7 +76,7 @@ export default function WritingTest() {
   const startWriteTest = (e) => {
     e?.preventDefault();
     const words = activeCategory.words || [];
-    if (words.length === 0) return alert("Avval so'z qo'shing");
+    if (words.length === 0) return setSetupError("Avval so'z qo'shing");
     const sliceFrom = Math.max(1, writeRange.from) - 1;
     const sliceTo = Math.min(words.length, writeRange.to);
     beginSession(words.slice(sliceFrom, sliceTo));
@@ -142,8 +154,12 @@ export default function WritingTest() {
         <RangeSetupForm
           title="So'zlarni yozib sinash oraliqlari"
           range={writeRange}
-          onRangeChange={setWriteRange}
+          onRangeChange={(r) => {
+            setWriteRange(r);
+            setSetupError('');
+          }}
           onSubmit={startWriteTest}
+          error={setupError}
           buttonLabel="Testni boshlash"
           maxWords={activeCategory.words?.length || 0}
           onQuickStart={() => beginSession(dueWords)}
@@ -162,16 +178,17 @@ export default function WritingTest() {
           </div>
 
           <div className="flex items-center gap-2 mb-6">
-            <span className="text-xl sm:text-2xl font-bold text-ink font-word break-words">
+            <span className="min-w-0 text-xl sm:text-2xl font-bold text-ink font-word break-words">
               {writeWords[writeCurIdx]?.word}
             </span>
             <button
               type="button"
               onClick={() => speakText(writeWords[writeCurIdx]?.word)}
               aria-label="Talaffuzni eshitish"
-              className="p-1.5 bg-accent-soft hover:bg-accent/20 rounded text-accent transition-colors flex-shrink-0"
+              title="Talaffuzni eshitish"
+              className="inline-flex items-center justify-center w-11 h-11 md:w-8 md:h-8 bg-accent-soft hover:bg-accent/20 rounded-lg text-accent transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              <Volume2 size={14} />
+              <Volume2 size={16} />
             </button>
           </div>
 
@@ -197,6 +214,7 @@ export default function WritingTest() {
                       ref={(el) => (answerInputRefs.current[idx] = el)}
                       disabled={writeChecked}
                       placeholder="Sinonim..."
+                      aria-label={`Sinonim ${idx + 1}`}
                       value={ans}
                       onChange={(e) => {
                         const temp = [...userAnswers];
@@ -204,19 +222,19 @@ export default function WritingTest() {
                         setUserAnswers(temp);
                       }}
                       onKeyDown={(e) => handleAnswerInputKeyDown(e, idx)}
-                      className={`flex-1 px-3 py-2 border rounded-lg text-sm outline-none ${
+                      className={`flex-1 min-w-0 px-3 py-2 border rounded-lg text-base md:text-sm outline-none placeholder:text-muted ${
                         tone === 'exact'
-                          ? 'border-green-300 bg-green-50 text-green-700'
+                          ? 'border-success/40 bg-success-soft text-success'
                           : tone === 'near'
-                            ? 'border-orange-300 bg-orange-50 text-orange-700'
+                            ? 'border-warning/40 bg-warning-soft text-warning'
                             : tone === 'wrong'
-                              ? 'border-red-300 bg-accent-soft text-red-700'
+                              ? 'border-danger/40 bg-danger-soft text-danger'
                               : 'bg-bg text-ink border-border focus:border-accent'
                       }`}
                     />
                   </div>
                   {tone === 'near' && (
-                    <p className="text-[11px] text-orange-600 mt-1 ml-8">
+                    <p className="text-[11px] text-warning mt-1 ml-8 break-words">
                       Deyarli! <span className="line-through opacity-70">{ans}</span> → <span className="font-semibold">{result.match}</span>
                     </p>
                   )}
@@ -232,22 +250,13 @@ export default function WritingTest() {
             </div>
           )}
 
-          {!writeChecked ? (
-            <button
-              type="submit"
-              className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
-            >
-              Tekshirish
-            </button>
-          ) : (
-            <button
-              type="submit"
-              autoFocus
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
-            >
-              Keyingi savol →
-            </button>
-          )}
+          <button
+            ref={submitRef}
+            type="submit"
+            className="w-full min-h-11 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+          >
+            {writeChecked ? 'Keyingi savol →' : 'Tekshirish'}
+          </button>
         </form>
       )}
     </div>

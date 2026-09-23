@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Volume2, Flame, Trophy, CalendarCheck, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
-import { cardFromStats, nextReviewState } from '@/lib/srs';
+import { cardFromStats, nextReviewState, localDateWithCutoff } from '@/lib/srs';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -22,10 +22,10 @@ function formatDuration(ms) {
 
 // 1=Qayta(bilmadim) 2=Qiyin 3=Bildim 4=Oson — standart SM-2 baholash shkalasi (src/lib/srs.ts).
 const RATING_BUTTONS = [
-  { rating: 1, key: '1', label: 'Qayta', emoji: '🔁', className: 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700' },
-  { rating: 2, key: '2', label: 'Qiyin', emoji: '😓', className: 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700' },
-  { rating: 3, key: '3', label: 'Bildim', emoji: '✅', className: 'bg-green-50 hover:bg-green-100 border-green-200 text-green-700' },
-  { rating: 4, key: '4', label: 'Oson', emoji: '⚡', className: 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700' },
+  { rating: 1, key: '1', label: 'Qayta', emoji: '🔁', className: 'bg-danger-soft hover:border-danger/60 border-danger/30 text-danger' },
+  { rating: 2, key: '2', label: 'Qiyin', emoji: '😓', className: 'bg-warning-soft hover:border-warning/60 border-warning/30 text-warning' },
+  { rating: 3, key: '3', label: 'Bildim', emoji: '✅', className: 'bg-success-soft hover:border-success/60 border-success/30 text-success' },
+  { rating: 4, key: '4', label: 'Oson', emoji: '⚡', className: 'bg-info-soft hover:border-info/60 border-info/30 text-info' },
 ];
 
 export default function SpacedRepetition({ active }) {
@@ -68,13 +68,18 @@ export default function SpacedRepetition({ active }) {
     [categories]
   );
 
+  // UTC emas, foydalanuvchining mahalliy kuni (streak bilan bir xil 04:00 chegarasi).
   const todayCount = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const today = localDateWithCutoff(new Date(), tz);
     return categories.reduce(
       (sum, c) =>
         sum +
-        (c.words || []).filter((w) => w.stats?.lastReviewed && String(w.stats.lastReviewed).slice(0, 10) === today)
-          .length,
+        (c.words || []).filter((w) => {
+          if (!w.stats?.lastReviewed) return false;
+          const d = new Date(w.stats.lastReviewed);
+          return !Number.isNaN(d.getTime()) && localDateWithCutoff(d, tz) === today;
+        }).length,
       0
     );
   }, [categories]);
@@ -111,7 +116,9 @@ export default function SpacedRepetition({ active }) {
     const onKeyDown = (e) => {
       if (e.target instanceof HTMLElement) {
         const tag = e.target.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable) return;
+        // Fokusdagi tugma/havolaning o'z Enter/Space bosilishi buzilmasin.
+        if ((e.key === ' ' || e.key === 'Enter') && e.target.closest('button, a')) return;
       }
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
@@ -136,8 +143,9 @@ export default function SpacedRepetition({ active }) {
         <div className="w-full max-w-md flex items-center justify-between gap-3 bg-accent-soft border border-accent/20 text-accent text-xs rounded-lg px-3 py-2 mb-4">
           <span>Maxsus mashq: qiynalayotgan so'zlar ({dueWords.length} qoldi)</span>
           <button
+            type="button"
             onClick={clearPracticeQueue}
-            className="flex items-center gap-1 font-semibold hover:text-accent-hover flex-shrink-0"
+            className="flex items-center gap-1 font-semibold hover:text-accent-hover flex-shrink-0 -my-1 -mr-2 px-2 min-h-11 md:min-h-9 rounded-md"
           >
             <X size={12} /> Chiqish
           </button>
@@ -148,17 +156,17 @@ export default function SpacedRepetition({ active }) {
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
           <CalendarCheck className="mx-auto text-accent mb-1" size={16} />
           <p className="text-lg font-bold text-ink">{todayCount}</p>
-          <p className="text-[10px] text-muted">Bugun ko'rildi</p>
+          <p className="text-[11px] sm:text-xs text-muted">Bugun ko'rildi</p>
         </div>
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
-          <Flame className="mx-auto text-orange-500 mb-1" size={16} />
+          <Flame className="mx-auto text-warning mb-1" size={16} />
           <p className="text-lg font-bold text-ink">{reviewStreak}</p>
-          <p className="text-[10px] text-muted">Kunlik ketma-ket</p>
+          <p className="text-[11px] sm:text-xs text-muted">Kunlik ketma-ket</p>
         </div>
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
           <Trophy className="mx-auto text-accent mb-1" size={16} />
           <p className="text-lg font-bold text-ink">{masteredCount}</p>
-          <p className="text-[10px] text-muted">O'zlashtirilgan</p>
+          <p className="text-[11px] sm:text-xs text-muted">O'zlashtirilgan</p>
         </div>
       </div>
 
@@ -176,16 +184,20 @@ export default function SpacedRepetition({ active }) {
             </span>
           </div>
 
+          {/* Space/Enter global handler orqali ishlaydi (card button emas, chunki ichida talaffuz tugmasi bor). */}
           <div
+            role="button"
+            tabIndex={0}
+            aria-pressed={showAnswer}
             onClick={() => setShowAnswer(!showAnswer)}
-            className="w-full h-64 sm:h-72 bg-surface rounded-2xl shadow-premium border border-border flex flex-col justify-center items-center p-6 sm:p-8 cursor-pointer relative select-none transition-transform hover:scale-[1.01]"
+            className="w-full min-h-64 sm:min-h-72 bg-surface rounded-2xl shadow-premium border border-border flex flex-col justify-center items-center px-6 pt-16 pb-8 sm:px-8 cursor-pointer relative select-none transition-transform hover:scale-[1.01] motion-reduce:transition-none motion-reduce:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 speakText(current.word.word);
               }}
-              className="absolute top-4 right-4 p-2 bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors"
+              className="absolute top-3 right-3 p-3 md:p-2 bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               title="Talaffuzni eshitish"
               aria-label="Talaffuzni eshitish"
             >
@@ -198,17 +210,17 @@ export default function SpacedRepetition({ active }) {
               <p className="text-sm text-muted italic mt-1">{current.word.pronunciation}</p>
             )}
             {current.word.enrichment?.cefr && (
-              <span className="mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-accent-soft text-accent">
+              <span className="mt-2 px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase bg-accent-soft text-accent">
                 {current.word.enrichment.cefr}
               </span>
             )}
             {showAnswer ? (
               <>
-                <p className="text-lg sm:text-xl font-medium text-accent mt-6 text-center">
+                <p className="text-lg sm:text-xl font-medium text-accent mt-6 text-center break-words">
                   {current.word.syns.join(', ')}
                 </p>
                 {current.word.enrichment?.examples?.[0] && (
-                  <p className="text-xs text-muted mt-3 text-center italic px-4">
+                  <p className="text-xs text-muted mt-3 text-center italic sm:px-4 break-words">
                     "{current.word.enrichment.examples[0].en}"
                   </p>
                 )}
@@ -226,17 +238,17 @@ export default function SpacedRepetition({ active }) {
                 <button
                   key={b.rating}
                   onClick={() => answer(b.rating)}
-                  className={`flex flex-col items-center gap-0.5 py-2.5 rounded-xl border font-semibold text-xs transition-colors ${b.className}`}
+                  className={`flex flex-col items-center gap-0.5 py-2.5 rounded-xl border font-semibold text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${b.className}`}
                 >
                   <span className="text-base leading-none">{b.emoji}</span>
                   <span>{b.label}</span>
-                  <span className="text-[10px] font-normal opacity-70">{previews?.[b.rating]}</span>
+                  <span className="text-[11px] font-normal opacity-80">{previews?.[b.rating]}</span>
                 </button>
               ))}
             </div>
           ) : (
             <div className="mt-6 w-full h-[62px] flex items-center justify-center">
-              <p className="text-[10px] text-muted hidden sm:block">Klaviatura: Space — ochish, 1-4 — baholash</p>
+              <p className="text-xs text-muted hidden sm:block">Klaviatura: Space — ochish, 1-4 — baholash</p>
             </div>
           )}
         </div>

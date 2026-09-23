@@ -1,9 +1,10 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { normalizeForCompare } from '@/lib/textCompare';
 import EnrichmentEmptyState from '@/components/shared/EnrichmentEmptyState';
 import SessionCompleteCard from '@/components/shared/SessionCompleteCard';
+import { categoryKey, escapeRegExp, answerStateClass } from '@/lib/lugatQuiz';
 
 // V1 "Kontekstda tanish" (VOCABLY-TZ.md 6.2) — haqiqiy jumladan so'z olib tashlanadi,
 // foydalanuvchi to'ldiradi. Kontekstli o'rganish izolyatsiyalangandan 2× samarali (izoh).
@@ -13,12 +14,20 @@ function buildQueue(words) {
     .sort(() => Math.random() - 0.5)
     .map((w) => {
       const sentence = w.enrichment.examples[0].en;
-      const re = new RegExp(`\\b${w.word}\\b`, 'i');
-      return { word: w, blanked: sentence.replace(re, '_____'), answer: w.word };
-    });
+      const re = new RegExp(`\\b${escapeRegExp(w.word)}\\b`, 'i');
+      return { word: w, sentence, blanked: sentence.replace(re, '_____'), answer: w.word };
+    })
+    // So'z jumlada aynan uchramasa (tuslangan shakl) — javob ochiq ko'rinmasin, o'tkazib yuboramiz.
+    .filter((q) => q.blanked !== q.sentence);
 }
 
 export default function ClozePage() {
+  const { activeCategory, activeCatIndex } = useApp();
+  // Kategoriya almashganda navbat yangi kategoriyadan qayta quriladi.
+  return <ClozeQuiz key={categoryKey(activeCatIndex, activeCategory)} />;
+}
+
+function ClozeQuiz() {
   const { activeCategory, reviewWord } = useApp();
   const [queue] = useState(() => buildQueue(activeCategory.words || []));
   const [idx, setIdx] = useState(0);
@@ -26,9 +35,15 @@ export default function ClozePage() {
   const [checked, setChecked] = useState(false);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const inputRef = useRef(null);
 
   const current = queue[idx];
   const isCorrect = useMemo(() => !!current && normalizeForCompare(input) === normalizeForCompare(current.answer), [current, input]);
+
+  // "Keyingi"dan keyin fokus inputga qaytadi (mobil klaviatura yopilib qolmasin).
+  useEffect(() => {
+    if (!checked) inputRef.current?.focus();
+  }, [idx, checked]);
 
   if (queue.length === 0) return <EnrichmentEmptyState field="kamida bitta misol jumla" />;
 
@@ -57,7 +72,7 @@ export default function ClozePage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 flex flex-col items-center">
+    <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
         title="Yakunlandi!"
@@ -79,18 +94,17 @@ export default function ClozePage() {
         </div>
         <p className="text-base sm:text-lg text-ink text-center leading-relaxed mb-6">{current.blanked}</p>
         <input
+          ref={inputRef}
           type="text"
-          autoFocus
+          aria-label="Yetishmayotgan so'z"
           disabled={checked}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Yetishmayotgan so'zni yozing..."
-          className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none mb-4 text-center font-word ${
+          className={`w-full px-3 py-2.5 border rounded-lg text-base md:text-sm outline-none mb-4 text-center font-word ${
             checked
-              ? isCorrect
-                ? 'border-green-300 bg-green-50 text-green-700'
-                : 'border-red-300 bg-accent-soft text-red-700'
-              : 'bg-bg text-ink border-border focus:border-accent'
+              ? answerStateClass(isCorrect)
+              : 'bg-bg text-ink border-border focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/40'
           }`}
         />
         {checked && !isCorrect && (

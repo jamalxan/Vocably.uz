@@ -2,8 +2,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import Button from '@/components/ui/Button';
+import Skeleton from '@/components/ui/Skeleton';
 import HeroCard from './HeroCard';
 import StreakCard from './StreakCard';
 import KpiRow from './KpiRow';
@@ -15,7 +16,8 @@ import CategoryProgress from './CategoryProgress';
 // Recharts (ActivityChart) faqat shu sahifa ochilganda yuklanadi (spec §11.3).
 const ActivityChart = dynamic(() => import('./ActivityChart'), {
   ssr: false,
-  loading: () => <div className="h-[268px] bg-surface rounded-2xl border border-border animate-pulse" />,
+  // Balandlik haqiqiy karta bilan bir xil (p-5 + tugmalar qatori + mb-4 + 200px grafik) — siljish bo'lmasin.
+  loading: () => <div className="h-[298px] md:h-[286px] bg-surface rounded-2xl border border-border animate-pulse" />,
 });
 
 // spec §5.4: dashboard bitta so'rov bilan ochiladi — barcha bloklar shu bitta javobdan o'qiydi.
@@ -26,22 +28,33 @@ export default function DashboardHome() {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const res = await fetch('/api/dashboard', { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error();
-      setData(await res.json());
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  const load = useCallback(
+    async (signal) => {
+      setLoading(true);
+      setError(false);
+      try {
+        const res = await fetch('/api/dashboard', { headers: { Authorization: `Bearer ${token}` }, signal });
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+        if (!signal?.aborted) setData(json);
+      } catch {
+        if (!signal?.aborted) setError(true);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [token]
+  );
 
+  // Token almashsa/unmount bo'lsa eski so'rov bekor qilinadi — eski javob yangisini bosmasin.
   useEffect(() => {
-    if (token) load();
+    if (!token) {
+      setLoading(false);
+      return undefined;
+    }
+    const ctrl = new AbortController();
+    load(ctrl.signal);
+    return () => ctrl.abort();
   }, [token, load]);
 
   const goToReview = () => {
@@ -59,9 +72,21 @@ export default function DashboardHome() {
   };
 
   if (loading) {
+    // Haqiqiy tartibni takrorlaydigan skelet — kontent kelganda sahifa sakramasin.
     return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="animate-spin text-accent" size={28} />
+      <div className="space-y-5" role="status" aria-live="polite">
+        <span className="sr-only">Yuklanmoqda…</span>
+        <Skeleton className="h-7 w-56" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <Skeleton className="lg:col-span-2 h-[176px] rounded-2xl" />
+          <Skeleton className="h-[176px] rounded-2xl" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[92px] rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-[298px] md:h-[286px] rounded-2xl" />
       </div>
     );
   }
@@ -70,12 +95,7 @@ export default function DashboardHome() {
     return (
       <div className="text-center py-24">
         <p className="text-sm text-muted mb-3">Statistikani yuklab bo'lmadi.</p>
-        <button
-          onClick={load}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-semibold transition-colors"
-        >
-          Qayta urinish
-        </button>
+        <Button onClick={() => load()}>Qayta urinish</Button>
       </div>
     );
   }
@@ -101,14 +121,21 @@ export default function DashboardHome() {
             onStart={goToReview}
           />
         </div>
-        <StreakCard current={data.streak.current} longest={data.streak.longest} last7Days={data.streak.last7Days} />
+        {/* activity7 — xuddi shu 7 kunning sanalari (API'da bitta last7 massividan). */}
+        <StreakCard
+          current={data.streak.current}
+          longest={data.streak.longest}
+          last7Days={data.streak.last7Days}
+          dates={data.activity7?.map((d) => d.date)}
+        />
       </div>
 
       <KpiRow today={data.today} deltas={data.deltas} totals={data.totals} />
 
       <ActivityChart activity7={data.activity7} activity30={data.activity30} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* Qiynalayotgan so'z bo'lmasa LeechList chiqmaydi — o'ng ustun bo'sh qolmasin. */}
+      <div className={`grid grid-cols-1 gap-5 ${data.leeches?.length > 0 ? 'lg:grid-cols-2' : ''}`}>
         <MasteryBreakdown mastery={data.mastery} />
         <LeechList leeches={data.leeches} onPractice={practiceLeeches} />
       </div>

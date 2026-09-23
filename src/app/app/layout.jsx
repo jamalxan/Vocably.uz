@@ -16,8 +16,9 @@ function Gate({ children }) {
   const { loadingApp } = useApp();
   if (loadingApp) {
     return (
-      <div className="flex items-center justify-center h-dvh bg-bg">
-        <Loader2 className="animate-spin text-accent" size={28} />
+      <div className="flex items-center justify-center h-dvh bg-bg" role="status" aria-live="polite">
+        <Loader2 className="animate-spin text-accent" size={28} aria-hidden="true" />
+        <span className="sr-only">Yuklanmoqda…</span>
       </div>
     );
   }

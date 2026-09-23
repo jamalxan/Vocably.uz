@@ -25,10 +25,12 @@ module.exports = {
       boxShadow: {
         // "Deep Merlot" — qora emas, brendning o'z (primary) rangiga to'yingan yumshoq soya —
         // premium ko'rinish shundan keladi. Kartalar uchun.
-        card: '0 1px 2px rgba(74,18,38,.05), 0 16px 40px -12px rgba(74,18,38,.14)',
+        // Ranglar globals.css tokenlaridan (--shadow-rgb, --color-accent) — dark-mode'da
+        // soya qora, glow esa dark accent tusiga o'tadi. Light qiymatlari avvalgidek.
+        card: '0 1px 2px rgb(var(--shadow-rgb) / .05), 0 16px 40px -12px rgb(var(--shadow-rgb) / .14)',
         // Accent atrofidagi nozik nurlanish — aktiv holat/asosiy CTA uchun.
-        glow: '0 0 0 1px rgba(184,57,74,.22), 0 10px 28px -8px rgba(184,57,74,.32)',
-        premium: '0 20px 60px -15px rgba(74,18,38,.20)',
+        glow: '0 0 0 1px rgb(var(--color-accent) / .22), 0 10px 28px -8px rgb(var(--color-accent) / .32)',
+        premium: '0 20px 60px -15px rgb(var(--shadow-rgb) / .20)',
       },
       // Yagona manba: src/app/globals.css'dagi CSS o'zgaruvchilar. Bu yerda faqat
       // Tailwind'ga "qanday nomlash" ko'rsatiladi — haqiqiy qiymat va uni o'zgartirish
@@ -68,6 +70,7 @@ module.exports = {
           strong: 'rgb(var(--color-border-strong) / <alpha-value>)',
         },
         'on-accent': 'rgb(var(--color-on-accent) / <alpha-value>)',
+        'on-danger': 'rgb(var(--color-on-danger) / <alpha-value>)',
         'on-primary': 'rgb(var(--color-on-primary) / <alpha-value>)',
         // TZ-vocably-v2.md §B2 nomlanishi: brend rangidagi sarlavha/katta raqam uchun
         // mustaqil token (text-ink'dan farqli — dark-mode'da atayin aksent tusiga

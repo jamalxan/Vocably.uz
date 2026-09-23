@@ -30,8 +30,8 @@ export default function ActivityTrendChart({ data }) {
         <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
           {/* rgb(var(--color-x)) — globals.css tokenlariga ishora, hardcode-hex emas (§B2). */}
           <CartesianGrid vertical={false} stroke="rgb(var(--color-border))" />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'rgb(var(--color-muted))' }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fontSize: 10, fill: 'rgb(var(--color-muted))' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'rgb(var(--color-muted))' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: 'rgb(var(--color-muted))' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgb(var(--color-accent) / 0.08)' }} />
           <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => (v === 'reviews' ? "So'z takrori" : 'Xabarlar')} />
           <Bar dataKey="reviews" stackId="a" fill="rgb(var(--color-accent))" radius={[0, 0, 0, 0]} />

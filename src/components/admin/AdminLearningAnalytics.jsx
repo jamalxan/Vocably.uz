@@ -68,26 +68,30 @@ export default function AdminLearningAnalytics({ token }) {
           <p className="text-sm text-muted">Hali leech so'z yo'q.</p>
         ) : (
           <div className="rounded-2xl bg-surface border border-border overflow-hidden">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="bg-bg text-[10px] font-semibold text-muted uppercase tracking-wider">
-                  <th className="py-2.5 px-4">So'z</th>
-                  <th className="py-2.5 px-4">Foydalanuvchilar soni</th>
-                  <th className="py-2.5 px-4">O'rtacha unutish</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.leechWords.map((w) => (
-                  <tr key={w.word} className="border-t border-border">
-                    <td className="py-2.5 px-4 font-semibold text-ink font-word">{w.word}</td>
-                    <td className="py-2.5 px-4 text-muted">{w.userCount}</td>
-                    <td className="py-2.5 px-4 flex items-center gap-1.5 text-warning">
-                      <AlertTriangle size={13} /> {w.avgLapses}×
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="bg-bg text-[11px] font-semibold text-muted uppercase tracking-wider">
+                    <th className="py-2.5 px-4">So'z</th>
+                    <th className="py-2.5 px-4">Foydalanuvchilar soni</th>
+                    <th className="py-2.5 px-4">O'rtacha unutish</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.leechWords.map((w) => (
+                    <tr key={w.word} className="border-t border-border">
+                      <td className="py-2.5 px-4 font-semibold text-ink font-word">{w.word}</td>
+                      <td className="py-2.5 px-4 text-muted">{w.userCount}</td>
+                      <td className="py-2.5 px-4 text-warning whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          <AlertTriangle size={13} /> {w.avgLapses}×
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>

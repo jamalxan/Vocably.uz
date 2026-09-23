@@ -14,13 +14,21 @@ function AutopilotStatusBanner({ token }) {
   const [summary, setSummary] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([
       fetch('/api/admin/automation/policy', { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
       fetch('/api/admin/agent-actions/summary', { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-    ]).then(([p, s]) => {
-      setPolicy(p.global || null);
-      setSummary(s || null);
-    });
+    ])
+      .then(([p, s]) => {
+        if (cancelled) return;
+        setPolicy(p.global || null);
+        setSummary(s || null);
+      })
+      // Banner ixtiyoriy — xatoda shunchaki ko'rsatilmaydi.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   if (!policy) return null;
@@ -36,7 +44,7 @@ function AutopilotStatusBanner({ token }) {
           ? `Bugun: ${summary.totalActions} ta AI harakat, $${summary.costUsdToday.toFixed(3)}`
           : 'Bugun hali AI harakati yo‘q'}
       </span>
-      <Link href="/admin/content/ai" className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline flex-shrink-0">
+      <Link href="/admin/content/ai" className="ml-auto flex items-center gap-1.5 min-h-11 md:min-h-0 text-xs font-semibold text-accent hover:underline flex-shrink-0">
         <Settings2 size={13} /> Boshqarish
       </Link>
     </div>
@@ -91,16 +99,16 @@ export default function ContentBooksPanel({ token }) {
     <div className="space-y-6">
       <AutopilotStatusBanner token={token} />
 
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-lg font-bold text-ink font-display">Kutubxona</h2>
           <p className="text-sm text-muted mt-1">
-            Kitob (PDF) yuklang — tizim Listening/Reading/Writing/Speaking testlarga ajratadi.
+            Kitob (PDF) yuklang — tizim Listening / Reading / Writing / Speaking testlarga ajratadi.
           </p>
         </div>
         <Link
           href="/admin/content/books/new"
-          className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-semibold transition-colors"
+          className="flex-shrink-0 self-start sm:self-auto flex items-center gap-2 whitespace-nowrap px-4 py-2.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-semibold transition-colors"
         >
           <Plus size={16} /> Yangi kitob
         </Link>
@@ -122,12 +130,12 @@ export default function ContentBooksPanel({ token }) {
             return (
               <div
                 key={book.id}
-                className="flex items-center gap-4 px-4 py-3.5 rounded-xl border border-border bg-surface"
+                className="flex items-center gap-3 sm:gap-4 px-4 py-3.5 rounded-xl border border-border bg-surface"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-ink truncate">{book.title}</span>
-                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${st.className}`}>{st.label}</span>
+                    <span title={book.title} className="text-sm font-semibold text-ink truncate">{book.title}</span>
+                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[11px] font-semibold ${st.className}`}>{st.label}</span>
                   </div>
                   <p className="text-xs text-muted mt-0.5 truncate">
                     {book.publisher || '—'} · {book.module} · {book.licence}
@@ -139,7 +147,7 @@ export default function ContentBooksPanel({ token }) {
                   onClick={() => remove(book)}
                   disabled={busyId === book.id}
                   aria-label="Kitobni o'chirish"
-                  className="p-2 text-muted hover:text-danger hover:bg-danger-soft rounded-lg transition-colors disabled:opacity-40 flex-shrink-0"
+                  className="p-2 min-w-11 min-h-11 md:min-w-0 md:min-h-0 flex items-center justify-center text-muted hover:text-danger hover:bg-danger-soft rounded-lg transition-colors disabled:opacity-40 flex-shrink-0"
                 >
                   <Trash2 size={16} />
                 </button>

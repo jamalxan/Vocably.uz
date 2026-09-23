@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { AnswerValue } from '@/lib/exam/types';
 import type { QuestionGroupNav } from './ExamFooterNav';
+import { useDialogFocus } from '../state/useDialogFocus';
 
 // TZ-vocably-v2.md §12.2 — "Savol raqamlari bottom sheet'da 5×8 grid." Mobil
 // footer'ning ixcham "← Savol 14/40 →" tugmasi bosilganda ochiladi — desktop
@@ -24,6 +25,7 @@ function isAnswered(answers: Record<string, AnswerValue>, qNum: number): boolean
 }
 
 export default function QuestionSheet({ groups, answers, flagged, currentQuestion, onGoTo, onClose }: QuestionSheetProps) {
+  const dialogRef = useDialogFocus<HTMLDivElement>(true);
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -35,11 +37,12 @@ export default function QuestionSheet({ groups, answers, flagged, currentQuestio
   return (
     <div className="fixed inset-0 z-[60] flex items-end" style={{ background: 'rgba(0,0,0,.45)' }} onClick={onClose}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Question list"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-h-[70vh] overflow-y-auto rounded-t-2xl"
+        className="w-full max-h-[70dvh] overflow-y-auto rounded-t-2xl"
         style={{ background: 'var(--exam-bg)', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}
       >
         <div className="flex items-center justify-between px-4 pt-4 pb-2 sticky top-0" style={{ background: 'var(--exam-bg)' }}>
@@ -82,7 +85,7 @@ export default function QuestionSheet({ groups, answers, flagged, currentQuestio
                       minHeight: 44,
                       borderColor: isCurrent ? 'var(--exam-accent)' : 'var(--exam-chrome-border)',
                       borderWidth: isCurrent ? 2 : 1,
-                      background: answered ? 'var(--exam-answered-bg)' : '#ffffff',
+                      background: answered ? 'var(--exam-answered-bg)' : 'var(--exam-bg)',
                       color: answered ? 'var(--exam-answered)' : 'var(--exam-text)',
                       textDecoration: answered ? 'underline' : 'none',
                     }}

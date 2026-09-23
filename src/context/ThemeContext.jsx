@@ -14,7 +14,19 @@ const STORAGE_KEY = 'vocably-theme';
 // birinchi bo'yoqdan OLDIN data-theme'ni o'rnatib, "yorug' tema bir lahza
 // chaqnab keyin qorong'iga o'tishi" (FOUC) muammosining oldini oladi. Faqat
 // localStorage'ni o'qiydi, hech qanday tashqi so'rov yubormaydi.
-export const themeInitScript = `(function(){try{var t=localStorage.getItem('${STORAGE_KEY}');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
+// Brauzer paneli (<meta name="theme-color">) ham tanlangan temaga moslanadi —
+// aks holda OS light bo'lib, "Tungi" tanlanganda qora sahifa ustida och panel qolardi.
+// Qiymatlar = --color-bg (globals.css) light/dark.
+const THEME_COLORS = { light: '#F3EDE6', dark: '#14090D' };
+
+export const themeInitScript = `(function(){try{var t=localStorage.getItem('${STORAGE_KEY}');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);var c=t==='dark'?'${THEME_COLORS.dark}':'${THEME_COLORS.light}';var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++)m[i].setAttribute('content',c);}}catch(e){}})();`;
+
+function syncThemeColor(theme) {
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+    const own = (m.getAttribute('media') || '').includes('dark') ? 'dark' : 'light';
+    m.setAttribute('content', THEME_COLORS[theme === 'system' ? own : theme]);
+  });
+}
 
 const ThemeContext = createContext(null);
 
@@ -24,7 +36,10 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'light' || stored === 'dark') setThemeState(stored);
+      if (stored === 'light' || stored === 'dark') {
+        setThemeState(stored);
+        syncThemeColor(stored);
+      }
     } catch {
       // localStorage yopiq (private rejim va h.k.) — 'system' bilan davom etamiz
     }
@@ -40,6 +55,7 @@ export function ThemeProvider({ children }) {
     }
     if (next === 'system') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', next);
+    syncThemeColor(next);
   }, []);
 
   return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;

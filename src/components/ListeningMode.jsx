@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Volume2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { speakText } from '@/lib/speech';
@@ -7,6 +7,7 @@ import { normalizeForCompare } from '@/lib/textCompare';
 import { dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
+import { answerStateClass } from '@/lib/lugatQuiz';
 
 // 6.1.6 (VOCABLY-TZ.md) — darajali tinglab yozish. Daraja 4 ("shovqin fonida") BU YERDA YO'Q —
 // brauzer TTS ovoz oqimiga real vaqtda shovqin qo'shish uchun Web Audio API orqali murakkab
@@ -15,7 +16,7 @@ import SessionCompleteCard from './shared/SessionCompleteCard';
 const LEVELS = [
   { key: 'word', label: "So'z", hint: "Eshitilgan so'zni yozing", rate: 0.9, needsExample: false },
   { key: 'sentence', label: 'Jumla', hint: 'Eshitilgan jumlani yozing', rate: 0.9, needsExample: true },
-  { key: 'fast', label: "Tezlashtirilgan (1.25×)", hint: "Eshitilgan so'zni yozing", rate: 1.25, needsExample: false },
+  { key: 'fast', label: 'Tez (1.25×)', hint: "Eshitilgan so'zni yozing", rate: 1.25, needsExample: false },
 ];
 
 export default function ListeningMode() {
@@ -31,6 +32,8 @@ export default function ListeningMode() {
   const [checked, setChecked] = useState(false);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [setupError, setSetupError] = useState('');
+  const inputRef = useRef(null);
 
   const levelDef = LEVELS.find((l) => l.key === level) || LEVELS[0];
 
@@ -43,6 +46,7 @@ export default function ListeningMode() {
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda oraliq tanlashga qaytamiz.
   useEffect(() => {
     setActive(false);
+    setSetupError('');
   }, [activeCatIndex, writeResetNonce]);
 
   const current = queue[idx];
@@ -53,17 +57,24 @@ export default function ListeningMode() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
+  // Sessiya boshlanganda va "Keyingi"dan keyin fokus javob maydoniga qaytadi.
+  useEffect(() => {
+    if (active && !checked) inputRef.current?.focus();
+  }, [active, idx, checked]);
+
   const eligibleWords = (pool) => (levelDef.needsExample ? pool.filter((w) => w.enrichment?.examples?.[0]?.en) : pool);
 
   const beginSession = (selected) => {
     const eligible = eligibleWords(selected);
     if (eligible.length === 0) {
-      return alert(
+      setSetupError(
         levelDef.needsExample
           ? "Bu darajada faqat AI bilan boyitilgan (misol jumlasi bor) so'zlar ishlatiladi — bu oraliqda ular yo'q."
           : "Oraliq noto'g'ri"
       );
+      return;
     }
+    setSetupError('');
     setWords(selected);
     setQueue([...eligible].sort(() => Math.random() - 0.5));
     setIdx(0);
@@ -77,7 +88,10 @@ export default function ListeningMode() {
   const startListening = (e) => {
     e?.preventDefault();
     const all = activeCategory.words || [];
-    if (all.length === 0) return alert("Avval so'z qo'shing");
+    if (all.length === 0) {
+      setSetupError("Avval so'z qo'shing");
+      return;
+    }
     const sliceFrom = Math.max(1, range.from) - 1;
     const sliceTo = Math.min(all.length, range.to);
     beginSession(all.slice(sliceFrom, sliceTo));
@@ -131,8 +145,13 @@ export default function ListeningMode() {
           {LEVELS.map((l) => (
             <button
               key={l.key}
-              onClick={() => setLevel(l.key)}
-              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              type="button"
+              aria-pressed={level === l.key}
+              onClick={() => {
+                setLevel(l.key);
+                setSetupError('');
+              }}
+              className={`flex-1 min-h-11 md:min-h-0 py-2 rounded-lg text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
                 level === l.key ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
               }`}
             >
@@ -140,6 +159,11 @@ export default function ListeningMode() {
             </button>
           ))}
         </div>
+        {setupError && (
+          <p role="alert" className="w-full max-w-md mb-3 text-xs text-danger bg-danger-soft rounded-lg px-3 py-2 text-center">
+            {setupError}
+          </p>
+        )}
         <RangeSetupForm
           title="Tinglab yozish oraliqlari"
           range={range}
@@ -186,21 +210,21 @@ export default function ListeningMode() {
           >
             <Volume2 size={24} />
           </button>
-          <p className="text-[10px] text-muted mt-2 uppercase tracking-wider">{levelDef.hint}</p>
+          <p className="text-[11px] sm:text-xs text-muted mt-2 uppercase tracking-wider">{levelDef.hint}</p>
         </div>
 
         <input
+          ref={inputRef}
           type="text"
+          aria-label={levelDef.hint}
           disabled={checked}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Eshitgan so'zingizni yozing..."
-          className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none mb-4 ${
+          className={`w-full px-3 py-2.5 border rounded-lg text-base md:text-sm outline-none mb-4 ${
             checked
-              ? isCorrect
-                ? 'border-green-300 bg-green-50 text-green-700'
-                : 'border-red-300 bg-accent-soft text-red-700'
-              : 'bg-bg text-ink border-border focus:border-accent'
+              ? answerStateClass(isCorrect)
+              : 'bg-bg text-ink border-border focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/40'
           }`}
         />
 
@@ -213,7 +237,7 @@ export default function ListeningMode() {
         {!checked ? (
           <button
             type="submit"
-            className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+            className="w-full bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
             Tekshirish
           </button>
@@ -221,7 +245,7 @@ export default function ListeningMode() {
           <button
             type="submit"
             autoFocus
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+            className="w-full bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
             Keyingi →
           </button>

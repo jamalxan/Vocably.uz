@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { X, Image as ImageIcon, Video, Mic, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
@@ -9,19 +9,19 @@ function GalleryImageBubble({ media, token }) {
   const { url } = useAuthedMediaUrl(media.key, token);
   if (!url) return <div className="w-36 h-28 bg-bg rounded-lg animate-pulse" />;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt="Rasm" className="max-w-[180px] max-h-[200px] rounded-lg object-cover" />;
+  return <img src={url} alt="Rasm" className="max-w-[min(180px,100%)] max-h-[200px] rounded-lg object-cover" />;
 }
 
 function GalleryVideoBubble({ media, token }) {
   const { url } = useAuthedMediaUrl(media.key, token);
   if (!url) return <div className="w-48 h-32 bg-bg rounded-lg animate-pulse" />;
-  return <video src={url} controls className="max-w-[200px] max-h-[220px] rounded-lg" />;
+  return <video src={url} controls playsInline preload="metadata" className="max-w-[min(200px,100%)] max-h-[220px] rounded-lg" />;
 }
 
 function GalleryVoiceBubble({ media, token }) {
   const { url } = useAuthedMediaUrl(media.key, token);
   if (!url) return <div className="w-44 h-9 bg-bg rounded-full animate-pulse" />;
-  return <audio src={url} controls className="w-52 h-9" />;
+  return <audio src={url} controls className="w-52 max-w-full h-9" />;
 }
 
 const GALLERY_BUBBLE = { image: GalleryImageBubble, video: GalleryVideoBubble, voice: GalleryVoiceBubble };
@@ -32,21 +32,29 @@ const GALLERY_BUBBLE = { image: GalleryImageBubble, video: GalleryVideoBubble, v
 // messages?type=...&order=desc) — faqat ikkala ishtirokchi ham ko'rgan (o'chirilmagan) xabarlar.
 function MediaGallery({ conversationId, type, token }) {
   const [data, setData] = useState(null); // { messages, cursor }
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const Bubble = GALLERY_BUBBLE[type];
 
   useEffect(() => {
     let cancelled = false;
     setData(null);
+    setError(false);
     fetch(`/api/chat/conversations/${conversationId}/messages?type=${type}&order=desc`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => r.json())
-      .then((d) => !cancelled && setData({ messages: d.messages || [], cursor: d.nextCursor || null }));
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((d) => !cancelled && setData({ messages: d.messages || [], cursor: d.nextCursor || null }))
+      // Tarmoq/server xatosi — cheksiz spinner yoki "bo'sh" emas, xato + qayta urinish.
+      .catch(() => !cancelled && setError(true));
     return () => {
       cancelled = true;
     };
-  }, [conversationId, type, token]);
+  }, [conversationId, type, token, reloadKey]);
 
   const loadMore = async () => {
     if (!data?.cursor || loadingMore) return;
@@ -56,12 +64,30 @@ function MediaGallery({ conversationId, type, token }) {
         `/api/chat/conversations/${conversationId}/messages?type=${type}&order=desc&before=${encodeURIComponent(data.cursor)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      if (!res.ok) return;
       const d = await res.json();
       setData((prev) => ({ messages: [...(prev?.messages || []), ...(d.messages || [])], cursor: d.nextCursor || null }));
+    } catch {
+      // jimgina — tugma qoladi, qayta bosish mumkin
     } finally {
       setLoadingMore(false);
     }
   };
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-sm text-danger font-medium mb-2">Yuklab bo'lmadi.</p>
+        <button
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="min-h-11 px-3 text-xs font-semibold text-accent hover:underline"
+        >
+          Qayta yuklash
+        </button>
+      </div>
+    );
+  }
 
   if (!data) {
     return (
@@ -81,9 +107,9 @@ function MediaGallery({ conversationId, type, token }) {
     <div>
       <div className="flex flex-wrap gap-2.5">
         {visibleMessages.map((m) => (
-          <div key={m.id || m._id} className="w-fit rounded-xl border border-border bg-bg p-2 flex flex-col gap-1">
+          <div key={m.id || m._id} className="w-fit max-w-full rounded-xl border border-border bg-bg p-2 flex flex-col gap-1">
             <Bubble media={m.media} token={token} />
-            <p className="text-[10px] text-muted">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
+            <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
           </div>
         ))}
       </div>
@@ -93,7 +119,7 @@ function MediaGallery({ conversationId, type, token }) {
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="px-3 py-1.5 bg-bg border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+            className="min-h-11 md:min-h-0 px-3 py-1.5 bg-bg border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
           >
             {loadingMore && <Loader2 size={12} className="animate-spin" />} Eskisini yuklash
           </button>
@@ -118,6 +144,18 @@ export default function UserProfileModal({ open, onClose }) {
   const [tab, setTab] = useState('image');
   const [nicknameInput, setNicknameInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const titleId = useId();
+  const closeRef = useRef(null);
+
+  // Ochilganda fokus oyna ichiga o'tadi, yopilganda avvalgi elementga qaytadi.
+  useEffect(() => {
+    if (!open) return undefined;
+    const prevFocus = document.activeElement;
+    closeRef.current?.focus();
+    return () => {
+      if (prevFocus instanceof HTMLElement) prevFocus.focus();
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -150,15 +188,26 @@ export default function UserProfileModal({ open, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose?.()}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary/40 backdrop-blur-sm"
     >
-      <div className="bg-surface rounded-2xl shadow-card border border-border w-full max-w-sm max-h-[85vh] flex flex-col">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="bg-surface rounded-2xl shadow-card border border-border w-full max-w-sm max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] flex flex-col overflow-hidden"
+      >
         <div className="flex items-center gap-3 p-5 pb-3 flex-shrink-0">
           <div className="w-11 h-11 rounded-full bg-accent-soft text-accent flex items-center justify-center text-sm font-bold flex-shrink-0">
             {(activeConversation.otherUser?.username || '?')[0]?.toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-ink truncate">@{activeConversation.otherUser?.username}</p>
+            <p id={titleId} className="text-sm font-bold text-ink truncate">@{activeConversation.otherUser?.username}</p>
           </div>
-          <button onClick={onClose} aria-label="Yopish" className="p-1 text-muted hover:text-ink transition-colors flex-shrink-0">
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Yopish"
+            className="inline-flex items-center justify-center w-11 h-11 -m-2.5 md:w-auto md:h-auto md:m-0 md:p-1 rounded-lg text-muted hover:text-ink transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
             <X size={18} />
           </button>
         </div>
@@ -169,23 +218,27 @@ export default function UserProfileModal({ open, onClose }) {
             onChange={(e) => setNicknameInput(e.target.value)}
             placeholder="Taxallus qo'ying (faqat sizga ko'rinadi)..."
             maxLength={60}
-            className="flex-1 min-w-0 px-3 py-2 bg-bg rounded-xl text-sm outline-none"
+            aria-label="Taxallus"
+            className="flex-1 min-w-0 px-3 py-2.5 md:py-2 bg-bg rounded-xl text-base md:text-sm text-ink placeholder:text-muted outline-none focus:ring-2 focus:ring-accent/20"
           />
           <button
             type="submit"
             disabled={saving}
-            className="px-3 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent rounded-xl text-xs font-semibold transition-colors flex-shrink-0"
+            className="min-h-11 md:min-h-0 px-3 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent rounded-xl text-xs font-semibold transition-colors flex-shrink-0"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : 'Saqlash'}
           </button>
         </form>
 
-        <div className="flex items-center gap-1.5 px-5 pb-3 flex-shrink-0">
+        {/* flex-wrap — tor (<=360px) ekranda uchinchi tab karta chetidan chiqib ketmasin. */}
+        <div className="flex flex-wrap items-center gap-1.5 px-5 pb-3 flex-shrink-0">
           {TABS.map(({ key, label, Icon }) => (
             <button
               key={key}
+              type="button"
               onClick={() => setTab(key)}
-              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors flex items-center gap-1 ${
+              aria-pressed={tab === key}
+              className={`min-h-11 md:min-h-0 px-2.5 py-1.5 rounded-lg text-xs md:text-[11px] font-medium transition-colors flex items-center gap-1 ${
                 tab === key ? 'bg-accent text-on-accent' : 'bg-bg text-muted hover:text-ink'
               }`}
             >

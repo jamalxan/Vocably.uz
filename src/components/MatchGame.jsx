@@ -37,6 +37,7 @@ export default function MatchGame() {
   const [matchedIds, setMatchedIds] = useState([]);
   const [rounds, setRounds] = useState(0);
   const [complete, setComplete] = useState(false);
+  const [setupError, setSetupError] = useState('');
 
   const dueWords = useMemo(
     () => dueWordsInCategory(activeCategory.words || []),
@@ -81,20 +82,22 @@ export default function MatchGame() {
   const startMatchGame = (e) => {
     e?.preventDefault();
     const all = activeCategory.words || [];
-    if (all.length === 0) return alert("Avval so'z qo'shing");
+    if (all.length === 0) return setSetupError("Avval so'z qo'shing");
 
     const sliceFrom = Math.max(1, range.from) - 1;
     const sliceTo = Math.min(all.length, range.to);
     const selected = all.slice(sliceFrom, sliceTo);
-    if (selected.length < 4) return alert("Bu o'yin uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+    if (selected.length < 4) return setSetupError("Bu o'yin uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
 
+    setSetupError('');
     setRangeWords(selected);
     initMatchGame(selected);
     setActive(true);
   };
 
   const startDueQueue = () => {
-    if (dueWords.length < 4) return alert("Bugungi navbatda kamida 4 ta so'z kerak.");
+    if (dueWords.length < 4) return setSetupError("Bugungi navbatda kamida 4 ta so'z kerak.");
+    setSetupError('');
     setRangeWords(dueWords);
     initMatchGame(dueWords);
     setActive(true);
@@ -102,7 +105,10 @@ export default function MatchGame() {
 
   const handleMatchCardClick = (card) => {
     if (card.kind === 'audio') speakText(card.audioText);
-    if (selectedCards.length === 2 || matchedIds.includes(card.matchId)) return;
+    // Bir kartani ikki marta bosish xato juftlik hisoblanmasin.
+    if (selectedCards.length === 2 || matchedIds.includes(card.matchId) || selectedCards.some((c) => c.id === card.id)) {
+      return;
+    }
     const currentSelected = [...selectedCards, card];
     setSelectedCards(currentSelected);
 
@@ -130,8 +136,12 @@ export default function MatchGame() {
       <RangeSetupForm
         title="Juftlikni topish oraliqlari"
         range={range}
-        onRangeChange={setRange}
+        onRangeChange={(r) => {
+          setRange(r);
+          setSetupError('');
+        }}
         onSubmit={startMatchGame}
+        error={setupError}
         maxWords={activeCategory.words?.length || 0}
         onQuickStart={startDueQueue}
         quickStartCount={dueWords.length}
@@ -149,7 +159,10 @@ export default function MatchGame() {
             <span>
               {matchedIds.length} / {matchPairs.length / 2} juftlik
             </span>
-            <button onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
+            <button
+              onClick={() => setActive(false)}
+              className="inline-flex items-center min-h-11 -my-3.5 md:min-h-0 md:my-0 text-accent hover:text-accent-hover font-semibold"
+            >
               Oraliqni o'zgartirish
             </button>
           </div>
@@ -158,19 +171,23 @@ export default function MatchGame() {
               const isSelected = selectedCards.some((c) => c.id === card.id);
               const isMatched = matchedIds.includes(card.matchId);
               return (
-                <div
+                <button
+                  type="button"
                   key={card.id}
                   onClick={() => handleMatchCardClick(card)}
-                  className={`h-20 sm:h-24 rounded-xl border flex items-center justify-center p-2.5 sm:p-3 text-center text-xs font-semibold cursor-pointer transition-all select-none ${
+                  disabled={isMatched}
+                  aria-pressed={isSelected}
+                  aria-label={card.kind === 'audio' ? 'Talaffuzni eshitish' : undefined}
+                  className={`min-h-20 sm:min-h-24 min-w-0 rounded-xl border flex items-center justify-center p-2.5 sm:p-3 text-center text-xs font-semibold cursor-pointer transition-all motion-reduce:transition-none select-none [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                     isMatched
-                      ? 'border-green-100 bg-green-50 text-green-600 opacity-60 pointer-events-none'
+                      ? 'border-success/20 bg-success-soft text-success opacity-60 pointer-events-none'
                       : isSelected
                       ? 'border-accent bg-accent-soft text-accent ring-2 ring-accent/20'
-                      : 'border-border bg-surface hover:border-border text-ink'
+                      : 'border-border bg-surface hover:border-accent/40 hover:bg-surface-3 text-ink'
                   }`}
                 >
-                  {card.kind === 'audio' ? <Volume2 size={22} /> : card.text}
-                </div>
+                  {card.kind === 'audio' ? <Volume2 size={22} aria-hidden="true" /> : card.text}
+                </button>
               );
             })}
           </div>

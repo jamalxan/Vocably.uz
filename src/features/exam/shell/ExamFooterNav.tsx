@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Check, Grid3x3 } from 'lucide-react';
 import type { AnswerValue } from '@/lib/exam/types';
 import { useIsMobile } from '../state/useIsMobile';
@@ -58,6 +58,12 @@ export default function ExamFooterNav({
 
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const currentBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Joriy savol tugmasi gorizontal scroll qilinadigan panelda doim ko'rinib tursin.
+  useEffect(() => {
+    currentBtnRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [currentQuestion, isMobile]);
 
   // TZ §12.2 — "← Savol 14/40 → (bosilsa bottom sheet ochiladi)". Desktop'dagi
   // to'liq 40-tugmali ro'yxat <768px'da sig'maydi (footer balandligi 88px'ga
@@ -88,11 +94,15 @@ export default function ExamFooterNav({
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold"
+          aria-haspopup="dialog"
+          className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 rounded-lg border text-sm font-semibold whitespace-nowrap"
           style={{ height: 44, borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
         >
-          <Grid3x3 size={15} />
-          Question {currentQuestion} / {allQuestions.length}
+          <Grid3x3 size={15} className="flex-shrink-0" />
+          <span className="truncate">
+            <span className="hidden min-[380px]:inline">Question </span>
+            {currentQuestion} / {allQuestions.length}
+          </span>
         </button>
 
         <button
@@ -110,7 +120,7 @@ export default function ExamFooterNav({
           <button
             type="button"
             onClick={onSubmit}
-            className="flex items-center gap-1.5 px-3 rounded-lg text-white text-[13px] font-semibold"
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 rounded-lg text-white text-[13px] font-semibold whitespace-nowrap"
             style={{ height: 44, background: 'var(--exam-accent)' }}
           >
             <Check size={15} /> {submitLabel}
@@ -145,7 +155,7 @@ export default function ExamFooterNav({
           o'ng zona (pastda) har doim ko'rinadigan joyida qat'iy turadi. */}
       <div className="flex items-center gap-3 flex-1 min-w-0 overflow-x-auto">
         {groups.map((g) => (
-          <div key={g.label} className="flex items-center gap-1 flex-shrink-0">
+          <div key={g.label} className="flex items-center gap-1 [@media(pointer:coarse)]:gap-1.5 flex-shrink-0">
             <span className="text-[11px] font-semibold uppercase tracking-wide mr-0.5" style={{ color: 'var(--exam-muted)' }}>
               {g.label}
             </span>
@@ -160,11 +170,12 @@ export default function ExamFooterNav({
                   onClick={() => onGoTo(qNum)}
                   aria-label={`Question ${qNum}${answered ? ', answered' : ''}${isFlagged ? ', flagged' : ''}${isCurrent ? ', current' : ''}`}
                   aria-current={isCurrent ? 'true' : undefined}
-                  className="relative w-7 h-7 flex-shrink-0 flex items-center justify-center rounded text-[12px] font-semibold border transition-colors"
+                  ref={isCurrent ? currentBtnRef : undefined}
+                  className="relative w-7 h-7 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:h-11 flex-shrink-0 flex items-center justify-center rounded text-[12px] font-semibold border transition-colors"
                   style={{
                     borderColor: isCurrent ? 'var(--exam-accent)' : 'var(--exam-chrome-border)',
                     borderWidth: isCurrent ? 2 : 1,
-                    background: answered ? 'var(--exam-answered-bg)' : '#ffffff',
+                    background: answered ? 'var(--exam-answered-bg)' : 'var(--exam-bg)',
                     color: answered ? 'var(--exam-answered)' : 'var(--exam-text)',
                     textDecoration: answered ? 'underline' : 'none',
                     boxShadow: isCurrent ? 'var(--exam-focus-ring)' : 'none',
@@ -194,7 +205,7 @@ export default function ExamFooterNav({
           onClick={goPrev}
           disabled={!canPrev}
           aria-label="Previous question"
-          className="w-9 h-9 flex items-center justify-center rounded-lg border disabled:opacity-30"
+          className="w-9 h-9 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:h-11 flex items-center justify-center rounded-lg border disabled:opacity-30"
           style={{ borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
         >
           <ChevronLeft size={18} />
@@ -204,7 +215,7 @@ export default function ExamFooterNav({
           onClick={goNext}
           disabled={!canNext}
           aria-label="Next question"
-          className="w-9 h-9 flex items-center justify-center rounded-lg border disabled:opacity-30"
+          className="w-9 h-9 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:h-11 flex items-center justify-center rounded-lg border disabled:opacity-30"
           style={{ borderColor: 'var(--exam-chrome-border)', color: 'var(--exam-text)' }}
         >
           <ChevronRight size={18} />
@@ -213,7 +224,7 @@ export default function ExamFooterNav({
           <button
             type="button"
             onClick={onSubmit}
-            className="ml-1 h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold"
+            className="ml-1 h-9 [@media(pointer:coarse)]:h-11 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold whitespace-nowrap"
             style={{ background: 'var(--exam-accent)' }}
           >
             <Check size={15} /> {submitLabel}

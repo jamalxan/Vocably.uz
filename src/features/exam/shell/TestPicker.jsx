@@ -39,13 +39,18 @@ export default function TestPicker({ sectionKey, title, onPicked }) {
   useEffect(() => {
     let cancelled = false;
     fetch('/api/exam/tests', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
       .then((data) => {
         if (cancelled) return;
         setTests((data.tests || []).filter((t) => t.sections?.[sectionKey]));
       })
       .catch(() => !cancelled && setError("Testlar ro'yxatini yuklab bo'lmadi."));
-    fetchSectionStatuses(sectionKey).then((s) => !cancelled && setStatuses(s));
+    fetchSectionStatuses(sectionKey)
+      .then((s) => !cancelled && setStatuses(s))
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -82,7 +87,7 @@ export default function TestPicker({ sectionKey, title, onPicked }) {
                     <span className="flex items-center gap-2">
                       <span className="block text-sm font-semibold text-ink">{test.title}</span>
                       {badge && (
-                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${badge.className}`}>
+                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-[11px] leading-4 font-semibold ${badge.className}`}>
                           {badge.label}
                           {st.status === 'graded' && st.band != null ? `: ${st.band}` : ''}
                         </span>
@@ -97,9 +102,9 @@ export default function TestPicker({ sectionKey, title, onPicked }) {
                     onClick={() => onPicked(test.id, true)}
                     title="Yangi urinish boshlash"
                     aria-label="Yangi urinish boshlash"
-                    className="flex-shrink-0 mr-3 p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors"
+                    className="flex-shrink-0 mr-1 w-11 h-11 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
-                    <RotateCcw size={14} />
+                    <RotateCcw size={16} />
                   </button>
                 )}
               </div>

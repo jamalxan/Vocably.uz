@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
+import CurrentYear from './CurrentYear';
 
 const COLUMNS = [
   {
@@ -43,9 +44,9 @@ export default function LandingFooter() {
             {COLUMNS.map((col) => (
               <div key={col.title}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-3">{col.title}</p>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col md:gap-2">
                   {col.links.map((l) => (
-                    <Link key={l.href} href={l.href} className="text-sm text-muted hover:text-accent transition-colors">
+                    <Link key={l.href} href={l.href} className="min-h-10 md:min-h-0 inline-flex items-center text-sm text-muted hover:text-accent transition-colors">
                       {l.label}
                     </Link>
                   ))}
@@ -54,8 +55,8 @@ export default function LandingFooter() {
             ))}
           </div>
         </div>
-        <div className="pt-6 border-t border-border text-[11px] text-muted/70">
-          © {new Date().getFullYear()} Vocably. Barcha huquqlar himoyalangan.
+        <div className="pt-6 border-t border-border text-xs text-ink-subtle">
+          © <CurrentYear initial={new Date().getFullYear()} /> Vocably. Barcha huquqlar himoyalangan.
         </div>
       </div>
     </footer>

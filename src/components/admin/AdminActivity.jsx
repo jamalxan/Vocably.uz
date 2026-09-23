@@ -11,11 +11,11 @@ const ActivityTrendChart = dynamic(() => import('./ActivityTrendChart'), {
 
 function StatCard({ icon: Icon, label, value, sub }) {
   return (
-    <div className="rounded-2xl bg-surface border border-border p-5 shadow-card hover:border-accent/40 transition-colors duration-300">
+    <div className="min-w-0 rounded-2xl bg-surface border border-border p-4 sm:p-5 shadow-card hover:border-accent/40 transition-colors duration-300">
       <div className="w-11 h-11 rounded-xl bg-accent-soft border border-accent/20 text-accent flex items-center justify-center mb-4">
         <Icon size={19} strokeWidth={2} />
       </div>
-      <p className="font-luxury text-3xl text-ink tabular-nums leading-none">{value}</p>
+      <p className="font-luxury text-2xl sm:text-3xl text-ink tabular-nums leading-tight break-words">{value}</p>
       <p className="text-xs text-muted mt-2 tracking-wide">{label}</p>
       {sub && <p className="text-[11px] text-muted/70 mt-1">{sub}</p>}
     </div>

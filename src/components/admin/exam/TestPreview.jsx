@@ -62,7 +62,7 @@ function ReadingPreview({ reading }) {
           <p className="text-sm font-bold text-ink">
             Passage {p.order} — {p.title || '(sarlavhasiz)'}
           </p>
-          <div className="mt-2 text-xs text-muted leading-relaxed space-y-1 max-h-40 overflow-y-auto">
+          <div className="mt-2 text-xs text-muted leading-relaxed space-y-1 break-words">
             {(p.paragraphs || []).map((para, i) => (
               <p key={i}>
                 {para.label && <span className="font-bold mr-1">[{para.label}]</span>}

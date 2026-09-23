@@ -62,16 +62,22 @@ export default function AnnouncementsPanel({ token }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Sarlavha"
-          className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink outline-none focus:border-accent transition-colors"
+          aria-label="E'lon sarlavhasi"
+          className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-base md:text-sm text-ink outline-none focus:border-accent transition-colors"
         />
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Matn (ixtiyoriy)"
+          aria-label="E'lon matni (ixtiyoriy)"
           rows={3}
-          className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink outline-none focus:border-accent transition-colors resize-none"
+          className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-base md:text-sm text-ink outline-none focus:border-accent transition-colors resize-none"
         />
-        {error && <p className="text-xs text-accent">{error}</p>}
+        {error && (
+          <p role="alert" className="text-xs text-danger">
+            {error}
+          </p>
+        )}
         <button
           type="submit"
           disabled={sending || !title.trim()}
@@ -89,13 +95,13 @@ export default function AnnouncementsPanel({ token }) {
       ) : (
         <div className="rounded-2xl border border-border bg-surface shadow-card divide-y divide-border overflow-hidden">
           {announcements.map((a) => (
-            <div key={a._id} className="px-5 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-ink">{a.title}</p>
+            <div key={a._id} className="px-4 sm:px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <p className="min-w-0 text-sm font-semibold text-ink break-words">{a.title}</p>
                 <span className="text-[11px] text-muted flex-shrink-0">{new Date(a.createdAt).toLocaleString('uz-UZ')}</span>
               </div>
-              {a.body && <p className="text-xs text-muted mt-1">{a.body}</p>}
-              <p className="text-[10px] text-muted/70 mt-1.5">{a.recipientCount} ta foydalanuvchiga yuborilgan</p>
+              {a.body && <p className="text-xs text-muted mt-1 break-words whitespace-pre-wrap">{a.body}</p>}
+              <p className="text-[11px] text-muted/70 mt-1.5">{a.recipientCount} ta foydalanuvchiga yuborilgan</p>
             </div>
           ))}
           {announcements.length === 0 && <p className="text-center text-sm text-muted py-10">Hali e'lon yo'q</p>}

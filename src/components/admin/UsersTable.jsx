@@ -11,21 +11,27 @@ export default function UsersTable({ token }) {
   const [savingId, setSavingId] = useState(null);
   const [usernameDraft, setUsernameDraft] = useState({});
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/chat/users?q=${encodeURIComponent(q)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUsers(data.users || []);
-        setNextCursor(data.nextCursor || null);
+  const load = useCallback(
+    async (signal) => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/admin/chat/users?q=${encodeURIComponent(q)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal,
+        });
+        const data = await res.json();
+        if (res.ok && !signal?.aborted) {
+          setUsers(data.users || []);
+          setNextCursor(data.nextCursor || null);
+        }
+      } catch (err) {
+        if (err?.name !== 'AbortError') console.error(err);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [token, q]);
+    },
+    [token, q]
+  );
 
   const loadMore = async () => {
     if (!nextCursor || loadingMore) return;
@@ -45,9 +51,14 @@ export default function UsersTable({ token }) {
     }
   };
 
+  // Eski qidiruv javobi yangisini bosib ketmasligi uchun oldingi so'rov bekor qilinadi.
   useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
+    const ctrl = new AbortController();
+    const t = setTimeout(() => load(ctrl.signal), 300);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
   }, [load]);
 
   const patchUser = async (id, body) => {
@@ -75,6 +86,14 @@ export default function UsersTable({ token }) {
     patchUser(u._id, { chatAccess: true, username: uname });
   };
 
+  // Ruxsati bor userlar uchun username Enter yoki blur'da saqlanadi.
+  const saveUsername = (u) => {
+    if (!u.chatAccess || savingId === u._id || usernameDraft[u._id] === undefined) return;
+    const uname = usernameDraft[u._id].trim().toLowerCase();
+    if (!uname || uname === (u.username || '')) return;
+    patchUser(u._id, { username: uname });
+  };
+
   return (
     <div>
       <div className="relative mb-5 max-w-sm">
@@ -83,7 +102,8 @@ export default function UsersTable({ token }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Telefon, ism yoki username qidirish..."
-          className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-ink placeholder:text-muted/70 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+          aria-label="Foydalanuvchi qidirish"
+          className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border rounded-xl text-base md:text-sm text-ink placeholder:text-muted/70 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
         />
       </div>
 
@@ -126,8 +146,16 @@ export default function UsersTable({ token }) {
                       <input
                         defaultValue={u.username || ''}
                         placeholder="username"
+                        aria-label={`${u.name || u.phoneDisplay} username`}
                         onChange={(e) => setUsernameDraft((d) => ({ ...d, [u._id]: e.target.value }))}
-                        className="w-32 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-ink outline-none focus:border-accent transition-colors"
+                        onBlur={() => saveUsername(u)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveUsername(u);
+                          }
+                        }}
+                        className="w-32 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent transition-colors"
                       />
                     </td>
                     <td className="px-5 py-3.5">
@@ -135,7 +163,7 @@ export default function UsersTable({ token }) {
                         <button
                           disabled={savingId === u._id}
                           onClick={() => patchUser(u._id, { chatAccess: false })}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-soft border border-accent/25 text-accent rounded-lg text-xs font-medium hover:bg-accent/15 transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 bg-accent-soft border border-accent/25 text-accent rounded-lg text-xs font-medium hover:bg-accent/15 transition-colors disabled:opacity-50"
                         >
                           <ShieldCheck size={13} /> Yoqilgan
                         </button>
@@ -143,7 +171,7 @@ export default function UsersTable({ token }) {
                         <button
                           disabled={savingId === u._id}
                           onClick={() => grantAccess(u)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg border border-border text-muted rounded-lg text-xs font-medium hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 bg-bg border border-border text-muted rounded-lg text-xs font-medium hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50"
                         >
                           <ShieldOff size={13} /> Ruxsat berish
                         </button>
@@ -168,7 +196,8 @@ export default function UsersTable({ token }) {
                           }
                           patchUser(u._id, { role: nextRole });
                         }}
-                        className="px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs text-ink outline-none focus:border-accent transition-colors"
+                        aria-label={`${u.name || u.phoneDisplay} roli`}
+                        className="px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent transition-colors"
                       >
                         <option value="user">user</option>
                         <option value="admin">admin</option>
@@ -178,7 +207,7 @@ export default function UsersTable({ token }) {
                       <button
                         disabled={savingId === u._id}
                         onClick={() => patchUser(u._id, { chatBanned: !u.chatBanned })}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
                           u.chatBanned
                             ? 'bg-accent/15 border border-accent/40 text-accent hover:bg-accent/25'
                             : 'bg-bg border border-border text-muted hover:text-ink'

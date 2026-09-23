@@ -1,15 +1,15 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { Volume2, ArrowRight, Sparkles } from 'lucide-react';
 import { speakText } from '@/lib/speech';
 import { DEMO_WORDS } from '@/lib/demoWords';
 
 const RATING_BUTTONS = [
-  { rating: 1, label: 'Bilmadim', emoji: '🔁', className: 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700' },
-  { rating: 2, label: 'Qiynaldim', emoji: '😓', className: 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700' },
-  { rating: 3, label: 'Bildim', emoji: '✅', className: 'bg-green-50 hover:bg-green-100 border-green-200 text-green-700' },
-  { rating: 4, label: 'Juda oson', emoji: '⚡', className: 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700' },
+  { rating: 1, label: 'Bilmadim', emoji: '🔁', className: 'bg-danger-soft hover:bg-danger/15 border-danger/30 text-danger' },
+  { rating: 2, label: 'Qiynaldim', emoji: '😓', className: 'bg-warning-soft hover:bg-warning/15 border-warning/30 text-warning' },
+  { rating: 3, label: 'Bildim', emoji: '✅', className: 'bg-success-soft hover:bg-success/15 border-success/30 text-success' },
+  { rating: 4, label: 'Juda oson', emoji: '⚡', className: 'bg-info-soft hover:bg-info/15 border-info/30 text-info' },
 ];
 
 // /demo — ro'yxatdan o'tmasdan sinab ko'rish (VOCABLY-TZ.md §3.1 IA). Haqiqiy
@@ -22,6 +22,7 @@ export default function DemoExperience() {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [done, setDone] = useState(false);
+  const cardRef = useRef(null);
 
   const current = DEMO_WORDS[index];
 
@@ -31,6 +32,16 @@ export default function DemoExperience() {
     } else {
       setIndex((i) => i + 1);
       setFlipped(false);
+      // Baho tugmalari yo'qolgach fokus keyingi kartaga o'tadi
+      cardRef.current?.focus();
+    }
+  };
+
+  const onCardKeyDown = (e) => {
+    if (e.target !== e.currentTarget) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setFlipped((v) => !v);
     }
   };
 
@@ -67,8 +78,13 @@ export default function DemoExperience() {
 
       <div className="w-full h-64 sm:h-72" style={{ perspective: '1200px' }}>
         <div
+          ref={cardRef}
+          role="button"
+          tabIndex={0}
+          aria-pressed={flipped}
           onClick={() => setFlipped((v) => !v)}
-          className="relative w-full h-full cursor-pointer select-none transition-transform duration-[400ms]"
+          onKeyDown={onCardKeyDown}
+          className="relative w-full h-full cursor-pointer select-none rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg transition-transform duration-[400ms]"
           style={{
             transformStyle: 'preserve-3d',
             transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -78,6 +94,7 @@ export default function DemoExperience() {
           <div
             className="absolute inset-0 bg-surface rounded-2xl shadow-premium border border-border flex flex-col justify-center items-center p-6 sm:p-8"
             style={{ backfaceVisibility: 'hidden' }}
+            aria-hidden={flipped}
           >
             <button
               onClick={(e) => {
@@ -85,13 +102,14 @@ export default function DemoExperience() {
                 speakText(current.word);
               }}
               aria-label="Talaffuzni eshitish"
-              className="absolute top-4 right-4 p-2 bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors"
+              tabIndex={flipped ? -1 : 0}
+              className="absolute top-3 right-3 w-11 h-11 flex items-center justify-center bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors"
             >
               <Volume2 size={16} />
             </button>
             <p className="text-2xl sm:text-3xl font-bold text-ink font-word text-center break-words">{current.word}</p>
             <p className="text-sm text-muted italic mt-1">{current.pronunciation}</p>
-            <span className="mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-accent-soft text-accent">
+            <span className="mt-2 px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase bg-accent-soft text-accent">
               {current.enrichment.cefr}
             </span>
             <p className="text-xs text-muted mt-6 font-semibold">Ko'rish uchun bosing</p>
@@ -99,7 +117,9 @@ export default function DemoExperience() {
           <div
             className="absolute inset-0 bg-surface rounded-2xl shadow-premium border border-border flex flex-col justify-center items-center p-6 sm:p-8"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+            aria-hidden={!flipped}
           >
+            <p className="text-xs text-muted font-word mb-2">{current.word}</p>
             <p className="text-lg sm:text-xl font-medium text-accent text-center break-words">{current.syns.join(', ')}</p>
             <p className="text-xs text-muted mt-3 text-center italic px-4">"{current.enrichment.examples[0].en}"</p>
           </div>
@@ -107,12 +127,13 @@ export default function DemoExperience() {
       </div>
 
       {flipped ? (
-        <div className="grid grid-cols-4 gap-2 mt-6 w-full">
+        <div className="grid grid-cols-2 min-[360px]:grid-cols-4 gap-2 mt-6 w-full">
           {RATING_BUTTONS.map((b) => (
             <button
               key={b.rating}
+              type="button"
               onClick={answer}
-              className={`flex flex-col items-center gap-0.5 py-2.5 rounded-xl border font-semibold text-xs transition-colors ${b.className}`}
+              className={`flex flex-col items-center gap-0.5 px-1 py-2.5 rounded-xl border font-semibold text-xs transition-colors ${b.className}`}
             >
               <span className="text-base leading-none">{b.emoji}</span>
               <span>{b.label}</span>

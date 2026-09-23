@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ShieldOff, Bell, BellOff, Wifi, WifiOff, ArrowDown } from 'lucide-react';
+import { ArrowLeft, ShieldOff, Bell, BellOff, UserCheck, ArrowDown } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { formatLastSeen, isOnline, useLiveClock } from '@/lib/presence';
@@ -9,6 +9,11 @@ import { TYPING_LABEL } from '@/lib/chatConstants';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 import UserProfileModal from './UserProfileModal';
+import ConfirmModal from '@/components/ConfirmModal';
+
+// Sarlavhadagi ikonka-tugmalar: mobil'da 44px (manfiy margin bilan zichlik saqlanadi), md+ da avvalgidek.
+const HEADER_BTN =
+  'inline-flex items-center justify-center w-11 h-11 -my-1.5 md:w-auto md:h-auto md:my-0 md:p-1.5 rounded-lg transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
 
 // Suhbat pastiga qanchalik yaqin bo'lsak ham "pastda" hisoblanadi — yangi xabar
 // kelganda avtomatik pastga tushishni davom ettirish uchun (undan uzoqda bo'lsa
@@ -39,6 +44,7 @@ export default function ConversationView({ onBack }) {
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
   useLiveClock();
 
   const scrollToBottom = (behavior = 'smooth') => {
@@ -138,8 +144,9 @@ export default function ConversationView({ onBack }) {
   };
 
   const handleBlock = async () => {
-    if (!confirm(`${activeConversation.otherUser?.username || 'Foydalanuvchi'}ni bloklaysizmi? Suhbat yopiladi.`)) return;
-    await blockUser(activeConversation.otherUser.id);
+    setBlockOpen(false);
+    const res = await blockUser(activeConversation.otherUser.id);
+    if (res?.error) alert(res.error);
   };
 
   const handleToggleMute = () => {
@@ -152,8 +159,8 @@ export default function ConversationView({ onBack }) {
 
   return (
     <div className="flex-1 flex flex-col h-full min-w-0 bg-surface">
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
-        <button onClick={onBack} aria-label="Suhbatlar ro'yxatiga qaytish" className="lg:hidden p-1 text-muted hover:text-ink">
+      <div className="flex items-center gap-1 md:gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
+        <button onClick={onBack} aria-label="Suhbatlar ro'yxatiga qaytish" className={`lg:hidden -ml-2.5 md:ml-0 text-muted hover:text-ink ${HEADER_BTN}`}>
           <ArrowLeft size={18} />
         </button>
         <div className="relative flex-shrink-0">
@@ -166,7 +173,7 @@ export default function ConversationView({ onBack }) {
         </div>
         <button
           onClick={() => setProfileOpen(true)}
-          className="min-w-0 flex-1 text-left"
+          className="min-w-0 flex-1 text-left ml-1.5 md:ml-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           title="Foydalanuvchi haqida (taxallus, media)"
         >
           <p className="text-sm font-semibold text-ink truncate hover:underline">
@@ -190,21 +197,20 @@ export default function ConversationView({ onBack }) {
               ? "Onlayn bo'lganda Telegram orqali xabar berishni o'chirish"
               : "Onlayn bo'lganda Telegram bot orqali xabar ber"
           }
-          className={`p-1.5 transition-colors flex-shrink-0 ${
-            activeConversation.notifyOnline ? 'text-accent' : 'text-muted hover:text-accent'
-          }`}
+          className={`${HEADER_BTN} ${activeConversation.notifyOnline ? 'text-accent' : 'text-muted hover:text-accent'}`}
         >
-          {activeConversation.notifyOnline ? <Wifi size={16} /> : <WifiOff size={16} />}
+          {/* Wifi ikonkasi ro'yxatda "ulanish holati" ma'nosida — bu yerda boshqa ikonka. */}
+          <UserCheck size={16} />
         </button>
         <button
           onClick={handleToggleMute}
           title={activeConversation.muted ? 'Bildirishnomani yoqish' : 'Bildirishnomani o\'chirish'}
           aria-label={activeConversation.muted ? 'Bildirishnomani yoqish' : 'Bildirishnomani o\'chirish'}
-          className="p-1.5 text-muted hover:text-accent transition-colors flex-shrink-0"
+          className={`${HEADER_BTN} text-muted hover:text-accent`}
         >
           {activeConversation.muted ? <BellOff size={16} /> : <Bell size={16} />}
         </button>
-        <button onClick={handleBlock} title="Bloklash" aria-label="Foydalanuvchini bloklash" className="p-1.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+        <button onClick={() => setBlockOpen(true)} title="Bloklash" aria-label="Foydalanuvchini bloklash" className={`${HEADER_BTN} text-muted hover:text-danger`}>
           <ShieldOff size={16} />
         </button>
       </div>
@@ -262,11 +268,11 @@ export default function ConversationView({ onBack }) {
             onClick={() => scrollToBottom('smooth')}
             title="Pastga tushish"
             aria-label="Suhbat oxiriga tushish"
-            className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-surface border border-border shadow-card flex items-center justify-center text-ink hover:text-accent hover:border-accent/40 transition-colors"
+            className="absolute bottom-4 right-4 w-11 h-11 rounded-full bg-surface border border-border shadow-card flex items-center justify-center text-ink hover:text-accent hover:border-accent/40 transition-colors"
           >
             <ArrowDown size={18} />
             {newMessageCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-on-accent text-[10px] font-bold flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-on-accent text-[11px] font-bold flex items-center justify-center">
                 {newMessageCount > 99 ? '99+' : newMessageCount}
               </span>
             )}
@@ -274,9 +280,18 @@ export default function ConversationView({ onBack }) {
         )}
       </div>
 
-      <Composer />
+      {/* key — har suhbatning qoralamasi (matn, biriktirma) boshqasiga o'tib ketmasin. */}
+      <Composer key={activeConversation.id} />
 
       <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <ConfirmModal
+        open={blockOpen}
+        title="Foydalanuvchini bloklash"
+        message={`@${activeConversation.otherUser?.username || 'foydalanuvchi'}ni bloklaysizmi? Suhbat yopiladi.`}
+        confirmLabel="Bloklash"
+        onConfirm={handleBlock}
+        onCancel={() => setBlockOpen(false)}
+      />
     </div>
   );
 }

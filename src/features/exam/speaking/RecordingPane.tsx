@@ -18,9 +18,17 @@ export interface RecordingPaneProps {
   maxDurationSec?: number; // faqat Part 2 (speakSec) — yetilsa avtomatik to'xtaydi
   alreadyRecorded: boolean; // resume: bu javob avval yozib olinganmi
   onUploaded: () => void;
+  onRecordingChange?: (recording: boolean) => void;
 }
 
-export default function RecordingPane({ part, questionIndex, maxDurationSec, alreadyRecorded, onUploaded }: RecordingPaneProps) {
+export default function RecordingPane({
+  part,
+  questionIndex,
+  maxDurationSec,
+  alreadyRecorded,
+  onUploaded,
+  onRecordingChange,
+}: RecordingPaneProps) {
   const attemptId = useExamStore((s) => s.attemptId);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -33,6 +41,16 @@ export default function RecordingPane({ part, questionIndex, maxDurationSec, alr
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const secondsRef = useRef(0); // maxDurationSec tekshiruvi uchun — `seconds` state async, closure eskirib qolishi mumkin
+  // Yuklash muvaffaqiyatsiz bo'lsa — qayta yozdirmasdan shu yozuvni qayta yuborish uchun.
+  const lastRecordingRef = useRef<{ blob: Blob; durationSec: number } | null>(null);
+  const onRecordingChangeRef = useRef(onRecordingChange);
+  useEffect(() => {
+    onRecordingChangeRef.current = onRecordingChange;
+  });
+
+  useEffect(() => {
+    onRecordingChangeRef.current?.(recording);
+  }, [recording]);
 
   useEffect(() => {
     setDone(alreadyRecorded);
@@ -44,7 +62,11 @@ export default function RecordingPane({ part, questionIndex, maxDurationSec, alr
   useEffect(
     () => () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      // Unmount paytida yozuv to'xtatilsa `onstop` yarim javobni yuklab,
+      // "yozib olindi" deb belgilamasin — tugallanmagan yozuv tashlab yuboriladi.
+      if (mediaRecorderRef.current) mediaRecorderRef.current.onstop = null;
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      onRecordingChangeRef.current?.(false);
     },
     []
   );
@@ -53,8 +75,10 @@ export default function RecordingPane({ part, questionIndex, maxDurationSec, alr
     if (!attemptId) return;
     setUploading(true);
     setError('');
+    lastRecordingRef.current = { blob, durationSec };
     try {
       await uploadSpeakingRecording(attemptId, { part, questionIndex, blob, durationSec });
+      lastRecordingRef.current = null;
       setDone(true);
       onUploaded();
     } catch (err: any) {
@@ -73,6 +97,7 @@ export default function RecordingPane({ part, questionIndex, maxDurationSec, alr
   const startRecording = async () => {
     setError('');
     setDone(false);
+    lastRecordingRef.current = null;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -114,7 +139,7 @@ export default function RecordingPane({ part, questionIndex, maxDurationSec, alr
         <button
           type="button"
           onClick={startRecording}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
+          className="flex items-center gap-1.5 min-h-11 md:min-h-8 px-4 md:px-3 py-1.5 text-sm md:text-xs font-semibold rounded-lg focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
           style={{ border: '1px solid var(--exam-input-border)', color: 'var(--exam-text)' }}
         >
           <RotateCcw size={13} /> Qayta yozib olish
@@ -159,6 +184,19 @@ export default function RecordingPane({ part, questionIndex, maxDurationSec, alr
         <p className="text-xs" style={{ color: 'var(--exam-danger)' }} role="alert">
           {error}
         </p>
+      )}
+      {error && !uploading && !recording && lastRecordingRef.current && (
+        <button
+          type="button"
+          onClick={() => {
+            const last = lastRecordingRef.current;
+            if (last) upload(last.blob, last.durationSec);
+          }}
+          className="flex items-center gap-1.5 min-h-11 md:min-h-8 px-4 md:px-3 py-1.5 text-sm md:text-xs font-semibold rounded-lg text-white focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
+          style={{ background: 'var(--exam-accent)' }}
+        >
+          <RotateCcw size={13} /> Qayta yuklash
+        </button>
       )}
     </div>
   );

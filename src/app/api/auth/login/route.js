@@ -14,8 +14,11 @@ export async function POST(req) {
     const { phone: rawPhone, password } = await req.json();
 
     const phone = normalizePhone(rawPhone);
-    if (!phone || !password) {
-      return NextResponse.json({ error: "Ma'lumotlar to'liq emas" }, { status: 400 });
+    if (!phone) {
+      return NextResponse.json({ error: "Telefon raqam noto'g'ri" }, { status: 400 });
+    }
+    if (!password) {
+      return NextResponse.json({ error: 'Parolni kiriting' }, { status: 400 });
     }
     if (!process.env.JWT_SECRET) {
       return NextResponse.json({ error: "Server sozlanmagan (JWT_SECRET yo'q)" }, { status: 500 });

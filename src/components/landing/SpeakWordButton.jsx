@@ -8,9 +8,10 @@ import { speakText } from '@/lib/speech';
 export default function SpeakWordButton({ word }) {
   return (
     <button
+      type="button"
       onClick={() => speakText(word)}
       aria-label="Talaffuzni eshitish"
-      className="p-2.5 bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors flex-shrink-0"
+      className="w-11 h-11 inline-flex items-center justify-center bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       <Volume2 size={18} />
     </button>

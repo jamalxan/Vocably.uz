@@ -9,14 +9,15 @@ import IconButton from '@/components/ui/IconButton';
 // header'ida edi, endi faqat kategoriyaga tegishli sahifalarda ko'rinadi (AI/
 // Bugun/Do'stlar/Profil'da bunday tugma umuman kerak emas edi).
 export default function LugatLayout({ children }) {
-  const { activeCategory, activeCatIndex, handleDeleteCategory } = useApp();
+  const { activeCatIndex, handleDeleteCategory } = useApp();
 
+  // items-end — o'chirish tugmasi kichik "Kategoriyalar" yorlig'iga emas, trigger'ga tekislanadi.
+  // So'zlar soni trigger ichida ko'rsatiladi, shuning uchun alohida qator yo'q.
   return (
     <div className="p-4 sm:p-6 lg:p-8 w-full max-w-4xl mx-auto">
-      <div className="flex items-start justify-between gap-3 mb-6">
+      <div className="flex items-end justify-between gap-3 mb-6">
         <div className="flex-1 min-w-0">
           <CategorySwitcher />
-          <p className="text-xs text-muted mt-2">Jami so'zlar: {activeCategory?.words?.length || 0} ta</p>
         </div>
         <IconButton
           icon={Trash2}

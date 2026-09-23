@@ -4,6 +4,7 @@ import { RotateCcw } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import EnrichmentEmptyState from '@/components/shared/EnrichmentEmptyState';
 import SessionCompleteCard from '@/components/shared/SessionCompleteCard';
+import { categoryKey } from '@/lib/lugatQuiz';
 
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -17,7 +18,8 @@ function buildQueue(words) {
     words
       .filter((w) => w.enrichment?.examples?.[0]?.en)
       .map((w) => {
-        const sentence = w.enrichment.examples[0].en.trim();
+        // Ortiqcha bo'shliqlar bir xil qilinadi — aks holda to'g'ri tartib ham "xato" chiqardi.
+        const sentence = w.enrichment.examples[0].en.trim().replace(/\s+/g, ' ');
         const tokens = sentence.split(/\s+/);
         return { word: w, sentence, tokens: shuffle(tokens.map((t, i) => ({ id: i, text: t }))) };
       })
@@ -25,6 +27,15 @@ function buildQueue(words) {
 }
 
 export default function JumlaQurishPage() {
+  const { activeCategory, activeCatIndex } = useApp();
+  // Kategoriya almashganda navbat yangi kategoriyadan qayta quriladi.
+  return <JumlaQurishGame key={categoryKey(activeCatIndex, activeCategory)} />;
+}
+
+const TOKEN_CLASS =
+  'min-h-11 min-w-11 px-3 py-2 text-base md:min-h-0 md:min-w-0 md:px-2.5 md:py-1.5 md:text-sm rounded-lg font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40';
+
+function JumlaQurishGame() {
   const { activeCategory, reviewWord } = useApp();
   const [queue] = useState(() => buildQueue(activeCategory.words || []));
   const [idx, setIdx] = useState(0);
@@ -77,7 +88,7 @@ export default function JumlaQurishPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 flex flex-col items-center">
+    <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
         title="Yakunlandi!"
@@ -98,13 +109,13 @@ export default function JumlaQurishPage() {
           <span>{idx + 1} / {queue.length}</span>
           <span>To'g'ri: {score}</span>
         </div>
-        <p className="text-[10px] text-muted text-center mb-2 uppercase tracking-wide">
+        <p className="text-[11px] sm:text-xs text-muted text-center mb-2 uppercase tracking-wide break-words">
           "{current.word.word}" so'zi bilan jumla yig'ing
         </p>
 
         <div
           className={`min-h-[64px] border-2 border-dashed rounded-xl p-3 flex flex-wrap gap-2 mb-3 ${
-            checked === true ? 'border-green-300 bg-green-50' : checked === false ? 'border-red-300 bg-accent-soft' : 'border-border'
+            checked === true ? 'border-success/40 bg-success-soft' : checked === false ? 'border-danger/40 bg-danger-soft' : 'border-border'
           }`}
         >
           {placed.length === 0 && <span className="text-xs text-muted">So'zlarni pastdan bosib joylashtiring...</span>}
@@ -113,7 +124,7 @@ export default function JumlaQurishPage() {
               key={t.id}
               onClick={() => unplace(t)}
               disabled={checked !== null}
-              className="px-2.5 py-1.5 bg-accent text-on-accent rounded-lg text-sm font-medium"
+              className={`${TOKEN_CLASS} bg-accent text-on-accent`}
             >
               {t.text}
             </button>
@@ -125,7 +136,7 @@ export default function JumlaQurishPage() {
             <button
               key={t.id}
               onClick={() => place(t)}
-              className="px-2.5 py-1.5 bg-bg border border-border hover:border-accent/40 rounded-lg text-sm font-medium text-ink"
+              className={`${TOKEN_CLASS} bg-bg border border-border hover:border-accent/40 text-ink`}
             >
               {t.text}
             </button>

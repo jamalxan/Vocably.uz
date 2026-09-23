@@ -23,7 +23,8 @@ export default function FlagToggle({ questionNumber }: FlagToggleProps) {
       aria-pressed={isFlagged}
       aria-label={isFlagged ? `Remove flag from question ${questionNumber}` : `Flag question ${questionNumber} for review`}
       title="Flag for review"
-      className="inline-flex items-center justify-center flex-shrink-0"
+      // Ko'rinishi 16px, lekin before: psevdo-element teginish maydonini 44px balandlikka kengaytiradi.
+      className="relative inline-flex items-center justify-center flex-shrink-0 rounded-sm before:absolute before:-inset-x-1.5 before:-inset-y-3.5 focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
       style={{ width: 16, height: 16, color: isFlagged ? 'var(--exam-flag)' : 'var(--exam-muted)' }}
     >
       <Flag size={12} fill={isFlagged ? 'currentColor' : 'none'} />

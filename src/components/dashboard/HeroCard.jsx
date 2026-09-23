@@ -1,4 +1,5 @@
 'use client';
+import Button from '@/components/ui/Button';
 import ProgressRing from './ProgressRing';
 
 // "Bugungi ish" — dashboard'ning bosh qahramoni. Har holatda (due bor / faqat yangi so'z bor /
@@ -16,7 +17,7 @@ export default function HeroCard({ due, newAvailable, reviews, goal, goalPct, on
           <p className="text-lg font-bold text-ink font-mono tabular-nums leading-none">
             {reviews}/{goal}
           </p>
-          <p className="text-[10px] text-muted mt-1">bugungi maqsad</p>
+          <p className="text-[11px] leading-tight text-muted mt-1">bugungi maqsad</p>
         </div>
       </ProgressRing>
 
@@ -26,12 +27,9 @@ export default function HeroCard({ due, newAvailable, reviews, goal, goalPct, on
         {allDone ? (
           <>
             <p className="text-base font-semibold text-ink mb-3">Bugun hammasi bajarildi 🎉</p>
-            <button
-              onClick={onStart}
-              className="px-4 py-2 bg-bg border border-border hover:bg-primary-soft text-muted rounded-lg text-sm font-medium transition-colors"
-            >
+            <Button variant="secondary" onClick={onStart}>
               Baribir mashq qilish
-            </button>
+            </Button>
           </>
         ) : (
           <>
@@ -47,12 +45,9 @@ export default function HeroCard({ due, newAvailable, reviews, goal, goalPct, on
                 </p>
               )}
             </div>
-            <button
-              onClick={onStart}
-              className="px-5 py-2.5 bg-accent hover:bg-accent-hover text-on-accent rounded-xl text-sm font-semibold transition-colors shadow-glow"
-            >
+            <Button onClick={onStart} className="px-5">
               {ctaLabel}
-            </button>
+            </Button>
           </>
         )}
       </div>

@@ -1,11 +1,14 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { useExamStore } from '../state/examStore';
 import { useAutosave } from '../state/useAutosave';
 import { fetchAttempt, submitAttempt, gradeWriting } from '../state/attemptsApi';
 import TaskPane from './TaskPane';
 import EssayEditor from './EssayEditor';
+import ConfirmFinishModal from '../mock/ConfirmFinishModal';
+import { ExamLoadError, ExamLoading, SubmitErrorBanner } from '../shell/ExamStatus';
 import type { AttemptResult, SanitizedTest } from '@/lib/exam/types';
 
 // VOCABLY_TZ_FINAL...2026-09-20.md "Writing" §"Exam UI": "note area
@@ -49,6 +52,8 @@ export interface WritingPracticeSectionProps {
 export default function WritingPracticeSection({ attemptId, onSubmitted }: WritingPracticeSectionProps) {
   const [test, setTest] = useState<SanitizedTest | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [notes, setNotes] = useState<{ task1: string; task2: string }>({ task1: '', task2: '' });
 
@@ -114,6 +119,7 @@ export default function WritingPracticeSection({ attemptId, onSubmitted }: Writi
   const doSubmit = useCallback(async () => {
     if (submitting) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
       await useExamStore.getState().syncNow();
       const { result: submitResult } = await submitAttempt(attemptId);
@@ -124,16 +130,16 @@ export default function WritingPracticeSection({ attemptId, onSubmitted }: Writi
         onSubmitted(submitResult);
       }
     } catch {
-      setLoadError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
+      setSubmitError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
       setSubmitting(false);
     }
   }, [attemptId, submitting, onSubmitted]);
 
   if (loadError) {
-    return <div className="p-8 text-center text-sm text-danger">{loadError}</div>;
+    return <ExamLoadError message={loadError} />;
   }
   if (!test?.sections.writing) {
-    return <div className="p-8 text-center text-sm text-muted">Yuklanmoqda...</div>;
+    return <ExamLoading />;
   }
 
   const [task1, task2] = test.sections.writing.tasks;
@@ -142,70 +148,102 @@ export default function WritingPracticeSection({ attemptId, onSubmitted }: Writi
   const activeNote = activeWritingTask === 1 ? notes.task1 : notes.task2;
 
   return (
-    <div data-exam="" className="max-w-[900px] mx-auto px-4 sm:px-6 py-6 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-muted">Writing — mashq</p>
-          <p className="text-sm text-muted mt-0.5">Vaqt cheklanmagan — qoralama yozib olishingiz mumkin</p>
-        </div>
-        <button
-          type="button"
-          onClick={doSubmit}
-          disabled={submitting}
-          className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-white text-sm font-semibold rounded-lg"
+    <div data-exam="" className="min-h-dvh">
+      <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-6 space-y-4">
+        <Link
+          href="/app/mashq"
+          className="inline-flex items-center gap-1.5 min-h-11 -ml-2 px-2 rounded-lg text-sm font-semibold focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
+          style={{ color: 'var(--exam-muted)' }}
         >
-          {submitting && <Loader2 size={14} className="animate-spin" />}
-          Yakunlash
-        </button>
+          <ArrowLeft size={16} aria-hidden="true" />
+          Mashq
+        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--exam-muted)' }}>
+              Writing — mashq
+            </p>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--exam-muted)' }}>
+              Vaqt cheklanmagan — qoralama yozib olishingiz mumkin
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            disabled={submitting}
+            className="flex-shrink-0 flex items-center gap-1.5 min-h-11 md:min-h-9 px-4 py-2 disabled:opacity-60 text-white text-sm font-semibold rounded-lg focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
+            style={{ background: 'var(--exam-accent)' }}
+          >
+            {submitting && <Loader2 size={14} className="animate-spin" />}
+            Yakunlash
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {[1, 2].map((n) => {
+            const isActive = activeWritingTask === n;
+            const wc = n === 1 ? essays.task1.wordCount : essays.task2.wordCount;
+            const min = n === 1 ? task1.minWords : task2.minWords;
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setActiveWritingTask(n as 1 | 2)}
+                aria-pressed={isActive}
+                className="min-h-11 md:min-h-9 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
+                style={{
+                  background: isActive ? 'var(--exam-accent)' : 'transparent',
+                  color: isActive ? '#fff' : 'var(--exam-text)',
+                  border: isActive ? 'none' : '1px solid var(--exam-chrome-border)',
+                }}
+              >
+                Task {n}
+                {wc >= min && <Check size={14} />}
+              </button>
+            );
+          })}
+        </div>
+
+        <TaskPane task={activeTask} />
+
+        <div className="h-[50dvh] min-h-[320px] rounded-xl border overflow-hidden" style={{ borderColor: 'var(--exam-chrome-border)' }}>
+          <EssayEditor
+            text={activeEssay.text}
+            onTextChange={(text) => setEssayText(activeWritingTask, text)}
+            wordCount={activeEssay.wordCount}
+            minWords={activeTask.minWords}
+          />
+        </div>
+
+        <details className="border rounded-xl p-3" style={{ borderColor: 'var(--exam-chrome-border)' }}>
+          <summary
+            id="practice-notes-label"
+            className="cursor-pointer py-2 text-xs font-bold uppercase tracking-wide"
+            style={{ color: 'var(--exam-muted)' }}
+          >
+            Qoralama — faqat shu qurilmada saqlanadi, serverga yuborilmaydi
+          </summary>
+          <textarea
+            value={activeNote}
+            onChange={(e) => updateNote(activeWritingTask, e.target.value)}
+            placeholder="Reja, kalit so'zlar, argumentlar..."
+            aria-labelledby="practice-notes-label"
+            className="w-full mt-2 p-2 rounded resize-y min-h-[100px] outline-none text-base focus-visible:shadow-[var(--exam-focus-ring)]"
+            style={{ color: 'var(--exam-text)', background: 'transparent' }}
+          />
+        </details>
       </div>
-
-      <div className="flex items-center gap-2">
-        {[1, 2].map((n) => {
-          const isActive = activeWritingTask === n;
-          const wc = n === 1 ? essays.task1.wordCount : essays.task2.wordCount;
-          const min = n === 1 ? task1.minWords : task2.minWords;
-          return (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setActiveWritingTask(n as 1 | 2)}
-              className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-colors"
-              style={{
-                background: isActive ? 'var(--exam-accent)' : 'transparent',
-                color: isActive ? '#fff' : 'var(--exam-text)',
-                border: isActive ? 'none' : '1px solid var(--exam-chrome-border)',
-              }}
-            >
-              Task {n}
-              {wc >= min && <Check size={14} />}
-            </button>
-          );
-        })}
-      </div>
-
-      <TaskPane task={activeTask} />
-
-      <div className="h-[45vh] rounded-xl border overflow-hidden" style={{ borderColor: 'var(--exam-chrome-border)' }}>
-        <EssayEditor
-          text={activeEssay.text}
-          onTextChange={(text) => setEssayText(activeWritingTask, text)}
-          wordCount={activeEssay.wordCount}
-          minWords={activeTask.minWords}
+      {submitError && <SubmitErrorBanner message={submitError} onRetry={doSubmit} retrying={submitting} />}
+      {confirmOpen && (
+        <ConfirmFinishModal
+          unansweredNumbers={[]}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            doSubmit();
+          }}
         />
-      </div>
-
-      <details className="border rounded-xl p-3" style={{ borderColor: 'var(--exam-chrome-border)' }}>
-        <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--exam-muted)' }}>
-          Qoralama — faqat shu qurilmada saqlanadi, serverga yuborilmaydi
-        </summary>
-        <textarea
-          value={activeNote}
-          onChange={(e) => updateNote(activeWritingTask, e.target.value)}
-          placeholder="Reja, kalit so'zlar, argumentlar..."
-          className="w-full mt-2 resize-y min-h-[100px] outline-none text-sm"
-          style={{ color: 'var(--exam-text)', background: 'transparent' }}
-        />
-      </details>
+      )}
     </div>
   );
 }

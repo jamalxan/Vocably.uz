@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import EnrichmentEmptyState from '@/components/shared/EnrichmentEmptyState';
 import SessionCompleteCard from '@/components/shared/SessionCompleteCard';
+import { categoryKey, optionStateClass, OPTION_BUTTON_CLASS } from '@/lib/lugatQuiz';
 
 const POS_LABEL = {
   noun: 'ot (noun)',
@@ -38,6 +39,12 @@ function buildQuestions(words) {
 }
 
 export default function SozOilasiPage() {
+  const { activeCategory, activeCatIndex } = useApp();
+  // Kategoriya almashganda savollar yangi kategoriyadan qayta quriladi.
+  return <SozOilasiQuiz key={categoryKey(activeCatIndex, activeCategory)} />;
+}
+
+function SozOilasiQuiz() {
   const { activeCategory } = useApp();
   const [questions] = useState(() => buildQuestions(activeCategory.words || []));
   const [idx, setIdx] = useState(0);
@@ -65,7 +72,7 @@ export default function SozOilasiPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 flex flex-col items-center">
+    <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
         title="Yakunlandi!"
@@ -84,24 +91,20 @@ export default function SozOilasiPage() {
           <span>{idx + 1} / {questions.length}</span>
           <span>To'g'ri: {score}</span>
         </div>
-        <p className="text-[10px] text-muted text-center mb-1">{current.word.word} so'z oilasidan</p>
+        <p className="text-[11px] sm:text-xs text-muted text-center mb-1 break-words">{current.word.word} so'z oilasidan</p>
         <p className="text-xl font-bold text-ink font-word mb-1 text-center break-words">{current.form}</p>
         <p className="text-xs text-muted text-center mb-6">bu qanday so'z turkumi?</p>
         <div className="space-y-2 mb-4">
           {current.options.map((opt, i) => {
             const isCorrectOpt = opt === current.correctPos;
             const isSelected = selected === opt;
-            let style = 'border-border hover:border-accent/30';
-            if (selected) {
-              if (isCorrectOpt) style = 'border-green-300 bg-green-50 text-green-700';
-              else if (isSelected) style = 'border-red-300 bg-accent-soft text-red-700';
-            }
+            const style = optionStateClass(!!selected, isCorrectOpt, isSelected);
             return (
               <button
                 key={i}
                 onClick={() => choose(opt)}
                 disabled={!!selected}
-                className={`w-full text-left px-4 py-2.5 border rounded-lg text-sm transition-colors ${style}`}
+                className={`${OPTION_BUTTON_CLASS} ${style}`}
               >
                 {POS_LABEL[opt] || opt}
               </button>

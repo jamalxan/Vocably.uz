@@ -11,6 +11,8 @@ const ChatContext = createContext(null);
 export function ChatProvider({ token, children }) {
   const [conversations, setConversations] = useState([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
+  // Ro'yxat yuklanmasa "suhbat yo'q" emas, xato + "Qayta yuklash" ko'rsatiladi.
+  const [conversationsError, setConversationsError] = useState(false);
   const [activeConversation, setActiveConversation] = useState(null); // { id, otherUser }
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -53,6 +55,8 @@ export function ChatProvider({ token, children }) {
   const myIdRef = useRef(null);
   myIdRef.current = getJwtUserId(token);
   const typingTimersRef = useRef({});
+  // Server bir sahifada 50 ta xabar qaytaradi — kamroq kelsa, eskisi qolmagan.
+  const hasMoreOlderRef = useRef(true);
   const lastTypingEmitRef = useRef({});
 
   const authHeaders = useCallback(
@@ -64,9 +68,14 @@ export function ChatProvider({ token, children }) {
     try {
       const res = await fetch('/api/chat/conversations', { headers: authHeaders() });
       const data = await res.json();
-      if (res.ok) setConversations(data.conversations || []);
+      if (res.ok) {
+        setConversations(data.conversations || []);
+        setConversationsError(false);
+      } else {
+        setConversationsError(true);
+      }
     } catch {
-      // jimgina — ro'yxat bo'sh ko'rinadi
+      setConversationsError(true);
     } finally {
       setLoadingConversations(false);
     }
@@ -82,6 +91,8 @@ export function ChatProvider({ token, children }) {
   // turganini tekshirgandan keyin belgilaymiz).
   const loadMessages = useCallback(
     async (conversationId, { silent = false, noRead = false } = {}) => {
+      // Javob kelguncha boshqa suhbatga o'tilgan bo'lsa — eski javob yangi suhbatga yozilmasin.
+      const isCurrent = () => String(activeIdRef.current) === String(conversationId);
       if (!silent) {
         setLoadingMessages(true);
         setMessagesError(false);
@@ -90,16 +101,19 @@ export function ChatProvider({ token, children }) {
         const url = `/api/chat/conversations/${conversationId}/messages${noRead ? '?noRead=1' : ''}`;
         const res = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
+        if (!isCurrent()) return;
         if (res.ok) {
-          setMessages(data.messages || []);
+          const list = data.messages || [];
+          hasMoreOlderRef.current = list.length >= 50;
+          setMessages(list);
           if (!silent) setMessagesError(false);
         } else if (!silent) {
           setMessagesError(true);
         }
       } catch {
-        if (!silent) setMessagesError(true);
+        if (!silent && isCurrent()) setMessagesError(true);
       } finally {
-        if (!silent) setLoadingMessages(false);
+        if (!silent && isCurrent()) setLoadingMessages(false);
       }
     },
     [authHeaders]
@@ -112,16 +126,20 @@ export function ChatProvider({ token, children }) {
   }, [loadMessages]);
 
   const loadOlderMessages = useCallback(async () => {
-    if (!activeConversation || messages.length === 0) return;
+    if (!activeConversation || messages.length === 0 || !hasMoreOlderRef.current) return;
+    const conversationId = activeConversation.id;
     try {
       const before = messages[0].createdAt;
       const res = await fetch(
-        `/api/chat/conversations/${activeConversation.id}/messages?before=${encodeURIComponent(before)}`,
+        `/api/chat/conversations/${conversationId}/messages?before=${encodeURIComponent(before)}`,
         { headers: authHeaders() }
       );
       const data = await res.json();
-      if (res.ok && data.messages?.length) {
-        setMessages((prev) => [...data.messages, ...prev]);
+      if (String(activeIdRef.current) !== String(conversationId)) return;
+      if (res.ok) {
+        const older = data.messages || [];
+        if (older.length < 50) hasMoreOlderRef.current = false;
+        if (older.length) setMessages((prev) => [...older, ...prev]);
       }
     } catch {
       // jimgina
@@ -133,10 +151,16 @@ export function ChatProvider({ token, children }) {
   const loadMessagesWithCache = useCallback(
     (conversationId) => {
       const cached = messagesCacheRef.current.get(String(conversationId));
+      hasMoreOlderRef.current = true;
       if (cached) {
         setMessages(cached);
+        // Oldingi (boshqa suhbatning) yuklanish/xato holati bu suhbatga o'tmasin.
+        setLoadingMessages(false);
+        setMessagesError(false);
         loadMessages(conversationId, { silent: true });
       } else {
+        // Eski suhbat xabarlari yangi suhbat ostida ko'rinmasin va keshga yozilmasin.
+        setMessages([]);
         loadMessages(conversationId);
       }
     },
@@ -145,15 +169,25 @@ export function ChatProvider({ token, children }) {
 
   const openConversationByUsername = useCallback(
     async (username) => {
-      const res = await fetch('/api/chat/conversations', {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ username }),
-      });
-      const data = await res.json();
+      let res;
+      let data;
+      try {
+        res = await fetch('/api/chat/conversations', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ username }),
+        });
+        data = await res.json().catch(() => ({}));
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
       if (!res.ok) return { error: data.error || 'Xatolik yuz berdi' };
 
+      // activeIdRef darhol yangilanadi — loadMessages javobi "eski" deb tashlab yuborilmasin.
+      activeIdRef.current = data.conversation.id;
       setActiveConversation(data.conversation);
+      setEditingMessage(null);
+      setReplyingTo(null);
       loadMessagesWithCache(data.conversation.id);
       loadConversations();
       return { conversation: data.conversation };
@@ -163,6 +197,7 @@ export function ChatProvider({ token, children }) {
 
   const selectConversation = useCallback(
     (conv) => {
+      activeIdRef.current = conv.id;
       setActiveConversation(conv);
       setEditingMessage(null);
       setReplyingTo(null);
@@ -172,6 +207,7 @@ export function ChatProvider({ token, children }) {
   );
 
   const closeConversation = useCallback(() => {
+    activeIdRef.current = null;
     setActiveConversation(null);
     setMessages([]);
     setEditingMessage(null);
@@ -203,15 +239,17 @@ export function ChatProvider({ token, children }) {
     async (payload) => {
       if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
       const replyId = replyingToRef.current?.id;
+      const conversationId = activeConversation.id;
       try {
-        const res = await fetch(`/api/chat/conversations/${activeConversation.id}/messages`, {
+        const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(replyId ? { ...payload, replyTo: replyId } : payload),
         });
         const data = await res.json();
         if (!res.ok) return { error: data.error || "Xabar yuborilmadi" };
-        appendMessage(data.message);
+        // Yuklash davomida boshqa suhbatga o'tilgan bo'lsa, xabar u yerga qo'shilmasin.
+        if (String(activeIdRef.current) === String(conversationId)) appendMessage(data.message);
         loadConversations();
         if (replyId) setReplyingTo(null);
         return { message: data.message };
@@ -339,34 +377,51 @@ export function ChatProvider({ token, children }) {
 
   const searchUsername = useCallback(
     async (q) => {
-      const res = await fetch(`/api/chat/search?username=${encodeURIComponent(q)}`, { headers: authHeaders() });
-      const data = await res.json();
-      return res.ok ? data.result : null;
+      try {
+        const res = await fetch(`/api/chat/search?username=${encodeURIComponent(q)}`, { headers: authHeaders() });
+        const data = await res.json();
+        return res.ok ? data.result : null;
+      } catch {
+        return null;
+      }
     },
     [authHeaders]
   );
 
   const reportTarget = useCallback(
     async (targetType, targetId, reason) => {
-      const res = await fetch('/api/chat/report', {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ targetType, targetId, reason }),
-      });
-      return res.ok;
+      try {
+        const res = await fetch('/api/chat/report', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ targetType, targetId, reason }),
+        });
+        return res.ok;
+      } catch {
+        return false;
+      }
     },
     [authHeaders]
   );
 
   const blockUser = useCallback(
     async (userId) => {
-      await fetch('/api/chat/block', {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ userId }),
-      });
+      try {
+        const res = await fetch('/api/chat/block', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ userId }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          return { error: data.error || 'Bloklanmadi' };
+        }
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
       closeConversation();
       loadConversations();
+      return { success: true };
     },
     [authHeaders, closeConversation, loadConversations]
   );
@@ -390,6 +445,7 @@ export function ChatProvider({ token, children }) {
         setConversations((prev) => prev.filter((c) => String(c.id) !== String(conversationId)));
         messagesCacheRef.current.delete(String(conversationId));
         if (String(activeIdRef.current) === String(conversationId)) {
+          activeIdRef.current = null;
           setActiveConversation(null);
           setMessages([]);
           setEditingMessage(null);
@@ -508,11 +564,12 @@ export function ChatProvider({ token, children }) {
   // keldi, tahrirlandi/o'chirildi) keshni ham yangilab boradi — shu suhbatga
   // keyinroq qaytilganda (loadMessagesWithCache) yuklashni kutmasdan darhol
   // eng oxirgi holat ko'rsatiladi.
+  // Yuklanayotgan yoki xato bilan tugagan holat keshga yozilmaydi (bo'sh/eskirgan ro'yxat).
   useEffect(() => {
-    if (activeConversation) {
+    if (activeConversation && !loadingMessages && !messagesError) {
       messagesCacheRef.current.set(String(activeConversation.id), messages);
     }
-  }, [messages, activeConversation]);
+  }, [messages, activeConversation, loadingMessages, messagesError]);
 
   // Ro'yxat yangilanganda (masalan yangi suhbat qidiruvdan ochilganda) ham yangi
   // paydo bo'lgan foydalanuvchilar uchun onlayn holatni so'raymiz.
@@ -639,6 +696,7 @@ export function ChatProvider({ token, children }) {
   const value = {
     conversations,
     loadingConversations,
+    conversationsError,
     activeConversation,
     messages,
     loadingMessages,

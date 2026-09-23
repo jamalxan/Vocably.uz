@@ -35,6 +35,8 @@ export default function Composer() {
   // avval shu preview ko'rsatiladi (ixtiyoriy izoh yozish imkoni bilan), faqat "Yuborish"
   // tugmasi (yoki Enter) bosilganda haqiqatan yuklab yuboriladi. { file, type, previewUrl }
   const [pendingAttachment, setPendingAttachment] = useState(null);
+  // Ovozli yozuv ketayotganda mobil tugmalar almashinuvi yozuv popover'ini yashirmasin.
+  const [voiceActive, setVoiceActive] = useState(false);
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
   const emojiButtonRef = useRef(null);
@@ -50,8 +52,16 @@ export default function Composer() {
 
   // Tahrirlash rejimiga o'tilganda xabar matni inputga tushadi va fokus beriladi
   // (kutilayotgan biriktirma bo'lsa — konflikt bo'lmasligi uchun bekor qilinadi).
+  // Tahrirlash tashqaridan bekor qilinsa (javob berish, suhbat almashishi) — eski matn
+  // inputda qolib, yangi xabar sifatida yuborilib ketmasin.
+  const prevEditingIdRef = useRef(null);
   useEffect(() => {
-    if (!editingMessage) return;
+    const prevId = prevEditingIdRef.current;
+    prevEditingIdRef.current = editingMessage?.id ?? null;
+    if (!editingMessage) {
+      if (prevId != null) setText('');
+      return;
+    }
     setText(editingMessage.text);
     textInputRef.current?.focus();
     clearPendingAttachment();
@@ -81,9 +91,9 @@ export default function Composer() {
   // clearPendingAttachment/setPendingAttachment ichida allaqachon bajariladi.
   useEffect(() => {
     return () => {
-      if (pendingAttachment?.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
+      const prev = pendingAttachmentRef.current;
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSendText = async (e) => {
@@ -111,7 +121,14 @@ export default function Composer() {
       // ko'rsatiladi (VoiceRecorder/VideoRecorder'dagi bilan bir xil kanal).
       if (type === 'video') sendTyping('video');
       const res = await uploadAndSend(file, type, clean || undefined);
-      if (res.error) alert(res.error);
+      if (res.error) {
+        // Xato bo'lsa biriktirma va izoh yo'qolmasin — qayta yuborish mumkin bo'lsin.
+        setText((cur) => cur || clean);
+        setPendingAttachment((cur) =>
+          cur || { file, type, previewUrl: type !== 'file' ? URL.createObjectURL(file) : null }
+        );
+        alert(res.error);
+      }
       setSending(false);
       return;
     }
@@ -213,8 +230,9 @@ export default function Composer() {
 
     requestAnimationFrame(() => {
       if (!input) return;
-      input.focus();
       const pos = start + emoji.length;
+      // Mobil sheet'da qayta fokus klaviaturani sheet ostida ochib yuboradi.
+      if (!window.matchMedia('(max-width: 767px)').matches) input.focus();
       input.setSelectionRange(pos, pos);
     });
   };
@@ -228,6 +246,12 @@ export default function Composer() {
         : 'Foydalanuvchi'
     : '';
   const replyPreview = replyingTo && (replyingTo.type === 'text' ? replyingTo.text : REPLY_TYPE_LABEL[replyingTo.type] || '');
+  // <640px: matn/biriktirma bo'lsa "Yuborish", bo'lmasa mikrofon/video (Telegram uslubi) —
+  // tor ekranda 5 ta 44px tugma matn maydonini siqib qo'ymasligi uchun.
+  const hasContent = !!text.trim() || !!pendingAttachment || sending;
+  const showRecordersMobile = !hasContent || voiceActive;
+  const bannerCloseClass =
+    'inline-flex items-center justify-center min-w-11 min-h-11 -m-3 md:min-w-0 md:min-h-0 md:m-0 md:p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0';
 
   return (
     <div className="border-t border-border bg-surface" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -235,7 +259,7 @@ export default function Composer() {
         <div className="flex items-center gap-2 px-3.5 pt-2 text-xs text-accent">
           <Pencil size={12} className="flex-shrink-0" />
           <span className="flex-1 min-w-0 truncate">Xabarni tahrirlash</span>
-          <button onClick={handleCancelEdit} aria-label="Tahrirlashni bekor qilish" className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+          <button onClick={handleCancelEdit} aria-label="Tahrirlashni bekor qilish" type="button" className={bannerCloseClass}>
             <X size={14} />
           </button>
         </div>
@@ -247,7 +271,7 @@ export default function Composer() {
             <p className="font-semibold text-accent truncate">{replySenderLabel}ga javob</p>
             <p className="text-muted truncate">{replyPreview || '…'}</p>
           </div>
-          <button onClick={cancelReply} aria-label="Javob berishni bekor qilish" className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+          <button onClick={cancelReply} aria-label="Javob berishni bekor qilish" type="button" className={bannerCloseClass}>
             <X size={14} />
           </button>
         </div>
@@ -270,7 +294,7 @@ export default function Composer() {
             </p>
             <p className="text-muted">{(pendingAttachment.file.size / 1024 / 1024).toFixed(1)} MB</p>
           </div>
-          <button onClick={clearPendingAttachment} aria-label="Biriktirilgan faylni olib tashlash" className="p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0">
+          <button onClick={clearPendingAttachment} aria-label="Biriktirilgan faylni olib tashlash" type="button" className={bannerCloseClass}>
             <X size={14} />
           </button>
         </div>
@@ -279,7 +303,7 @@ export default function Composer() {
         {/* Yagona dumaloq "yozish qutisi" — emoji va fayl biriktirish tugmalari
             endi alohida qator elementi emas, aynan shu quti ICHIDA (WhatsApp/Telegram
             uslubi) — tor mobil ekranda ortiqcha qatorlar bosim qilmasligi uchun. */}
-        <div className="flex-1 min-w-0 flex items-end gap-0.5 bg-bg rounded-2xl pl-1 pr-1 py-1">
+        <div className="flex-1 min-w-0 flex items-end gap-0.5 bg-bg rounded-2xl pl-1 pr-1 md:py-1">
           <div className="relative flex-shrink-0">
             <button
               ref={emojiButtonRef}
@@ -287,7 +311,7 @@ export default function Composer() {
               onClick={() => setEmojiOpen((v) => !v)}
               title="Emoji"
               aria-label="Emoji tanlash"
-              className="w-8 h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors emoji font-chat"
+              className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors emoji font-chat"
             >
               🙂
             </button>
@@ -313,12 +337,13 @@ export default function Composer() {
             onKeyDown={handleTextareaKeyDown}
             onPaste={handlePaste}
             placeholder={pendingAttachment ? "Izoh qo'shing (ixtiyoriy)..." : 'Xabar yozing...'}
+            aria-label={pendingAttachment ? 'Biriktirma uchun izoh' : 'Xabar matni'}
             // TZ-vocably-v2.md BUG-2 (chat UI audit) — placeholder rangi hech qachon
             // aniq belgilanmagan edi (brauzer standarti/meros olingan rangga qolib
             // ketardi); endi to'g'ridan-to'g'ri `--color-muted` tokeniga bog'langan,
             // ikkala rejimda ham kontrasti tekshirilgan (check-contrast.mjs'dagi
             // "ikkinchi darajali matn" juftligi bilan bir xil token).
-            className="flex-1 min-w-0 px-1.5 py-1.5 bg-transparent text-ink placeholder:text-muted text-sm leading-5 outline-none font-chat resize-none"
+            className="flex-1 min-w-0 px-1.5 py-3 md:py-1.5 bg-transparent text-ink placeholder:text-muted text-base md:text-sm leading-5 outline-none font-chat resize-none"
           />
 
           {!editingMessage && (
@@ -326,6 +351,7 @@ export default function Composer() {
               <input
                 ref={fileInputRef}
                 type="file"
+                aria-label="Fayl tanlash"
                 className="hidden"
                 onChange={handleFilePick}
                 accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt,.html,.htm,.json"
@@ -335,7 +361,7 @@ export default function Composer() {
                 onClick={() => fileInputRef.current?.click()}
                 title="Fayl biriktirish"
                 aria-label="Fayl biriktirish"
-                className="w-8 h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors flex-shrink-0"
+                className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors flex-shrink-0"
               >
                 <Paperclip size={17} />
               </button>
@@ -344,8 +370,8 @@ export default function Composer() {
         </div>
 
         {!editingMessage && (
-          <div className="flex items-end gap-0.5 flex-shrink-0">
-            <VoiceRecorderButton onRecorded={handleRecordedVoice} />
+          <div className={`${showRecordersMobile ? 'flex' : 'hidden'} sm:flex items-end gap-0.5 flex-shrink-0`}>
+            <VoiceRecorderButton onRecorded={handleRecordedVoice} onActiveChange={setVoiceActive} />
             <VideoRecorderButton onRecorded={handleRecordedVideo} />
           </div>
         )}
@@ -354,7 +380,7 @@ export default function Composer() {
           type="submit"
           disabled={(!text.trim() && !pendingAttachment) || sending}
           aria-label={editingMessage ? "Tahrirni saqlash" : 'Xabarni yuborish'}
-          className="p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-on-accent rounded-full transition-colors flex-shrink-0"
+          className={`${hasContent || editingMessage ? 'inline-flex' : 'hidden'} sm:inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-on-accent rounded-full transition-colors flex-shrink-0`}
         >
           {sending ? <Loader2 size={16} className="animate-spin" /> : editingMessage ? <Pencil size={16} /> : <Send size={16} />}
         </button>

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Menu, X, BookOpen } from 'lucide-react';
 
@@ -14,6 +14,16 @@ const NAV_LINKS = [
 export default function LandingHeader() {
   const [open, setOpen] = useState(false);
 
+  // Escape bosilganda mobil menyu yopiladi
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   return (
     <header className="relative z-20 px-4 sm:px-6 py-4">
       <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -26,7 +36,7 @@ export default function LandingHeader() {
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-7">
+        <nav aria-label="Asosiy menyu" className="hidden md:flex items-center gap-7">
           {NAV_LINKS.map((l) => (
             <Link key={l.href} href={l.href} className="text-sm text-muted hover:text-accent transition-colors">
               {l.label}
@@ -47,38 +57,49 @@ export default function LandingHeader() {
         </div>
 
         <button
+          type="button"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? 'Menyuni yopish' : 'Menyuni ochish'}
-          className="md:hidden p-2 text-ink"
+          aria-expanded={open}
+          aria-controls="landing-mobile-menu"
+          className="md:hidden w-11 h-11 -mr-2 inline-flex items-center justify-center rounded-lg text-ink"
         >
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
       {open && (
-        <div className="md:hidden mt-3 mx-4 bg-surface border border-border rounded-2xl shadow-card p-4 flex flex-col gap-1">
-          {NAV_LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              onClick={() => setOpen(false)}
-              className="px-3 py-2.5 rounded-xl text-sm text-ink hover:bg-bg transition-colors"
-            >
-              {l.label}
-            </Link>
-          ))}
-          <div className="h-px bg-border my-1.5" />
-          <Link href="/kirish" onClick={() => setOpen(false)} className="px-3 py-2.5 rounded-xl text-sm text-ink hover:bg-bg transition-colors">
-            Kirish
-          </Link>
-          <Link
-            href="/royxat"
-            onClick={() => setOpen(false)}
-            className="bg-accent text-on-accent font-semibold px-3 py-2.5 rounded-xl text-sm text-center mt-1"
+        <>
+          {/* Tashqariga bosilganda yopish uchun shaffof qatlam */}
+          <div className="md:hidden fixed inset-0 -z-10" aria-hidden="true" onClick={() => setOpen(false)} />
+          <nav
+            id="landing-mobile-menu"
+            aria-label="Mobil menyu"
+            className="md:hidden absolute left-4 right-4 sm:left-6 sm:right-6 top-full bg-surface border border-border rounded-2xl shadow-card p-4 flex flex-col gap-1"
           >
-            Bepul boshlash
-          </Link>
-        </div>
+            {NAV_LINKS.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className="px-3 py-3 rounded-xl text-sm text-ink hover:bg-bg transition-colors"
+              >
+                {l.label}
+              </Link>
+            ))}
+            <div className="h-px bg-border my-1.5" />
+            <Link href="/kirish" onClick={() => setOpen(false)} className="px-3 py-3 rounded-xl text-sm text-ink hover:bg-bg transition-colors">
+              Kirish
+            </Link>
+            <Link
+              href="/royxat"
+              onClick={() => setOpen(false)}
+              className="bg-accent text-on-accent font-semibold px-3 py-3 rounded-xl text-sm text-center mt-1"
+            >
+              Bepul boshlash
+            </Link>
+          </nav>
+        </>
       )}
     </header>
   );

@@ -78,20 +78,29 @@ export default function WordTable() {
         const idx = nextChunkIdx++;
         if (idx >= chunks.length) return;
         const chunk = chunks[idx];
-        // eslint-disable-next-line no-await-in-loop
-        const results = await enrichWordsBatch(categoryId, chunk.map((w) => w._id));
-        for (const r of results) {
-          if (r.error) failed.push({ wordId: r.wordId, word: wordById.get(r.wordId)?.word || r.word, error: r.error, requestId: r.requestId });
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const results = await enrichWordsBatch(categoryId, chunk.map((w) => w._id));
+          for (const r of results) {
+            if (r.error) failed.push({ wordId: r.wordId, word: wordById.get(r.wordId)?.word || r.word, error: r.error, requestId: r.requestId });
+          }
+        } catch {
+          // Tarmoq xatosi — partiyadagi barcha so'zlar "qayta urinish" ro'yxatiga tushadi.
+          for (const w of chunk) failed.push({ wordId: w._id, word: w.word, error: "Tarmoq xatosi — internetni tekshirib, qayta urinib ko'ring", requestId: null });
         }
         done += chunk.length;
+        // To'xtatilgandan keyin tugagan so'rov progress tugmasini qaytarib chiqarmasin.
+        if (bulkCancelRef.current) return;
         setBulkEnrich({ done: Math.min(done, targets.length), total: targets.length });
       }
     };
 
-    await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, chunks.length) }, runWorker));
-
-    setBulkEnrich(null);
-    setBulkEnrichFailed(failed);
+    try {
+      await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, chunks.length) }, runWorker));
+    } finally {
+      setBulkEnrich(null);
+      setBulkEnrichFailed(failed);
+    }
   };
 
   const startBulkEnrich = () => runBulkEnrich(unenrichedWords);
@@ -111,7 +120,11 @@ export default function WordTable() {
     setAddError('');
     setAdding(true);
     try {
-      await handleAddWord(newWord, newSyns);
+      const ok = await handleAddWord(newWord, newSyns);
+      if (!ok) {
+        setAddError("So'z saqlanmadi, qayta urinib ko'ring");
+        return;
+      }
       setNewWord('');
       setNewSyns('');
     } finally {
@@ -159,6 +172,11 @@ export default function WordTable() {
     setUndoState(null);
   };
 
+  const newWordId = 'wordtable-new-word';
+  const newSynsId = 'wordtable-new-syns';
+  const inputClass =
+    'w-full px-3 py-2 border rounded-lg bg-bg text-ink placeholder:text-muted text-base md:text-sm outline-none focus:border-accent';
+
   const allVisibleSelected =
     filtered.length > 0 && filtered.every((w) => w._id && selectedIds.includes(w._id));
 
@@ -170,8 +188,11 @@ export default function WordTable() {
       >
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-end">
           <div className="flex-1 w-full">
-            <label className="block text-[10px] font-semibold text-muted uppercase mb-1">Yangi so'z</label>
+            <label htmlFor={newWordId} className="block text-[11px] font-semibold text-muted uppercase mb-1">
+              Yangi so'z
+            </label>
             <input
+              id={newWordId}
               type="text"
               placeholder="Masalan: Start"
               value={newWord}
@@ -179,16 +200,16 @@ export default function WordTable() {
                 setNewWord(e.target.value);
                 if (addError) setAddError('');
               }}
-              className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:border-accent ${
-                addError && !newWord.trim() ? 'border-red-300' : 'border-border'
-              }`}
+              aria-invalid={(addError && !newWord.trim()) || undefined}
+              className={`${inputClass} ${addError && !newWord.trim() ? 'border-danger' : 'border-border'}`}
             />
           </div>
           <div className="flex-[2] w-full">
-            <label className="block text-[10px] font-semibold text-muted uppercase mb-1">
+            <label htmlFor={newSynsId} className="block text-[11px] font-semibold text-muted uppercase mb-1">
               Sinonimlar / tarjima, vergul bilan
             </label>
             <input
+              id={newSynsId}
               type="text"
               placeholder="Masalan: begin, commence, launch"
               value={newSyns}
@@ -196,20 +217,23 @@ export default function WordTable() {
                 setNewSyns(e.target.value);
                 if (addError) setAddError('');
               }}
-              className={`w-full px-3 py-2 border rounded-lg text-sm outline-none focus:border-accent ${
-                addError && !newSyns.trim() ? 'border-red-300' : 'border-border'
-              }`}
+              aria-invalid={(addError && !newSyns.trim()) || undefined}
+              className={`${inputClass} ${addError && !newSyns.trim() ? 'border-danger' : 'border-border'}`}
             />
           </div>
           <button
             type="submit"
             disabled={adding}
-            className="px-5 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-white font-semibold rounded-lg text-sm transition-colors whitespace-nowrap"
+            className="px-5 py-2.5 min-h-11 md:min-h-0 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent font-semibold rounded-lg text-sm transition-colors whitespace-nowrap"
           >
             {adding ? 'Qo\'shilmoqda...' : "Qo'shish"}
           </button>
         </div>
-        {addError && <p className="text-xs text-red-600 font-medium">{addError}</p>}
+        {addError && (
+          <p role="alert" className="text-xs text-danger font-medium">
+            {addError}
+          </p>
+        )}
       </form>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -219,9 +243,10 @@ export default function WordTable() {
           <input
             type="search"
             placeholder="So'z yoki tarjimalar bo'yicha qidirish..."
+            aria-label="So'zlarni qidirish"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-surface text-sm outline-none focus:border-accent"
+            className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-surface text-ink placeholder:text-muted text-base md:text-sm outline-none focus:border-accent"
           />
         </form>
 
@@ -259,13 +284,13 @@ export default function WordTable() {
           <div className="flex gap-2">
             <button
               onClick={requestDeleteSelected}
-              className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold transition-colors"
+              className="px-3 py-1.5 min-h-11 md:min-h-0 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-xs font-semibold transition-colors"
             >
               O'chirish
             </button>
             <button
               onClick={() => setSelectedIds([])}
-              className="px-3 py-1.5 bg-surface hover:bg-bg border border-border text-muted rounded-lg text-xs font-semibold transition-colors"
+              className="px-3 py-1.5 min-h-11 md:min-h-0 bg-surface hover:bg-bg border border-border text-muted rounded-lg text-xs font-semibold transition-colors"
             >
               Bekor qilish
             </button>
@@ -275,40 +300,48 @@ export default function WordTable() {
 
       <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[520px]">
+          {/* Mobilda "#" va "Sinonimlar" ustunlari yashiriladi, sinonimlar so'z ostida chiqadi —
+              amallar tugmalari gorizontal scroll'siz ko'rinadi. */}
+          <table className="w-full text-left border-collapse sm:min-w-[520px]">
             <thead>
-              <tr className="bg-bg text-[10px] font-semibold text-muted uppercase tracking-wider border-b border-border">
-                <th className="py-3 px-4 sm:px-6 w-10">
-                  <input
-                    type="checkbox"
-                    checked={allVisibleSelected}
-                    onChange={toggleSelectAll}
-                    className="w-3.5 h-3.5 accent-indigo-600 cursor-pointer"
-                  />
+              <tr className="bg-bg text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-border">
+                <th className="py-3 px-3 sm:px-6 w-10">
+                  <label className="inline-flex p-3.5 -m-3.5 md:p-2 md:-m-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                      aria-label="Barcha ko'rinayotgan so'zlarni tanlash"
+                      className="w-4 h-4 accent-accent cursor-pointer"
+                    />
+                  </label>
                 </th>
-                <th className="py-3 px-4 sm:px-6 w-12">#</th>
-                <th className="py-3 px-4 sm:px-6">So'z</th>
-                <th className="py-3 px-4 sm:px-6">Sinonimlar / tarjimalar</th>
-                <th className="py-3 px-4 sm:px-6 w-24">Amallar</th>
+                <th className="hidden sm:table-cell py-3 px-4 sm:px-6 w-12">#</th>
+                <th className="py-3 px-3 sm:px-6">So'z</th>
+                <th className="hidden sm:table-cell py-3 px-4 sm:px-6">Sinonimlar / tarjimalar</th>
+                <th className="py-3 px-3 sm:px-6 w-24">Amallar</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((w) => (
                 <tr key={w._id || w.idx} className="border-b border-border hover:bg-bg/50 text-sm">
-                  <td className="py-3.5 px-4 sm:px-6">
-                    <input
-                      type="checkbox"
-                      checked={w._id ? selectedIds.includes(w._id) : false}
-                      onChange={() => w._id && toggleSelect(w._id)}
-                      disabled={!w._id}
-                      className="w-3.5 h-3.5 accent-indigo-600 cursor-pointer"
-                    />
+                  <td className="py-3.5 px-3 sm:px-6 align-middle">
+                    <label className="inline-flex p-3.5 -m-3.5 md:p-2 md:-m-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={w._id ? selectedIds.includes(w._id) : false}
+                        onChange={() => w._id && toggleSelect(w._id)}
+                        disabled={!w._id}
+                        aria-label={`"${w.word}" so'zini tanlash`}
+                        className="w-4 h-4 accent-accent cursor-pointer"
+                      />
+                    </label>
                   </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-muted font-mono text-xs">{w.idx + 1}</td>
-                  <td className="py-3.5 px-4 sm:px-6">
+                  <td className="hidden sm:table-cell py-3.5 px-4 sm:px-6 text-muted font-mono text-xs">{w.idx + 1}</td>
+                  <td className="py-3.5 px-3 sm:px-6 min-w-0 [overflow-wrap:anywhere]">
                     <Link
                       href={`/app/lugat/soz/${w._id}`}
-                      className="font-semibold text-ink hover:text-accent hover:underline inline-flex items-center gap-1.5"
+                      className="font-semibold text-ink hover:text-accent hover:underline inline-flex flex-wrap items-center gap-1.5 py-2.5 -my-2.5 md:py-0 md:my-0"
                     >
                       {w.word}
                       {w.enrichment?.aiEnrichedAt && (
@@ -316,33 +349,49 @@ export default function WordTable() {
                       )}
                       {w.enrichment?.cefr && <Badge tone="accent">{w.enrichment.cefr}</Badge>}
                     </Link>
+                    <p className="sm:hidden text-xs text-muted mt-0.5">{w.syns.join(', ')}</p>
                   </td>
-                  <td className="py-3.5 px-4 sm:px-6 text-muted">{w.syns.join(', ')}</td>
-                  <td className="py-3.5 px-4 sm:px-6 flex gap-2">
-                    <button
-                      onClick={() => speakText(w.word)}
-                      className="p-1.5 bg-accent-soft hover:bg-accent/20 text-accent rounded transition-colors"
-                      title="Eshitish"
-                      aria-label={`"${w.word}" so'zini eshitish`}
-                    >
-                      <Volume2 size={14} />
-                    </button>
-                    <button
-                      onClick={() => requestDeleteSingle(w)}
-                      disabled={!w._id}
-                      className="p-1.5 bg-accent-soft hover:bg-red-100 text-accent rounded transition-colors disabled:opacity-40"
-                      title="O'chirish"
-                      aria-label={`"${w.word}" so'zini o'chirish`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                  <td className="hidden sm:table-cell py-3.5 px-4 sm:px-6 text-muted">{w.syns.join(', ')}</td>
+                  <td className="py-3.5 px-3 sm:px-6 align-middle">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => speakText(w.word)}
+                        className="inline-flex items-center justify-center w-11 h-11 md:w-8 md:h-8 bg-accent-soft hover:bg-accent/20 text-accent rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        title="Eshitish"
+                        aria-label={`"${w.word}" so'zini eshitish`}
+                      >
+                        <Volume2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => requestDeleteSingle(w)}
+                        disabled={!w._id}
+                        className="inline-flex items-center justify-center w-11 h-11 md:w-8 md:h-8 bg-accent-soft hover:bg-danger-soft text-accent hover:text-danger rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        title="O'chirish"
+                        aria-label={`"${w.word}" so'zini o'chirish`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-sm text-muted">
-                    Bu kategoriyada hali so'z yo'q.
+                  <td colSpan={5} className="py-10 px-4 text-center text-sm text-muted [overflow-wrap:anywhere]">
+                    {words.length > 0 && searchTerm ? (
+                      <>
+                        &quot;{searchTerm}&quot; bo&apos;yicha hech narsa topilmadi.{' '}
+                        <button
+                          type="button"
+                          onClick={() => setSearchTerm('')}
+                          className="inline-flex items-center min-h-11 md:min-h-0 font-semibold text-accent hover:text-accent-hover hover:underline"
+                        >
+                          Qidiruvni tozalash
+                        </button>
+                      </>
+                    ) : (
+                      "Bu kategoriyada hali so'z yo'q."
+                    )}
                   </td>
                 </tr>
               )}

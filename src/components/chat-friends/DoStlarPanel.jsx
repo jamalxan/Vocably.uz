@@ -21,11 +21,19 @@ function DoStlarShell({ onActiveChange }) {
   // params.username.
   const routeUsername = params?.username || null;
   const prevActiveUsernameRef = useRef(null);
+  const prevRouteUsernameRef = useRef(routeUsername);
 
   // URL -> holat: to'g'ridan-to'g'ri havola, sahifa yangilash yoki brauzer
   // orqaga/oldinga tugmasi bilan kelgan username bo'yicha suhbatni ochamiz.
   useEffect(() => {
-    if (!routeUsername) return;
+    const prevRoute = prevRouteUsernameRef.current;
+    prevRouteUsernameRef.current = routeUsername;
+    if (!routeUsername) {
+      // Panel endi layout'da (qayta mount bo'lmaydi) — /app/dostlar/x dan /app/dostlar'ga
+      // (orqaga tugmasi yoki nav havolasi) o'tilsa, ochiq suhbatni yopamiz.
+      if (prevRoute && activeConversation) closeConversation();
+      return undefined;
+    }
     if (activeConversation?.otherUser?.username === routeUsername) return;
     let cancelled = false;
     openConversationByUsername(routeUsername).then((res) => {

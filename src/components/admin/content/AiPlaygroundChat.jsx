@@ -27,6 +27,15 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, sending]);
 
+  useEffect(() => {
+    if (!modelMenuOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setModelMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [modelMenuOpen]);
+
   const resetChat = useCallback(() => {
     setMessages([]);
     setLastMeta(null);
@@ -54,7 +63,8 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
         body: JSON.stringify({
           taskKey,
           systemPrompt: systemPrompt.trim() || undefined,
-          messages: history.map((m) => ({ role: m.role, content: m.content })),
+          // Xato pufakchalari modelga "user" xabari sifatida yuborilmasin.
+          messages: history.filter((m) => m.role !== 'error').map((m) => ({ role: m.role, content: m.content })),
         }),
       });
       const data = await res.json();
@@ -88,17 +98,19 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
         <button
           type="button"
           onClick={() => setModelMenuOpen((v) => !v)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold text-ink bg-bg hover:bg-accent-soft transition-colors"
+          aria-expanded={modelMenuOpen}
+          className="min-w-0 flex items-center gap-1.5 px-2.5 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-mono font-semibold text-ink bg-bg hover:bg-accent-soft transition-colors"
         >
-          <Bot size={13} className="text-accent" />
-          {taskKey}
+          <Bot size={13} className="text-accent flex-shrink-0" />
+          <span className="truncate">{taskKey}</span>
           <ChevronDown size={12} className={`text-muted transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} />
         </button>
         <button
           type="button"
           onClick={resetChat}
           title="Suhbatni tozalash"
-          className="ml-auto p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors flex-shrink-0"
+          aria-label="Suhbatni tozalash"
+          className="ml-auto p-1.5 min-w-11 min-h-11 md:min-w-0 md:min-h-0 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors flex-shrink-0"
         >
           <RotateCcw size={14} />
         </button>
@@ -107,7 +119,7 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
           <>
             <div className="fixed inset-0 z-20" onClick={() => setModelMenuOpen(false)} />
             <div className="absolute left-3 sm:left-4 top-full mt-1 z-30 w-72 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-card py-1.5 max-h-80 overflow-y-auto">
-              <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">Sinov uchun model (taskKey)</p>
+              <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">Sinov uchun model (taskKey)</p>
               {taskKeys.map((k) => (
                 <button
                   key={k}
@@ -124,7 +136,7 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
                 </button>
               ))}
               <div className="border-t border-border mt-1 pt-2 px-3">
-                <label className="flex items-center gap-1.5 text-[10px] font-semibold text-muted mb-1">
+                <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted mb-1">
                   <Settings2 size={11} /> Tizim prompti (ixtiyoriy)
                 </label>
                 <textarea
@@ -132,7 +144,8 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   placeholder="Bo'sh qoldirilsa, standart sinov prompti ishlatiladi."
                   rows={3}
-                  className="w-full px-2 py-1.5 bg-bg rounded-lg text-[11px] text-ink outline-none resize-none placeholder:text-muted/60 mb-1.5"
+                  aria-label="Tizim prompti (ixtiyoriy)"
+                  className="w-full px-2 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent resize-none placeholder:text-muted/60 mb-1.5"
                 />
               </div>
             </div>
@@ -163,7 +176,7 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
       </div>
 
       {lastMeta && (
-        <div className="px-3 sm:px-4 py-1.5 border-t border-border text-[10px] text-muted flex items-center gap-3 font-mono flex-shrink-0 overflow-x-auto">
+        <div className="px-3 sm:px-4 py-1.5 border-t border-border text-[11px] text-muted flex items-center gap-3 font-mono flex-shrink-0 overflow-x-auto">
           <span className="whitespace-nowrap">{lastMeta.model}</span>
           <span className="whitespace-nowrap">{lastMeta.tokensIn}→{lastMeta.tokensOut} token</span>
           <span className="whitespace-nowrap">${lastMeta.costUsd?.toFixed(5)}</span>
@@ -180,6 +193,7 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
           }}
           onKeyDown={onKeyDown}
           placeholder="Xabar yozing..."
+          aria-label="Xabar"
           rows={1}
           className="flex-1 px-3.5 py-2.5 bg-bg border border-border rounded-xl text-[16px] sm:text-sm text-ink outline-none focus:border-accent transition-colors resize-none max-h-40"
         />
@@ -187,7 +201,8 @@ export default function AiPlaygroundChat({ token, taskKeys }) {
           type="button"
           onClick={send}
           disabled={sending || !input.trim() || !taskKey}
-          className="p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent rounded-xl transition-colors flex-shrink-0"
+          aria-label="Yuborish"
+          className="min-w-11 min-h-11 flex items-center justify-center p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent rounded-xl transition-colors flex-shrink-0"
         >
           <Send size={16} />
         </button>

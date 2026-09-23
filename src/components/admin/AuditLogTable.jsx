@@ -26,6 +26,7 @@ export default function AuditLogTable({ token }) {
           setLogs(d.logs || []);
           setNextCursor(d.nextCursor || null);
         })
+        .catch(() => {})
         .finally(() => setLoading(false));
     },
     [token]
@@ -58,7 +59,8 @@ export default function AuditLogTable({ token }) {
             key={a.value}
             type="button"
             onClick={() => setActor(a.value)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            aria-pressed={actor === a.value}
+            className={`px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-semibold transition-colors ${
               actor === a.value ? 'bg-accent text-on-accent' : 'text-muted hover:text-ink'
             }`}
           >
@@ -72,14 +74,14 @@ export default function AuditLogTable({ token }) {
           <Loader2 className="animate-spin text-accent" size={22} />
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-surface shadow-card divide-y divide-border overflow-hidden max-h-[75vh] overflow-y-auto">
+        <div className="rounded-2xl border border-border bg-surface shadow-card divide-y divide-border overflow-hidden max-h-[75dvh] overflow-y-auto">
           {logs.map((l) => (
-            <div key={l._id} className="px-5 py-3.5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-medium text-ink flex items-center gap-2">
+            <div key={l._id} className="px-4 sm:px-5 py-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <span className="min-w-0 text-sm font-medium text-ink flex flex-wrap items-center gap-2 [overflow-wrap:anywhere]">
                   {l.isAgent ? <Bot size={13} className="text-accent flex-shrink-0" /> : <ScrollText size={13} className="text-accent flex-shrink-0" />}
                   {l.isAgent ? (
-                    <span className="px-1.5 py-0.5 rounded bg-accent-soft text-accent text-[10px] font-bold">AI agent</span>
+                    <span className="px-1.5 py-0.5 rounded bg-accent-soft text-accent text-[11px] font-bold">AI agent</span>
                   ) : (
                     <>@{l.actor?.username || '?'}</>
                   )}
@@ -88,12 +90,12 @@ export default function AuditLogTable({ token }) {
                 <span className="text-[11px] text-muted/70 flex-shrink-0">{new Date(l.createdAt).toLocaleString('uz-UZ')}</span>
               </div>
               {l.targetType && (
-                <p className="text-xs text-muted mt-1 ml-5">
+                <p className="text-xs text-muted mt-1 ml-5 break-all">
                   {l.targetType}: <span className="font-mono">{l.targetId}</span>
                 </p>
               )}
               {l.diff && (
-                <pre className="text-[10px] text-muted/80 mt-1.5 ml-5 overflow-x-auto">{JSON.stringify(l.diff)}</pre>
+                <pre className="text-[11px] text-muted/80 mt-1.5 ml-5 overflow-x-auto">{JSON.stringify(l.diff)}</pre>
               )}
             </div>
           ))}

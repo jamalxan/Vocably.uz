@@ -3,15 +3,16 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { createPracticeAttempt } from '@/features/exam/state/attemptsApi';
 import TestPicker from '@/features/exam/shell/TestPicker';
+import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 
 // VOCABLY_TZ_FINAL...2026-09-20.md "Practice mode" (Listening) — TestPicker
 // ASOSIY /tinglash bilan bir xil (tinglash/page.jsx), faqat `createAttempt`
 // o'rniga `createPracticeAttempt` chaqiriladi (mode:'practice').
 export default function TinglashMashqPage() {
   const router = useRouter();
-  const { isAuthed } = useApp();
+  const { token } = useApp();
 
-  if (!isAuthed) {
+  if (!token) {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 
@@ -24,5 +25,10 @@ export default function TinglashMashqPage() {
     }
   };
 
-  return <TestPicker sectionKey="listening" title="Listening — mashq: testni tanlang" onPicked={handlePicked} />;
+  return (
+    <div>
+      <ExamBackLink />
+      <TestPicker sectionKey="listening" title="Listening — mashq: testni tanlang" onPicked={handlePicked} />
+    </div>
+  );
 }

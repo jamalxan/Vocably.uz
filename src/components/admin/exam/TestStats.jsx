@@ -16,6 +16,9 @@ export default function TestStats({ token, testId }) {
       .then((d) => {
         if (active) setData(d);
       })
+      .catch(() => {
+        if (active) setData(null);
+      })
       .finally(() => {
         if (active) setLoading(false);
       });

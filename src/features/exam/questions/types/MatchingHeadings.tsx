@@ -19,13 +19,14 @@ export default function MatchingHeadings({ group, answers, onAnswerChange }: Mat
   return (
     <div>
       <div
-        className="sticky top-0 z-10 mb-4 px-3.5 py-3 rounded"
+        // Balandlik cheklangan — telefonda savollar panelini to'liq yopib qo'ymasin.
+        className="sticky top-0 z-10 mb-4 px-3.5 py-3 rounded max-h-[35dvh] md:max-h-[45dvh] overflow-y-auto overscroll-contain"
         style={{ background: 'var(--exam-instruction)', border: '1px solid var(--exam-chrome-border)' }}
       >
         <p className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: 'var(--exam-muted)' }}>
           List of Headings
         </p>
-        <ul className="space-y-1 text-sm" style={{ color: 'var(--exam-text)' }}>
+        <ul className="space-y-1 text-[0.875em]" style={{ color: 'var(--exam-text)' }}>
           {bank.map((b) => (
             <li key={b.key}>
               <strong className="mr-1.5">{b.key}</strong>
@@ -39,12 +40,12 @@ export default function MatchingHeadings({ group, answers, onAnswerChange }: Mat
         {group.questions.map((q) => {
           const value = answers[`q${q.number}`];
           return (
-            <div key={q.number} data-question-number={q.number} className="flex items-center gap-3 text-sm" style={{ color: 'var(--exam-text)' }}>
+            <div key={q.number} data-question-number={q.number} className="flex items-center gap-3 text-[0.875em]" style={{ color: 'var(--exam-text)' }}>
               <sup className="text-[11px] font-bold flex-shrink-0" style={{ color: 'var(--exam-muted)' }}>
                 {q.number}
               </sup>
               <FlagToggle questionNumber={q.number} />
-              <span className="flex-1 min-w-0">
+              <span className="flex-1 min-w-0 break-words">
                 {/* eslint-disable-next-line react/no-danger */}
                 <span dangerouslySetInnerHTML={{ __html: q.promptHtml || '' }} />
               </span>
@@ -52,7 +53,7 @@ export default function MatchingHeadings({ group, answers, onAnswerChange }: Mat
                 value={typeof value === 'string' ? value : ''}
                 onChange={(e) => onAnswerChange(q.number, e.target.value || null)}
                 aria-label={`Question ${q.number} answer`}
-                className="flex-shrink-0 rounded px-2 py-1 text-sm bg-transparent"
+                className="flex-shrink-0 min-h-11 md:min-h-0 rounded px-2 py-1 text-[length:max(16px,1em)] md:text-[length:1em] bg-transparent"
                 style={{ border: '1px solid var(--exam-input-border)', color: 'var(--exam-text)' }}
               >
                 <option value="">—</option>

@@ -8,6 +8,8 @@ import ExamShell from '../shell/ExamShell';
 import PartGap from '../listening/PartGap';
 import CueCard from './CueCard';
 import RecordingPane from './RecordingPane';
+import ConfirmFinishModal from '../mock/ConfirmFinishModal';
+import { ExamLoadError, ExamLoading, SubmitErrorBanner } from '../shell/ExamStatus';
 import type { AttemptResult, SanitizedTest, SpeakingRecording } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §19 Faza 4 item 23 — Speaking bo'limi. §9.1'dagi eski TZ
@@ -38,6 +40,10 @@ export interface SpeakingSectionProps {
 export default function SpeakingSection({ attemptId, candidateName, candidateId, onSubmitted }: SpeakingSectionProps) {
   const [test, setTest] = useState<SanitizedTest | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [confirmUnrecorded, setConfirmUnrecorded] = useState<number[] | null>(null);
+  // Yozuv davomida savollar orasida o'tish/yakunlash bloklanadi (yarim javob yo'qolmasin).
+  const [recording, setRecording] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [recordedKeys, setRecordedKeys] = useState<Set<string>>(new Set());
   const [stepIndex, setStepIndex] = useState(0);
@@ -66,7 +72,7 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
             onSubmitted(submitResult);
           }
         } catch {
-          setLoadError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
+          setSubmitError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
           setSubmitting(false);
         }
       })();
@@ -147,19 +153,22 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
   }, [stepIndex, steps, recordedKeys]);
 
   if (loadError) {
-    return (
-      <div className="p-8 text-center text-sm text-danger" data-exam="">
-        {loadError}
-      </div>
-    );
+    return <ExamLoadError message={loadError} />;
   }
   if (!test?.sections.speaking || steps.length === 0) {
-    return (
-      <div className="p-8 text-center text-sm" style={{ color: 'var(--exam-muted)' }} data-exam="">
-        Yuklanmoqda...
-      </div>
-    );
+    return <ExamLoading />;
   }
+
+  const retrySubmit = () => {
+    setSubmitError(null);
+    doSubmit();
+  };
+
+  // Yakunlashdan oldin tasdiqlash — yozib olinmagan savollar (tartib raqami) bilan.
+  const requestFinish = () => {
+    const unrecorded = steps.map((s, i) => (recordedKeys.has(stepKey(s)) ? 0 : i + 1)).filter((n) => n > 0);
+    setConfirmUnrecorded(unrecorded);
+  };
 
   const cueCard = test.sections.speaking.part2CueCard;
   const step = steps[stepIndex];
@@ -173,15 +182,19 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
       candidateId={candidateId}
       customFooter={
         <div
-          className="flex-shrink-0 h-16 flex items-center justify-between gap-3 px-4 border-t"
-          style={{ background: 'var(--exam-chrome)', borderColor: 'var(--exam-chrome-border)' }}
+          className="flex-shrink-0 min-h-16 flex items-center justify-between gap-3 px-4 border-t"
+          style={{
+            background: 'var(--exam-chrome)',
+            borderColor: 'var(--exam-chrome-border)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}
         >
           <button
             type="button"
             onClick={() => setStepIndex((i) => Math.max(0, i - 1))}
-            disabled={stepIndex === 0}
+            disabled={stepIndex === 0 || recording}
             aria-label="Previous question"
-            className="w-9 h-9 flex items-center justify-center rounded-lg disabled:opacity-30 focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
+            className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-lg disabled:opacity-30 focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
             style={{ border: '1px solid var(--exam-chrome-border)', color: 'var(--exam-text)' }}
           >
             <ChevronLeft size={16} />
@@ -192,9 +205,9 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
           <button
             type="button"
             onClick={() => setStepIndex((i) => Math.min(steps.length - 1, i + 1))}
-            disabled={stepIndex === steps.length - 1}
+            disabled={stepIndex === steps.length - 1 || recording}
             aria-label="Next question"
-            className="w-9 h-9 flex items-center justify-center rounded-lg disabled:opacity-30 focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
+            className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-lg disabled:opacity-30 focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
             style={{ border: '1px solid var(--exam-chrome-border)', color: 'var(--exam-text)' }}
           >
             <ChevronRight size={16} />
@@ -202,8 +215,9 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
           <div className="flex-1" />
           <button
             type="button"
-            onClick={doSubmit}
-            className="h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
+            onClick={requestFinish}
+            disabled={submitting || recording}
+            className="h-11 md:h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold disabled:opacity-60 focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
             style={{ background: 'var(--exam-accent)' }}
           >
             {submitting ? 'Submitting…' : 'Finish'}
@@ -228,6 +242,7 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
                     maxDurationSec={cueCard.speakSec}
                     alreadyRecorded
                     onUploaded={() => setRecordedKeys((prev) => new Set(prev).add(stepKey(step)))}
+                    onRecordingChange={setRecording}
                   />
                 ) : part2Phase === 'prep' ? (
                   <PartGap
@@ -242,6 +257,7 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
                     maxDurationSec={cueCard.speakSec}
                     alreadyRecorded={false}
                     onUploaded={() => setRecordedKeys((prev) => new Set(prev).add(stepKey(step)))}
+                    onRecordingChange={setRecording}
                   />
                 )}
               </div>
@@ -257,11 +273,23 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
                 questionIndex={step.questionIndex}
                 alreadyRecorded={recordedKeys.has(stepKey(step))}
                 onUploaded={() => setRecordedKeys((prev) => new Set(prev).add(stepKey(step)))}
+                onRecordingChange={setRecording}
               />
             </>
           )}
         </div>
       </div>
+      {submitError && <SubmitErrorBanner message={submitError} onRetry={retrySubmit} retrying={submitting} />}
+      {confirmUnrecorded && (
+        <ConfirmFinishModal
+          unansweredNumbers={confirmUnrecorded}
+          onCancel={() => setConfirmUnrecorded(null)}
+          onConfirm={() => {
+            setConfirmUnrecorded(null);
+            doSubmit();
+          }}
+        />
+      )}
     </ExamShell>
   );
 }

@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
+import { optionStateClass, OPTION_BUTTON_CLASS } from '@/lib/lugatQuiz';
 
 const START_TIME_MS = 8000;
 const MIN_TIME_MS = 3000;
@@ -37,14 +38,21 @@ function writeBestScore(categoryId, points) {
   }
 }
 
-function buildQuestion(words) {
-  const idx = Math.floor(Math.random() * words.length);
+function buildQuestion(words, prevTarget = null) {
+  let idx = Math.floor(Math.random() * words.length);
+  // Bir xil so'z ketma-ket ikki marta chiqmasin.
+  if (words.length > 1 && words[idx] === prevTarget) idx = (idx + 1 + Math.floor(Math.random() * (words.length - 1))) % words.length;
   const target = words[idx];
   const correctAnswer = target.syns[0];
-  const distractorPool = words
-    .filter((_, i) => i !== idx)
-    .map((w) => w.syns[0])
-    .filter(Boolean);
+  // Tarjimasi bir xil so'zlar bo'lsa, to'g'ri javob variantlarda ikki marta chiqmasin.
+  const distractorPool = [
+    ...new Set(
+      words
+        .filter((_, i) => i !== idx)
+        .map((w) => w.syns[0])
+        .filter(Boolean)
+    ),
+  ].filter((d) => d !== correctAnswer);
   const distractors = [...distractorPool].sort(() => Math.random() - 0.5).slice(0, 3);
   const options = [correctAnswer, ...distractors].sort(() => Math.random() - 0.5);
   return { target, correctAnswer, options };
@@ -70,6 +78,7 @@ export default function SpeedQuiz() {
   const [bestPoints, setBestPoints] = useState(0);
   const [timeLeft, setTimeLeft] = useState(START_TIME_MS);
   const [finished, setFinished] = useState(false);
+  const [setupError, setSetupError] = useState('');
 
   const advanceTimeoutRef = useRef(null);
   const timePerQuestion = Math.max(MIN_TIME_MS, START_TIME_MS - score.total * TIME_STEP_MS);
@@ -83,12 +92,17 @@ export default function SpeedQuiz() {
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda oraliq tanlashga qaytamiz.
   useEffect(() => {
     setActive(false);
+    setSetupError('');
   }, [activeCatIndex, writeResetNonce]);
 
   useEffect(() => () => clearTimeout(advanceTimeoutRef.current), []);
 
   const beginSession = (selectedWords) => {
-    if (selectedWords.length < 4) return alert("O'yin uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+    if (selectedWords.length < 4) {
+      setSetupError("O'yin uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+      return;
+    }
+    setSetupError('');
     setWords(selectedWords);
     setLives(START_LIVES);
     setStreak(0);
@@ -106,7 +120,10 @@ export default function SpeedQuiz() {
   const startGame = (e) => {
     e?.preventDefault();
     const all = activeCategory.words || [];
-    if (all.length === 0) return alert("Avval so'z qo'shing");
+    if (all.length === 0) {
+      setSetupError("Avval so'z qo'shing");
+      return;
+    }
     const sliceFrom = Math.max(1, range.from) - 1;
     const sliceTo = Math.min(all.length, range.to);
     beginSession(all.slice(sliceFrom, sliceTo));
@@ -129,7 +146,7 @@ export default function SpeedQuiz() {
         return;
       }
       setSelected(null);
-      setQuestion(buildQuestion(words));
+      setQuestion((prev) => buildQuestion(words, prev?.target));
       setQuestionStartedAt(Date.now());
     },
     [words, endGame]
@@ -150,12 +167,11 @@ export default function SpeedQuiz() {
 
       let livesNow = lives;
       if (isCorrect) {
-        setStreak((s) => {
-          const next = s + 1;
-          setBestStreak((b) => Math.max(b, next));
-          setPoints((p) => p + 10 * comboMultiplier(next));
-          return next;
-        });
+        // Updater ichida boshqa setState chaqirilmaydi (StrictMode'da ikki marta ball qo'shilardi).
+        const nextStreak = streak + 1;
+        setStreak(nextStreak);
+        setBestStreak((b) => Math.max(b, nextStreak));
+        setPoints((p) => p + 10 * comboMultiplier(nextStreak));
       } else {
         setStreak(0);
         livesNow = lives - 1;
@@ -164,7 +180,7 @@ export default function SpeedQuiz() {
 
       advanceTimeoutRef.current = setTimeout(() => goNextQuestion(livesNow), ADVANCE_DELAY_MS);
     },
-    [question, activeCategory._id, reviewWord, lives, goNextQuestion, questionStartedAt]
+    [question, activeCategory._id, reviewWord, lives, streak, goNextQuestion, questionStartedAt]
   );
 
   const choose = (option) => {
@@ -232,7 +248,13 @@ export default function SpeedQuiz() {
 
   if (!active) {
     return (
-      <RangeSetupForm
+      <>
+        {setupError && (
+          <p role="alert" className="w-full max-w-md mx-auto mb-3 text-xs text-danger bg-danger-soft rounded-lg px-3 py-2 text-center">
+            {setupError}
+          </p>
+        )}
+        <RangeSetupForm
         title="Tezkor o'yin oraliqlari"
         range={range}
         onRangeChange={setRange}
@@ -242,6 +264,7 @@ export default function SpeedQuiz() {
         onQuickStart={() => beginSession(dueWords)}
         quickStartCount={dueWords.length}
       />
+      </>
     );
   }
 
@@ -272,31 +295,38 @@ export default function SpeedQuiz() {
       </SessionCompleteCard>
 
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
-        <div className="flex justify-between items-center text-xs text-muted mb-3">
-          <div className="flex items-center gap-1" aria-label={`${lives} ta jon qoldi`}>
+        <div className="flex flex-wrap justify-between items-center gap-x-2 gap-y-1 text-xs text-muted mb-3">
+          <div className="flex items-center gap-1" role="img" aria-label={`${lives} ta jon qoldi`}>
             {Array.from({ length: START_LIVES }).map((_, i) => (
               <Heart
                 key={i}
                 size={14}
-                className={i < lives ? 'text-accent fill-red-500' : 'text-on-primary fill-slate-200'}
+                aria-hidden="true"
+                className={i < lives ? 'text-danger fill-danger' : 'text-border-strong fill-bg-sunken'}
               />
             ))}
           </div>
-          <span className="flex items-center gap-2.5">
-            <span className="flex items-center gap-1 font-semibold text-accent">
+          <span className="flex items-center gap-2.5 tabular-nums">
+            <span className="flex items-center gap-1 font-semibold text-accent whitespace-nowrap">
               <Zap size={13} /> {streak}x{comboMultiplier(streak) > 1 && ` (${comboMultiplier(streak)}× ball)`}
             </span>
             <span className="font-bold text-ink">{points}</span>
           </span>
-          <button onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
-            Oraliqni o'zgartirish
+          <button
+            type="button"
+            onClick={() => setActive(false)}
+            aria-label="Oraliqni o'zgartirish"
+            className="min-h-11 md:min-h-0 whitespace-nowrap text-accent hover:text-accent-hover font-semibold"
+          >
+            <span className="sm:hidden">Oraliq</span>
+            <span className="hidden sm:inline">Oraliqni o'zgartirish</span>
           </button>
         </div>
 
         <div className="h-1.5 bg-bg rounded-full overflow-hidden mb-5">
           <div
             className={`h-full rounded-full transition-[width] duration-100 ease-linear ${
-              timePct > 40 ? 'bg-accent' : timePct > 15 ? 'bg-accent-soft0' : 'bg-accent-soft0'
+              timePct > 40 ? 'bg-accent' : timePct > 15 ? 'bg-warning' : 'bg-danger'
             }`}
             style={{ width: `${timePct}%` }}
           />
@@ -310,17 +340,13 @@ export default function SpeedQuiz() {
           {question.options.map((opt, i) => {
             const isCorrectOpt = opt === question.correctAnswer;
             const isSelected = selected === opt;
-            let style = 'border-border hover:border-accent/30';
-            if (selected) {
-              if (isCorrectOpt) style = 'border-green-300 bg-green-50 text-green-700';
-              else if (isSelected) style = 'border-red-300 bg-accent-soft text-red-700';
-            }
+            const style = optionStateClass(!!selected, isCorrectOpt, isSelected);
             return (
               <button
                 key={i}
                 onClick={() => choose(opt)}
                 disabled={!!selected}
-                className={`w-full text-left px-4 py-2.5 border rounded-lg text-sm transition-colors ${style}`}
+                className={`${OPTION_BUTTON_CLASS} ${style}`}
               >
                 {opt}
               </button>

@@ -11,28 +11,38 @@ const TYPE_ICON = { image: ImageIcon, video: Video, voice: Mic, file: Paperclip,
 // bo'lsa ham fayl ko'rinadi (haqiqiy S3 obyekt hech qachon o'chirilmaydi).
 function AdminImageBubble({ media, token }) {
   const { url } = useAuthedAdminMediaUrl(media.key, token);
-  if (!url) return <div className="w-40 h-32 bg-primary-soft/40 rounded-lg animate-pulse" />;
+  if (!url) return <div className="w-40 max-w-full h-32 bg-primary-soft/40 rounded-lg animate-pulse" />;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt="Rasm" className="max-w-[220px] max-h-[240px] rounded-lg object-cover" />;
+  return <img src={url} alt="Rasm" className="max-w-[min(220px,100%)] max-h-[240px] rounded-lg object-cover" />;
 }
 
 function AdminVideoBubble({ media, token }) {
   const { url } = useAuthedAdminMediaUrl(media.key, token);
-  if (!url) return <div className="w-56 h-40 bg-primary-soft/40 rounded-lg animate-pulse" />;
-  return <video src={url} controls className="max-w-[240px] max-h-[260px] rounded-lg" />;
+  if (!url) return <div className="w-56 max-w-full h-40 bg-primary-soft/40 rounded-lg animate-pulse" />;
+  return <video src={url} controls className="max-w-[min(240px,100%)] max-h-[260px] rounded-lg" />;
 }
 
 function AdminVoiceBubble({ media, token }) {
   const { url } = useAuthedAdminMediaUrl(media.key, token);
-  if (!url) return <div className="w-48 h-10 bg-primary-soft/40 rounded-full animate-pulse" />;
-  return <audio src={url} controls className="w-56 h-10" />;
+  if (!url) return <div className="w-48 max-w-full h-10 bg-primary-soft/40 rounded-full animate-pulse" />;
+  return <audio src={url} controls className="w-56 max-w-full h-10" />;
 }
 
 function AdminFileBubble({ media, token }) {
   const { url } = useAuthedAdminMediaUrl(media.key, token);
+  // URL tayyor bo'lguncha havola faol emas ('#' yangi bo'sh tab ochmasin).
+  if (!url) {
+    return (
+      <span aria-disabled="true" className="flex items-center gap-2 px-3 py-2 bg-bg/70 rounded-lg text-xs opacity-60 pointer-events-none">
+        <Paperclip size={13} />
+        <span>Fayl yuklanmoqda…</span>
+        <Loader2 size={12} className="ml-auto flex-shrink-0 animate-spin" />
+      </span>
+    );
+  }
   return (
     <a
-      href={url || '#'}
+      href={url}
       download
       target="_blank"
       rel="noreferrer"
@@ -80,6 +90,7 @@ export default function ConversationViewer({ token }) {
         setConversations(d.conversations || []);
         setConvCursor(d.nextCursor || null);
       })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -179,11 +190,11 @@ export default function ConversationViewer({ token }) {
       <div>
         <button
           onClick={() => setActive(null)}
-          className="flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-4 transition-colors"
+          className="flex items-center gap-1.5 min-h-11 md:min-h-0 text-sm text-muted hover:text-ink mb-4 transition-colors"
         >
           <ArrowLeft size={15} /> Suhbatlar ro'yxati
         </button>
-        <p className="font-luxury text-lg text-ink mb-1.5">
+        <p className="font-luxury text-lg text-ink mb-1.5 break-words">
           @{active.participants[0]?.username || active.participants[0]?.name || '?'}
           <span className="text-muted mx-2">↔</span>
           @{active.participants[1]?.username || active.participants[1]?.name || '?'}
@@ -206,7 +217,7 @@ export default function ConversationViewer({ token }) {
             )}
           </div>
         )}
-        <p className="flex items-center gap-1.5 text-xs text-amber-600 mb-4 min-h-[1em]">
+        <p className="flex items-center gap-1.5 text-xs text-warning mb-4 min-h-[1em] break-words">
           {active.hiddenFor?.length > 0 && (
             <>
               <UserX size={12} />
@@ -214,10 +225,11 @@ export default function ConversationViewer({ token }) {
             </>
           )}
         </p>
-        <div className="flex items-center gap-1.5 mb-4">
+        <div className="flex flex-wrap items-center gap-1.5 mb-4">
           <button
             onClick={() => setViewMode('chat')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+            aria-pressed={viewMode === 'chat'}
+            className={`px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
               viewMode === 'chat' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
@@ -225,7 +237,8 @@ export default function ConversationViewer({ token }) {
           </button>
           <button
             onClick={() => openGalleryTab('image')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+            aria-pressed={viewMode === 'image'}
+            className={`px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
               viewMode === 'image' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
@@ -233,7 +246,8 @@ export default function ConversationViewer({ token }) {
           </button>
           <button
             onClick={() => openGalleryTab('video')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+            aria-pressed={viewMode === 'video'}
+            className={`px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
               viewMode === 'video' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
@@ -241,7 +255,8 @@ export default function ConversationViewer({ token }) {
           </button>
           <button
             onClick={() => openGalleryTab('voice')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+            aria-pressed={viewMode === 'voice'}
+            className={`px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
               viewMode === 'voice' ? 'bg-accent text-on-accent' : 'bg-surface border border-border text-muted hover:text-ink'
             }`}
           >
@@ -251,26 +266,28 @@ export default function ConversationViewer({ token }) {
 
         {['image', 'video', 'voice'].includes(viewMode) ? (
           !galleryData[viewMode] ? (
-            <Loader2 className="animate-spin text-accent" size={22} />
+            <div className="flex justify-center py-16">
+              <Loader2 className="animate-spin text-accent" size={22} />
+            </div>
           ) : (
-            <div className="rounded-2xl border border-border bg-bg/60 shadow-card p-5 max-h-[65vh] overflow-y-auto">
+            <div className="rounded-2xl border border-border bg-bg/60 shadow-card p-3 sm:p-5 max-h-[65dvh] overflow-y-auto">
               <div className="flex flex-wrap gap-3">
                 {galleryData[viewMode].messages.map((m) => {
                   const sender = active.participants.find((p) => String(p._id) === String(m.senderId));
                   const Icon = TYPE_ICON[m.type] || MessageSquareText;
                   return (
-                    <div key={m._id} className="w-fit rounded-xl border border-border bg-surface p-2.5 flex flex-col gap-1.5">
-                      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted flex-wrap">
+                    <div key={m._id} className="w-fit max-w-full rounded-xl border border-border bg-surface p-2.5 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted flex-wrap">
                         <Icon size={11} />
                         @{sender?.username || sender?.name || '?'}
                         {m.deletedForEveryone && (
-                          <span className="flex items-center gap-0.5 normal-case text-red-600">
+                          <span className="flex items-center gap-0.5 normal-case text-danger">
                             <Trash2 size={10} /> o'chirilgan
                           </span>
                         )}
                       </div>
                       <AdminMediaContent message={m} token={token} />
-                      <p className="text-[10px] text-muted">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
+                      <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
                     </div>
                   );
                 })}
@@ -292,9 +309,11 @@ export default function ConversationViewer({ token }) {
             </div>
           )
         ) : messages === null ? (
-          <Loader2 className="animate-spin text-accent" size={22} />
+          <div className="flex justify-center py-16">
+            <Loader2 className="animate-spin text-accent" size={22} />
+          </div>
         ) : (
-          <div className="rounded-2xl border border-border bg-bg/60 shadow-card p-5 max-h-[65vh] overflow-y-auto space-y-3">
+          <div className="rounded-2xl border border-border bg-bg/60 shadow-card p-3 sm:p-5 max-h-[65dvh] overflow-y-auto space-y-3">
             {msgCursor && (
               <div className="flex justify-center pb-1">
                 <button
@@ -312,41 +331,44 @@ export default function ConversationViewer({ token }) {
               return (
                 <div key={m._id} className={`flex ${mine ? 'justify-start' : 'justify-end'}`}>
                   <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm relative ${
+                    className={`min-w-0 max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2.5 text-sm relative ${
                       mine
                         ? 'bg-surface border border-border text-ink rounded-bl-md'
                         : 'bg-accent text-on-accent rounded-br-md'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-wide opacity-70 flex-wrap">
-                      <Icon size={11} />
-                      {m.type}
-                      {m.flagged && <Flag size={11} className="ml-1" />}
+                    <div className="flex items-center gap-1.5 mb-1 text-[11px] uppercase tracking-wide flex-wrap">
+                      <span className="flex items-center gap-1.5 opacity-70">
+                        <Icon size={11} />
+                        {m.type}
+                        {m.flagged && <Flag size={11} className="ml-1" />}
+                      </span>
+                      {/* Soft badge — accent pufakcha ichida ham, sirtda ham o'qiladi. */}
                       {m.edited && (
-                        <span className="flex items-center gap-0.5 normal-case text-amber-600">
+                        <span className="flex items-center gap-0.5 normal-case px-1.5 rounded bg-warning-soft text-warning">
                           <Pencil size={10} /> tahrirlangan
                         </span>
                       )}
                       {m.deletedForEveryone && (
-                        <span className="flex items-center gap-0.5 normal-case text-red-600">
+                        <span className="flex items-center gap-0.5 normal-case px-1.5 rounded bg-danger-soft text-danger">
                           <Trash2 size={10} /> hammadan o'chirilgan
                         </span>
                       )}
                       {!m.deletedForEveryone && m.deletedFor?.length > 0 && (
-                        <span className="normal-case text-muted">
+                        <span className="normal-case opacity-70">
                           ({m.deletedFor.length} tarafdan o'chirilgan)
                         </span>
                       )}
                     </div>
                     {m.edited && m.originalText && (
-                      <p className="text-[11px] text-muted/70 line-through whitespace-pre-wrap break-words mb-1">
+                      <p className="text-[11px] opacity-60 line-through whitespace-pre-wrap break-words mb-1">
                         {m.originalText}
                       </p>
                     )}
                     {m.type === 'text' && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
                     {m.type === 'sticker' && <p className="opacity-80">stiker: {m.stickerId}</p>}
                     <AdminMediaContent message={m} token={token} />
-                    <p className="text-[10px] opacity-60 mt-1.5">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
+                    <p className="text-[11px] opacity-70 mt-1.5">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
                   </div>
                 </div>
               );
@@ -365,15 +387,15 @@ export default function ConversationViewer({ token }) {
           <button
             key={c.id}
             onClick={() => openConversation(c)}
-            className="w-full text-left px-5 py-4 hover:bg-bg/60 flex items-center justify-between gap-3 transition-colors"
+            className="w-full text-left px-4 sm:px-5 py-4 hover:bg-bg/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 transition-colors"
           >
-            <span className="text-sm font-medium text-ink flex items-center gap-2 flex-wrap">
+            <span className="min-w-0 text-sm font-medium text-ink flex items-center gap-2 flex-wrap [overflow-wrap:anywhere]">
               @{c.participants[0]?.username || c.participants[0]?.name || '?'}
               <span className="text-muted mx-0.5">↔</span>
               @{c.participants[1]?.username || c.participants[1]?.name || '?'}
               {c.hiddenFor?.length > 0 && (
                 <span title={`Ro'yxatdan o'chirgan: ${c.hiddenFor.map((u) => `@${u}`).join(', ')}`}>
-                  <UserX size={13} className="text-amber-600" />
+                  <UserX size={13} className="text-warning" />
                 </span>
               )}
               {(c.participants[0]?.savedAsByOther || c.participants[1]?.savedAsByOther) && (
@@ -382,7 +404,7 @@ export default function ConversationViewer({ token }) {
                 </span>
               )}
             </span>
-            <span className="text-xs text-muted truncate max-w-[220px]">{c.lastMessagePreview}</span>
+            <span title={c.lastMessagePreview} className="text-xs text-muted truncate max-w-full sm:max-w-[220px]">{c.lastMessagePreview}</span>
           </button>
         ))}
         {conversations.length === 0 && <p className="text-center text-sm text-muted py-10">Suhbat yo'q</p>}

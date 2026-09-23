@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Check, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { dueWordsInCategory } from '@/lib/srs';
 import { levenshtein } from '@/lib/levenshtein';
@@ -37,13 +38,22 @@ function pickDistractors(target, pool, count, getLabel) {
   return chosen.slice(0, count).map(getLabel);
 }
 
+// So'zdagi maxsus belgilar (masalan "e.g.", "(sth)") RegExp'ni buzmasligi uchun ekranlanadi.
+function wordRegex(word) {
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${escaped}\\b`, 'i');
+}
+
 // 4 yo'nalish — faqat enrichment ma'lumoti bor so'zlarda ta'rif/cloze tanlanadi, aks holda
 // EN→UZ / UZ→EN orasida tasodifiy tanlanadi (6.1.2).
 function buildQuestion(words) {
   const target = words[Math.floor(Math.random() * words.length)];
   const availableDirections = ['en_uz', 'uz_en'];
   if (target.enrichment?.definitionEn) availableDirections.push('definition');
-  if (target.enrichment?.examples?.[0]?.en) availableDirections.push('cloze');
+  const clozeSentence = target.enrichment?.examples?.[0]?.en;
+  const clozeRe = clozeSentence ? wordRegex(target.word) : null;
+  // Gapda so'zning aynan o'zi bo'lmasa (masalan faqat "runs"), bo'sh joy chiqmaydi — cloze berilmaydi.
+  if (clozeRe && clozeRe.test(clozeSentence)) availableDirections.push('cloze');
   const direction = availableDirections[Math.floor(Math.random() * availableDirections.length)];
 
   if (direction === 'uz_en') {
@@ -63,14 +73,12 @@ function buildQuestion(words) {
     };
   }
   if (direction === 'cloze') {
-    const sentence = target.enrichment.examples[0].en;
-    const re = new RegExp(`\\b${target.word}\\b`, 'i');
     const correctAnswer = target.word;
     const distractors = pickDistractors(target, words, 3, (w) => w.word);
     return {
       target,
       direction,
-      prompt: sentence.replace(re, '_____'),
+      prompt: clozeSentence.replace(clozeRe, '_____'),
       correctAnswer,
       options: shuffle([correctAnswer, ...distractors]),
     };
@@ -100,6 +108,7 @@ export default function TestMode() {
   const [questionIndex, setQuestionIndex] = useState(1);
   const [questionStartedAt, setQuestionStartedAt] = useState(0);
   const [complete, setComplete] = useState(false);
+  const [setupError, setSetupError] = useState('');
   const SESSION_LENGTH = 10;
 
   const dueWords = useMemo(
@@ -126,7 +135,8 @@ export default function TestMode() {
   }, [words, questionIndex]);
 
   const beginSession = (selectedWords) => {
-    if (selectedWords.length < 4) return alert("Test uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+    if (selectedWords.length < 4) return setSetupError("Test uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+    setSetupError('');
     setWords(selectedWords);
     setQuestion(buildQuestion(selectedWords));
     setSelected(null);
@@ -140,7 +150,7 @@ export default function TestMode() {
   const startTest = (e) => {
     e?.preventDefault();
     const all = activeCategory.words || [];
-    if (all.length === 0) return alert("Avval so'z qo'shing");
+    if (all.length === 0) return setSetupError("Avval so'z qo'shing");
     const sliceFrom = Math.max(1, range.from) - 1;
     const sliceTo = Math.min(all.length, range.to);
     beginSession(all.slice(sliceFrom, sliceTo));
@@ -162,8 +172,12 @@ export default function TestMode() {
       <RangeSetupForm
         title="Test oraliqlari"
         range={range}
-        onRangeChange={setRange}
+        onRangeChange={(r) => {
+          setRange(r);
+          setSetupError('');
+        }}
         onSubmit={startTest}
+        error={setupError}
         maxWords={activeCategory.words?.length || 0}
         onQuickStart={() => beginSession(dueWords)}
         quickStartCount={dueWords.length}
@@ -183,11 +197,14 @@ export default function TestMode() {
           <span>
             To'g'ri: {score.correct}/{score.total}
           </span>
-          <button onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
+          <button
+            onClick={() => setActive(false)}
+            className="inline-flex items-center min-h-11 -my-3.5 md:min-h-0 md:my-0 text-accent hover:text-accent-hover font-semibold"
+          >
             Oraliqni o'zgartirish
           </button>
         </div>
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-accent text-center mb-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-accent text-center mb-2">
           {DIRECTION_LABEL[question.direction]}
         </p>
         <p
@@ -203,17 +220,31 @@ export default function TestMode() {
             const isSelected = selected === opt;
             let style = 'border-border hover:border-accent/30';
             if (selected) {
-              if (isCorrectOpt) style = 'border-green-300 bg-green-50 text-green-700';
-              else if (isSelected) style = 'border-red-300 bg-accent-soft text-red-700';
+              if (isCorrectOpt) style = 'border-success/40 bg-success-soft text-success';
+              else if (isSelected) style = 'border-danger/40 bg-danger-soft text-danger';
             }
+            const showCorrect = selected && isCorrectOpt;
+            const showWrong = selected && isSelected && !isCorrectOpt;
             return (
               <button
                 key={i}
                 onClick={() => choose(opt)}
                 disabled={!!selected}
-                className={`w-full text-left px-4 py-2.5 border rounded-lg text-sm transition-colors ${style}`}
+                className={`w-full min-h-11 flex items-center gap-2 text-left px-4 py-2.5 border rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${style}`}
               >
-                {opt}
+                <span className="flex-1 min-w-0 break-words">{opt}</span>
+                {showCorrect && (
+                  <>
+                    <Check size={16} className="flex-shrink-0" aria-hidden="true" />
+                    <span className="sr-only">To'g'ri javob</span>
+                  </>
+                )}
+                {showWrong && (
+                  <>
+                    <X size={16} className="flex-shrink-0" aria-hidden="true" />
+                    <span className="sr-only">Noto'g'ri</span>
+                  </>
+                )}
               </button>
             );
           })}
@@ -223,7 +254,7 @@ export default function TestMode() {
           <button
             autoFocus
             onClick={nextQuestion}
-            className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+            className="w-full min-h-11 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
             {questionIndex >= SESSION_LENGTH ? 'Yakunlash' : 'Keyingi savol →'}
           </button>

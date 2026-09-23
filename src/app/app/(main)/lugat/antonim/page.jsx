@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import EnrichmentEmptyState from '@/components/shared/EnrichmentEmptyState';
 import SessionCompleteCard from '@/components/shared/SessionCompleteCard';
+import { categoryKey, optionStateClass, OPTION_BUTTON_CLASS } from '@/lib/lugatQuiz';
 
 const TIME_MS = 5000;
 const TICK_MS = 100;
@@ -17,13 +18,22 @@ function buildQuestions(words) {
   const enriched = words.filter((w) => w.enrichment?.antonyms?.[0]);
   return shuffle(enriched).map((w) => {
     const correctAnswer = w.enrichment.antonyms[0];
-    const distractorPool = enriched.filter((x) => x !== w).flatMap((x) => x.enrichment.antonyms.concat(x.word));
+    // Takrorlar, to'g'ri javob va savol so'zining o'zi variantlarga tushmasin.
+    const distractorPool = [
+      ...new Set(enriched.filter((x) => x !== w).flatMap((x) => x.enrichment.antonyms.concat(x.word))),
+    ].filter((d) => d !== correctAnswer && d !== w.word);
     const distractors = shuffle(distractorPool).slice(0, 3);
     return { word: w, correctAnswer, options: shuffle([correctAnswer, ...distractors]) };
   });
 }
 
 export default function AntonimPage() {
+  const { activeCategory, activeCatIndex } = useApp();
+  // Kategoriya almashganda savollar yangi kategoriyadan qayta quriladi.
+  return <AntonimQuiz key={categoryKey(activeCatIndex, activeCategory)} />;
+}
+
+function AntonimQuiz() {
   const { activeCategory, reviewWord } = useApp();
   const [questions] = useState(() => buildQuestions(activeCategory.words || []));
   const [idx, setIdx] = useState(0);
@@ -31,6 +41,7 @@ export default function AntonimPage() {
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TIME_MS);
   const [finished, setFinished] = useState(false);
+  const [resultClosed, setResultClosed] = useState(false);
   const advanceRef = useRef(null);
 
   const current = questions[idx];
@@ -44,6 +55,7 @@ export default function AntonimPage() {
       if (current.word._id && activeCategory._id) {
         reviewWord(activeCategory._id, current.word._id, isCorrect, { mode: 'quiz' });
       }
+      clearTimeout(advanceRef.current);
       advanceRef.current = setTimeout(() => {
         setIdx((i) => {
           if (i + 1 >= questions.length) {
@@ -75,27 +87,35 @@ export default function AntonimPage() {
       }
     }, TICK_MS);
     return () => clearInterval(interval);
+    // `selected` ham kuzatiladi — javob berilgach taymer to'xtaydi (eski choose(null) chaqirilmasin).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx, current, finished]);
+  }, [idx, current, finished, selected]);
 
   if (questions.length === 0) return <EnrichmentEmptyState field="kamida bitta antonim" />;
 
   const timePct = Math.max(0, Math.min(100, (timeLeft / TIME_MS) * 100));
 
+  const restart = () => {
+    clearTimeout(advanceRef.current);
+    setIdx(0);
+    setSelected(null);
+    setScore(0);
+    setFinished(false);
+    setResultClosed(false);
+  };
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 flex flex-col items-center">
+    <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
         title="Jang tugadi!"
         score={score}
         total={questions.length}
-        onClose={() => setFinished(false)}
-        onRestart={() => {
-          setIdx(0);
-          setSelected(null);
-          setScore(0);
+        onClose={() => {
           setFinished(false);
+          setResultClosed(true);
         }}
+        onRestart={restart}
       />
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-muted mb-3">
@@ -108,29 +128,35 @@ export default function AntonimPage() {
             style={{ width: `${timePct}%` }}
           />
         </div>
-        <p className="text-[10px] text-muted text-center uppercase tracking-wide mb-1">Qarama-qarshisini toping</p>
+        <p className="text-[11px] sm:text-xs text-muted text-center uppercase tracking-wide mb-1">Qarama-qarshisini toping</p>
         <p className="text-xl font-bold text-ink font-word mb-6 text-center break-words">{current.word.word}</p>
         <div className="space-y-2">
           {current.options.map((opt, i) => {
             const isCorrectOpt = opt === current.correctAnswer;
             const isSelected = selected === opt;
-            let style = 'border-border hover:border-accent/30';
-            if (selected) {
-              if (isCorrectOpt) style = 'border-green-300 bg-green-50 text-green-700';
-              else if (isSelected) style = 'border-red-300 bg-accent-soft text-red-700';
-            }
+            const style = optionStateClass(!!selected, isCorrectOpt, isSelected);
             return (
               <button
                 key={i}
                 onClick={() => choose(opt)}
                 disabled={!!selected}
-                className={`w-full text-left px-4 py-2.5 border rounded-lg text-sm transition-colors ${style}`}
+                className={`${OPTION_BUTTON_CLASS} ${style}`}
               >
                 {opt}
               </button>
             );
           })}
         </div>
+        {resultClosed && (
+          <button
+            type="button"
+            autoFocus
+            onClick={restart}
+            className="w-full mt-4 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
+          >
+            Qayta boshlash
+          </button>
+        )}
       </div>
     </div>
   );

@@ -29,6 +29,7 @@ export default function AutopilotPanel({ token }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pausing, setPausing] = useState(false);
+  const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,6 +56,7 @@ export default function AutopilotPanel({ token }) {
 
   const save = async () => {
     setSaving(true);
+    setError('');
     try {
       const res = await fetch('/api/admin/automation/policy', {
         method: 'PATCH',
@@ -70,11 +72,15 @@ export default function AutopilotPanel({ token }) {
           maxAutonomousCostUsdPerDay: Number(draft.maxAutonomousCostUsdPerDay),
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setPolicy(data.policy);
         setDraft(data.policy);
+      } else {
+        setError(data.error || "Saqlab bo'lmadi");
       }
+    } catch {
+      setError("Tarmoq xatosi — qayta urinib ko'ring");
     } finally {
       setSaving(false);
     }
@@ -82,6 +88,7 @@ export default function AutopilotPanel({ token }) {
 
   const togglePause = async () => {
     setPausing(true);
+    setError('');
     try {
       const url = policy?.paused ? '/api/admin/automation/resume' : '/api/admin/automation/pause';
       const res = await fetch(url, {
@@ -89,11 +96,15 @@ export default function AutopilotPanel({ token }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ reason: 'admin_manual' }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setPolicy(data.policy);
         setDraft(data.policy);
+      } else {
+        setError(data.error || "Holatni o'zgartirib bo'lmadi");
       }
+    } catch {
+      setError("Tarmoq xatosi — qayta urinib ko'ring");
     } finally {
       setPausing(false);
     }
@@ -136,7 +147,7 @@ export default function AutopilotPanel({ token }) {
             >
               <p className="text-sm font-semibold text-ink flex items-center gap-1.5">
                 {lvl.label}
-                {lvl.recommended && <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent text-on-accent">tavsiya</span>}
+                {lvl.recommended && <span className="text-[11px] leading-none px-1.5 py-0.5 rounded bg-accent text-on-accent">tavsiya</span>}
               </p>
               <p className="text-[11px] text-muted mt-1 leading-snug">{lvl.hint}</p>
             </button>
@@ -152,12 +163,17 @@ export default function AutopilotPanel({ token }) {
           <NumberField label="Self-heal urinishlar" value={draft.autoSelfHealMaxAttempts} onChange={(v) => setDraft((d) => ({ ...d, autoSelfHealMaxAttempts: v }))} step={1} min={0} max={10} />
           <NumberField label="Kunlik xarajat $ chegarasi" value={draft.maxAutonomousCostUsdPerDay} onChange={(v) => setDraft((d) => ({ ...d, maxAutonomousCostUsdPerDay: v }))} step={1} min={0} />
         </div>
-        <div className="flex items-center justify-end mt-3">
+        <div className="flex flex-wrap items-center justify-end gap-3 mt-3">
+          {error && (
+            <p role="alert" className="mr-auto text-xs text-danger">
+              {error}
+            </p>
+          )}
           <button
             type="button"
             onClick={save}
             disabled={saving}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent rounded-lg text-xs font-semibold transition-colors"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 min-h-11 md:min-h-0 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent rounded-lg text-xs font-semibold transition-colors"
           >
             {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Saqlash
           </button>
@@ -189,7 +205,9 @@ export default function AutopilotPanel({ token }) {
         onClick={togglePause}
         disabled={pausing}
         className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 ${
-          policy?.paused ? 'bg-success text-on-accent hover:opacity-90' : 'bg-danger text-on-accent hover:opacity-90'
+          policy?.paused
+            ? 'bg-success-soft border border-success/30 text-success hover:bg-success/20'
+            : 'bg-danger-soft border border-danger/30 text-danger hover:bg-danger/20'
         }`}
       >
         {pausing ? <Loader2 size={16} className="animate-spin" /> : policy?.paused ? <Play size={16} /> : <Pause size={16} />}
@@ -210,7 +228,7 @@ function NumberField({ label, value, onChange, step, min, max }) {
         min={min}
         max={max}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full mt-1 px-2.5 py-1.5 bg-bg rounded-lg text-xs text-ink outline-none focus:ring-2 ring-accent/40"
+        className="w-full mt-1 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent focus:ring-2 ring-accent/40"
       />
     </label>
   );

@@ -9,6 +9,7 @@ import ExamShell from '../shell/ExamShell';
 import SplitPane from '../split/SplitPane';
 import TaskPane from './TaskPane';
 import EssayEditor from './EssayEditor';
+import { ExamLoadError, ExamLoading, SubmitErrorBanner } from '../shell/ExamStatus';
 import type { AttemptResult, SanitizedTest } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §19 Faza 2 item 12 — "WritingSection to'liq". §8.4:
@@ -35,6 +36,7 @@ export interface WritingSectionProps {
 export default function WritingSection({ attemptId, candidateName, candidateId, onSubmitted, confirmFinish }: WritingSectionProps) {
   const [test, setTest] = useState<SanitizedTest | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const init = useExamStore((s) => s.init);
@@ -67,7 +69,7 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
             onSubmitted(submitResult);
           }
         } catch {
-          setLoadError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
+          setSubmitError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
           setSubmitting(false);
         }
       })();
@@ -132,19 +134,16 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
   }, [test, attemptId, reconcileFromHeartbeat, doSubmit]);
 
   if (loadError) {
-    return (
-      <div className="p-8 text-center text-sm text-danger" data-exam="">
-        {loadError}
-      </div>
-    );
+    return <ExamLoadError message={loadError} />;
   }
   if (!test?.sections.writing) {
-    return (
-      <div className="p-8 text-center text-sm" style={{ color: 'var(--exam-muted)' }} data-exam="">
-        Yuklanmoqda...
-      </div>
-    );
+    return <ExamLoading />;
   }
+
+  const retrySubmit = () => {
+    setSubmitError(null);
+    doSubmit();
+  };
 
   const [task1, task2] = test.sections.writing.tasks;
   const activeTask = activeWritingTask === 1 ? task1 : task2;
@@ -156,8 +155,12 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
       candidateId={candidateId}
       customFooter={
         <div
-          className="flex-shrink-0 h-16 flex items-center justify-between gap-3 px-4 border-t"
-          style={{ background: 'var(--exam-chrome)', borderColor: 'var(--exam-chrome-border)' }}
+          className="flex-shrink-0 min-h-16 flex items-center justify-between gap-3 px-4 border-t"
+          style={{
+            background: 'var(--exam-chrome)',
+            borderColor: 'var(--exam-chrome-border)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}
         >
           <div className="flex items-center gap-2">
             {[1, 2].map((n) => {
@@ -169,7 +172,8 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
                   key={n}
                   type="button"
                   onClick={() => setActiveWritingTask(n as 1 | 2)}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-colors"
+                  aria-pressed={isActive}
+                  className="min-h-11 md:min-h-9 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
                   style={{
                     background: isActive ? 'var(--exam-accent)' : 'transparent',
                     color: isActive ? '#fff' : 'var(--exam-text)',
@@ -185,7 +189,8 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
           <button
             type="button"
             onClick={handleManualFinish}
-            className="h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold"
+            disabled={submitting}
+            className="h-11 md:h-9 px-3 flex items-center gap-1.5 rounded-lg text-white text-[13px] font-semibold disabled:opacity-60 focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
             style={{ background: 'var(--exam-accent)' }}
           >
             {submitting ? 'Submitting…' : 'Finish'}
@@ -210,6 +215,7 @@ export default function WritingSection({ attemptId, candidateName, candidateId, 
           />
         }
       />
+      {submitError && <SubmitErrorBanner message={submitError} onRetry={retrySubmit} retrying={submitting} />}
     </ExamShell>
   );
 }

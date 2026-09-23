@@ -21,7 +21,7 @@ export default function MultipleChoice({ question, value, onChange }: QuestionTy
   };
 
   return (
-    <fieldset data-question-number={question.number} className="text-sm" style={{ color: 'var(--exam-text)' }}>
+    <fieldset data-question-number={question.number} className="text-[0.875em]" style={{ color: 'var(--exam-text)' }}>
       <legend className="mb-2 text-left">
         <sup className="text-[11px] font-bold mr-1" style={{ color: 'var(--exam-muted)' }}>
           {question.number}
@@ -32,7 +32,7 @@ export default function MultipleChoice({ question, value, onChange }: QuestionTy
         {/* eslint-disable-next-line react/no-danger */}
         <span dangerouslySetInnerHTML={{ __html: question.promptHtml || '' }} />
         {isMulti && (
-          <span className="block text-xs mt-0.5" style={{ color: 'var(--exam-muted)' }}>
+          <span className="block text-[0.86em] mt-0.5" style={{ color: 'var(--exam-muted)' }}>
             {question.selectCount} tadan {selected?.length || 0} ta tanlangan
           </span>
         )}

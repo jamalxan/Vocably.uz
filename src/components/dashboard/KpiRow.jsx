@@ -15,7 +15,8 @@ function DeltaBadge({ pct }) {
 function KpiCard({ label, value, sub, delta }) {
   return (
     <div className="bg-surface rounded-xl border border-border p-4">
-      <p className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">{label}</p>
+      {/* Mobil 2 ustunli gridda uzun yorliq 2 qatorga o'tadi — qiymatlar bir qatorda turishi uchun min 2 qator. */}
+      <p className="text-[11px] leading-tight min-h-[2.5em] sm:min-h-0 font-semibold text-muted uppercase tracking-wider mb-1.5">{label}</p>
       <div className="flex items-baseline gap-2 flex-wrap">
         <p className="text-2xl font-bold text-ink font-mono tabular-nums leading-none">{value}</p>
         <DeltaBadge pct={delta} />

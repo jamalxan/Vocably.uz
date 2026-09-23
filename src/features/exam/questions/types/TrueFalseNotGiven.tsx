@@ -9,7 +9,7 @@ import FlagToggle from '../FlagToggle';
 // komponent, ikkita nom bilan eksport qilinadi.
 function ThreeWayChoice({ question, value, onChange, options }: QuestionTypeProps & { options: readonly string[] }) {
   return (
-    <fieldset data-question-number={question.number} className="text-sm" style={{ color: 'var(--exam-text)' }}>
+    <fieldset data-question-number={question.number} className="text-[0.875em]" style={{ color: 'var(--exam-text)' }}>
       <legend className="mb-2 text-left">
         <sup className="text-[11px] font-bold mr-1" style={{ color: 'var(--exam-muted)' }}>
           {question.number}

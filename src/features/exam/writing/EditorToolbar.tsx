@@ -13,7 +13,9 @@ export interface EditorToolbarProps {
 }
 
 export default function EditorToolbar({ onCut, onCopy, onPaste }: EditorToolbarProps) {
-  const btnClass = 'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-black/5';
+  // hover rangi --exam-chrome orqali — yuqori kontrast rejimida ham ko'rinadi.
+  const btnClass =
+    'flex items-center gap-1 min-h-11 md:min-h-7 px-3 md:px-2 py-1 rounded text-xs font-medium hover:bg-[var(--exam-chrome)] focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]';
   const style = { color: 'var(--exam-muted)', border: '1px solid var(--exam-chrome-border)' };
 
   return (

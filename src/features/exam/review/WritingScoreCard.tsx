@@ -25,7 +25,7 @@ export interface WritingScoreCardProps {
 
 export default function WritingScoreCard({ title, score, essayText }: WritingScoreCardProps) {
   return (
-    <div className="border border-border rounded-xl p-4">
+    <div className="bg-surface border border-border rounded-xl p-4">
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-bold text-ink">{title}</p>
         <p className="text-2xl font-bold text-brand-text tabular-nums">{score.band.toFixed(1)}</p>
@@ -46,7 +46,7 @@ export default function WritingScoreCard({ title, score, essayText }: WritingSco
         <div className="mt-3 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tuzatishlar</p>
           {score.corrections.map((c, i) => (
-            <div key={i} className="text-xs bg-bg rounded-lg p-2.5">
+            <div key={i} className="text-xs bg-bg-sunken rounded-lg p-2.5 break-words">
               <p>
                 <span className="line-through text-danger">{c.original}</span> → <span className="text-success font-semibold">{c.suggested}</span>
               </p>
@@ -57,12 +57,14 @@ export default function WritingScoreCard({ title, score, essayText }: WritingSco
       )}
       {essayText && (
         <details className="mt-3">
-          <summary className="text-xs font-semibold uppercase tracking-wide text-muted cursor-pointer">Insho matni</summary>
+          <summary className="min-h-10 -my-2 py-2 flex items-center text-xs font-semibold uppercase tracking-wide text-muted cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            Insho matni
+          </summary>
           <p className="text-sm text-ink mt-2 whitespace-pre-wrap">{essayText}</p>
         </details>
       )}
       {score.graderModel && (
-        <p className="mt-3 text-[10px] text-muted/70 tabular-nums">
+        <p className="mt-3 text-[11px] text-muted tabular-nums">
           AI baholadi: {score.graderModel}
           {score.graderVersion ? ` · v${score.graderVersion}` : ''}
         </p>

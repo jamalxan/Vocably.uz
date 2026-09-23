@@ -23,6 +23,8 @@ export default function AdminContentAiPage() {
       const res = await fetch('/api/admin/ai/config', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (res.ok) setTaskKeys((data.configs || []).map((c) => c.taskKey));
+    } catch {
+      setTaskKeys([]);
     } finally {
       setLoadingKeys(false);
     }
@@ -35,7 +37,7 @@ export default function AdminContentAiPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex gap-1 p-1 bg-bg border border-border rounded-xl w-fit">
+        <div className="flex flex-wrap gap-1 p-1 bg-bg border border-border rounded-xl w-fit max-w-full">
           <TabButton active={tab === 'chat'} onClick={() => setTab('chat')} icon={MessageSquare} label="Sinov chat" />
           <TabButton active={tab === 'settings'} onClick={() => setTab('settings')} icon={Settings} label="Sozlamalar" />
           <TabButton active={tab === 'autopilot'} onClick={() => setTab('autopilot')} icon={Bot} label="Avtopilot" />
@@ -64,7 +66,8 @@ function TabButton({ active, onClick, icon: Icon, label }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+      aria-pressed={active}
+      className={`flex items-center gap-1.5 px-3.5 py-1.5 min-h-11 md:min-h-0 whitespace-nowrap rounded-lg text-xs font-semibold transition-colors ${
         active ? 'bg-accent text-on-accent' : 'text-muted hover:text-ink'
       }`}
     >

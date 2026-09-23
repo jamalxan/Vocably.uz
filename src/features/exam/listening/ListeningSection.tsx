@@ -1,16 +1,17 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useExamStore } from '../state/examStore';
 import { useExamTimer } from '../state/useExamTimer';
 import { useAutosave } from '../state/useAutosave';
 import { fetchAttempt, sendHeartbeat, submitAttempt, advanceMockSection } from '../state/attemptsApi';
 import ExamShell from '../shell/ExamShell';
 import QuestionGroupBlock from '../questions/QuestionGroupBlock';
-import AudioEngine from './AudioEngine';
+import AudioEngine, { type AudioEngineHandle } from './AudioEngine';
 import AudioProgress from './AudioProgress';
 import VolumeCheck from './VolumeCheck';
 import { NEUTRAL_TEST_TONE_URL } from './testTone';
 import PartGap from './PartGap';
+import { ExamLoadError, ExamLoading, SubmitErrorBanner } from '../shell/ExamStatus';
 import type { AttemptResult, SanitizedTest } from '@/lib/exam/types';
 import type { QuestionGroupNav } from '../shell/ExamFooterNav';
 
@@ -66,6 +67,7 @@ export default function ListeningSection({
 }: ListeningSectionProps) {
   const [test, setTest] = useState<SanitizedTest | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [phase, setPhase] = useState<Phase>('loading');
   const [partIndex, setPartIndex] = useState(0);
@@ -73,7 +75,16 @@ export default function ListeningSection({
   const [volume, setVolume] = useState(1);
   const [position, setPosition] = useState(0);
   const [audioPlay, setAudioPlay] = useState(false);
+  const [audioProblem, setAudioProblem] = useState(false);
   const positionRef = useRef(0);
+  const audioRef = useRef<AudioEngineHandle>(null);
+  // Heartbeat interval'i har volume/part o'zgarishida qayta yaratilmasligi uchun.
+  const partIndexRef = useRef(0);
+  const volumeRef = useRef(1);
+  useEffect(() => {
+    partIndexRef.current = partIndex;
+    volumeRef.current = volume;
+  }, [partIndex, volume]);
 
   const init = useExamStore((s) => s.init);
   const reset = useExamStore((s) => s.reset);
@@ -96,7 +107,7 @@ export default function ListeningSection({
             onSectionAdvanced?.();
           }
         } catch {
-          setLoadError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
+          setSubmitError("Yakunlashda xatolik yuz berdi. Internetni tekshirib, qayta urinib ko'ring.");
           setSubmitting(false);
         }
       })();
@@ -123,6 +134,9 @@ export default function ListeningSection({
         // etamiz — §7.1 "playedParts'ga qo'shilgan part qayta tinglanmaydi".
         let resumeIndex = data.attempt.audio.partIndex || 0;
         while (savedPlayed.includes(resumeIndex) && resumeIndex < parts.length - 1) resumeIndex += 1;
+        // Barcha part'lar allaqachon tinglangan (masalan yakuniy tekshiruv
+        // paytida refresh) — oxirgi part qayta o'ynalmaydi, darhol tekshiruvga.
+        const allPlayed = parts.length > 0 && savedPlayed.includes(resumeIndex);
         setPartIndex(resumeIndex);
         setPlayedParts(savedPlayed);
         setVolume(data.attempt.audio.volume || 1);
@@ -139,7 +153,7 @@ export default function ListeningSection({
           endsAt: new Date(data.endsAt).getTime(),
           serverNow: new Date(data.serverNow).getTime(),
         });
-        setPhase('volume-check');
+        setPhase(allPlayed ? 'final-check' : 'volume-check');
       } catch {
         if (!cancelled) setLoadError("Urinishni yuklab bo'lmadi.");
       }
@@ -157,15 +171,15 @@ export default function ListeningSection({
       const data = await sendHeartbeat(attemptId, {
         audioPositionSec: positionRef.current,
         currentQuestion: useExamStore.getState().currentQuestion,
-        partIndex,
-        volume,
+        partIndex: partIndexRef.current,
+        volume: volumeRef.current,
       });
       if (!data) return;
       useExamStore.getState().reconcileFromHeartbeat(data.remainingSec);
       if (data.status !== 'in_progress') doSubmit();
     }, HEARTBEAT_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [test, attemptId, partIndex, volume, doSubmit]);
+  }, [test, attemptId, doSubmit]);
 
   const parts = test?.sections.listening?.parts || [];
   const currentPart = parts[partIndex];
@@ -182,10 +196,12 @@ export default function ListeningSection({
     } else if (currentPart.gapAfterSec) {
       setPhase('part-gap');
     } else {
+      // `play` false→true o'tishi kerak (aks holda yangi src ijro etilmaydi) —
+      // shuning uchun gap'siz part ham preview orqali boshlanadi.
       setPartIndex((i) => i + 1);
       positionRef.current = 0;
       setPosition(0);
-      setAudioPlay(true);
+      setPhase('part-preview');
     }
   }, [attemptId, currentPart, partIndex, parts.length]);
 
@@ -197,23 +213,26 @@ export default function ListeningSection({
   };
 
   const handlePreviewComplete = () => {
+    setAudioProblem(false);
     setAudioPlay(true);
     setPhase('playing');
   };
 
+  const handleRetryAudio = async () => {
+    const ok = await audioRef.current?.retryPlay();
+    if (ok) setAudioProblem(false);
+  };
+
+  const retrySubmit = () => {
+    setSubmitError(null);
+    doSubmit();
+  };
+
   if (loadError) {
-    return (
-      <div className="p-8 text-center text-sm text-danger" data-exam="">
-        {loadError}
-      </div>
-    );
+    return <ExamLoadError message={loadError} />;
   }
   if (phase === 'loading' || !test?.sections.listening || !currentPart) {
-    return (
-      <div className="p-8 text-center text-sm" style={{ color: 'var(--exam-muted)' }} data-exam="">
-        Yuklanmoqda...
-      </div>
-    );
+    return <ExamLoading />;
   }
 
   if (phase === 'volume-check') {
@@ -232,6 +251,45 @@ export default function ListeningSection({
     questions: p.questionGroups.flatMap((g) => g.questions.map((q) => q.number)),
   }));
 
+  // Preview / "javoblarni tekshiring" / yakuniy tekshiruv — savollar YASHIRILMAYDI,
+  // taymer ular ustida ixcham banner sifatida. `key` — har bosqich yangi taymer.
+  let banner: ReactNode = null;
+  if (phase === 'part-preview') {
+    banner = (
+      <PartGap
+        key={`preview-${partIndex}`}
+        variant="banner"
+        durationSec={PREVIEW_SEC}
+        message={`You will have 30 seconds to look at ${questionRangeLabel(currentPart)}.`}
+        onComplete={handlePreviewComplete}
+      />
+    );
+  } else if (phase === 'part-gap' && currentPart.gapAfterSec) {
+    banner = (
+      <PartGap
+        key={`gap-${partIndex}`}
+        variant="banner"
+        durationSec={currentPart.gapAfterSec}
+        message="Javoblaringizni tekshiring"
+        onComplete={handleGapComplete}
+      />
+    );
+  } else if (phase === 'final-check') {
+    banner = (
+      <PartGap
+        key="final-check"
+        variant="banner"
+        durationSec={FINAL_CHECK_SEC}
+        message="Endi javoblaringizni tekshirish uchun vaqtingiz bor"
+        onComplete={doSubmit}
+      />
+    );
+  }
+
+  // Yakuniy tekshiruvda barcha part'lar savollari, aks holda faqat joriy part.
+  const visibleParts =
+    phase === 'final-check' ? parts.map((part, index) => ({ part, index })) : [{ part: currentPart, index: partIndex }];
+
   return (
     <ExamShell
       candidateName={candidateName}
@@ -244,6 +302,7 @@ export default function ListeningSection({
       submitLabel={submitting ? 'Submitting…' : 'Finish'}
     >
       <AudioEngine
+        ref={audioRef}
         src={currentPart.audioUrl}
         mode="exam"
         volume={volume}
@@ -254,40 +313,56 @@ export default function ListeningSection({
           setPosition(sec);
         }}
         onEnded={handlePartEnded}
+        onPlaybackError={() => setAudioProblem(true)}
       />
 
-      {phase === 'part-preview' ? (
-        <PartGap
-          durationSec={PREVIEW_SEC}
-          message={`You will have 30 seconds to look at ${questionRangeLabel(currentPart)}.`}
-          onComplete={handlePreviewComplete}
-        />
-      ) : phase === 'part-gap' && currentPart.gapAfterSec ? (
-        <PartGap durationSec={currentPart.gapAfterSec} message="Javoblaringizni tekshiring" onComplete={handleGapComplete} />
-      ) : phase === 'final-check' ? (
-        <PartGap durationSec={FINAL_CHECK_SEC} message="Endi javoblaringizni tekshirish uchun vaqtingiz bor" onComplete={doSubmit} />
-      ) : (
-        <div className="h-full overflow-y-auto">
-          <div className="max-w-[860px] mx-auto px-6 py-6 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--exam-muted)' }}>
-                Part {partIndex + 1}
+      <div className="h-full overflow-y-auto">
+        {banner}
+        <div className="max-w-[860px] mx-auto px-6 py-6 space-y-8">
+          {audioProblem && phase === 'playing' && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3"
+              style={{ borderColor: 'var(--exam-danger)', color: 'var(--exam-text)' }}
+            >
+              <p className="min-w-0 text-sm" style={{ color: 'var(--exam-danger)' }}>
+                Audio ishga tushmadi.
               </p>
-              <div className="flex-1 max-w-xs">
-                <AudioProgress positionSec={position} durationSec={currentPart.durationSec} />
-              </div>
+              <button
+                type="button"
+                onClick={handleRetryAudio}
+                className="min-h-11 md:min-h-9 px-4 rounded-lg text-sm font-semibold text-white focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
+                style={{ background: 'var(--exam-accent)' }}
+              >
+                Audioni boshlash
+              </button>
             </div>
-            {currentPart.contextText && (
-              <p className="text-sm" style={{ color: 'var(--exam-muted)' }}>
-                {currentPart.contextText}
-              </p>
-            )}
-            {currentPart.questionGroups.map((g) => (
-              <QuestionGroupBlock key={g.id} group={g} answers={answers} onAnswerChange={(qNum, value) => setAnswer(qNum, value)} />
-            ))}
-          </div>
+          )}
+          {visibleParts.map(({ part, index }) => (
+            <section key={index} className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--exam-muted)' }}>
+                  Part {index + 1}
+                </p>
+                {phase !== 'final-check' && (
+                  <div className="flex-1 max-w-xs">
+                    <AudioProgress positionSec={position} durationSec={part.durationSec} />
+                  </div>
+                )}
+              </div>
+              {part.contextText && (
+                <p className="text-sm" style={{ color: 'var(--exam-muted)' }}>
+                  {part.contextText}
+                </p>
+              )}
+              {part.questionGroups.map((g) => (
+                <QuestionGroupBlock key={g.id} group={g} answers={answers} onAnswerChange={(qNum, value) => setAnswer(qNum, value)} />
+              ))}
+            </section>
+          ))}
         </div>
-      )}
+      </div>
+      {submitError && <SubmitErrorBanner message={submitError} onRetry={retrySubmit} retrying={submitting} />}
     </ExamShell>
   );
 }
