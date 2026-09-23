@@ -9,13 +9,13 @@ import ListeningResult from '@/features/exam/review/ListeningResult';
 
 export default function TinglashMashqAttemptPage() {
   const params = useParams();
-  const { token } = useApp();
+  const { isAuthed } = useApp();
   const [result, setResult] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
   const attemptId = params.attemptId;
 
-  if (!token) {
+  if (!isAuthed) {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 

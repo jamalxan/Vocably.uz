@@ -16,14 +16,14 @@ import { fetchAttemptResult } from '@/features/exam/state/attemptsApi';
 // kutishsiz, submit tugagach darhol chaqiriladi.
 export default function OqishMashqAttemptPage() {
   const params = useParams();
-  const { token } = useApp();
+  const { isAuthed } = useApp();
   const [reviewDetail, setReviewDetail] = useState(null);
   const [loadingReview, setLoadingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
 
   const attemptId = params.attemptId;
 
-  if (!token) {
+  if (!isAuthed) {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 

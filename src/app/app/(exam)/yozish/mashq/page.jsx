@@ -10,9 +10,9 @@ import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 // `createAttempt` o'rniga `createPracticeAttempt` chaqiriladi (mode:'practice').
 export default function YozishMashqPage() {
   const router = useRouter();
-  const { token } = useApp();
+  const { isAuthed } = useApp();
 
-  if (!token) {
+  if (!isAuthed) {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 
