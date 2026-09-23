@@ -201,13 +201,25 @@ export async function runAssemble(ctx: StageContext): Promise<AssembleOutput> {
       sections.listening = {
         durationSec: 1800,
         checkTimeSec: 120,
-        parts: listeningTest.parts.map((p) => ({
-          order: p.order,
-          audioUrl: audioSource?.parts[p.order - 1] ? `/api/exam/audio/${audioSource.parts[p.order - 1].gridFsFileId}` : '',
-          durationSec: audioSource?.parts[p.order - 1] ? Math.round(audioSource.parts[p.order - 1].durationMs / 1000) : 0,
-          contextText: p.contextText || undefined,
-          questionGroups: p.questionGroups,
-        })),
+        parts: listeningTest.parts.map((p) => {
+          const audioPart = audioSource?.parts[p.order - 1];
+          return {
+            order: p.order,
+            // ORIGINAL (siqilmagan WAV) — har doim to'liq playable manzil,
+            // klient buni FAQAT `audioDerivativeId` yo'q bo'lsa ishlatadi
+            // (`audioSrc.ts#resolveListeningAudioSrc`).
+            audioUrl: audioPart ? `/api/exam/audio/${audioPart.gridFsFileId}` : '',
+            // PERF-03 — siqilgan Opus derivativning GridFS fileId'si (TO'LIQ
+            // URL EMAS, `audioUrl`dan farqli — klient tomonda quriladi,
+            // chunki `audioUrl` eski/static kontent uchun GridFS bo'lmasligi
+            // ham mumkin, masalan `/audio/exam/...`).
+            audioDerivativeId: audioPart?.derivativeGridFsFileId || undefined,
+            audioDerivativeMimeType: audioPart?.derivativeGridFsFileId ? 'audio/webm' : undefined,
+            durationSec: audioPart ? Math.round(audioPart.durationMs / 1000) : 0,
+            contextText: p.contextText || undefined,
+            questionGroups: p.questionGroups,
+          };
+        }),
       };
     }
     if (writingTest?.tasks.length === 2) {

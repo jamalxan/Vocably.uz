@@ -6,6 +6,7 @@ import { useExamStore } from '../state/examStore';
 import { useAutosave } from '../state/useAutosave';
 import { fetchAttempt, submitAttempt } from '../state/attemptsApi';
 import AudioEngine, { type AudioEngineHandle } from './AudioEngine';
+import { resolveListeningAudioSrc } from './audioSrc';
 import AudioProgress from './AudioProgress';
 import QuestionGroupBlock from '../questions/QuestionGroupBlock';
 import ConfirmFinishModal from '../mock/ConfirmFinishModal';
@@ -173,7 +174,7 @@ export default function ListeningPracticeSection({ attemptId, onSubmitted }: Lis
 
         <AudioEngine
           ref={audioRef}
-          src={currentPart.audioUrl}
+          src={resolveListeningAudioSrc(currentPart)}
           mode="practice"
           volume={volume}
           playbackRate={playbackRate}

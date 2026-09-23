@@ -115,7 +115,24 @@ export interface ListeningSection {
 
 export interface ListeningPart {
   order: 1 | 2 | 3 | 4;
-  audioUrl: string; // har part alohida fayl — eng barqaror yechim
+  audioUrl: string; // har part alohida fayl — eng barqaror yechim. ORIGINAL/fallback
+  // to'liq playable manzil (GridFS `/api/exam/audio/:fileId` YOKI eski
+  // testlar uchun static `/audio/exam/...`).
+  // PERF-03 (audio audit, 2026-09-24) — siqilgan (32kbps mono Opus) delivery
+  // derivativning GridFS fileId'si (TO'LIQ URL EMAS — `audioUrl`dan farqli,
+  // klient tomonida `/api/exam/audio/${audioDerivativeId}`ga aylantiriladi,
+  // src/features/exam/listening/audioSrc.ts#resolveListeningAudioSrc).
+  // Mavjud bo'lsa `audioUrl` o'rniga ISHLATILADI (10-20x kichikroq yuklama).
+  // Ixtiyoriy — bu maydon qo'shilishidan OLDIN nashr qilingan 4 ta testda
+  // (static WAV, worker pipeline'dan o'tmagan) yo'q, shu holatda klient
+  // shaffof ravishda `audioUrl`ga qaytadi.
+  audioDerivativeId?: string;
+  // Informatsion — hozircha faqat 'audio/webm' (worker/stages/processAudio.ts
+  // shu bilan GridFS'ga yozadi); streaming route (`/api/exam/audio/[fileId]`)
+  // baribir GridFS fayl metadatasidan o'zi contentType oladi, shuning uchun
+  // bu maydon route xatti-harakatiga TA'SIR QILMAYDI — faqat kelajakda admin
+  // preview/diagnostika uchun.
+  audioDerivativeMimeType?: string;
   durationSec: number;
   transcript?: string; // faqat practice rejimda, tugagandan keyin — sanitizatsiyada olib tashlanadi
   contextText?: string; // "You will hear a conversation between..."

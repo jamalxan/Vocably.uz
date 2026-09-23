@@ -85,7 +85,13 @@ export function splitByLongestSilences(totalDurationSec: number, silences: { sta
 export interface AudioPartOutput {
   order: number;
   assetId: string; // ContentAsset — inventar/audit uchun (admin panel)
-  gridFsFileId: string; // HAQIQIY playable manzil: /api/exam/audio/{gridFsFileId}
+  gridFsFileId: string; // ORIGINAL (siqilmagan WAV) — fallback playable manzil: /api/exam/audio/{gridFsFileId}
+  // PERF-03 — siqilgan (32kbps mono Opus) delivery derivativ. Har doim
+  // hosil qilinadi (bu bosqich HAR safar manbadan qayta ishlaydi, eski
+  // natija o'qilmaydi) — shuning uchun ixtiyoriy EMAS, `assemble.ts`dagi
+  // `ListeningPart.audioDerivativeId` esa ixtiyoriy (eski, bu maydon
+  // qo'shilishidan OLDIN nashr qilingan testlarda yo'q).
+  derivativeGridFsFileId: string;
   durationMs: number;
   transcriptMatchRatio: number;
 }
@@ -247,17 +253,34 @@ async function processOneSource(bookId: string, sourceAsset: any, audioscriptTex
       const { startSec, endSec } = ranges[i];
       const cutPath = path.join(dir, `part${i + 1}.wav`);
       await cutAudio(sourcePath, cutPath, startSec, endSec);
-      const opusPath = path.join(dir, `part${i + 1}.webm`);
-      await transcodeToOpus(cutPath, opusPath);
 
+      // PERF-03 (audio audit, 2026-09-24) — ORIGINAL (uncompressed, cut WAV)
+      // saqlanadi ENDI ham GridFS'ga, `audioUrl`/fallback playable manzil
+      // sifatida (ilgari bu yerda faqat quyidagi Opus derivativ saqlanardi,
+      // asl WAV chiqarib tashlanardi). Bu — audit topilmasi (Listening audio
+      // siqilmagan WAV sifatida uzatiladi, 4.2-7.6MB/part) ni HAQIQIY
+      // hal qiladigan qism: klient endi PASTDAGI kichikroq Opus derivativni
+      // afzal ko'radi (`audioSrc.ts`, `ListeningSection.tsx`), original esa
+      // FAQAT zaxira (eski kontent yoki derivativ topilmasa) sifatida qoladi.
+      const cutBuffer = await fs.readFile(cutPath);
+      const originalFilename = `${bookId}-${sourceAsset._id}-part${i + 1}-original.wav`;
+      const gridFsFileId = await uploadAudioBuffer(cutBuffer, originalFilename, 'audio/wav');
+
+      // Delivery derivativ — 32kbps mono Opus, nutq uchun to'liq yetarli va
+      // xom WAV'dan ~10-20x kichikroq (audit tavsiyasi). `worker/lib/ffmpeg.ts`
+      // dagi MAVJUD `transcodeToOpus` wrapper qayta ishlatiladi (yangi ffmpeg
+      // chaqiruv naqshi O'YLAB TOPILMAYDI) — faqat bitrate audit tavsiyasiga
+      // moslab pasaytiriladi (ilgari 48kbps — bu ham yaxshi edi, lekin 32kbps
+      // nutq uchun yetarli va yanada kichikroq).
+      const opusPath = path.join(dir, `part${i + 1}.webm`);
+      await transcodeToOpus(cutPath, opusPath, 32);
       const opusBuffer = await fs.readFile(opusPath);
-      const filename = `${bookId}-${sourceAsset._id}-part${i + 1}.webm`;
-      const gridFsFileId = await uploadAudioBuffer(opusBuffer, filename, 'audio/webm');
+      const derivativeFilename = `${bookId}-${sourceAsset._id}-part${i + 1}-derivative.webm`;
+      const derivativeGridFsFileId = await uploadAudioBuffer(opusBuffer, derivativeFilename, 'audio/webm');
 
       let transcriptMatchRatio = 0;
       if (process.env.GROQ_API_KEY) {
         try {
-          const cutBuffer = await fs.readFile(cutPath);
           const transcript = await transcribeAudio(cutBuffer, `part${i + 1}.wav`, 'audio/wav');
           transcriptMatchRatio = audioscriptChunks[i] ? wordOverlapRatio(transcript, audioscriptChunks[i]) : 0;
         } catch {
@@ -265,15 +288,17 @@ async function processOneSource(bookId: string, sourceAsset: any, audioscriptTex
         }
       }
 
-      const partProbe = await probeAudio(opusPath);
+      const partProbe = await probeAudio(cutPath);
       // `storage.bucket/key` R2-shaped maydonlar (schema talabi bo'yicha
       // required) — GridFS uchun ham to'ldiriladi (admin inventar/audit
-      // uchun), lekin HAQIQIY playable manzil `gridFsFileId`dan quriladi
-      // (`assemble.ts`), bu maydonlardan EMAS.
+      // uchun), lekin HAQIQIY playable manzil(lar) `gridFsFileId`/
+      // `derivativeGridFsFileId`dan quriladi (`assemble.ts`), bu maydonlardan
+      // EMAS. ORIGINAL (WAV) — bu asset yozuvining "asosiy" fayli sifatida
+      // saqlanadi (audit/inventar uchun bitta kanonik manzil kifoya).
       const asset = await ContentAssetModel.create({
         bookId,
         kind: 'audio',
-        storage: { bucket: 'gridfs:examAudio', key: gridFsFileId, bytes: opusBuffer.length, contentType: 'audio/webm' },
+        storage: { bucket: 'gridfs:examAudio', key: gridFsFileId, bytes: cutBuffer.length, contentType: 'audio/wav' },
         audio: {
           durationMs: partProbe.durationMs,
           sampleRate: partProbe.sampleRate,
@@ -283,7 +308,14 @@ async function processOneSource(bookId: string, sourceAsset: any, audioscriptTex
         },
       });
 
-      parts.push({ order: i + 1, assetId: String(asset._id), gridFsFileId, durationMs: partProbe.durationMs, transcriptMatchRatio });
+      parts.push({
+        order: i + 1,
+        assetId: String(asset._id),
+        gridFsFileId,
+        derivativeGridFsFileId,
+        durationMs: partProbe.durationMs,
+        transcriptMatchRatio,
+      });
     }
 
     return { sourceAssetId: String(sourceAsset._id), parts };

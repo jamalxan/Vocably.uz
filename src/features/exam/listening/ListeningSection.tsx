@@ -7,6 +7,7 @@ import { fetchAttempt, sendHeartbeat, submitAttempt, advanceMockSection } from '
 import ExamShell from '../shell/ExamShell';
 import QuestionGroupBlock from '../questions/QuestionGroupBlock';
 import AudioEngine, { type AudioEngineHandle } from './AudioEngine';
+import { resolveListeningAudioSrc } from './audioSrc';
 import AudioProgress from './AudioProgress';
 import VolumeCheck from './VolumeCheck';
 import { NEUTRAL_TEST_TONE_URL } from './testTone';
@@ -303,7 +304,7 @@ export default function ListeningSection({
     >
       <AudioEngine
         ref={audioRef}
-        src={currentPart.audioUrl}
+        src={resolveListeningAudioSrc(currentPart)}
         mode="exam"
         volume={volume}
         startPositionSec={positionRef.current}
