@@ -94,8 +94,35 @@ To'rt mezon bo'yicha 0-9 oralig'ida, 0.5 qadamda baholang: Task Achievement (Tas
 JAVOBNI FAQAT xom JSON obyekti sifatida qaytar — hech qanday izoh, markdown yoki \`\`\`json bloki bo'lmasin.`;
 }
 
+// N-03 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §3) — bundan kam so'zli javob
+// AI'ga umuman yuborilmaydi (bo'sh/deyarli bo'sh insho baholashga arzimaydi,
+// behuda token xarajati qiladi) — deterministik band 0 qaytariladi.
+const EMPTY_ESSAY_MIN_WORDS = 20;
+
 export async function gradeEssay(task: WritingTask, text: string): Promise<WritingScore> {
   const wordCount = countWordsInline(text);
+
+  if (wordCount < EMPTY_ESSAY_MIN_WORDS) {
+    return {
+      taskAchievement: 0,
+      coherenceCohesion: 0,
+      lexicalResource: 0,
+      grammaticalRange: 0,
+      band: 0,
+      feedbackUz: "Javob yozilmagan yoki juda qisqa — baholash uchun yetarli matn yo'q.",
+      criteriaFeedbackUz: {
+        taskAchievement: 'Javob yozilmagan.',
+        coherenceCohesion: 'Javob yozilmagan.',
+        lexicalResource: 'Javob yozilmagan.',
+        grammaticalRange: 'Javob yozilmagan.',
+      },
+      corrections: [],
+      graderModel: 'none',
+      graderVersion: GRADER_VERSION,
+      underMinWords: true,
+    };
+  }
+
   const { data, provider } = await generateJsonWithMeta(buildPrompt(task, text, wordCount), RESPONSE_SCHEMA);
 
   const criteria = {

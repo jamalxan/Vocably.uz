@@ -373,8 +373,14 @@ export async function submitAttempt(attemptId: string, userId: string, reason: s
 
   const sectionBands: Record<string, number | null> = { listening: null, reading: null, writing: null, speaking: null };
   let perQuestion: AttemptResult['perQuestion'] = [];
+  // N-02 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §3) — `timeSpentSec` HECH
+  // QACHON `endsAt`dan oshmasligi kerak (hatto bu chaqiruv, masalan poyga
+  // holati yoki eski klient tufayli, `syncAttemptExpiry` dan chetlab o'tib
+  // kelib qolsa ham) — aks holda "muddat cheksiz cho'zilgan" natija saqlanib
+  // qoladi (audit: bitta Writing urinishida 6.8 kunlik `timeSpentSec` topilgan).
+  const cappedNow = Math.min(Date.now(), new Date(pre.endsAt).getTime());
   const result: AttemptResult = {
-    timeSpentSec: Math.round((Date.now() - new Date(pre.startedAt).getTime()) / 1000),
+    timeSpentSec: Math.max(0, Math.round((cappedNow - new Date(pre.startedAt).getTime()) / 1000)),
     perQuestion: [],
   };
 

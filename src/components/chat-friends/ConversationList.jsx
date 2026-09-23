@@ -16,7 +16,14 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
   const pressTimer = useRef(null);
   const longPressFired = useRef(false);
 
-  const startPress = () => {
+  const startPress = (e) => {
+    // C-01 — uzoq-bosish faqat TEGIB (touch/pen) ishlatiladigan qurilmalarda
+    // ishga tushsin. Sichqon bilan oddiy bosish ham `pointerdown` beradi —
+    // agar bosish-qo'yib yuborish orasidagi vaqt (UI lag, sekin bosish)
+    // 500ms'dan oshsa, sichqon useri buni sezmasdan "o'chirish" oynasini
+    // ochib qo'yardi (o'chirish esa desktopda allaqachon 🗑 tugmasi va
+    // o'ng-klik orqali mavjud — sichqon uchun long-press shart emas).
+    if (e?.pointerType === 'mouse') return;
     longPressFired.current = false;
     clearTimeout(pressTimer.current);
     pressTimer.current = setTimeout(() => {

@@ -8,14 +8,20 @@ import { Trash2 } from 'lucide-react';
 export default function DeleteConversationModal({ open, otherUsername, onConfirm, onCancel }) {
   const [forEveryone, setForEveryone] = useState(false);
   const confirmRef = useRef(null);
+  const cancelRef = useRef(null);
   const titleId = useId();
 
-  // Ochilganda fokus tasdiqlash tugmasiga, yopilganda avvalgi elementga qaytadi.
+  // C-01 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2) — fokus ATAYLAB "Bekor
+  // qilish"ga qo'yiladi, "O'chirish"ga EMAS: bu modal ConversationList'dagi
+  // uzoq-bosish/kontekst-menyu orqali tasodifan ochilishi mumkin (masalan
+  // oddiy sichqon bosishi 500ms'dan sal uzoqroq cho'zilsa) — agar fokus
+  // destruktiv tugmada tursa, keyingi tasodifiy Enter/Space suhbatni jimgina
+  // o'chirib yuboradi. Xavfsiz standart — har doim "yo'q" tomonga fokus.
   useEffect(() => {
     if (!open) return undefined;
     const prevFocus = document.activeElement;
     setForEveryone(false);
-    confirmRef.current?.focus();
+    cancelRef.current?.focus();
     return () => {
       if (prevFocus instanceof HTMLElement) prevFocus.focus();
     };
@@ -76,6 +82,7 @@ export default function DeleteConversationModal({ open, otherUsername, onConfirm
 
         <div className="flex gap-3">
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             className="flex-1 py-2.5 bg-bg hover:bg-primary-soft text-muted rounded-xl text-sm font-semibold transition-colors"
