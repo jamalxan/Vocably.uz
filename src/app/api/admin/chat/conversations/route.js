@@ -15,8 +15,12 @@ export async function GET(req) {
 
     await connectToDatabase();
 
+    // `id` — bitta muayyan suhbatni to'g'ridan-to'g'ri (sahifalashdan tashqari)
+    // olish uchun, masalan Reportlar navbatidagi "Suhbatni ochish" havolasi
+    // (N-09) shu bilan kelayotgan suhbatni ro'yxat sahifasidan qidirmasdan ochadi.
+    const idParam = req.nextUrl.searchParams.get('id');
     const before = req.nextUrl.searchParams.get('before');
-    const query = before ? { lastMessageAt: { $lt: new Date(before) } } : {};
+    const query = idParam ? { _id: idParam } : before ? { lastMessageAt: { $lt: new Date(before) } } : {};
     const limitParam = parseInt(req.nextUrl.searchParams.get('limit'), 10);
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 50;
 

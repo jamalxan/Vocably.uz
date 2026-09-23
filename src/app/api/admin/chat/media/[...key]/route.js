@@ -18,7 +18,9 @@ export async function GET(req, { params }) {
     const match = key.match(/^conversations\/([a-f0-9]{24})\//);
     if (!match) return NextResponse.json({ error: "Noto'g'ri manzil" }, { status: 400 });
 
-    await writeAuditLog(req, admin._id, 'chat.media.view', 'Conversation', match[1], { key });
+    // N-08: 10 daqiqalik dedupe — bir xil fayl qayta-qayta so'ralganda (masalan
+    // media preview polling/qayta render) audit log shishmasin.
+    await writeAuditLog(req, admin._id, 'chat.media.view', 'Conversation', match[1], { key }, 10);
 
     // src/app/api/chat/media/[...key]/route.js'dagi izohga q. — endi URL
     // to'g'ridan-to'g'ri src sifatida ishlatiladi (blob-download emas).

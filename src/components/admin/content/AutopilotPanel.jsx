@@ -2,10 +2,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Loader2, Pause, Play, Save, Sparkles } from 'lucide-react';
 
+// N-11: "To'liq avtopilot" (nashr ham odam tasdig'isiz) rejimi TZ'ning
+// human-in-the-loop talabiga (§50.1) va LEGAL-01 copyright gate'iga zid
+// bo'lgani uchun bu ro'yxatdan OLIB TASHLANDI — admin uni tanlay olmaydi.
+// Server ham (canAutoPublish, src/lib/contentAgent/autopilotGuards.js) copyright
+// qoidasini `level`dan mustaqil, so'zsiz qo'llaydi — bu yerda UI darajasida yana
+// bir himoya qatlami. Qolgan ikkita reja ("Qo'lda"/"Yordamchi") inson tasdig'ini
+// aylanib o'tmaydi — nashr har doim admin tomonidan bosiladi.
 const LEVELS = [
   { value: 'manual', label: "Qo'lda", hint: 'Hammasi admin tasdig‘i bilan (v1.0 asl xatti-harakat).' },
-  { value: 'assisted', label: 'Yordamchi', hint: "AI o'zi bajaradi, nashrdan oldin admin'ga bildirishnoma yuboradi (tavsiya).", recommended: true },
-  { value: 'autopilot', label: "To'liq avtopilot", hint: "Hammasi (nashr ham) odam aralashuvisiz — faqat blocker yoki xarajat chegarasi to'xtatadi." },
+  { value: 'assisted', label: 'Yordamchi', hint: "AI taklif qiladi (savol/tuzatish/mock), lekin NASHRni doim admin bosadi.", recommended: true },
 ];
 
 const ACTION_LABELS = {

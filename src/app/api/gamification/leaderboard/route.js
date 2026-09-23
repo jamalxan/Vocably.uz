@@ -19,17 +19,36 @@ export async function GET(req) {
     await connectToDatabase();
 
     let rows;
+    // N-14: haftalik tabda haftalik faoliyati bo'lmagan foydalanuvchilar reytingda
+    // 0 XP bilan aralashib qolmasligi uchun (bronza medal 0 XP'ga berilib qolgan edi),
+    // ular alohida ro'yxatda ("Bu hafta faol emas") qaytariladi — rank/medalsiz.
+    // Eslatma: bu to'liq tarixiy XP backfill EMAS — faqat mavjud `User.xp` (umumiy)
+    // maydonidan foydalanib, kim "shu hafta faol emas" ekanini ko'rsatish uchun.
+    let inactiveRows = [];
     if (period === 'week') {
       const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       rows = await XpEvent.aggregate([
         { $match: { createdAt: { $gte: since } } },
         { $group: { _id: '$userId', xp: { $sum: '$amount' } } },
+        { $match: { xp: { $gt: 0 } } },
         { $sort: { xp: -1 } },
         { $limit: LIMIT },
         { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
         { $unwind: '$user' },
         { $project: { _id: 0, userId: '$_id', xp: 1, username: '$user.username', name: '$user.name' } },
       ]);
+
+      const activeIds = rows.map((r) => r.userId);
+      if (rows.length < LIMIT) {
+        const others = await User.find({ _id: { $nin: activeIds } }, { username: 1, name: 1 })
+          .limit(LIMIT - rows.length)
+          .lean();
+        inactiveRows = others.map((u) => ({
+          userId: u._id,
+          displayName: u.username ? `@${u.username}` : u.name || 'Foydalanuvchi',
+          isMe: String(u._id) === String(userId),
+        }));
+      }
     } else {
       const users = await User.find({}, { xp: 1, username: 1, name: 1 })
         .sort({ xp: -1 })
@@ -46,7 +65,7 @@ export async function GET(req) {
       isMe: String(r.userId) === String(userId),
     }));
 
-    return NextResponse.json({ period, rows: rankedRows });
+    return NextResponse.json({ period, rows: rankedRows, inactiveRows });
   } catch (err) {
     return serverError(err, 'gamification/leaderboard');
   }

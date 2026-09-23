@@ -64,6 +64,18 @@ const STATUS_LABEL = {
   failed: { label: 'Xatolik', className: 'text-danger bg-danger-soft' },
 };
 
+// UX-02 — `book.module`/`book.licence` (src/lib/models.js ContentBookSchema)
+// ilgari xom enum qiymati bilan ko'rsatilardi. `licence` ExamTestsPanel'dagi
+// RIGHTS_SOURCE_LABEL bilan bir xil g'oya (bu yerda `ai_generated_original` yo'q —
+// ContentBook litsenziyasi shu 4 qiymatga cheklangan).
+const MODULE_LABEL = { academic: 'Academic', general: 'General', both: 'Academic + General' };
+const LICENCE_LABEL = {
+  own: "O'ziniki",
+  licensed: 'Litsenziyalangan',
+  public_domain: 'Ommaviy domen',
+  third_party_copyright: 'Uchinchi tomon',
+};
+
 export default function ContentBooksPanel() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +150,7 @@ export default function ContentBooksPanel() {
                     <span className={`shrink-0 px-1.5 py-0.5 rounded text-[11px] font-semibold ${st.className}`}>{st.label}</span>
                   </div>
                   <p className="text-xs text-muted mt-0.5 truncate">
-                    {book.publisher || '—'} · {book.module} · {book.licence}
+                    {book.publisher || '—'} · {MODULE_LABEL[book.module] || book.module} · {LICENCE_LABEL[book.licence] || book.licence}
                     {book.detected?.generatedTestsCount > 0 && ` · ${book.detected.generatedTestsCount} test yaratildi`}
                   </p>
                   {book.progress?.message && <p className="text-xs text-muted mt-0.5 truncate">{book.progress.message}</p>}

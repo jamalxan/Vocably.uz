@@ -17,6 +17,7 @@ const MEDAL_COLOR = ['text-warning', 'text-muted', 'text-accent'];
 export default function ReytingPage() {
   const [period, setPeriod] = useState('week');
   const [rows, setRows] = useState(null);
+  const [inactiveRows, setInactiveRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -28,6 +29,7 @@ export default function ReytingPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Xatolik');
       setRows(data.rows || []);
+      setInactiveRows(data.inactiveRows || []);
     } catch {
       setError(true);
     } finally {
@@ -83,37 +85,63 @@ export default function ReytingPage() {
           ))}
           <span className="sr-only">Yuklanmoqda...</span>
         </div>
-      ) : !rows || rows.length === 0 ? (
+      ) : (!rows || rows.length === 0) && inactiveRows.length === 0 ? (
         <p className="text-center text-sm text-muted py-8">Hali hech kim XP to'plamagan.</p>
       ) : (
-        <div
-          aria-busy={loading}
-          className={`bg-surface border border-border rounded-2xl divide-y divide-border overflow-hidden transition-opacity ${
-            loading ? 'opacity-50 pointer-events-none' : ''
-          }`}
-        >
-          {rows.map((r) => (
+        <>
+          {rows && rows.length > 0 && (
             <div
-              key={r.userId}
-              className={`flex items-center gap-3 px-4 py-3 ${r.isMe ? 'bg-accent-soft' : ''}`}
+              aria-busy={loading}
+              className={`bg-surface border border-border rounded-2xl divide-y divide-border overflow-hidden transition-opacity ${
+                loading ? 'opacity-50 pointer-events-none' : ''
+              }`}
             >
-              <span className="w-6 flex justify-center flex-shrink-0" title={`${r.rank}-o'rin`}>
-                {r.rank <= 3 ? (
-                  <>
-                    <Medal size={16} className={MEDAL_COLOR[r.rank - 1]} aria-hidden="true" />
-                    <span className="sr-only">{r.rank}-o&apos;rin</span>
-                  </>
-                ) : (
-                  <span className="text-xs font-semibold text-muted tabular-nums">{r.rank}</span>
-                )}
-              </span>
-              <span className={`flex-1 min-w-0 text-sm truncate ${r.isMe ? 'font-semibold text-accent' : 'text-ink'}`}>
-                {r.displayName} {r.isMe && '(siz)'}
-              </span>
-              <span className="text-sm font-bold text-ink whitespace-nowrap flex-shrink-0 tabular-nums">{r.xp} XP</span>
+              {rows.map((r) => {
+                // N-14: 0 XP'li yozuvga medal berilmasin (masalan real faoliyati
+                // bo'lmagan foydalanuvchi tasodifan 1-3 o'rinda chiqib qolsa ham) —
+                // oddiy o'rin raqami ko'rsatiladi.
+                const showMedal = r.rank <= 3 && r.xp > 0;
+                return (
+                  <div
+                    key={r.userId}
+                    className={`flex items-center gap-3 px-4 py-3 ${r.isMe ? 'bg-accent-soft' : ''}`}
+                  >
+                    <span className="w-6 flex justify-center flex-shrink-0" title={`${r.rank}-o'rin`}>
+                      {showMedal ? (
+                        <>
+                          <Medal size={16} className={MEDAL_COLOR[r.rank - 1]} aria-hidden="true" />
+                          <span className="sr-only">{r.rank}-o&apos;rin</span>
+                        </>
+                      ) : (
+                        <span className="text-xs font-semibold text-muted tabular-nums">{r.rank}</span>
+                      )}
+                    </span>
+                    <span className={`flex-1 min-w-0 text-sm truncate ${r.isMe ? 'font-semibold text-accent' : 'text-ink'}`}>
+                      {r.displayName} {r.isMe && '(siz)'}
+                    </span>
+                    <span className="text-sm font-bold text-ink whitespace-nowrap flex-shrink-0 tabular-nums">{r.xp} XP</span>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          )}
+
+          {period === 'week' && inactiveRows.length > 0 && (
+            <div className="mt-5">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">Bu hafta faol emas</p>
+              <div className="bg-surface border border-border rounded-2xl divide-y divide-border overflow-hidden opacity-70">
+                {inactiveRows.map((r) => (
+                  <div key={r.userId} className={`flex items-center gap-3 px-4 py-3 ${r.isMe ? 'bg-accent-soft' : ''}`}>
+                    <span className="w-6 flex justify-center flex-shrink-0 text-muted">–</span>
+                    <span className={`flex-1 min-w-0 text-sm truncate ${r.isMe ? 'font-semibold text-accent' : 'text-muted'}`}>
+                      {r.displayName} {r.isMe && '(siz)'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

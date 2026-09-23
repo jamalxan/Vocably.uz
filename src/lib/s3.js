@@ -45,6 +45,17 @@ export function validateUpload(type, mimeType, size) {
   return null;
 }
 
+// N-08: ba'zi MIME subtype'lar odatiy fayl kengaytmasi bilan mos kelmaydi —
+// generik "no'-alfanumerikni olib tashlash" qoidasi ularni noto'g'ri kesib
+// qo'yadi (masalan "video/x-matroska" -> "xmatrosk", ".mkv" bo'lishi kerak edi).
+// Bilingan noto'g'ri holatlar shu yerda qo'lda to'g'rilanadi.
+const MIME_SUBTYPE_EXT_OVERRIDES = {
+  'x-matroska': 'mkv',
+  'quicktime': 'mov',
+  'x-msvideo': 'avi',
+  'mpeg': 'mp3',
+};
+
 // Kalit hech qachon foydalanuvchi kiritgan fayl nomidan yasalmaydi (path traversal /
 // taxmin qilinadigan nomlarning oldini olish uchun) — faqat random UUID + conversationId.
 export function buildObjectKey(conversationId, type, mimeType) {
@@ -52,7 +63,7 @@ export function buildObjectKey(conversationId, type, mimeType) {
   // "video/webm;codecs=vp8,opus") — avval `;` bo'yicha bo'lib faqat asosiy
   // subtype'ni olamiz, aks holda kengaytma "webmcode" kabi kesilib qolardi.
   const subtype = mimeType.split('/')[1]?.split(';')[0];
-  const ext = (subtype || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 8);
+  const ext = MIME_SUBTYPE_EXT_OVERRIDES[subtype] || (subtype || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 8);
   return `conversations/${conversationId}/${type}/${crypto.randomUUID()}.${ext}`;
 }
 

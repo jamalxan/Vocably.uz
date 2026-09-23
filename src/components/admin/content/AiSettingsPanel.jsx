@@ -11,6 +11,25 @@ import { Loader2, Save, DollarSign } from 'lucide-react';
 // "google/gemini-2.5-pro") — kalit ulanganda `/models` qo'shilib, matn
 // maydoni dropdown'ga almashtirilishi mumkin, boshqa hech narsa
 // o'zgarmaydi (worker/router.js allaqachon shu formatdagi model ID kutadi).
+// UX-02 — `taskKey` (src/lib/contentAgent/aiRouter.js#DEFAULT_MODEL_MATRIX bilan
+// bir xil ro'yxat) ilgari xom holicha ko'rsatilardi (masalan "book.segment"),
+// admin uchun tushunarsiz edi. ExamTestsPanel'dagi RIGHTS_SOURCE_LABEL /
+// ReviewQueuePanel'dagi REASON_LABEL bilan bir xil naqsh — texnik kalit
+// pastda kichik matnda saqlanadi, ustida o'zbekcha izoh ko'rsatiladi.
+const TASK_KEY_LABEL = {
+  'book.segment': "Kitobni bo'laklash",
+  'section.split': "Bo'limlarga ajratish",
+  'reading.parse': "Reading savollarini o'qish",
+  'listening.parse': 'Listening savollarini o\'qish',
+  'writing.parse': 'Writing topshiriqlarini o\'qish',
+  'speaking.parse': 'Speaking topshiriqlarini o\'qish',
+  'answerkey.parse': "Javoblar kalitini o'qish",
+  'image.classify': 'Rasmni tasniflash',
+  'qa.validate': 'Sifat tekshiruvi (QA)',
+  'writing.grade': 'Writing baholash',
+  'speaking.grade': 'Speaking baholash',
+};
+
 export default function AiSettingsPanel() {
   const [configs, setConfigs] = useState([]);
   const [costs, setCosts] = useState(null);
@@ -105,7 +124,8 @@ export default function AiSettingsPanel() {
           return (
             <div key={c.taskKey} className="px-4 py-3.5 bg-surface border border-border rounded-xl">
               <div className="flex flex-wrap items-center gap-2 mb-2.5">
-                <span className="text-sm font-semibold text-ink font-mono break-all">{c.taskKey}</span>
+                <span className="text-sm font-semibold text-ink">{TASK_KEY_LABEL[c.taskKey] || c.taskKey}</span>
+                <span className="text-[11px] text-muted font-mono break-all">{c.taskKey}</span>
                 {c.isCustomised && <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-accent-soft text-accent">o'zgartirilgan</span>}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">

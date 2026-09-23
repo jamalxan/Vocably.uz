@@ -11,10 +11,14 @@ function SectionLabel({ children }) {
   );
 }
 
+// UX-02 — `speed` (src/components/SpeedQuiz.jsx) ilgari bu ro'yxatda yo'q edi,
+// shuning uchun xom holicha ("speed") chiqib qolardi; endi alohida yorliq bor
+// (ilgari "Tezkor" `quiz` bilan bitta yorliqqa birlashtirilgan edi).
 const MODE_LABEL = {
   spaced: 'Bugungi takrorlash',
   flashcard: 'Kartochka',
-  quiz: 'Test/Tezkor/Yangi rejimlar',
+  quiz: 'Test/Yangi rejimlar',
+  speed: 'Tezkor test',
   typing: 'Yozish testi',
   matching: 'Juftlikni topish',
   listening: 'Tinglab yozish',

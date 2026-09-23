@@ -21,6 +21,20 @@ const REASON_LABEL = {
   content_validator_warning: 'Validator ogohlantirishi',
 };
 
+// UX-02 — status filtr tugmalari ilgari `status` qiymatini (API/DB bilan bir
+// xil, masalan "open"/"fixed") to'g'ridan-to'g'ri chiqarardi. `value`lar
+// o'zgarmaydi (statusFilter API'ga shunday yuboriladi), faqat ko'rinadigan
+// yorliq tarjima qilinadi — RIGHTS_SOURCE_LABEL/REASON_LABEL bilan bir xil naqsh.
+const STATUS_LABEL = {
+  open: 'Ochiq',
+  fixed: 'Tuzatildi',
+  accepted: 'Qabul qilindi',
+  rejected: 'Rad etildi',
+  all: 'Barchasi',
+};
+
+const SEVERITY_LABEL = { blocker: 'Bloker', warning: 'Ogohlantirish' };
+
 export default function ReviewQueuePanel() {
   const [items, setItems] = useState([]);
   const [counts, setCounts] = useState({ blocker: 0, warning: 0 });
@@ -122,10 +136,10 @@ export default function ReviewQueuePanel() {
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold flex-shrink-0">
           <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-danger-soft text-danger">
-            <AlertCircle size={13} /> {counts.blocker} blocker
+            <AlertCircle size={13} /> {counts.blocker} {SEVERITY_LABEL.blocker.toLowerCase()}
           </span>
           <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-warning-soft text-warning">
-            <AlertTriangle size={13} /> {counts.warning} warning
+            <AlertTriangle size={13} /> {counts.warning} {SEVERITY_LABEL.warning.toLowerCase()}
           </span>
         </div>
       </div>
@@ -140,7 +154,7 @@ export default function ReviewQueuePanel() {
               statusFilter === s ? 'bg-accent text-on-accent' : 'text-muted hover:bg-bg'
             }`}
           >
-            {s}
+            {STATUS_LABEL[s] || s}
           </button>
         ))}
       </div>
@@ -168,7 +182,7 @@ export default function ReviewQueuePanel() {
               >
                 <div className="flex items-center gap-1.5">
                   <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.severity === 'blocker' ? 'bg-danger' : 'bg-warning'}`} />
-                  <span className="sr-only">{item.severity}:</span>
+                  <span className="sr-only">{SEVERITY_LABEL[item.severity] || item.severity}:</span>
                   <span className="text-xs font-semibold text-ink truncate">{REASON_LABEL[item.reason] || item.reason}</span>
                 </div>
                 <p className="text-[11px] text-muted mt-0.5 truncate">
@@ -185,7 +199,7 @@ export default function ReviewQueuePanel() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${selected.severity === 'blocker' ? 'bg-danger-soft text-danger' : 'bg-warning-soft text-warning'}`}>
-                    {selected.severity}
+                    {SEVERITY_LABEL[selected.severity] || selected.severity}
                   </span>
                   <span className="text-sm font-semibold text-ink">{REASON_LABEL[selected.reason] || selected.reason}</span>
                 </div>

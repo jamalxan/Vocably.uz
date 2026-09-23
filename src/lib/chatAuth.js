@@ -69,9 +69,31 @@ export async function checkRateLimit(userId, action, limit) {
 
 // Har bir admin mutatsiyasi shu orqali yoziladi (docs/ chat plani §9.1 talabi).
 // Xato bo'lsa faqat log qilinadi — audit yozuvi asosiy amalni bloklamasligi kerak.
-export async function writeAuditLog(req, actorId, action, targetType, targetId, diff) {
+//
+// `dedupeMinutes` (ixtiyoriy) — N-08: `chat.conversation.view` / `chat.media.view`
+// har 30-60s so'ralganda (frontend polling) bir xil (actor, action, target) uchun
+// audit log'ni shishirmasligi kerak. Shu oynada bir xil yozuv allaqachon bo'lsa,
+// yangisi yozilmaydi ("sessiya darajasida dedupe" — chaqiruvchi har safar urinadi,
+// bu yerda so'nggisi tekshiriladi). Boshqa (mutatsiya) chaqiruvlar bu parametrni
+// bermaydi — ular har doim yoziladi, chunki har bir mutatsiya alohida ahamiyatli.
+export async function writeAuditLog(req, actorId, action, targetType, targetId, diff, dedupeMinutes) {
   try {
     await connectToDatabase();
+
+    if (dedupeMinutes) {
+      const since = new Date(Date.now() - dedupeMinutes * 60 * 1000);
+      const recent = await AdminAuditLog.findOne({
+        actorId,
+        action,
+        targetType: targetType || null,
+        targetId: targetId ? String(targetId) : null,
+        createdAt: { $gte: since },
+      })
+        .select('_id')
+        .lean();
+      if (recent) return;
+    }
+
     await AdminAuditLog.create({
       actorId,
       action,

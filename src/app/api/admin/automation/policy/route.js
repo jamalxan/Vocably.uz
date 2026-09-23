@@ -62,6 +62,18 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "scope:'book' uchun bookId majburiy" }, { status: 400 });
     }
 
+    // N-11: "autopilot" (odam tasdig'isiz to'liq avtonom nashr) admin UI'dan
+    // olib tashlangan — bu yerda ham rad etiladi, aks holda UI'ni chetlab,
+    // to'g'ridan-to'g'ri API chaqiruvi bilan yoqib bo'lardi. `canAutoPublish`
+    // (src/lib/contentAgent/autopilotGuards.js) copyright qoidasini `level`dan
+    // mustaqil qo'llaydi, lekin bu rejimning o'zi ham umuman yoqilmasligi kerak.
+    if (fields.level === 'autopilot') {
+      return NextResponse.json(
+        { error: "'autopilot' rejimi o'chirilgan — nashr doim admin tasdig'i bilan amalga oshadi" },
+        { status: 400 }
+      );
+    }
+
     const allowedKeys = [
       'level',
       'autoAcceptConfidence',

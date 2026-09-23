@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, Flag } from 'lucide-react';
+import Link from 'next/link';
+import { Loader2, Flag, MessageSquareText, Clock } from 'lucide-react';
 
 // Qiymatlar (`value`) API/DB status maydoni bilan bir xil bo'lishi kerak — faqat ko'rinadigan
 // yorliq (`label`) o'zbekchaga tarjima qilingan, admin panelning qolgan qismi bilan izchillik uchun.
@@ -10,6 +11,10 @@ const STATUS_FILTERS = [
   { value: 'actioned', label: 'Chora ko\'rildi' },
   { value: 'all', label: 'Barchasi' },
 ];
+
+// UX-02: ichki `targetType` qiymati (`message`/`user`) to'g'ridan-to'g'ri emas,
+// o'zbekcha yorliq bilan ko'rsatiladi.
+const TARGET_TYPE_LABEL = { message: 'Xabar', user: 'Foydalanuvchi' };
 
 export default function ReportsQueue() {
   const [reports, setReports] = useState([]);
@@ -118,11 +123,34 @@ export default function ReportsQueue() {
                 <div className="min-w-0">
                   <p className="text-sm text-ink break-words">
                     <span className="font-semibold">@{r.reporter?.username || '?'}</span>
-                    <span className="text-muted"> — {r.targetType}: </span>
-                    <span className="font-mono text-xs text-muted break-all">{r.targetId}</span>
+                    <span className="text-muted"> — {TARGET_TYPE_LABEL[r.targetType] || r.targetType}</span>
+                    {r.targetType === 'message' && r.targetSender?.username && (
+                      <span className="text-muted"> (@{r.targetSender.username})</span>
+                    )}
+                    {r.targetType === 'user' && r.targetUser?.username && (
+                      <span className="text-muted"> (@{r.targetUser.username})</span>
+                    )}
+                    {r.slaBreached && (
+                      <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger/10 text-danger text-[10px] font-semibold align-middle">
+                        <Clock size={10} /> 48+ soat javobsiz
+                      </span>
+                    )}
                   </p>
-                  <p className="text-sm text-muted mt-1 break-words">{r.reason}</p>
+                  {r.targetType === 'message' ? (
+                    <p className="text-sm text-ink/80 mt-1 break-words italic">&ldquo;{r.preview}&rdquo;</p>
+                  ) : (
+                    <p className="text-xs font-mono text-muted mt-1 break-all">{r.targetId}</p>
+                  )}
+                  <p className="text-sm text-muted mt-1 break-words">Sabab: {r.reason}</p>
                   <p className="text-[11px] text-muted/70 mt-1.5">{new Date(r.createdAt).toLocaleString('uz-UZ')}</p>
+                  {r.targetType === 'message' && r.conversationId && (
+                    <Link
+                      href={`/admin/conversations?open=${r.conversationId}`}
+                      className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-accent hover:underline"
+                    >
+                      <MessageSquareText size={12} /> Suhbatni ochish
+                    </Link>
+                  )}
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5 flex-shrink-0 sm:justify-end">

@@ -1,11 +1,28 @@
 'use client';
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { AlertTriangle, RotateCcw, LogOut } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import Button from '@/components/ui/Button';
 
 const AppContext = createContext(null);
+
+// N-15 (VOCABLY_TZ_V2_LIVE_AUDIT §4) — butun lug'at (`/api/words`, ba'zi
+// foydalanuvchilarda bir necha MB) ilgari HAR bir /app sahifasida (mock,
+// gapirish, oqish, do'stlar chati va h.k. ham) yuklanardi, garchi bu
+// sahifalar `categories`/`activeCategory`dan umuman foydalanmasa ham.
+// Faqat quyidagi sahifalar `useApp().categories`/`reviewStreak`ga chindan
+// muhtoj (grep: `useApp\(\)` — FlashcardMode/TestMode/SpeedQuiz/MatchGame/
+// ListeningMode/WritingTest/SpacedRepetition/WordTable — barchasi
+// /app/lugat/* ostida; profil sahifasi `reviewStreak`ni, /app/ai to'liq
+// sahifasi esa AiChat orqali `categories`ni o'qiydi). Qolgan sahifalar
+// (imtihon guruhi, do'stlar, reyting, mashq menyusi) faqat `isAuthed`/
+// `displayName`/`chatAccess` kabi yengil holatni ishlatadi.
+function needsVocabulary(pathname) {
+  if (!pathname) return true; // noaniq holatda xavfsiz standart — yuklaymiz
+  if (pathname === '/app') return true;
+  return ['/app/lugat', '/app/profil', '/app/ai'].some((p) => pathname.startsWith(p));
+}
 
 // AUTH_MIGRATION_MAP.md (2026-09-17) — JWT endi localStorage'da SAQLANMAYDI va
 // hech qanday fetch'ga `Authorization: Bearer <token>` sifatida QO'LDA
@@ -20,6 +37,11 @@ const AppContext = createContext(null);
 // cookie orqali).
 export function AppProvider({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
+  // Root layout (src/app/app/layout.jsx) izohiga q. — AppProvider navigatsiya
+  // paytida qayta mount bo'lmaydi, shuning uchun "lug'at allaqachon yuklandimi"
+  // holatini oddiy state emas, ref bilan kuzatamiz (qayta render'ni talab qilmaydi).
+  const vocabLoadedRef = useRef(false);
   const [loadingApp, setLoadingApp] = useState(true);
   // Boshlang'ich /api/words yuklanmasa (401 dan boshqa xato) — sessiya o'chirilmaydi,
   // "Qayta urinish" ekrani ko'rsatiladi.
@@ -81,7 +103,11 @@ export function AppProvider({ children }) {
   const fetchUserData = useCallback(async () => {
     setAppError(false);
     try {
-      const res = await fetch('/api/words');
+      // N-15: joriy sahifa lug'atga muhtoj bo'lmasa `?light=1` bilan so'raladi —
+      // server faqat sessiya haqiqiyligi + reviewStreak'ni tekshiradi, butun
+      // `categories` massivini QAYTARMAYDI (src/app/api/words/route.js).
+      const wantVocab = needsVocabulary(pathname);
+      const res = await fetch(wantVocab ? '/api/words' : '/api/words?light=1');
       // Faqat 401 (sessiya yaroqsiz/muddati o'tgan) chiqishga olib keladi; tarmoq yoki
       // server xatosida sessiya saqlanadi va foydalanuvchi qayta urinadi.
       if (res.status === 401) {
@@ -90,7 +116,10 @@ export function AppProvider({ children }) {
       }
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setCategories(data.categories || []);
+      if (wantVocab) {
+        setCategories(data.categories || []);
+        vocabLoadedRef.current = true;
+      }
       setReviewStreak(data.reviewStreak || 0);
       setIsAuthed(true);
       localStorage.setItem('vocably_authed', '1');
@@ -99,9 +128,11 @@ export function AppProvider({ children }) {
     } finally {
       setLoadingApp(false);
     }
-  }, [logout]);
+  }, [logout, pathname]);
 
-  // Fon rejimida faqat kategoriyalarni qayta yuklaydi (masalan AI chat orqali so'z qo'shilgandan keyin).
+  // Fon rejimida faqat kategoriyalarni qayta yuklaydi (masalan AI chat orqali so'z qo'shilgandan keyin,
+  // yoki N-15 lazy-load effekti — foydalanuvchi lug'atga muhtoj bo'lmagan sahifadan
+  // shunday sahifaga o'tganda, quyida).
   const refreshCategories = useCallback(async () => {
     try {
       const res = await fetch('/api/words');
@@ -109,10 +140,22 @@ export function AppProvider({ children }) {
       const data = await res.json();
       setCategories(data.categories || []);
       setReviewStreak(data.reviewStreak || 0);
+      vocabLoadedRef.current = true;
     } catch {
       // jimgina e'tiborsiz qoldiramiz
     }
   }, []);
+
+  // N-15: agar boshlang'ich sahifa lug'atga muhtoj bo'lmasa (masalan
+  // to'g'ridan-to'g'ri /app/mock'ga kirilgan) va keyin foydalanuvchi lug'atga
+  // muhtoj sahifaga o'tsa (masalan sidebar'dan "Lug'at"), shu yerda BIR MARTA
+  // (keyingi navigatsiyalarda qayta emas) to'liq ro'yxat yuklanadi.
+  useEffect(() => {
+    if (!isAuthed || loadingApp) return;
+    if (vocabLoadedRef.current) return;
+    if (!needsVocabulary(pathname)) return;
+    refreshCategories();
+  }, [pathname, isAuthed, loadingApp, refreshCategories]);
 
   // Bitta so'zning takrorlash statistikasini yangilaydi (Bugungi takrorlash, Test, Tinglab yozish rejimlari uchun).
   // Haqiqiy hisob-kitob (src/lib/srs.ts, ease-asosidagi interval) faqat serverda amalga oshadi —

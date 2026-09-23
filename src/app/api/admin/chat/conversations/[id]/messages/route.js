@@ -50,10 +50,12 @@ export async function GET(req, { params }) {
 
     // Faqat birinchi (kursorsiz) ko'rishda audit-log yoziladi — "load more" bosilganda
     // har safar emas, aks holda bitta suhbatni ko'rish o'nlab audit yozuvi yaratardi.
+    // N-08: bundan tashqari 10 daqiqalik dedupe — sahifa har 30-60s'da polling qilib,
+    // shu suhbatni qayta ochganda (kursorsiz so'rov) log shishmasin.
     if (!before) {
       await writeAuditLog(req, admin._id, 'chat.conversation.view', 'Conversation', convo._id, {
         messageCount: messages.length,
-      });
+      }, 10);
     }
 
     return NextResponse.json({ messages, nextCursor });

@@ -12,6 +12,18 @@ export async function GET(req) {
 
     await connectToDatabase();
 
+    // N-15 (VOCABLY_TZ_V2_LIVE_AUDIT §4) — AppContext.fetchUserData bu route'ni
+    // HAR bir /app sahifasida (mock, do'stlar chati, reyting...) sessiya
+    // haqiqiyligini tekshirish uchun ham chaqiradi, garchi o'sha sahifalar
+    // lug'atdan foydalanmasa ham. `?light=1` — o'sha holatlar uchun: to'liq
+    // `categories` (ba'zi userlarda bir necha MB) DB'dan o'qilmaydi va
+    // javobga qo'shilmaydi, faqat sessiya + reviewStreak tekshiriladi.
+    if (req.nextUrl.searchParams.get('light') === '1') {
+      const light = await User.findById(userId).select('reviewStreak lastReviewDate').lean();
+      if (!light) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
+      return NextResponse.json({ reviewStreak: light.reviewStreak || 0, lastReviewDate: light.lastReviewDate || null });
+    }
+
     const user = await User.findById(userId).select('-password');
     if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
 

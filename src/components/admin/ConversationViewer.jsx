@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Loader2, ArrowLeft, MessageSquareText, Image as ImageIcon, Video, Mic, Paperclip, Flag, Pencil, Trash2, Download, UserX, Tag } from 'lucide-react';
 import { useAuthedAdminMediaUrl } from '@/lib/useAuthedMedia';
 
@@ -118,6 +119,22 @@ export default function ConversationViewer() {
     setMessages(data.messages || []);
     setMsgCursor(data.nextCursor || null);
   };
+
+  // N-09: Reportlar navbatidagi "Suhbatni ochish" havolasi shu yerga
+  // `?open=<conversationId>` bilan keladi — ro'yxatda bo'lmasa ham (masalan
+  // ikkinchi sahifada) suhbat to'g'ridan-to'g'ri `id` filtri bilan olib ochiladi.
+  const openParam = useSearchParams().get('open');
+  useEffect(() => {
+    if (!openParam) return;
+    fetch(`/api/admin/chat/conversations?id=${encodeURIComponent(openParam)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const conv = d.conversations?.[0];
+        if (conv) openConversation(conv);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openParam]);
 
   // Har bir galereya (Rasmlar/Videolar/Ovozli xabarlar) birinchi marta ochilganda
   // yuklanadi (keyin qayta bosilsa qayta so'ralmaydi — allaqachon yuklangan bo'lsa
