@@ -1,7 +1,8 @@
 import { connectToDatabase } from '@/lib/db';
 import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
 import { ExamTest } from '@/lib/models';
-import { validateTest, hasBlockingErrors } from '@/lib/exam/contentValidator';
+import { validateTest, hasBlockingErrors, isMockEligible } from '@/lib/exam/contentValidator';
+import { syncValidationIssuesToReviewQueue } from '@/lib/exam/reviewSync';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -58,7 +59,15 @@ export async function PATCH(req, { params }) {
         return NextResponse.json({ error: 'Validatsiya xatoliklari bor — publish qilinmadi', issues }, { status: 422 });
       }
       test.isPublished = true;
+      // AUDIT EX-06/N-06 (Sprint 1) — recomputed on every (re)publish, never
+      // user-settable directly.
+      test.isMockEligible = isMockEligible(test.toObject());
+      // AUDIT N-10 (Sprint 1) — persist validator findings into the admin
+      // review queue (both severities, not just blockers).
+      await syncValidationIssuesToReviewQueue(String(test._id), issues);
     } else if (isPublished === false) {
+      // Unpublish leaves `isMockEligible` as-is — it reflects content shape,
+      // not publish state.
       test.isPublished = false;
     }
 

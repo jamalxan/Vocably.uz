@@ -324,3 +324,105 @@ export function validateTest(test: Partial<Test>): ValidationIssue[] {
 export function hasBlockingErrors(issues: ValidationIssue[]): boolean {
   return issues.some((i) => i.severity === 'error');
 }
+
+// EX-06/N-06 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md, Sprint 1) — "Mock
+// imtihon uchun mos ekanligini alohida, BLOKLOVCHI tekshiruv." Bu funksiya
+// ATAYLAB `validateTest`dan ALOHIDA: `validateTest` oddiy nashr etishni
+// bloklaydi (masalan faqat Reading bo'limi bo'lgan test ham undan
+// muvaffaqiyatli o'tadi — standalone Reading practice uchun to'liq
+// 3-passage/40-savol shart emas), lekin TO'LIQ Mock imtihon
+// (`/api/exam/attempts` mode:'mock') uchun qat'iy IELTS shakli (3 ta passage/
+// jami 40 savol/2150-2750 so'z Reading; 4 ta part x 10 savol Listening, har
+// birida audioUrl; 2 ta Writing task) shart. Bu funksiya HECH QACHON
+// `validateTest`/`hasBlockingErrors` ichiga birlashtirilmaydi va ularning
+// xatti-harakatini o'zgartirmaydi — aks holda mavjud 4 ta nashr etilgan test
+// (ular mock shaklga mos kelmasligi mumkin) standalone Reading/Listening/
+// Writing practice uchun ham bloklanib qolardi.
+export function checkMockEligibility(test: Partial<Test>): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const sections = test.sections || {};
+
+  const reading = sections.reading;
+  if (!reading) {
+    issues.push({ severity: 'error', path: 'reading', message: "Mock imtihon uchun Reading bo'limi yo'q" });
+  } else {
+    const passages = reading.passages || [];
+    if (passages.length !== 3) {
+      issues.push({
+        severity: 'error',
+        path: 'reading',
+        message: `Mock imtihon uchun aynan 3 ta passage kerak (${passages.length} ta topildi)`,
+      });
+    }
+    const totalQuestions = passages.reduce((sum, p) => sum + allQuestions(p.questionGroups || []).length, 0);
+    if (totalQuestions !== 40) {
+      issues.push({
+        severity: 'error',
+        path: 'reading',
+        message: `Mock imtihon uchun Reading'da jami 40 ta savol kerak (${totalQuestions} ta topildi)`,
+      });
+    }
+    const totalWords = passages.reduce(
+      (sum, p) => sum + countWords((p.paragraphs || []).map((par) => stripHtml(par.html)).join(' ')),
+      0
+    );
+    if (totalWords < 2150 || totalWords > 2750) {
+      issues.push({
+        severity: 'error',
+        path: 'reading',
+        message: `Mock imtihon uchun Reading umumiy so'z soni 2150-2750 oralig'ida bo'lishi kerak (${totalWords} ta topildi)`,
+      });
+    }
+  }
+
+  const listening = sections.listening;
+  if (!listening) {
+    issues.push({ severity: 'error', path: 'listening', message: "Mock imtihon uchun Listening bo'limi yo'q" });
+  } else {
+    const parts = listening.parts || [];
+    if (parts.length !== 4) {
+      issues.push({
+        severity: 'error',
+        path: 'listening',
+        message: `Mock imtihon uchun aynan 4 ta part kerak (${parts.length} ta topildi)`,
+      });
+    }
+    for (const part of parts) {
+      const count = allQuestions(part.questionGroups || []).length;
+      if (count !== 10) {
+        issues.push({
+          severity: 'error',
+          path: `listening.part[${part.order}]`,
+          message: `Mock imtihon uchun har part'da aynan 10 ta savol kerak (${count} ta topildi)`,
+        });
+      }
+      if (!part.audioUrl?.trim()) {
+        issues.push({
+          severity: 'error',
+          path: `listening.part[${part.order}]`,
+          message: "Mock imtihon uchun audioUrl bo'sh bo'lmasligi kerak",
+        });
+      }
+    }
+  }
+
+  const writing = sections.writing;
+  if (!writing) {
+    issues.push({ severity: 'error', path: 'writing', message: "Mock imtihon uchun Writing bo'limi yo'q" });
+  } else {
+    const tasks = writing.tasks || [];
+    if (tasks.length !== 2) {
+      issues.push({
+        severity: 'error',
+        path: 'writing',
+        message: `Mock imtihon uchun aynan 2 ta task kerak (${tasks.length} ta topildi)`,
+      });
+    }
+  }
+
+  return issues;
+}
+
+export function isMockEligible(test: Partial<Test>): boolean {
+  return checkMockEligibility(test).length === 0;
+}

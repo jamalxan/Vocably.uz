@@ -15,6 +15,44 @@ function SectionBadges({ test }) {
   );
 }
 
+// AUDIT EX-06/N-06 (Sprint 1) — `isMockEligible` (computed at publish time by
+// `contentValidator.ts#checkMockEligibility`) tells admin at a glance whether
+// this test can be served by the random-mock picker, or is only good for
+// standalone section practice.
+function MockEligibilityBadge({ test }) {
+  return (
+    <span
+      className={`flex-shrink-0 text-[11px] leading-none font-semibold px-1.5 py-0.5 rounded ${
+        test.isMockEligible ? 'bg-success-soft text-success' : 'bg-bg text-muted'
+      }`}
+    >
+      {test.isMockEligible ? 'Mock' : 'Mini practice'}
+    </span>
+  );
+}
+
+// AUDIT N-12 (Sprint 1) — small secondary badge for `rights.sourceType`, kept
+// deliberately low-key: this is informational metadata, not a publish gate
+// (the real gate — third_party_copyright + public — is `checkCopyright` in
+// contentValidator.ts, unchanged here).
+const RIGHTS_SOURCE_LABEL = {
+  own: "O'ziniki",
+  licensed: 'Litsenziyalangan',
+  public_domain: 'Ommaviy domen',
+  third_party_copyright: 'Uchinchi tomon',
+  ai_generated_original: 'AI generatsiya',
+};
+
+function RightsBadge({ test }) {
+  const sourceType = test.rights?.sourceType;
+  if (!sourceType) return null;
+  return (
+    <span className="flex-shrink-0 text-[11px] leading-none font-semibold px-1.5 py-0.5 rounded bg-bg text-muted">
+      {RIGHTS_SOURCE_LABEL[sourceType] || sourceType}
+    </span>
+  );
+}
+
 export default function ExamTestsPanel() {
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +157,8 @@ export default function ExamTestsPanel() {
                     >
                       {test.isPublished ? 'Nashr qilingan' : 'Draft'}
                     </span>
+                    <MockEligibilityBadge test={test} />
+                    <RightsBadge test={test} />
                   </div>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-3 -ml-2 sm:ml-0 flex-shrink-0">

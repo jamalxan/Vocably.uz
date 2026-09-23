@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateTest, hasBlockingErrors } from './contentValidator';
+import { validateTest, hasBlockingErrors, checkMockEligibility, isMockEligible } from './contentValidator';
 import type { Test, QuestionGroup } from './types';
 
 function tfngGroup(numbers: number[]): QuestionGroup {
@@ -289,5 +289,157 @@ describe('validateTest — checkCopyright (LEGAL-01)', () => {
     const ai = validateTest(baseTest({ rights: { sourceType: 'ai_generated_original', publishScope: 'public' } }));
     expect(hasBlockingErrors(pd.filter((i) => i.path === 'rights'))).toBe(false);
     expect(hasBlockingErrors(ai.filter((i) => i.path === 'rights'))).toBe(false);
+  });
+});
+
+// AUDIT EX-06/N-06 — "Mock imtihon uchun mos ekanligini alohida, BLOKLOVCHI
+// tekshiruv" (checkMockEligibility/isMockEligible), validateTest'dan ALOHIDA.
+function passageWithWords(order: 1 | 2 | 3, wordCount: number, questionNumbers: number[]) {
+  return {
+    order,
+    title: `Passage ${order}`,
+    paragraphs: [{ label: 'A', html: `<p>${'word '.repeat(wordCount)}</p>` }],
+    questionGroups: [tfngGroup(questionNumbers)],
+  };
+}
+
+function listeningPart(order: 1 | 2 | 3 | 4, questionNumbers: number[], audioUrl = `part-${order}.mp3`) {
+  return {
+    order,
+    audioUrl,
+    durationSec: 480,
+    questionGroups: [tfngGroup(questionNumbers)],
+  };
+}
+
+function mockEligibleTest(): Partial<Test> {
+  return {
+    title: 'Cambridge IELTS 19 — Test 1',
+    slug: 'cambridge-19-test-1',
+    module: 'academic',
+    sections: {
+      reading: {
+        durationSec: 3600,
+        passages: [
+          passageWithWords(1, 800, range(1, 13)),
+          passageWithWords(2, 800, range(14, 26)),
+          passageWithWords(3, 800, range(27, 40)),
+        ],
+      },
+      listening: {
+        durationSec: 1800,
+        checkTimeSec: 120,
+        parts: [
+          listeningPart(1, range(1, 10)),
+          listeningPart(2, range(11, 20)),
+          listeningPart(3, range(21, 30)),
+          listeningPart(4, range(31, 40)),
+        ],
+      },
+      writing: {
+        durationSec: 3600,
+        tasks: [
+          { order: 1, minWords: 150, recommendedMin: 20, promptHtml: 'Task 1' },
+          { order: 2, minWords: 250, recommendedMin: 40, promptHtml: 'Task 2' },
+        ] as never,
+      },
+    },
+  };
+}
+
+function range(start: number, end: number): number[] {
+  const out: number[] = [];
+  for (let i = start; i <= end; i++) out.push(i);
+  return out;
+}
+
+describe('checkMockEligibility / isMockEligible (EX-06/N-06)', () => {
+  it('accepts a fully IELTS-shaped mock-eligible test with no issues', () => {
+    const issues = checkMockEligibility(mockEligibleTest());
+    expect(issues).toEqual([]);
+    expect(isMockEligible(mockEligibleTest())).toBe(true);
+  });
+
+  it('requires a reading section at all', () => {
+    const test = mockEligibleTest();
+    delete test.sections!.reading;
+    const issues = checkMockEligibility(test);
+    expect(issues.some((i) => i.path === 'reading' && i.message.includes("bo'limi yo'q"))).toBe(true);
+    expect(isMockEligible(test)).toBe(false);
+  });
+
+  it('requires exactly 3 reading passages', () => {
+    const test = mockEligibleTest();
+    test.sections!.reading!.passages = test.sections!.reading!.passages.slice(0, 2);
+    const issues = checkMockEligibility(test);
+    expect(issues.some((i) => i.path === 'reading' && i.message.includes('3 ta passage'))).toBe(true);
+  });
+
+  it('requires exactly 40 reading questions in total', () => {
+    const test = mockEligibleTest();
+    test.sections!.reading!.passages[0].questionGroups = [tfngGroup(range(1, 12))]; // 12 instead of 13 -> 39 total
+    const issues = checkMockEligibility(test);
+    expect(issues.some((i) => i.path === 'reading' && i.message.includes('40 ta savol'))).toBe(true);
+  });
+
+  it('requires reading word count within the inclusive [2150, 2750] range', () => {
+    const tooShort = mockEligibleTest();
+    tooShort.sections!.reading!.passages[0].paragraphs = [{ label: 'A', html: `<p>${'word '.repeat(100)}</p>` }];
+    expect(checkMockEligibility(tooShort).some((i) => i.path === 'reading' && i.message.includes('2150-2750'))).toBe(true);
+
+    const tooLong = mockEligibleTest();
+    tooLong.sections!.reading!.passages[0].paragraphs = [{ label: 'A', html: `<p>${'word '.repeat(2000)}</p>` }];
+    expect(checkMockEligibility(tooLong).some((i) => i.path === 'reading' && i.message.includes('2150-2750'))).toBe(true);
+
+    // Exact boundary values (inclusive) must NOT be flagged.
+    const atLowerBound = mockEligibleTest();
+    atLowerBound.sections!.reading!.passages[0].paragraphs = [{ label: 'A', html: `<p>${'word '.repeat(550)}</p>` }]; // 550+800+800 = 2150
+    expect(checkMockEligibility(atLowerBound).some((i) => i.path === 'reading' && i.message.includes('2150-2750'))).toBe(false);
+  });
+
+  it('requires a listening section at all', () => {
+    const test = mockEligibleTest();
+    delete test.sections!.listening;
+    expect(checkMockEligibility(test).some((i) => i.path === 'listening' && i.message.includes("bo'limi yo'q"))).toBe(true);
+  });
+
+  it('requires exactly 4 listening parts', () => {
+    const test = mockEligibleTest();
+    test.sections!.listening!.parts = test.sections!.listening!.parts.slice(0, 3);
+    expect(checkMockEligibility(test).some((i) => i.path === 'listening' && i.message.includes('4 ta part'))).toBe(true);
+  });
+
+  it('requires exactly 10 questions in every listening part', () => {
+    const test = mockEligibleTest();
+    test.sections!.listening!.parts[0].questionGroups = [tfngGroup(range(1, 9))];
+    expect(checkMockEligibility(test).some((i) => i.path === 'listening.part[1]' && i.message.includes('10 ta savol'))).toBe(true);
+  });
+
+  it('requires every listening part to have a non-empty audioUrl', () => {
+    const test = mockEligibleTest();
+    test.sections!.listening!.parts[2].audioUrl = '';
+    expect(checkMockEligibility(test).some((i) => i.path === 'listening.part[3]' && i.message.includes('audioUrl'))).toBe(true);
+  });
+
+  it('requires a writing section at all', () => {
+    const test = mockEligibleTest();
+    delete test.sections!.writing;
+    expect(checkMockEligibility(test).some((i) => i.path === 'writing' && i.message.includes("bo'limi yo'q"))).toBe(true);
+  });
+
+  it('requires exactly 2 writing tasks', () => {
+    const test = mockEligibleTest();
+    test.sections!.writing!.tasks = [{ order: 1, minWords: 150, recommendedMin: 20, promptHtml: 'Task 1' }] as never;
+    expect(checkMockEligibility(test).some((i) => i.path === 'writing' && i.message.includes('2 ta task'))).toBe(true);
+  });
+
+  it('every issue reported has severity "error" (all mock-eligibility issues are blocking)', () => {
+    const test = mockEligibleTest();
+    delete test.sections!.reading;
+    delete test.sections!.listening;
+    delete test.sections!.writing;
+    const issues = checkMockEligibility(test);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.every((i) => i.severity === 'error')).toBe(true);
   });
 });

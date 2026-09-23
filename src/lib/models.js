@@ -665,6 +665,13 @@ const ExamTestSchema = new mongoose.Schema({
     validatedAt: { type: Date, default: null },
   },
 
+  // AUDIT EX-06/N-06 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md, Sprint 1) —
+  // qat'iy IELTS mock shakliga (3x40 Reading, 4x10 Listening, 2 Writing task)
+  // mos-emasligini oldindan bilish uchun. NOT user-settable directly — faqat
+  // publish vaqtida `contentValidator.ts#checkMockEligibility` hisoblab
+  // yozadi (`isPublished`/`isMockEligible/[id]/route.js` PATCH va POST).
+  isMockEligible: { type: Boolean, default: false },
+
   // AUDIT LEGAL-01 (VOCABLY_TZ_FINAL... 2026-09-20 §17) — kontentning huquqiy
   // kelib chiqishi. Default `sourceType:'own', publishScope:'public'` — mavjud
   // testlarni (bu maydon qo'shilishidan OLDIN yaratilgan) to'satdan bloklamaydi;
@@ -1063,7 +1070,13 @@ export const AiCall = mongoose.models.AiCall || mongoose.model('AiCall', AiCallS
 // §6.5 — tekshiruv navbati (§11.3): AI ishonchi past yoki validatsiya
 // xatosi bo'lgan savol guruhlari shu yerga tushadi, admin ko'rib chiqadi.
 const ReviewItemSchema = new mongoose.Schema({
-  bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', required: true },
+  // N-10 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md, Sprint 1) — `bookId` WAS
+  // required, but manually/admin-created `ExamTest` docs (JSON/DSL import,
+  // not the AI content-ingestion pipeline) have no `ContentBook` at all —
+  // made optional (default null) so `contentValidator.ts#validateTest`
+  // warnings for those tests (see `reason: 'content_validator_warning'`
+  // below) have somewhere to persist too.
+  bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', default: null },
   testId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamTest', default: null },
   target: {
     sectionKey: { type: String, enum: ['listening', 'reading', 'writing', 'speaking'], required: true },
@@ -1086,6 +1099,12 @@ const ReviewItemSchema = new mongoose.Schema({
       // shu qiymatga YANGILANADI (original 'qa_disagreement' ustidan) — admin
       // "AI umuman ko'rmagan" bilan "AI urindi-yu, ololmadi"ni farqlab ko'rsin.
       'self_heal_exhausted',
+      // N-10 — manually-created `ExamTest` docs have no `ContentBook`, so
+      // `contentValidator.ts#validateTest` warnings/errors for them are
+      // synced into the review queue with this reason instead (see
+      // `src/lib/exam/reviewSync.ts`), distinct from the AI pipeline's
+      // `validation_failed` (which is always tied to a real `bookId`).
+      'content_validator_warning',
     ],
     required: true,
   },

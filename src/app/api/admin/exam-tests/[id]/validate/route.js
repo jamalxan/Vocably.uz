@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { requireAdminUser } from '@/lib/chatAuth';
 import { ExamTest } from '@/lib/models';
 import { validateTest, hasBlockingErrors } from '@/lib/exam/contentValidator';
+import { syncValidationIssuesToReviewQueue } from '@/lib/exam/reviewSync';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -21,6 +22,9 @@ export async function POST(req, { params }) {
     if (!test) return NextResponse.json({ error: 'Test topilmadi' }, { status: 404 });
 
     const issues = validateTest(test);
+    // AUDIT N-10 (Sprint 1) — running validation persists findings into the
+    // admin review queue (both severities, not just blockers).
+    await syncValidationIssuesToReviewQueue(String(test._id), issues);
     return NextResponse.json({ issues, blockers: hasBlockingErrors(issues) });
   } catch (err) {
     return serverError(err, 'admin/exam-tests:id/validate');

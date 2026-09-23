@@ -28,7 +28,12 @@ export async function GET(req) {
     if (statusFilter !== 'all') query.status = statusFilter;
 
     const items = await ReviewItem.find(query).sort({ severity: 1, createdAt: 1 }).limit(500).lean();
-    const bookIds = [...new Set(items.map((i) => String(i.bookId)))];
+    // N-10 — manually-created `ExamTest` items now have `bookId: null`
+    // (`reason: 'content_validator_warning'`, see `reviewSync.ts`).
+    // `String(null)` would produce the literal string "null", which would
+    // then be fed into `ContentBook.find({ _id: { $in: bookIds } })` and
+    // throw a Mongoose CastError (invalid ObjectId) — filter those out first.
+    const bookIds = [...new Set(items.filter((i) => i.bookId).map((i) => String(i.bookId)))];
     const books = await ContentBook.find({ _id: { $in: bookIds } }).select('title').lean();
     const titleById = new Map(books.map((b) => [String(b._id), b.title]));
 
@@ -43,8 +48,8 @@ export async function GET(req) {
     return NextResponse.json({
       items: items.map((i) => ({
         id: String(i._id),
-        bookId: String(i.bookId),
-        bookTitle: titleById.get(String(i.bookId)) || '',
+        bookId: i.bookId ? String(i.bookId) : null,
+        bookTitle: i.bookId ? (titleById.get(String(i.bookId)) || '') : '',
         testId: i.testId ? String(i.testId) : null,
         target: i.target,
         reason: i.reason,

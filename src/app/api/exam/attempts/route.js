@@ -107,6 +107,12 @@ export async function POST(req) {
           {
             $match: {
               isPublished: true,
+              // AUDIT EX-06/N-06 (Sprint 1) — a test with all three sections
+              // present can still be too short/mismatched in shape (mini
+              // practice content) for a REAL mock; `isMockEligible` (computed
+              // at publish time by `contentValidator.ts#checkMockEligibility`)
+              // is the authoritative gate.
+              isMockEligible: true,
               'sections.listening': { $exists: true },
               'sections.reading': { $exists: true },
               'sections.writing': { $exists: true },
@@ -123,6 +129,11 @@ export async function POST(req) {
 
       const test = await ExamTest.findById(testId).lean();
       if (!test) return NextResponse.json({ error: 'Test topilmadi' }, { status: 404 });
+      // AUDIT EX-06/N-06 (Sprint 1) — explicit testId path must respect the
+      // same gate as the random-selection path above.
+      if (!test.isMockEligible) {
+        return NextResponse.json({ error: 'Bu test to‘liq Mock imtihon uchun mos emas (mini practice test).' }, { status: 400 });
+      }
 
       const existing = await ExamAttempt.findOne({ userId, testId, mode: 'mock', status: 'in_progress' });
       if (existing) return NextResponse.json({ attemptId: String(existing._id) });

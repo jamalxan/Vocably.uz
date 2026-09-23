@@ -1,7 +1,8 @@
 import { connectToDatabase } from '@/lib/db';
 import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
 import { ExamTest } from '@/lib/models';
-import { validateTest, hasBlockingErrors } from '@/lib/exam/contentValidator';
+import { validateTest, hasBlockingErrors, isMockEligible } from '@/lib/exam/contentValidator';
+import { syncValidationIssuesToReviewQueue } from '@/lib/exam/reviewSync';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -13,7 +14,7 @@ export async function GET(req) {
 
     await connectToDatabase();
     const tests = await ExamTest.find({})
-      .select('slug title module difficulty isPublished createdAt sections')
+      .select('slug title module difficulty isPublished createdAt sections isMockEligible rights')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -29,6 +30,10 @@ export async function GET(req) {
         hasReading: !!t.sections?.reading,
         hasListening: !!t.sections?.listening,
         hasWriting: !!t.sections?.writing,
+        // AUDIT EX-06/N-06 — Sprint 1.
+        isMockEligible: !!t.isMockEligible,
+        // AUDIT N-12 — Sprint 1.
+        rights: t.rights || null,
       })),
     });
   } catch (err) {
@@ -69,8 +74,17 @@ export async function POST(req) {
       bandTable: bandTable || null,
       rights: rights || undefined,
       isPublished: false,
+      // AUDIT EX-06/N-06 (Sprint 1) — computed at (re)create/publish time,
+      // never user-settable directly. `testDraft` already has the exact
+      // sections shape validated above.
+      isMockEligible: isMockEligible(testDraft),
       createdBy: admin._id,
     });
+
+    // AUDIT N-10 (Sprint 1) — persist validator findings into the admin
+    // review queue for this manually-created test (both severities, not
+    // just blockers — `hasBlockingErrors` already gated creation above).
+    await syncValidationIssuesToReviewQueue(String(test._id), issues);
 
     await writeAuditLog(req, admin._id, 'exam_test.create', 'ExamTest', test._id, { slug, title });
 

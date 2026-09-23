@@ -16,6 +16,9 @@ const REASON_LABEL = {
   missing_answer: 'Javob yo\'q',
   image_unmatched: 'Rasm bog\'lanmagan',
   word_limit_violation: 'So\'z limiti buzilgan',
+  // N-10 — manually-created `ExamTest` docs (no `ContentBook`), synced from
+  // `contentValidator.ts#validateTest` via `src/lib/exam/reviewSync.ts`.
+  content_validator_warning: 'Validator ogohlantirishi',
 };
 
 export default function ReviewQueuePanel() {
@@ -169,7 +172,8 @@ export default function ReviewQueuePanel() {
                   <span className="text-xs font-semibold text-ink truncate">{REASON_LABEL[item.reason] || item.reason}</span>
                 </div>
                 <p className="text-[11px] text-muted mt-0.5 truncate">
-                  {item.bookTitle} · {item.target?.sectionKey}
+                  {item.bookTitle && `${item.bookTitle} · `}
+                  {item.target?.sectionKey}
                   {item.target?.questionNumber ? ` · Q${item.target.questionNumber}` : ''}
                 </p>
               </button>
