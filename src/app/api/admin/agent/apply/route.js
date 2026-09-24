@@ -34,8 +34,34 @@ async function resolveUniqueSlug(base) {
   return uniqueSlug(base, existing.map((t) => t.slug));
 }
 
-/** Bitta testni hujjatdan yig'ib, `ExamTest` qoralamasi sifatida yaratadi. */
+/** Bitta testni hujjatdan yig'ib, `ExamTest` qoralamasi sifatida yaratadi.
+ *
+ * IDEMPOTENT: 2026-09-24, jonli Chrome sinovida topilgan xato — bitta
+ * "joylashtirish" taklifi ikki marta bosilganda (yoki so'rov qayta
+ * yuborilganda) IKKITA bir xil qoralama yaratilardi. Client tarafida
+ * (`AdminAgentChat.jsx`, tugma muvaffaqiyatdan keyin butunlay o'chadi)
+ * ham tuzatildi, lekin bu yerda — server tomonida — HAM tekshiriladi:
+ * boshqa tab/qurilma yoki tarmoq qayta urinishi kabi client himoyasi
+ * qamrab olmaydigan holatlar uchun. */
 async function ingestOneTest({ attachment, testEntry, bookTitle, adminId, req }) {
+  const existing = await ExamTest.findOne({
+    'source.agentAttachmentId': attachment._id,
+    'source.testIndex': testEntry.index,
+  }).lean();
+  if (existing) {
+    return {
+      ok: true,
+      testId: String(existing._id),
+      title: existing.title,
+      slug: existing.slug,
+      sections: summarizeSections(existing.sections || {}),
+      blockers: 0,
+      warnings: ["Bu test allaqachon shu fayldan yaratilgan — qayta yaratilmadi."],
+      summary: `${existing.title} (allaqachon mavjud)`,
+      canPublish: !hasBlockingErrors(validateTest(existing)),
+    };
+  }
+
   const analysis = attachment.analysis || {};
   const pages = attachment.pages || [];
   const answerKeyText = answerKeyTextFrom(pages, analysis.answerKeyPages);
@@ -87,7 +113,7 @@ async function ingestOneTest({ attachment, testEntry, bookTitle, adminId, req })
     isPublished: false,
     isMockEligible: isMockEligible(draft),
     createdBy: adminId,
-    source: { bookTitle, testIndex: testEntry.index },
+    source: { bookTitle, testIndex: testEntry.index, agentAttachmentId: attachment._id },
   });
 
   await syncValidationIssuesToReviewQueue(String(test._id), issues);

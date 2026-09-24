@@ -97,6 +97,17 @@ export default function AdminAgentChat() {
   const [pending, setPending] = useState([]); // [{localId, file, progress, attachment, error}]
   const [sending, setSending] = useState(false);
   const [applying, setApplying] = useState(null);
+  // 2026-09-24 (real Chrome sinovida topilgan xato) — taklif tugmasi
+  // bosilgach ham DOM'da CHEKLANMAGAN holda qolar edi: `applying` faqat
+  // so'rov davomida (fetch tugagunga qadar) tugmani o'chirar, muvaffaqiyatli
+  // bajarilgandan KEYIN esa tugma yana bosiladigan holatga qaytardi. Admin
+  // (yoki sekin tarmoqda ikki marta bossa) BITTA taklifni ikki marta
+  // bajarib, ikkita bir xil ExamTest qoralamasini yaratib qo'yardi (jonli
+  // sinovda aynan shu holat ro'y berdi: bitta "Test 1 — joylashtirish"
+  // bosilib, ikkita hujjat paydo bo'ldi). `appliedKeys` — muvaffaqiyatli
+  // bajarilgan taklif kalitlarini DOIMIY saqlaydi (qayta render bo'lsa ham),
+  // tugma shundan keyin butunlay o'chadi va "Bajarildi" deb ko'rsatiladi.
+  const [appliedKeys, setAppliedKeys] = useState(() => new Set());
   const [error, setError] = useState('');
   const [dragging, setDragging] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -105,6 +116,7 @@ export default function AdminAgentChat() {
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const applyingRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -229,7 +241,14 @@ export default function AdminAgentChat() {
   };
 
   const applyProposal = async (proposal, key) => {
-    if (applying) return;
+    // `applying` (state) + `appliedKeys` (state) ikkalasi ham React
+    // yangilanishi ASINXRON bo'lgani uchun, bitta tugma bir necha marta
+    // ketma-ket bosilsa (yoki ikki hodisa bir xil tikda tushsa), ikkalasi
+    // ham hali eski qiymatni ko'rishi mumkin. `applyingRef` — SINXRON,
+    // darhol yangilanadigan qo'riqchi: shu funksiya ichida ikkinchi
+    // chaqiruv HAR DOIM to'xtatiladi, state yangilanishini kutmasdan.
+    if (applyingRef.current || appliedKeys.has(key)) return;
+    applyingRef.current = key;
     setApplying(key);
     setError('');
     try {
@@ -240,11 +259,13 @@ export default function AdminAgentChat() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Bajarilmadi');
+      setAppliedKeys((prev) => new Set(prev).add(key));
       setMessages((prev) => [...prev, ...data.messages]);
       loadThreads();
     } catch (err) {
       setError(err.message || 'Tarmoq xatosi');
     } finally {
+      applyingRef.current = null;
       setApplying(null);
     }
   };
@@ -356,6 +377,7 @@ export default function AdminAgentChat() {
             key={m.id || i}
             message={m}
             applying={applying}
+            appliedKeys={appliedKeys}
             onApply={(proposal, idx) => applyProposal(proposal, `${m.id || i}-${idx}`)}
             messageKey={m.id || i}
           />
@@ -484,7 +506,7 @@ function EmptyState({ onPick }) {
   );
 }
 
-function MessageBubble({ message, onApply, applying, messageKey }) {
+function MessageBubble({ message, onApply, applying, appliedKeys, messageKey }) {
   const isUser = message.role === 'user';
   const proposals = message.data?.proposals || [];
 
@@ -551,22 +573,36 @@ function MessageBubble({ message, onApply, applying, messageKey }) {
             {proposals.map((p, idx) => {
               const key = `${messageKey}-${idx}`;
               const isBusy = applying === key;
+              // Jonli Chrome sinovida topilgan xato: taklif muvaffaqiyatli
+              // bajarilgandan keyin ham tugma bosiladigan holda qolar edi —
+              // ikkinchi bosish (yoki tasodifiy ikki marta bosilishi) BITTA
+              // taklifni ikki marta bajarib, ikkita bir xil ExamTest
+              // qoralamasini yaratib qo'yardi. `appliedKeys` shu kalitni
+              // doimiy "band" deb belgilaydi — tugma butunlay o'chadi.
+              const isDone = appliedKeys?.has(key);
               return (
                 <button
                   key={key}
                   type="button"
                   onClick={() => onApply(p, idx)}
-                  disabled={!!applying}
+                  disabled={!!applying || isDone}
+                  aria-disabled={isDone}
                   className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-left transition-colors disabled:opacity-50 ${
-                    p.secondary
-                      ? 'border border-border hover:border-accent/50 hover:bg-accent-soft text-ink'
-                      : 'bg-accent-soft border border-accent/40 hover:bg-accent/15 text-ink'
+                    isDone
+                      ? 'border border-success/30 bg-success-soft text-ink cursor-default'
+                      : p.secondary
+                        ? 'border border-border hover:border-accent/50 hover:bg-accent-soft text-ink'
+                        : 'bg-accent-soft border border-accent/40 hover:bg-accent/15 text-ink'
                   }`}
                 >
-                  {isBusy ? <Loader2 size={14} className="animate-spin flex-shrink-0 text-accent" /> : <Check size={14} className="flex-shrink-0 text-accent" />}
+                  {isBusy ? (
+                    <Loader2 size={14} className="animate-spin flex-shrink-0 text-accent" />
+                  ) : (
+                    <Check size={14} className={`flex-shrink-0 ${isDone ? 'text-success' : 'text-accent'}`} />
+                  )}
                   <span className="min-w-0">
-                    <span className="block text-xs font-semibold truncate">{p.label}</span>
-                    {p.description && <span className="block text-[11px] text-muted truncate">{p.description}</span>}
+                    <span className="block text-xs font-semibold truncate">{isDone ? 'Bajarildi' : p.label}</span>
+                    {!isDone && p.description && <span className="block text-[11px] text-muted truncate">{p.description}</span>}
                   </span>
                 </button>
               );

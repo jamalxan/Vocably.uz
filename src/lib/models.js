@@ -722,6 +722,14 @@ const ExamTestSchema = new mongoose.Schema({
     bookId: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBook', default: null },
     bookTitle: { type: String, default: '' },
     testIndex: { type: Number, default: null },
+    // Admin AI chat orqali yaratilganda (worker pipeline'idan farqli —
+    // u yerda `bookId` bor) qaysi `AgentAttachment`dan kelib chiqqanini
+    // saqlaydi. 2026-09-24, jonli Chrome sinovida topilgan xato: bitta
+    // "joylashtirish" taklifi ikki marta bosilsa (yoki qayta yuborilsa),
+    // bir xil (attachmentId, testIndex) uchun IKKINCHI marta test
+    // yaratilmasin — `apply/route.js#ingestOneTest` shu juftlik bo'yicha
+    // avval qidiradi.
+    agentAttachmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'AgentAttachment', default: null },
     // docs/ai-content-agent-tz.md §28 / avtopilot §5 S15 "mock_scheduler" —
     // bitta kitobda L/R/W'ning barchasi bo'lmasa (masalan faqat Reading
     // kitobi), lekin BOSHQA nashr qilingan testlarda yetishmagan bo'limlar
