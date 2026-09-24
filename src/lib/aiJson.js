@@ -67,19 +67,52 @@ async function viaCerebras(prompt) {
   return extractJson(text);
 }
 
+// 2026-09-24: bitta bepul model (`gemma-4-31b-it:free`) umumiy pool'da tez-tez
+// 429 ("temporarily rate-limited upstream") qaytaradi — bu holatda butun zanjir
+// yiqilardi (Cambridge-IELTS PDF tahlili shu sabab bilan to'xtagan). Endi bir
+// nechta bepul model navbat bilan sinaladi: har birining limiti ALOHIDA, shuning
+// uchun biri band bo'lsa keyingisi odatda javob beradi. Hammasi band bo'lsa —
+// oxirgi xato (429) tashlanadi va tashqi `withRetry` butun ro'yxatni qayta uradi.
+// Jonli sinovda (katta ~90k belgili prompt) `nemotron-3-super` ishladi, gemma/qwen 429.
+const OPENROUTER_FREE_MODELS = [
+  'google/gemma-4-31b-it:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'qwen/qwen3.8-27b:free',
+];
+// Keyingi modelga o'tishga arziydigan xatolar: tezlik chegarasi, model yo'q/o'chirilgan,
+// kontekst sig'madi, provayder vaqtincha ishlamayapti.
+const OPENROUTER_NEXT_MODEL_STATUSES = new Set([400, 402, 404, 413, 429, 500, 502, 503, 504]);
+
 async function viaOpenRouter(prompt) {
   if (!process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY yo'q");
-  const { text } = await streamOpenAiCompatible({
-    baseUrl: 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPENROUTER_API_KEY,
-    model: 'google/gemma-4-31b-it:free',
-    extraHeaders: { 'HTTP-Referer': process.env.APP_URL || 'https://vocably.app', 'X-Title': 'Vocably' },
-    messages: [{ role: 'user', content: prompt + JSON_INSTRUCTION }],
-  });
-  return extractJson(text);
+  let lastErr;
+  for (const model of OPENROUTER_FREE_MODELS) {
+    try {
+      const { text } = await streamOpenAiCompatible({
+        baseUrl: 'https://openrouter.ai/api/v1',
+        apiKey: process.env.OPENROUTER_API_KEY,
+        model,
+        extraHeaders: { 'HTTP-Referer': process.env.APP_URL || 'https://vocably.app', 'X-Title': 'Vocably' },
+        messages: [{ role: 'user', content: prompt + JSON_INSTRUCTION }],
+      });
+      return extractJson(text);
+    } catch (err) {
+      lastErr = err;
+      // JSON topilmadi kabi status'siz xatolarda ham keyingi model sinaladi.
+      if (err?.status != null && !OPENROUTER_NEXT_MODEL_STATUSES.has(Number(err.status))) throw err;
+    }
+  }
+  throw lastErr;
 }
 
 async function viaGemini(prompt, schema) {
+  if (!process.env.GEMINI_API_KEY) {
+    // status berilmasa withRetry buni "tarmoq xatosi" deb 3 marta bekorga qayta urardi.
+    const err = new Error("GEMINI_API_KEY yo'q");
+    err.status = 401;
+    throw err;
+  }
   const genAI = getGeminiClient();
   const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
   const result = await model.generateContent({
@@ -128,16 +161,27 @@ const PROVIDER_FNS = {
  * saqlanadigan joylarda "qaysi model baholadi" audit uchun kerak bo'ladi. */
 export async function generateJsonWithMeta(prompt, schema) {
   const order = resolveModelChainOrder(['groq', 'gemini', 'cerebras', 'openrouter']);
-  let lastErr;
+  const failures = [];
   for (const name of order) {
     try {
       const data = await withRetry(() => PROVIDER_FNS[name](prompt, schema));
       return { data, provider: name };
     } catch (err) {
-      lastErr = err;
+      failures.push({ name, err });
     }
   }
-  throw lastErr;
+  // Avval faqat OXIRGI provayder xatosi tashlanardi — bu adashtirardi (masalan
+  // "OpenRouter 429" ko'rinardi, holbuki Groq 413 "juda katta", Gemini kaliti yo'q
+  // edi). Endi har provayderning qisqa sababi bitta xabarda; `status` oxirgisiniki
+  // qoladi, shunda `toUserMessage`/retry mantig'i avvalgidek ishlaydi.
+  const last = failures[failures.length - 1]?.err;
+  const summary = failures
+    .map(({ name, err }) => `${name}: ${err?.status ? `${err.status} ` : ''}${String(err?.message || err).replace(/^Provayder xatosi \(\d+\): /, '').slice(0, 120)}`)
+    .join(' | ');
+  const err = new Error(`Barcha AI provayderlar javob bermadi — ${summary}`);
+  err.status = last?.status;
+  err.failures = failures;
+  throw err;
 }
 
 export async function generateJson(prompt, schema) {
