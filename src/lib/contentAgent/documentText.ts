@@ -14,8 +14,34 @@
 // Worker'da QOLGANI: sahifa render'i (screenshot) va PDF ichidagi rasmlarni
 // chiqarish — ular `@napi-rs/canvas`ga tayanadi va Vercel serverless
 // muhitida ishonchli emas, shuning uchun ataylab ko'chirilmadi.
-import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
+import { ensurePdfNodePolyfills } from './pdfNodePolyfills';
+
+// `pdf-parse` ATAYLAB statik import qilinmaydi: pdfjs moduli yuklanishi
+// bilanoq `DOMMatrix`ni talab qiladi, Vercel'da esa u yo'q edi — statik
+// importda butun route (audio/DOCX yuklash ham) modul darajasida yiqilardi.
+// Endi PDF faqat haqiqatan kerak bo'lganda, polyfill'dan KEYIN yuklanadi.
+//
+// Worker: Node'da pdfjs "fake worker"ni `import("./pdf.worker.mjs")` bilan
+// (webpackIgnore) yuklaydi — bundle ichida bu nisbiy fayl yo'q. Worker
+// modulini o'zimiz import qilsak, u `globalThis.pdfjsWorker`ni o'rnatadi va
+// pdfjs o'sha tayyor handler'ni ishlatadi (fayl qidirmaydi).
+let pdfParseLoader: Promise<typeof import('pdf-parse')['PDFParse']> | null = null;
+
+function loadPdfParse() {
+  pdfParseLoader ||= (async () => {
+    ensurePdfNodePolyfills();
+    if (!(globalThis as any).pdfjsWorker?.WorkerMessageHandler) {
+      await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+    }
+    const { PDFParse } = await import('pdf-parse');
+    return PDFParse;
+  })().catch((err) => {
+    pdfParseLoader = null; // keyingi urinishda qayta sinab ko'rilsin
+    throw err;
+  });
+  return pdfParseLoader;
+}
 
 export interface ExtractedPage {
   n: number;
@@ -43,6 +69,7 @@ const PSEUDO_PAGE_CHARS = 3000;
 
 /** Xom PDF baytlaridan har sahifa matnini ajratadi. */
 export async function extractPdfText(pdfBuffer: Buffer): Promise<ExtractedDocument> {
+  const PDFParse = await loadPdfParse();
   const parser = new PDFParse({ data: pdfBuffer });
   try {
     const result = await parser.getText();

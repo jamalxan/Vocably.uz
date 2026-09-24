@@ -83,7 +83,14 @@ async function uploadInChunks(file, threadId, onProgress) {
 
     const res = await fetch('/api/admin/agent/upload', { method: 'POST', body: form });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Yuklashda xatolik");
+    if (!res.ok) {
+      // Server JSON emas (Vercel 413/504 sahifasi, route yiqilishi) qaytarsa ham
+      // admin nima bo'lganini ko'rsin — quruq "Yuklashda xatolik" sababni yashirardi.
+      if (data.error) throw new Error(data.error);
+      if (res.status === 413) throw new Error("Fayl bo'lagi server uchun juda katta (413).");
+      if (res.status === 504) throw new Error("Server javob berishga ulgurmadi (504) — faylni kichikroq qismlarga bo'lib tashlang.");
+      throw new Error(`Yuklashda xatolik (${res.status})`);
+    }
     onProgress((i + 1) / totalChunks);
     if (i === totalChunks - 1) return data;
   }
