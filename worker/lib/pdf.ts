@@ -9,45 +9,13 @@
 // OS paketi (poppler-utils) o'rnatish shart emas, faqat shu npm paket.
 import { PDFParse } from 'pdf-parse';
 
-export interface ExtractedPage {
-  n: number;
-  text: string;
-}
-
-export interface ExtractedPdf {
-  pageCount: number;
-  hasTextLayer: boolean;
-  fullText: string;
-  pages: ExtractedPage[];
-}
-
-// Bo'sh sahifa (skan qilingan, matn qatlami yo'q) va oddiy qisqa sahifani
-// ajratish uchun — "matn qatlami umuman yo'q" holatini OCR zarurligi haqida
-// signal sifatida ishlatamiz (audit AI-01: "OCR fallback via Gemini Flash
-// vision if no text layer" — bu WORKERGA hali ulanmagan, faqat SIGNAL beriladi:
-// `hasTextLayer:false` bo'lsa chaqiruvchi (jobRunner/keyingi bosqich) buni
-// ko'rib, OCR bosqichini alohida navbatga qo'yishi kerak, bu funksiya o'zi
-// OCR qilmaydi).
-const MIN_MEANINGFUL_CHARS_PER_PAGE = 20;
-
-/** Xom PDF baytlaridan har sahifa matnini ajratadi. */
-export async function extractPdfText(pdfBuffer: Buffer): Promise<ExtractedPdf> {
-  const parser = new PDFParse({ data: pdfBuffer });
-  try {
-    const result = await parser.getText();
-    const pages: ExtractedPage[] = (result.pages || []).map((p: any) => ({ n: p.num, text: (p.text || '').trim() }));
-    const totalMeaningfulChars = pages.reduce((sum, p) => sum + p.text.length, 0);
-    const hasTextLayer = pages.length > 0 && totalMeaningfulChars / pages.length >= MIN_MEANINGFUL_CHARS_PER_PAGE;
-    return {
-      pageCount: pages.length,
-      hasTextLayer,
-      fullText: pages.map((p) => p.text).join('\n\n'),
-      pages,
-    };
-  } finally {
-    await parser.destroy();
-  }
-}
+// 2026-09-24 — MATN ajratishning o'zi endi `src/lib/contentAgent/
+// documentText.ts`da (admin AI chat uni worker'siz, to'g'ridan-to'g'ri
+// Next.js server tarafida ishlatadi). Bu yerda faqat QAYTA EKSPORT qilinadi,
+// shunda worker bosqichlari (`stages/extract.ts`) va ularning testlari
+// o'zgarishsiz qoladi va ikkala oqim ham BITTA implementatsiyani baham
+// ko'radi.
+export { extractPdfText, type ExtractedPage, type ExtractedPdf } from '@/lib/contentAgent/documentText';
 
 export interface PageScreenshot {
   n: number;

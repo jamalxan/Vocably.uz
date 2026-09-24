@@ -81,8 +81,13 @@ export async function fetchTestPreview(testId: string): Promise<TestPreview> {
   return res.json();
 }
 
-export async function createAttempt(testId: string, section: string, abandonExisting?: boolean): Promise<{ attemptId: string }> {
-  const body: Record<string, unknown> = { testId, mode: 'section', section };
+/** `testId` IXTIYORIY: berilmasa server shu bo'limi bor nashr qilingan
+ * testlardan bittasini tasodifiy tanlaydi (2026-09-24 — "Writing va Speaking
+ * o'zi random tushsin"). Reading/Listening sahifalari avvalgidek aniq
+ * `testId` yuboradi. */
+export async function createAttempt(testId: string | undefined, section: string, abandonExisting?: boolean): Promise<{ attemptId: string }> {
+  const body: Record<string, unknown> = { mode: 'section', section };
+  if (testId) body.testId = testId;
   if (abandonExisting) body.abandonExisting = true;
   const res = await authedFetch('/api/exam/attempts', {
     method: 'POST',

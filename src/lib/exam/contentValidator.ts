@@ -426,3 +426,16 @@ export function checkMockEligibility(test: Partial<Test>): ValidationIssue[] {
 export function isMockEligible(test: Partial<Test>): boolean {
   return checkMockEligibility(test).length === 0;
 }
+
+// 2026-09-24 (foydalanuvchi so'rovi: "full mockda reading/listening/writing
+// manbalaridan random, aralashgan holatda tushsin") — endi mock BITTA
+// testdan emas, HAR BO'LIM uchun ALOHIDA manbadan yig'iladi
+// (`mockComposer.ts`). Shuning uchun "mock uchun yaroqlimi" savolini endi
+// BITTA BO'LIM darajasida ham berish kerak. Qoidalar TAKRORLANMAYDI —
+// xuddi shu `checkMockEligibility` ishlatiladi, faqat natijasi shu
+// bo'limga tegishli qismi bo'yicha filtrlanadi.
+export function isSectionMockEligible(sectionKey: 'reading' | 'listening' | 'writing', sectionContent: unknown): boolean {
+  if (!sectionContent) return false;
+  const issues = checkMockEligibility({ sections: { [sectionKey]: sectionContent } } as Partial<Test>);
+  return !issues.some((i) => i.path === sectionKey || i.path.startsWith(`${sectionKey}.`));
+}

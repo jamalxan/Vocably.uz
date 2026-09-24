@@ -29,7 +29,7 @@ export default function OqishPage() {
     <div>
       <ExamBackLink />
       <TestPicker sectionKey="reading" title="Reading — testni tanlang" onPicked={handlePicked} />
-      <div className="max-w-lg mx-auto px-6 sm:px-10 pb-6 -mt-4">
+      <div className="max-w-6xl mx-auto px-6 sm:px-10 pb-6 -mt-4">
         <Link href="/app/oqish/mashq" className="text-sm text-accent hover:underline font-semibold">
           Mashq rejimida sinab ko'ring — vaqt cheklanmagan, izohlar bilan →
         </Link>

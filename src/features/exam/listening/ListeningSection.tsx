@@ -75,6 +75,12 @@ export default function ListeningSection({
   const [playedParts, setPlayedParts] = useState<number[]>([]);
   const [volume, setVolume] = useState(1);
   const [position, setPosition] = useState(0);
+  // Audio faylning HAQIQIY uzunligi (brauzer metadata'dan biladi). Kontent
+  // hujjatidagi `part.durationSec` 0 bo'lishi mumkin — admin AI chat orqali
+  // biriktirilgan audioda server tomonda uzunlikni o'lchaydigan vosita
+  // (ffmpeg) yo'q. Shunday holatda progress chizig'i "0:00 / 0:00" bo'lib
+  // qolmasligi uchun brauzerning o'z qiymatiga qaytamiz.
+  const [audioDuration, setAudioDuration] = useState(0);
   const [audioPlay, setAudioPlay] = useState(false);
   const [audioProblem, setAudioProblem] = useState(false);
   const positionRef = useRef(0);
@@ -314,6 +320,7 @@ export default function ListeningSection({
           setPosition(sec);
         }}
         onEnded={handlePartEnded}
+        onDurationKnown={(sec) => setAudioDuration(Number.isFinite(sec) ? sec : 0)}
         onPlaybackError={() => setAudioProblem(true)}
       />
 
@@ -347,7 +354,7 @@ export default function ListeningSection({
                 </p>
                 {phase !== 'final-check' && (
                   <div className="flex-1 max-w-xs">
-                    <AudioProgress positionSec={position} durationSec={part.durationSec} />
+                    <AudioProgress positionSec={position} durationSec={part.durationSec || audioDuration} />
                   </div>
                 )}
               </div>

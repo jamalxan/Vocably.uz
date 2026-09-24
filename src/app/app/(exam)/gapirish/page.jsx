@@ -2,11 +2,11 @@
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { createAttempt } from '@/features/exam/state/attemptsApi';
-import TestPicker from '@/features/exam/shell/TestPicker';
+import RandomSectionStart from '@/features/exam/shell/RandomSectionStart';
 import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 
-// TZ-vocably-v2.md §20 migratsiyasi YAKUNLANDI — bu endi yangi exam engine
-// (avval `/app/gapirish-beta`da qurilgan, endi asosiy yo'lga ko'chirildi).
+// 2026-09-24 (foydalanuvchi so'rovi) — Speaking ham Writing kabi: savollar
+// tasodifiy tushadi, oldindan tanlash yo'q (yozish/page.jsx izohiga q.).
 export default function GapirishPage() {
   const router = useRouter();
   const { isAuthed } = useApp();
@@ -15,19 +15,20 @@ export default function GapirishPage() {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 
-  const handlePicked = async (testId, fresh) => {
-    try {
-      const { attemptId } = await createAttempt(testId, 'speaking', fresh);
-      router.push(`/app/gapirish/${attemptId}`);
-    } catch {
-      // TestPicker ro'yxati saqlanadi, foydalanuvchi qayta bosishi mumkin.
-    }
+  const start = async () => {
+    const { attemptId } = await createAttempt(undefined, 'speaking');
+    router.push(`/app/gapirish/${attemptId}`);
   };
 
   return (
     <div>
       <ExamBackLink />
-      <TestPicker sectionKey="speaking" title="Speaking — testni tanlang" onPicked={handlePicked} />
+      <RandomSectionStart
+        title="Speaking"
+        description="Part 1, cue card va Part 3 savollari tasodifiy tanlanadi — xuddi haqiqiy imtihondagidek, mavzuni oldindan ko'rmaysiz."
+        buttonLabel="Tasodifiy suhbatni boshlash"
+        onStart={start}
+      />
     </div>
   );
 }

@@ -29,7 +29,7 @@ export default function TinglashPage() {
     <div>
       <ExamBackLink />
       <TestPicker sectionKey="listening" title="Listening — testni tanlang" onPicked={handlePicked} />
-      <div className="max-w-lg mx-auto px-6 sm:px-10 pb-6 -mt-4">
+      <div className="max-w-6xl mx-auto px-6 sm:px-10 pb-6 -mt-4">
         <Link href="/app/tinglash/mashq" className="text-sm text-accent hover:underline font-semibold">
           Mashq rejimida sinab ko'ring — qayta tinglash va tezlikni o'zgartirish erkin →
         </Link>

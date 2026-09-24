@@ -2,60 +2,25 @@
 // chiqaradi. Rasm (Academic Task 1 grafik/jadval) ni bu bosqich hali
 // BIRIKTIRMAYDI — `extract_images` alohida ishlaydi, `assemble.ts` ikkalasini
 // birlashtiradi (rasm sahifa raqami bo'yicha, TZ §8 taxminiga ko'ra).
+//
+// 2026-09-24 — sxema/prompt/normalizator `@/lib/contentAgent/parsers/
+// sectionParsers`da (parseListening.ts izohiga q.).
 import { runAiStage } from '../lib/aiStageRunner';
 import { requireStageOutput } from '../lib/dependencies';
+import {
+  WRITING_SCHEMA,
+  WRITING_PROMPT_VERSION,
+  buildWritingPrompt,
+  normalizeWritingTasks,
+  type WritingTaskOutput,
+} from '@/lib/contentAgent/parsers/sectionParsers';
 import type { StageContext } from '../types';
 import type { SplitSectionsOutput } from './splitSections';
 
-const PROMPT_VERSION = 'v1';
-
-const WRITING_SCHEMA = {
-  type: 'object',
-  properties: {
-    tasks: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          order: { type: 'integer' },
-          minWords: { type: 'integer' },
-          promptText: { type: 'string' },
-          hasVisual: { type: 'boolean' },
-          visualPageHint: { type: 'integer' },
-        },
-        required: ['order', 'promptText'],
-      },
-    },
-  },
-  required: ['tasks'],
-};
-
-function buildPrompt(sectionText: string): string {
-  return `Quyida bitta IELTS testining Writing bo'limi (Task 1 va Task 2) matni berilgan.
-
-XOM MATN:
-"""
-${sectionText.slice(0, 12000)}
-"""
-
-Har task uchun: order (1 yoki 2), minWords (Task 1 uchun odatda 150, Task 2 uchun 250), promptText (topshiriqning TO'LIQ matni), hasVisual (Task 1'da grafik/jadval/diagramma bo'lsa true — buni matn ichida "The chart/graph/table below shows..." kabi iboradan bilib olasan), visualPageHint (agar aniq bilsang, shu rasm qaysi sahifada bo'lishi mumkinligini taxmin qil, aks holda qoldirib ket).`;
-}
-
-export interface WritingTaskOutput {
-  order: 1 | 2;
-  minWords: 150 | 250;
-  recommendedMin: 20 | 40;
-  promptHtml: string;
-  hasVisual: boolean;
-  visualPageHint?: number;
-}
+export type { WritingTaskOutput };
 
 export interface ParseWritingOutput {
   tests: { index: number; tasks: WritingTaskOutput[] }[];
-}
-
-function escapeHtml(s: string): string {
-  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 export async function runParseWriting(ctx: StageContext): Promise<ParseWritingOutput> {
@@ -71,25 +36,13 @@ export async function runParseWriting(ctx: StageContext): Promise<ParseWritingOu
       bookId: ctx.job.bookId,
       jobId: ctx.job._id,
       systemPrompt: "Sen IELTS Writing topshiriqlarini JSON strukturaga o'giradigan yordamchisan. Faqat so'ralgan JSON'ni qaytar.",
-      userContent: buildPrompt(sectionText),
+      userContent: buildWritingPrompt(sectionText),
       jsonSchema: { name: 'writing_section', schema: WRITING_SCHEMA },
-      promptVersion: PROMPT_VERSION,
+      promptVersion: WRITING_PROMPT_VERSION,
       inputForHash: sectionText,
     });
 
-    const tasks: WritingTaskOutput[] = (data.tasks || []).map((t) => {
-      const order = (t.order === 2 ? 2 : 1) as 1 | 2;
-      return {
-        order,
-        minWords: (order === 1 ? 150 : 250) as 150 | 250,
-        recommendedMin: (order === 1 ? 20 : 40) as 20 | 40,
-        promptHtml: `<p>${escapeHtml(t.promptText || '')}</p>`,
-        hasVisual: !!t.hasVisual,
-        visualPageHint: t.visualPageHint,
-      };
-    });
-
-    tests.push({ index: test.index, tasks });
+    tests.push({ index: test.index, tasks: normalizeWritingTasks(data) });
   }
 
   return { tests };

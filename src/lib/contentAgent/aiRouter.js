@@ -33,6 +33,14 @@ export const DEFAULT_MODEL_MATRIX = {
   // §5.3 item — QA HAR DOIM parse bosqichidan boshqa oila: bir xil model
   // o'z xatosini ko'rmaydi. Bu yerda ataylab Gemini emas, Claude.
   'qa.validate': { primary: 'anthropic/claude-sonnet-4.5', fallback: ['google/gemini-2.5-pro'], temperature: 0.1, maxTokens: 4000, costCapUsd: 0.3 },
+  // Admin AI chat (kontent agenti, 2026-09-24) — ikki yangi bosqich:
+  // `agent.classify` sarlavhasiz hujjat qaysi bo'limga tegishliligini
+  // aniqlaydi (arzon, qisqa javob), `audio.match` esa audio transkripti
+  // qaysi Listening part'iga mos kelishini baholaydi. Ikkalasi ham xuddi
+  // boshqa bosqichlar kabi admin panelidan (AiTaskConfig) qayta
+  // sozlanishi mumkin.
+  'agent.classify': { primary: 'google/gemini-2.5-flash', fallback: ['google/gemini-2.5-pro'], temperature: 0.1, maxTokens: 1000, costCapUsd: 0.05 },
+  'audio.match': { primary: 'google/gemini-2.5-flash', fallback: ['google/gemini-2.5-pro'], temperature: 0.1, maxTokens: 2000, costCapUsd: 0.1 },
   'writing.grade': { primary: 'anthropic/claude-sonnet-4.5', fallback: ['google/gemini-2.5-pro'], temperature: 0.2, maxTokens: 4000, costCapUsd: 0.2 },
   'speaking.grade': { primary: 'anthropic/claude-sonnet-4.5', fallback: ['google/gemini-2.5-pro'], temperature: 0.2, maxTokens: 4000, costCapUsd: 0.2 },
 };

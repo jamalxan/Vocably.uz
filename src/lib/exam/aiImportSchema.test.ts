@@ -160,3 +160,41 @@ describe('normalizeAiPassages', () => {
     expect(needsReview).toEqual([]);
   });
 });
+
+// 2026-09-24 — sxemani majburlamaydigan provayder (Groq/Cerebras) javobni
+// "yassilashtirib" yuboradi. Bu shakllar HAQIQIY chaqiruvda kuzatilgan;
+// avval ularning hammasi jimgina BO'SH natijaga aylanardi.
+describe('normalizeAiPassages — model shakl siljishi', () => {
+  it('bitta passage obyekti (massivsiz) kelsa ham qabul qiladi', () => {
+    const { passages } = normalizeAiPassages({
+      order: 1,
+      title: 'The Return of the Urban Bee',
+      paragraphs: [{ label: 'A', text: 'Beekeeping in cities...' }],
+      questionGroups: [
+        {
+          questions: [
+            { number: 5, prompt: 'Urban honey is cleaner.', type: 'true_false_notgiven', accepted: 'TRUE' },
+            { number: 6, prompt: 'The study lasted five summers.', type: 'true_false_notgiven', accepted: 'FALSE' },
+          ],
+        },
+      ],
+    } as any);
+
+    expect(passages).toHaveLength(1);
+    expect(passages[0].title).toBe('The Return of the Urban Bee');
+    // `type` guruhda emas, savollarda kelgan — guruhga ko'chiriladi.
+    expect(passages[0].questionGroups[0].type).toBe('true_false_notgiven');
+    // `accepted` string bo'lib kelgan — massivga o'giriladi.
+    expect(passages[0].questionGroups[0].questions[0].answer.accepted).toEqual(['TRUE']);
+    expect(passages[0].questionGroups[0].questions[1].answer.accepted).toEqual(['FALSE']);
+  });
+
+  it("javob bo'sh bo'lsa ham savol yo'qolmaydi (validator keyin bloklaydi)", () => {
+    const { passages } = normalizeAiPassages({
+      passages: [
+        { order: 1, title: 'X', paragraphs: [], questionGroups: [{ type: 'short_answer', instruction: '', questions: [{ number: 1 }] }] },
+      ],
+    } as any);
+    expect(passages[0].questionGroups[0].questions[0].answer.accepted).toEqual([]);
+  });
+});

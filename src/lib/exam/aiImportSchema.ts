@@ -249,8 +249,42 @@ function detectMissingFields(type: QuestionType, g: AiQuestionGroup): string | n
  * (validator + preview) BIR XIL shaklda kiradi. `needsReview` — admin UI'da
  * "AI aniq bo'lmagan deb belgilagan" ro'yxati sifatida alohida ko'rsatiladi
  * (P0-01: majburiy tur almashtirish o'rniga ochiq exception queue). */
+/** Modelning shakl "siljishlari"ga qarshi himoya — HAQIQIY chaqiruvda
+ * kuzatilgan (2026-09-24): sxemani majburlamaydigan provayder `{passages:
+ * [...]}` o'rniga BITTA passage obyektini qaytardi, `accepted`ni massiv
+ * emas string qilib berdi va `type`ni guruhda emas, har savolda yozdi.
+ * Avval bularning HAMMASI jimgina BO'SH natijaga aylanardi. */
+function coerceAiShape(data: any): AiPassage[] {
+  if (Array.isArray(data?.passages)) return data.passages;
+  if (Array.isArray(data)) return data;
+  // Bitta passage obyekti — massivga o'raymiz.
+  if (data && (data.paragraphs || data.questionGroups)) return [data];
+  return [];
+}
+
+function coerceGroup(g: any): AiQuestionGroup {
+  const questions = Array.isArray(g?.questions) ? g.questions : [];
+  // `type` guruhda yo'q, lekin savollarda bor — birinchisini olamiz.
+  const type = g?.type || questions.find((q: any) => q?.type)?.type || '';
+  return {
+    ...g,
+    type,
+    questions: questions.map((q: any) => ({
+      ...q,
+      accepted: Array.isArray(q?.accepted)
+        ? q.accepted.flat(2).filter(Boolean)
+        : typeof q?.accepted === 'string' && q.accepted.trim()
+          ? [q.accepted]
+          : [],
+    })),
+  };
+}
+
 export function normalizeAiPassages(data: { passages?: AiPassage[] }): { passages: Passage[]; needsReview: AiImportNeedsReview[] } {
-  const rawPassages = Array.isArray(data.passages) ? data.passages : [];
+  const rawPassages = coerceAiShape(data).map((p: any) => ({
+    ...p,
+    questionGroups: Array.isArray(p?.questionGroups) ? p.questionGroups.map(coerceGroup) : [],
+  }));
   const needsReview: AiImportNeedsReview[] = [];
 
   const passages = rawPassages.map((p) => ({

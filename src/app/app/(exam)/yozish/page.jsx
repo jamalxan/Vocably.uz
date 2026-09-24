@@ -3,11 +3,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { createAttempt } from '@/features/exam/state/attemptsApi';
-import TestPicker from '@/features/exam/shell/TestPicker';
+import RandomSectionStart from '@/features/exam/shell/RandomSectionStart';
 import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 
-// TZ-vocably-v2.md §20 migratsiyasi YAKUNLANDI — bu endi yangi exam engine
-// (avval `/app/yozish-beta`da qurilgan, endi asosiy yo'lga ko'chirildi).
+// 2026-09-24 (foydalanuvchi so'rovi) — Writing endi test TANLASH ekrani
+// emas: topshiriq tasodifiy tushadi (Reading/Listening'da tanlash qoladi,
+// chunki ular ustida maqsadli mashq qilish mantiqiy; Writing/Speaking'da esa
+// oldindan mavzuni ko'rib qo'yish imtihon shartini buzardi).
 export default function YozishPage() {
   const router = useRouter();
   const { isAuthed } = useApp();
@@ -16,24 +18,25 @@ export default function YozishPage() {
     return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
   }
 
-  const handlePicked = async (testId, fresh) => {
-    try {
-      const { attemptId } = await createAttempt(testId, 'writing', fresh);
-      router.push(`/app/yozish/${attemptId}`);
-    } catch {
-      // TestPicker ro'yxati saqlanadi, foydalanuvchi qayta bosishi mumkin.
-    }
+  const start = async () => {
+    const { attemptId } = await createAttempt(undefined, 'writing');
+    router.push(`/app/yozish/${attemptId}`);
   };
 
   return (
     <div>
       <ExamBackLink />
-      <TestPicker sectionKey="writing" title="Writing — testni tanlang" onPicked={handlePicked} />
-      <div className="max-w-lg mx-auto px-6 sm:px-10 pb-6 -mt-4">
-        <Link href="/app/yozish/mashq" className="text-sm text-accent hover:underline font-semibold">
-          Mashq rejimida sinab ko'ring — vaqt cheklanmagan, qoralama bilan →
-        </Link>
-      </div>
+      <RandomSectionStart
+        title="Writing"
+        description="Topshiriq tasodifiy tanlanadi — Task 1 va Task 2, 60 daqiqa. Har safar yangi variant tushadi."
+        buttonLabel="Tasodifiy topshiriqni boshlash"
+        onStart={start}
+        footer={
+          <Link href="/app/yozish/mashq" className="text-sm text-accent hover:underline font-semibold">
+            Mashq rejimida sinab ko'ring — vaqt cheklanmagan, qoralama bilan →
+          </Link>
+        }
+      />
     </div>
   );
 }

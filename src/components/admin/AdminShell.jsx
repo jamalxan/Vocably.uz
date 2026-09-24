@@ -13,10 +13,15 @@ const NAV = [
   { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare },
   { href: '/admin/reports', label: 'Reportlar', icon: Flag },
   { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
+  // 2026-09-24 — AI chat (kontent agenti) endi kontent yuklashning ASOSIY
+  // yo'li: admin faylni chatga tashlaydi, agent uni bo'limlarga ajratib
+  // joylashtiradi. Shuning uchun ro'yxatda kontent bo'limlaridan OLDIN
+  // turadi va nomi "AI sozlamalari" emas ("sozlamalar" endi o'sha
+  // ekranning ichidagi bitta tab, asosiy narsa emas).
+  { href: '/admin/content/ai', label: 'AI chat', icon: Sparkles },
   { href: '/admin/exam-tests', label: 'IELTS testlar', icon: BookOpen },
   { href: '/admin/content/books', label: 'Kontent studiyasi', icon: Library },
   { href: '/admin/content/review', label: 'Tekshiruv navbati', icon: ClipboardCheck },
-  { href: '/admin/content/ai', label: 'AI sozlamalari', icon: Sparkles },
   { href: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
 ];
 

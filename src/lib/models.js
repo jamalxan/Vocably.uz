@@ -1356,3 +1356,101 @@ const AssignmentSchema = new mongoose.Schema({
 AssignmentSchema.index({ classroomId: 1 });
 
 export const Assignment = mongoose.models.Assignment || mongoose.model('Assignment', AssignmentSchema);
+
+// ============================================================================
+// ADMIN AI CHAT (kontent agenti) — 2026-09-24, foydalanuvchi so'rovi:
+// "admin paneldagi AI qism chat ko'rinishida bo'lsin... unga turli xil
+// kitoblar yuklanishi mumkin, u kitobni ko'rib chiqib qaysi biriga (reading/
+// listening/writing/speaking) mosligini aniqlab o'zi joylashtirsin".
+//
+// Bu — mavjud `ContentBook` + `IngestJob` (worker) pipeline'iga MUQOBIL,
+// WORKER'SIZ yo'l va u ATAYLAB shunday: worker Redis (`REDIS_URL`) + R2
+// (`R2_*`) + alohida Docker protsessini talab qiladi, ularning hech biri
+// hozircha sozlanmagan, admin esa kontentni BUGUN yuklashi kerak. Shuning
+// uchun chat oqimi faqat MongoDB'ga tayanadi: fayl baytlari GridFS'da
+// (audio — `examAudio`, rasm — `examImages`), matn shu hujjatlarda, natija
+// esa to'g'ridan-to'g'ri `ExamTest` qoralamasi sifatida yoziladi.
+// Worker ulanganda ikkala yo'l ham yonma-yon ishlayveradi (bir xil
+// `ExamTest` hujjatiga boradi).
+// ============================================================================
+
+// Bitta suhbat. Xabarlar ATAYLAB shu hujjat ichida (alohida kolleksiya emas):
+// bitta admin suhbati qisqa (o'nlab xabar), har doim BUTUNLIGICHA o'qiladi va
+// hech qachon boshqa suhbat bilan birga so'ralmaydi — alohida kolleksiya
+// faqat qo'shimcha join bo'lardi.
+const AgentMessageSchema = new mongoose.Schema(
+  {
+    role: { type: String, enum: ['user', 'assistant', 'system'], required: true },
+    content: { type: String, default: '' },
+    // Chat pufakchasi ostida ko'rsatiladigan tuzilmali qism: taklif
+    // kartalari (`proposals`), savol variantlari (`options`), natija
+    // havolalari (`results`). Sahifa yangilanganda ham qayta chiziladi —
+    // shuning uchun klient state'ida emas, shu yerda saqlanadi.
+    data: { type: mongoose.Schema.Types.Mixed, default: null },
+    attachmentIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AgentAttachment' }],
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: true }
+);
+
+const AgentThreadSchema = new mongoose.Schema({
+  adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  title: { type: String, default: 'Yangi suhbat' },
+  messages: { type: [AgentMessageSchema], default: [] },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now, index: true },
+});
+
+export const AgentThread = mongoose.models.AgentThread || mongoose.model('AgentThread', AgentThreadSchema);
+
+// Chatga tashlangan bitta fayl. `text` — AUDIO transkripti (hujjat matni
+// `pages` ichida, ikki nusxada saqlanmaydi: bitta kitob matni 1-3MB bo'lishi
+// mumkin, MongoDB hujjati esa 16MB bilan cheklangan).
+const AgentAttachmentSchema = new mongoose.Schema({
+  adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  threadId: { type: mongoose.Schema.Types.ObjectId, ref: 'AgentThread', default: null, index: true },
+  kind: { type: String, enum: ['document', 'audio', 'image', 'text', 'unsupported'], required: true },
+  filename: { type: String, default: '' },
+  mimeType: { type: String, default: '' },
+  bytes: { type: Number, default: 0 },
+
+  // Hujjat/matn uchun — ajratilgan matn va psevdo-sahifalar (AI xarita
+  // chiqarishi uchun kerak; `pages` bo'lmasa bo'lim kesish ham bo'lmaydi).
+  text: { type: String, default: '' },
+  pages: { type: mongoose.Schema.Types.Mixed, default: null }, // [{n, text}]
+  pageCount: { type: Number, default: 0 },
+  hasTextLayer: { type: Boolean, default: true },
+
+  // Audio/rasm uchun — GridFS fayl id'lari (`@/lib/exam/audioStorage`,
+  // `@/lib/exam/imageStorage`). Audio shu zahoti `examAudio` bucket'iga
+  // tushadi, ya'ni Listening part'iga biriktirilganda FAYLNI KO'CHIRISH
+  // shart emas — faqat `audioUrl` yoziladi.
+  audioFileId: { type: String, default: null },
+  imageFileId: { type: String, default: null },
+  durationSec: { type: Number, default: null },
+
+  // AI tahlili natijasi: hujjat uchun {tests:[...]}, audio uchun mos
+  // keladigan Listening part nomzodlari va tekshiruv xulosasi.
+  analysis: { type: mongoose.Schema.Types.Mixed, default: null },
+  status: { type: String, enum: ['uploaded', 'analyzed', 'applied', 'failed'], default: 'uploaded' },
+  error: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now },
+});
+AgentAttachmentSchema.index({ adminId: 1, createdAt: -1 });
+
+export const AgentAttachment = mongoose.models.AgentAttachment || mongoose.model('AgentAttachment', AgentAttachmentSchema);
+
+// Bo'lak-bo'lak yuklash uchun vaqtinchalik ombor. Vercel serverless so'rov
+// tanasi ~4.5MB bilan cheklangan (kitob PDF'i esa o'nlab MB) — shuning uchun
+// klient faylni ~3MB bo'laklarga bo'lib yuboradi, bu yerda yig'iladi va
+// yig'ilgach o'chiriladi. TTL indeksi — yarim yo'lda tashlab ketilgan
+// yuklashlar 1 soatdan keyin o'zi yo'qoladi.
+const AgentUploadChunkSchema = new mongoose.Schema({
+  uploadId: { type: String, required: true },
+  index: { type: Number, required: true },
+  data: { type: Buffer, required: true },
+  createdAt: { type: Date, default: Date.now, expires: 3600 },
+});
+AgentUploadChunkSchema.index({ uploadId: 1, index: 1 }, { unique: true });
+
+export const AgentUploadChunk = mongoose.models.AgentUploadChunk || mongoose.model('AgentUploadChunk', AgentUploadChunkSchema);

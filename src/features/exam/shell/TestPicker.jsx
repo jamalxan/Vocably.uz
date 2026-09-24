@@ -3,11 +3,17 @@ import { useEffect, useState } from 'react';
 import { Loader2, ChevronRight, RotateCcw } from 'lucide-react';
 import { fetchSectionStatuses } from '../state/attemptsApi';
 
-// TZ-vocably-v2.md §20 migratsiyasi — standalone Reading/Listening/Writing/
-// Speaking sahifalari uchun test tanlash ekrani. Mock'dan FARQLI ravishda bu
-// yerda qo'lda tanlash ATAYLAB bor — foydalanuvchi so'rovi faqat Mock'ni
-// avtomatik-tasodifiy qilishni talab qilgan, mustaqil mashq uchun tanlash
-// tabiiy va foydali.
+// TZ-vocably-v2.md §20 migratsiyasi — standalone Reading/Listening test
+// tanlash ekrani. Mock'dan FARQLI ravishda bu yerda qo'lda tanlash ATAYLAB
+// bor (Mock esa to'liq avtomatik/tasodifiy), Writing/Speaking esa
+// 2026-09-24 so'rovidan keyin umuman ro'yxat ko'rsatmaydi ("writing va
+// speaking o'zi random tushsin") — ya'ni bu komponent endi faqat
+// Reading/Listening uchun ishlatiladi.
+//
+// 2026-09-24 (foydalanuvchi so'rovi): "mashqlar o'rtada bir qator turmasin,
+// 4 qator bo'lsin, yonga-pastga esa bemalol qancha bo'lsa ham tushsin" —
+// ro'yxat o'rniga TO'R (grid): keng ekranda 4 ustun, pastga cheksiz.
+// Shuning uchun konteyner endi `max-w-lg` emas.
 function formatMinutes(sec) {
   return Math.round(sec / 60);
 }
@@ -55,8 +61,9 @@ export default function TestPicker({ sectionKey, title, onPicked }) {
   }, [sectionKey]);
 
   return (
-    <div className="max-w-lg mx-auto p-6 sm:p-10">
-      <h1 className="text-lg font-bold text-ink mb-6 font-display">{title}</h1>
+    <div className="max-w-6xl mx-auto p-6 sm:p-10">
+      <h1 className="text-lg font-bold text-ink mb-1 font-display">{title}</h1>
+      <p className="text-xs text-muted mb-6">Har bir mashqni istagancha qayta ishlash mumkin — "Qaytadan" tugmasi yangi urinish boshlaydi.</p>
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
@@ -70,39 +77,42 @@ export default function TestPicker({ sectionKey, title, onPicked }) {
       {!error && tests !== null && tests.length === 0 && <p className="text-sm text-muted">Hozircha testlar yo'q.</p>}
 
       {!error && tests !== null && tests.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {tests.map((test) => {
             const st = statuses[test.id];
             const badge = st ? STATUS_BADGE[st.status] : null;
-            const canRestart = st && st.status !== 'in_progress';
             return (
               <div
                 key={test.id}
-                className="flex items-center gap-2 rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent-soft/40 transition-colors"
+                className="flex flex-col rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent-soft/40 transition-colors"
               >
-                <button onClick={() => onPicked(test.id)} className="flex-1 flex items-center justify-between gap-3 px-4 py-3.5 text-left min-w-0">
+                <button
+                  onClick={() => onPicked(test.id)}
+                  className="flex-1 flex items-start justify-between gap-2 px-4 py-3.5 text-left min-w-0"
+                >
                   <span className="min-w-0">
-                    <span className="flex items-center gap-2">
-                      <span className="block text-sm font-semibold text-ink">{test.title}</span>
-                      {badge && (
-                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-[11px] leading-4 font-semibold ${badge.className}`}>
-                          {badge.label}
-                          {st.status === 'graded' && st.band != null ? `: ${st.band}` : ''}
-                        </span>
-                      )}
-                    </span>
-                    <span className="block text-xs text-muted mt-0.5">{sectionMeta(test, sectionKey)}</span>
+                    <span className="block text-sm font-semibold text-ink line-clamp-2">{test.title}</span>
+                    <span className="block text-xs text-muted mt-1">{sectionMeta(test, sectionKey)}</span>
+                    {badge && (
+                      <span className={`inline-block mt-2 px-1.5 py-0.5 rounded text-[11px] leading-4 font-semibold ${badge.className}`}>
+                        {badge.label}
+                        {st.status === 'graded' && st.band != null ? `: ${st.band}` : ''}
+                      </span>
+                    )}
                   </span>
-                  <ChevronRight size={16} className="text-muted flex-shrink-0" />
+                  <ChevronRight size={16} className="text-muted flex-shrink-0 mt-0.5" />
                 </button>
-                {canRestart && (
+                {/* "Qayta-qayta ishlash imkoni" (2026-09-24) — avval bu tugma
+                    faqat urinish TUGAGANDA chiqardi; endi urinish boshlangan
+                    bo'lsa ham chiqadi va eskisini bekor qilib yangisini
+                    boshlaydi (`abandonExisting`). */}
+                {st && (
                   <button
                     onClick={() => onPicked(test.id, true)}
                     title="Yangi urinish boshlash"
-                    aria-label="Yangi urinish boshlash"
-                    className="flex-shrink-0 mr-1 w-11 h-11 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 border-t border-border text-xs font-semibold text-muted hover:text-ink hover:bg-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-b-xl"
                   >
-                    <RotateCcw size={16} />
+                    <RotateCcw size={13} /> Qaytadan
                   </button>
                 )}
               </div>

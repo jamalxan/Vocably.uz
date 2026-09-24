@@ -1,8 +1,11 @@
+import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/db';
 import { ExamTest, ExamAttempt } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getOrCreateTestVersion } from '@/lib/exam/attemptServer';
 import { normalizeMockKind } from '@/lib/exam/mockKind';
+import { composeMock, composedTitle, MOCK_SECTION_KEYS } from '@/lib/exam/mockComposer';
+import { isSectionMockEligible } from '@/lib/exam/contentValidator';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -53,6 +56,95 @@ async function createMockAttemptForTest(userId, test, mockKind) {
   return { attempt };
 }
 
+/** Nashr qilingan testlardan HAR BO'LIM uchun alohida "manba hovuzi"
+ * yig'adi. Shart — bo'limning O'ZI mock shakliga mos bo'lishi
+ * (`isSectionMockEligible`: Reading 3 passage/40 savol, Listening 4 part x
+ * 10 savol + audio, Writing 2 task) — ya'ni butun test mock-eligible
+ * bo'lishi SHART EMAS: faqat Reading'i bor mini test ham endi mockka
+ * Reading manbasi bo'la oladi. Aynan shu narsa "manbalar aralashsin"
+ * talabini haqiqiy qiladi. */
+async function buildMockPools() {
+  const tests = await ExamTest.find({
+    isPublished: true,
+    $or: MOCK_SECTION_KEYS.map((key) => ({ [`sections.${key}`]: { $exists: true } })),
+  })
+    .select('title module sections availability')
+    .lean();
+
+  // Modul (academic/general) bo'yicha ajratamiz — Academic Reading bilan
+  // General Writing'ni aralashtirib yuborish imtihon shaklini buzardi.
+  const byModule = new Map();
+  for (const test of tests) {
+    // `module` nomi ataylab ISHLATILMAYDI (Next.js lint qoidasi: modul
+    // darajasidagi `module` o'zgaruvchisiga yozish bundler'ni chalg'itadi).
+    const moduleKey = test.module || 'academic';
+    if (!byModule.has(moduleKey)) byModule.set(moduleKey, { listening: [], reading: [], writing: [] });
+    const pools = byModule.get(moduleKey);
+    for (const key of MOCK_SECTION_KEYS) {
+      const content = test.sections?.[key];
+      if (!content) continue;
+      // `availability.practice*` — admin bo'limni ataylab yopgan bo'lsa
+      // (masalan sifati past deb) mockka ham tushmasin.
+      const availabilityKey = `practice${key[0].toUpperCase()}${key.slice(1)}`;
+      if (test.availability && test.availability[availabilityKey] === false) continue;
+      if (!isSectionMockEligible(key, content)) continue;
+      pools[key].push({ testId: String(test._id), title: test.title, module: moduleKey, content });
+    }
+  }
+
+  return byModule;
+}
+
+/** To'liq (uchala bo'lim ham bor) hovuzga ega modullardan bittasini
+ * tasodifiy tanlab, aralash mock yig'adi. Hech bir modulda to'liq to'plam
+ * bo'lmasa `null` — chaqiruvchi 404 qaytaradi (yolg'on "yarim mock"
+ * yaratilmaydi). */
+async function composeRandomMock(avoidTestIds) {
+  const byModule = await buildMockPools();
+  const viable = Array.from(byModule.entries()).filter(([, pools]) => MOCK_SECTION_KEYS.every((k) => pools[k].length > 0));
+  if (viable.length === 0) return null;
+
+  const [moduleKey, pools] = viable[Math.floor(Math.random() * viable.length)];
+  const composed = composeMock(pools, { avoidTestIds });
+  if (!composed) return null;
+
+  // `createMockAttemptForTest` uchun "test"ga o'xshash obyekt: `_id`
+  // manba testlardan birininki (attempt real hujjatga bog'langan bo'lib
+  // qolishi uchun), kontent esa aralashma. `getOrCreateTestVersion` shu
+  // kontentni hash bo'yicha muzlatadi — bir xil kombinatsiya uchun
+  // takroriy versiya yaratilmaydi.
+  return {
+    _id: composed.parentTestId,
+    slug: `mixed-${composed.composedFrom.map((c) => c.testId.slice(-4)).join('-')}`,
+    title: composedTitle(composed),
+    module: moduleKey,
+    difficulty: 'medium',
+    sections: composed.sections,
+    bandTable: null,
+    isPublished: true,
+    createdAt: new Date(),
+  };
+}
+
+/** Bitta bo'lim uchun tasodifiy nashr qilingan test — Writing/Speaking
+ * sahifalari endi ro'yxat ko'rsatmaydi ("writing va speaking o'zi random
+ * tushsin" talabi). `avoidTestIds` bilan ketma-ket bir xil topshiriq
+ * tushib qolmaydi. */
+async function pickRandomTestForSection(section, avoidTestIds) {
+  const match = { isPublished: true, [`sections.${section}`]: { $exists: true } };
+  const availabilityKey = `availability.practice${section[0].toUpperCase()}${section.slice(1)}`;
+  match[availabilityKey] = { $ne: false };
+
+  const fresh = await ExamTest.aggregate([
+    { $match: { ...match, _id: { $nin: (avoidTestIds || []).map((id) => new mongoose.Types.ObjectId(id)) } } },
+    { $sample: { size: 1 } },
+  ]);
+  if (fresh[0]) return fresh[0];
+
+  const any = await ExamTest.aggregate([{ $match: match }, { $sample: { size: 1 } }]);
+  return any[0] || null;
+}
+
 // TZ-vocably-v2.md §4 (IELTS CD Exam Engine v1.0) — "POST /attempts — Yangi
 // urinish. Body: {testId, mode, sections}. Javob: {attemptId}".
 //
@@ -82,8 +174,13 @@ export async function POST(req) {
     if (!['section', 'mock', 'practice'].includes(mode)) {
       return NextResponse.json({ error: "mode faqat 'section', 'mock' yoki 'practice' bo'lishi mumkin" }, { status: 400 });
     }
-    if ((mode === 'section' || mode === 'practice') && !testId) {
-      return NextResponse.json({ error: 'testId shart' }, { status: 400 });
+    // `testId` endi `section`/`practice` uchun ham IXTIYORIY — 2026-09-24
+    // so'rovi: "Writing va Speaking o'zi random tushsin". Berilmasa server
+    // shu bo'limi bor nashr qilingan testlardan bittasini tasodifiy
+    // tanlaydi (Reading/Listening sahifalari esa avvalgidek ro'yxat
+    // ko'rsatadi va aniq `testId` yuboradi).
+    if ((mode === 'section' || mode === 'practice') && !testId && !VALID_SECTIONS.includes(section)) {
+      return NextResponse.json({ error: "testId yoki to'g'ri 'section' kerak" }, { status: 400 });
     }
     // AUDIT Sprint 2/§52.1 — `mockKind` faqat `mode:'mock'`ga tegishli, lekin
     // validatsiya barcha yo'llardan oldin, bitta joyda (noto'g'ri qiymat
@@ -114,26 +211,28 @@ export async function POST(req) {
           await existing.save();
         }
 
-        const [randomTest] = await ExamTest.aggregate([
-          {
-            $match: {
-              isPublished: true,
-              // AUDIT EX-06/N-06 (Sprint 1) — a test with all three sections
-              // present can still be too short/mismatched in shape (mini
-              // practice content) for a REAL mock; `isMockEligible` (computed
-              // at publish time by `contentValidator.ts#checkMockEligibility`)
-              // is the authoritative gate.
-              isMockEligible: true,
-              'sections.listening': { $exists: true },
-              'sections.reading': { $exists: true },
-              'sections.writing': { $exists: true },
-            },
-          },
-          { $sample: { size: 1 } },
-        ]);
-        if (!randomTest) return NextResponse.json({ error: "Hozircha mock uchun test yo'q." }, { status: 404 });
+        // 2026-09-24 (foydalanuvchi so'rovi) — mock endi BITTA testdan emas,
+        // HAR BO'LIM uchun alohida tanlangan manbadan yig'iladi: "full mockda
+        // reading/listening/writing manbalaridan random, aralashgan holatda
+        // tushsin, har doim har xil". Yig'ish mantig'i sof modulda
+        // (`mockComposer.ts`, test bilan), bu yerda faqat DB so'rovi va
+        // natijani attempt'ga aylantirish.
+        //
+        // Yaratilgan aralashma `ExamTest` sifatida SAQLANMAYDI — u
+        // `ExamTestVersion` snapshotiga (P0-05 mexanizmi, `getOrCreateTestVersion`)
+        // muzlatiladi va attempt o'sha snapshotdan ishlaydi. Shu tufayli
+        // test katalogi har bir mock uchun yangi hujjat bilan to'lib
+        // ketmaydi, lekin urinish kontenti baribir o'zgarmas bo'ladi.
+        const recentMocks = await ExamAttempt.find({ userId, mode: 'mock' })
+          .select('testId')
+          .sort({ startedAt: -1 })
+          .limit(5)
+          .lean();
 
-        const { attempt, error } = await createMockAttemptForTest(userId, randomTest, mockKind);
+        const composed = await composeRandomMock(recentMocks.map((a) => String(a.testId)));
+        if (!composed) return NextResponse.json({ error: "Hozircha mock uchun test yo'q." }, { status: 404 });
+
+        const { attempt, error } = await createMockAttemptForTest(userId, composed, mockKind);
         if (error) return NextResponse.json({ error }, { status: 400 });
         return NextResponse.json({ attemptId: String(attempt._id) });
       }
@@ -154,12 +253,28 @@ export async function POST(req) {
       return NextResponse.json({ attemptId: String(attempt._id) });
     }
 
-    const test = await ExamTest.findById(testId).lean();
-    if (!test) return NextResponse.json({ error: 'Test topilmadi' }, { status: 404 });
-
     if (!VALID_SECTIONS.includes(section)) {
       return NextResponse.json({ error: "Noto'g'ri bo'lim" }, { status: 400 });
     }
+
+    // `testId` berilmagan — tasodifiy tanlaymiz (Writing/Speaking yo'li).
+    // Ketma-ket bir xil topshiriq tushmasligi uchun shu foydalanuvchining
+    // oxirgi urinishlari chetlab o'tiladi.
+    let test;
+    if (testId) {
+      test = await ExamTest.findById(testId).lean();
+    } else {
+      const recent = await ExamAttempt.find({ userId, currentSection: section })
+        .select('testId')
+        .sort({ startedAt: -1 })
+        .limit(3)
+        .lean();
+      test = await pickRandomTestForSection(section, recent.map((a) => String(a.testId)));
+      if (!test) return NextResponse.json({ error: `Hozircha ${section} uchun test yo'q.` }, { status: 404 });
+    }
+    if (!test) return NextResponse.json({ error: 'Test topilmadi' }, { status: 404 });
+
+    const resolvedTestId = String(test._id);
     const sectionContent = test.sections?.[section];
     if (!sectionContent) return NextResponse.json({ error: `Testda ${section} bo'limi yo'q` }, { status: 400 });
 
@@ -171,7 +286,7 @@ export async function POST(req) {
     // vaqtsiz bo'lishi kerak bo'lgan sessiya haqiqiy taymerga ega bo'lib qolardi).
     const existing = await ExamAttempt.findOne({
       userId,
-      testId,
+      testId: resolvedTestId,
       currentSection: section,
       mode,
       status: 'in_progress',
@@ -192,7 +307,7 @@ export async function POST(req) {
     const durationSec = mode === 'practice' ? PRACTICE_ATTEMPT_DURATION_SEC : sectionContent.durationSec;
     const attempt = await ExamAttempt.create({
       userId,
-      testId,
+      testId: resolvedTestId,
       testVersionId,
       mode,
       sections: [section],

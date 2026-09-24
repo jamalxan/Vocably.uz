@@ -9,17 +9,10 @@
 // (faqat ExamTest/AgentAction/AutomationPolicy) kifoya bo'lishi uchun ham
 // muhim (aks holda parseListening.ts'ning transitiv `IngestJob` importi
 // mock'da yo'q hujjat haqida xato berardi — qo'lda sinovda TOPILDI).
-export const LISTENING_QUESTION_TYPES = [
-  'multiple_choice_single',
-  'multiple_choice_multi',
-  'sentence_completion',
-  'short_answer',
-  'note_completion',
-  'table_completion',
-  'flowchart_completion',
-  'summary_completion',
-  'summary_completion_bank',
-  'matching_features',
-  'matching_sentence_endings',
-  'form_completion',
-];
+//
+// 2026-09-24 — ro'yxatning o'zi endi `src/lib/contentAgent/parsers/
+// sectionParsers.ts`da (admin AI chat ham xuddi shu Listening sxemasini
+// worker'siz ishlatadi); bu fayl faqat qayta eksport qiladi, shunda
+// yuqoridagi izohda tasvirlangan "og'ir zanjirsiz import" xususiyati
+// (contentGapScan testlari uchun muhim) saqlanib qoladi.
+export { LISTENING_QUESTION_TYPES } from '@/lib/contentAgent/parsers/sectionParsers';

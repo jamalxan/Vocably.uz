@@ -1,19 +1,24 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { Bot, Loader2, MessageSquare, Settings } from 'lucide-react';
+import { Bot, FlaskConical, Loader2, Settings } from 'lucide-react';
 import AiSettingsPanel from '@/components/admin/content/AiSettingsPanel';
 import AiPlaygroundChat from '@/components/admin/content/AiPlaygroundChat';
 import AutopilotPanel from '@/components/admin/content/AutopilotPanel';
+import AdminAgentChat from '@/components/admin/content/AdminAgentChat';
 
-// TZ-vocably-v2.md §11.5 — admin buni endi avvalo CHAT sifatida ochadi
-// (foydalanuvchi talabi: "AI qism chat ko'rinishida bo'lsin"), raw
-// model/fallback/temperature formasi "Sozlamalar" tabiga ko'chirildi —
-// ikkalasi ham kerak: chat sozlamalarni SINASH uchun, forma esa ularni
-// O'ZGARTIRISH uchun.
+// 2026-09-24 (foydalanuvchi so'rovi) — bu ekranning ASOSIY qismi endi
+// KONTENT AGENTI chati: admin faylni tashlaydi, agent uni ko'rib chiqib
+// Reading/Listening/Writing/Speaking bo'yicha joylashtiradi.
+//
+// Avvalgi "Sinov chat" (`AiPlaygroundChat`) — taskKey tanlab model
+// javobini sinash maydonchasi — YO'QOLMADI, lekin default ekran bo'lishdan
+// to'xtadi: u ishlab chiqish uchun kerak, kundalik ish uchun emas ("AI
+// chatda keraksiz narsalar bo'lmasin"). Shuning uchun u endi eng oxirgi,
+// "Sinov" tabida.
 export default function AdminContentAiPage() {
-  const [tab, setTab] = useState('chat');
+  const [tab, setTab] = useState('agent');
   const [taskKeys, setTaskKeys] = useState([]);
-  const [loadingKeys, setLoadingKeys] = useState(true);
+  const [loadingKeys, setLoadingKeys] = useState(false);
 
   const loadTaskKeys = useCallback(async () => {
     setLoadingKeys(true);
@@ -28,22 +33,25 @@ export default function AdminContentAiPage() {
     }
   }, []);
 
+  // TaskKey'lar faqat "Sinov" tabi ochilganda kerak — asosiy chat ularsiz
+  // ishlaydi, shuning uchun sahifa ochilishida ortiqcha so'rov yo'q.
   useEffect(() => {
-    loadTaskKeys();
-  }, [loadTaskKeys]);
+    if (tab === 'playground' && taskKeys.length === 0) loadTaskKeys();
+  }, [tab, taskKeys.length, loadTaskKeys]);
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex flex-wrap gap-1 p-1 bg-bg border border-border rounded-xl w-fit max-w-full">
-          <TabButton active={tab === 'chat'} onClick={() => setTab('chat')} icon={MessageSquare} label="Sinov chat" />
-          <TabButton active={tab === 'settings'} onClick={() => setTab('settings')} icon={Settings} label="Sozlamalar" />
-          <TabButton active={tab === 'autopilot'} onClick={() => setTab('autopilot')} icon={Bot} label="Avtopilot" />
-        </div>
-        {tab === 'settings' && <p className="text-xs text-muted hidden sm:block">Har bosqich uchun model, fallback va xarajat chegarasi.</p>}
+      <div className="flex flex-wrap gap-1 p-1 bg-bg border border-border rounded-xl w-fit max-w-full">
+        <TabButton active={tab === 'agent'} onClick={() => setTab('agent')} icon={Bot} label="AI chat" />
+        <TabButton active={tab === 'settings'} onClick={() => setTab('settings')} icon={Settings} label="Sozlamalar" />
+        <TabButton active={tab === 'autopilot'} onClick={() => setTab('autopilot')} icon={Bot} label="Avtopilot" />
+        <TabButton active={tab === 'playground'} onClick={() => setTab('playground')} icon={FlaskConical} label="Sinov" />
       </div>
 
-      {tab === 'chat' &&
+      {tab === 'agent' && <AdminAgentChat />}
+      {tab === 'settings' && <AiSettingsPanel />}
+      {tab === 'autopilot' && <AutopilotPanel />}
+      {tab === 'playground' &&
         (loadingKeys ? (
           <div className="flex items-center gap-2 text-sm text-muted py-8 justify-center">
             <Loader2 size={16} className="animate-spin" /> Yuklanmoqda...
@@ -53,8 +61,6 @@ export default function AdminContentAiPage() {
         ) : (
           <AiPlaygroundChat taskKeys={taskKeys} />
         ))}
-      {tab === 'settings' && <AiSettingsPanel />}
-      {tab === 'autopilot' && <AutopilotPanel />}
     </div>
   );
 }
