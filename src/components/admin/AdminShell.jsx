@@ -4,13 +4,15 @@ import { usePathname } from 'next/navigation';
 import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
+import { registerChatsTap } from '@/lib/adminHiddenChats';
 
 const NAV = [
   { href: '/admin', label: 'Statistika', icon: BarChart3, exact: true },
   { href: '/admin/activity', label: 'Faollik', icon: Activity },
   { href: '/admin/learning', label: "O'quv analitikasi", icon: GraduationCap },
   { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
-  { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare },
+  // `/admin/c/<id>` — bitta suhbatning to'g'ridan-to'g'ri havolasi, ham shu bo'limga tegishli.
+  { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare, also: ['/admin/c/'], secretTap: true },
   { href: '/admin/reports', label: 'Reportlar', icon: Flag },
   { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
   // 2026-09-24 — AI chat (kontent agenti) endi kontent yuklashning ASOSIY
@@ -28,13 +30,22 @@ const NAV = [
 // xl (1280px) dan pastda sidebar drawer bo'ladi — planshetda kontent to'liq kenglikda.
 const DESKTOP_QUERY = '(min-width: 1280px)';
 
+function isActive(item, pathname) {
+  if (item.exact) return pathname === item.href;
+  return pathname.startsWith(item.href) || (item.also || []).some((p) => pathname.startsWith(p));
+}
+
 function NavLink({ item, pathname, onClick }) {
-  const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+  const active = isActive(item, pathname);
   const Icon = item.icon;
   return (
     <Link
       href={item.href}
-      onClick={onClick}
+      onClick={() => {
+        // "Suhbatlar" 5 marta tez bosilsa — yashirin "Umumiy suhbatlar" ochiladi/yopiladi.
+        if (item.secretTap) registerChatsTap();
+        onClick?.();
+      }}
       aria-current={active ? 'page' : undefined}
       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
         active ? 'bg-accent text-on-accent shadow-glow' : 'text-on-primary/60 hover:text-on-primary hover:bg-primary-hover'
@@ -54,7 +65,8 @@ export default function AdminShell({ children }) {
   const closeBtnRef = useRef(null);
   const wasOpen = useRef(false);
 
-  const pageTitle = NAV.find((n) => (n.exact ? pathname === n.href : pathname.startsWith(n.href)))?.label || 'Admin';
+  const activeItem = NAV.find((n) => isActive(n, pathname));
+  const pageTitle = activeItem?.label || 'Admin';
 
   // Drawer ochiq: Escape yopadi, fokus ichkariga o'tadi, fon scroll bo'lmaydi.
   useEffect(() => {
@@ -157,7 +169,14 @@ export default function AdminShell({ children }) {
           >
             <Menu size={20} />
           </button>
-          <h1 title={pageTitle} className="font-luxury text-2xl sm:text-3xl text-ink tracking-wide min-w-0 truncate">{pageTitle}</h1>
+          <h1
+            title={pageTitle}
+            // Mobil: menyu har bosishda yopiladi, shuning uchun sarlavhani 5 marta bosish ham ishlaydi.
+            onClick={activeItem?.secretTap ? registerChatsTap : undefined}
+            className="font-luxury text-2xl sm:text-3xl text-ink tracking-wide min-w-0 truncate select-none"
+          >
+            {pageTitle}
+          </h1>
         </header>
 
         <main className="px-5 sm:px-8 py-7 max-w-7xl">{children}</main>

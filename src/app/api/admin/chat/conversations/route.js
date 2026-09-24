@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 // audit-log yozib amalga oshadi.
 export async function GET(req) {
   try {
-    const { error, status } = await requireAdminUser(req);
+    const { user: admin, error, status } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
 
     await connectToDatabase();
@@ -20,7 +20,13 @@ export async function GET(req) {
     // (N-09) shu bilan kelayotgan suhbatni ro'yxat sahifasidan qidirmasdan ochadi.
     const idParam = req.nextUrl.searchParams.get('id');
     const before = req.nextUrl.searchParams.get('before');
+    // `scope` — admin panel ro'yxatni ikkiga ajratadi: `mine` (admin o'zi
+    // ishtirok etgan suhbatlar) va `others` (qolgan barcha foydalanuvchilar
+    // suhbatlari). Parametr berilmasa — eski xatti-harakat, hammasi.
+    const scope = req.nextUrl.searchParams.get('scope');
     const query = idParam ? { _id: idParam } : before ? { lastMessageAt: { $lt: new Date(before) } } : {};
+    if (!idParam && scope === 'mine') query.participantIds = admin._id;
+    if (!idParam && scope === 'others') query.participantIds = { $ne: admin._id };
     const limitParam = parseInt(req.nextUrl.searchParams.get('limit'), 10);
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 50;
 
@@ -59,7 +65,7 @@ export async function GET(req) {
       };
     });
 
-    return NextResponse.json({ conversations: result, nextCursor });
+    return NextResponse.json({ conversations: result, nextCursor, adminId: String(admin._id) });
   } catch (err) {
     return serverError(err, 'admin/chat/conversations GET');
   }

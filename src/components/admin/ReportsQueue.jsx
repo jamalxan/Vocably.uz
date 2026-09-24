@@ -153,7 +153,7 @@ export default function ReportsQueue() {
                   <p className="text-[11px] text-muted/70 mt-1.5">{new Date(r.createdAt).toLocaleString('uz-UZ')}</p>
                   {r.targetType === 'message' && r.conversationId && (
                     <Link
-                      href={`/admin/conversations?open=${r.conversationId}`}
+                      href={`/admin/c/${r.conversationId}`}
                       className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-accent hover:underline"
                     >
                       <MessageSquareText size={12} /> Suhbatni ochish
