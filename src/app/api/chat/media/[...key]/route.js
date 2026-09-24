@@ -42,7 +42,15 @@ export async function GET(req, { params }) {
     // brauzerda to'g'ridan-to'g'ri ko'rsatiladi/ijro etiladi.
     const mediaType = key.split('/')[2];
     const url = await presignDownload(key, mediaType === 'file');
-    return NextResponse.json({ url });
+    // C-14 — bu JSON javobning o'zi uchun (S3/MinIO'dan to'g'ridan-to'g'ri
+    // ko'rsatiladigan media baytlariga EMAS — brauzer bu URL'dan mustaqil,
+    // to'g'ridan-to'g'ri o'qiydi, ustidan Next.js o'tmaydi, shuning uchun bu header
+    // o'sha javobga ta'sir qilolmaydi; AWS S3 presigned GET faqat Content-Type/
+    // Content-Disposition kabi bir nechta "response-*" override'ini qo'llab-quvvatlaydi,
+    // ixtiyoriy header'larni emas — haqiqiy nosniff himoyasi uchun bucket/CDN darajasida
+    // sozlash kerak). Shunga qaramay, o'zimiz nazorat qiladigan javoblarda "himoya
+    // qatlami" sifatida qoldiriladi.
+    return NextResponse.json({ url }, { headers: { 'X-Content-Type-Options': 'nosniff' } });
   } catch (err) {
     return serverError(err, 'chat/media');
   }

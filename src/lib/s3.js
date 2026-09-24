@@ -37,11 +37,33 @@ export const ALLOWED_MEDIA = {
   file: { mimePrefix: null, maxBytes: 25 * 1024 * 1024 }, // istalgan mimeType, faqat hajm cheklanadi
 };
 
+// C-14 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 H) — brauzerda INLINE
+// bajarilishi/render qilinishi mumkin bo'lgan MIME turlari. `file` turi (yuqorida
+// mimePrefix: null, ya'ni aks holda istalgan mimeType) uchun ayniqsa muhim —
+// ilgari .html/.htm/.json kabi fayllar hech qanday cheklovsiz yuklanardi. `image/
+// svg+xml` ham shu yerda: SVG ichiga <script> yashirish mumkin, brauzer uni to'g'ridan-
+// to'g'ri ko'rsatsa bajarilib ketishi mumkin (ALLOWED_MEDIA.image mimePrefix'idan
+// ("image/") o'tib ketardi, shuning uchun bu tekshiruv `type`dan qat'iy nazar ishlaydi).
+const DANGEROUS_MIME_TYPES = new Set([
+  'text/html',
+  'application/xhtml+xml',
+  'image/svg+xml',
+  'application/json',
+  'text/javascript',
+  'application/javascript',
+  'application/x-javascript',
+  'application/ecmascript',
+]);
+
 export function validateUpload(type, mimeType, size) {
   const rule = ALLOWED_MEDIA[type];
   if (!rule) return 'Noto\'g\'ri media turi';
   if (rule.mimePrefix && !mimeType?.startsWith(rule.mimePrefix)) return 'Fayl turi mos kelmadi';
   if (!size || size <= 0 || size > rule.maxBytes) return 'Fayl hajmi ruxsat etilgan chegaradan katta';
+  const normalizedMime = (mimeType || '').split(';')[0].trim().toLowerCase();
+  if (DANGEROUS_MIME_TYPES.has(normalizedMime)) {
+    return "Bu fayl turi xavfsizlik sababli yuklab bo'lmaydi";
+  }
   return null;
 }
 
@@ -93,6 +115,22 @@ export async function presignDownload(key, forceDownload = false) {
     ...(forceDownload ? { ResponseContentDisposition: 'attachment' } : {}),
   });
   return getSignedUrl(getClient(), cmd, { expiresIn: 3600 }); // 1 soat
+}
+
+// C-14 — magic-byte tekshiruvi uchun: obyektning FAQAT dastlabki baytlarini o'qiydi
+// (Range so'rovi — butun faylni yuklab olish shart emas). Chaqiruvchi (messages
+// POST route) buni faqat `type === 'image'` bo'lganda ishlatadi — client MIME/
+// kengaytmani yolg'on ko'rsatgan bo'lsa ham (masalan .html faylni "image" turi
+// bilan yuklasa), haqiqiy fayl boshi mos kelmasa rad etiladi (src/lib/
+// imageMagicBytes.js'dagi isValidImageMagicBytes bilan birga ishlatiladi).
+export async function readObjectPrefix(key, length = 16) {
+  const cmd = new GetObjectCommand({ Bucket: BUCKET(), Key: key, Range: `bytes=0-${length - 1}` });
+  const res = await getClient().send(cmd);
+  const chunks = [];
+  for await (const chunk of res.Body) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks.map((c) => (Buffer.isBuffer(c) ? c : Buffer.from(c))));
 }
 
 export async function objectExists(key) {

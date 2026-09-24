@@ -26,7 +26,10 @@ export async function GET(req, { params }) {
     // to'g'ridan-to'g'ri src sifatida ishlatiladi (blob-download emas).
     const mediaType = key.split('/')[2];
     const url = await presignDownload(key, mediaType === 'file');
-    return NextResponse.json({ url });
+    // C-14 — src/app/api/chat/media/[...key]/route.js'dagi izohga qarang: bu faqat
+    // shu JSON javob uchun, haqiqiy media S3/MinIO'dan to'g'ridan-to'g'ri (Next.js'ni
+    // chetlab) yuklanadi.
+    return NextResponse.json({ url }, { headers: { 'X-Content-Type-Options': 'nosniff' } });
   } catch (err) {
     return serverError(err, 'admin/chat/media');
   }

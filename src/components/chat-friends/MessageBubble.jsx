@@ -1,12 +1,37 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, Check, CheckCheck, Clock, Download, FileText, Flag, MoreHorizontal, Pencil, Reply, Trash2, X } from 'lucide-react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import {
+  AlertCircle,
+  Check,
+  CheckCheck,
+  Clock,
+  Copy,
+  Download,
+  FileText,
+  Flag,
+  Forward,
+  MoreHorizontal,
+  Pencil,
+  Pin,
+  PinOff,
+  Play,
+  Reply,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
+import { useInViewport } from '@/lib/useInViewport';
 import { findSticker } from '@/lib/stickers';
 import { useChat } from '@/context/ChatContext';
 import { isOnline } from '@/lib/presence';
 import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
+import { parseMessageFormatting } from '@/lib/chatFormatting';
 import DeleteMessageModal from './DeleteMessageModal';
+import ForwardMessageModal from './ForwardMessageModal';
+
+// Uzoq bosish (long-press) uchun chegara — ConversationList.jsx'dagi bilan bir xil
+// naqsh/vaqt (C-10 — xabar pufakchasida ham o'sha uslub bilan kontekst menyu).
+const LONG_PRESS_MS = 500;
 
 function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
   const senderLabel = String(replyTo.senderId) === String(myId) ? 'Siz' : otherUsername ? `@${otherUsername}` : 'Foydalanuvchi';
@@ -49,7 +74,10 @@ function useDialogFocus(initialRef, onClose) {
   }, [initialRef]);
 }
 
-function ImageLightbox({ url, onClose }) {
+// C-09 — UserProfileModal.jsx'dagi media galereyasi ham xuddi shu lightbox'ni
+// ishlatadi (bosilganda rasm kattalashadi) — alohida oyna qurish o'rniga eksport
+// qilinadi (TZ ko'rsatmasiga ko'ra "bo'lsa qayta ishlatilsin").
+export function ImageLightbox({ url, onClose }) {
   const closeRef = useRef(null);
   useDialogFocus(closeRef, onClose);
   return (
@@ -76,14 +104,23 @@ function ImageLightbox({ url, onClose }) {
   );
 }
 
+// C-12 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 K) — rasm/video/fayl
+// endi FAQAT pufakcha viewport'ga (yoki uning 200px atrofiga) kirganda so'raladi
+// (useInViewport), suhbat ochilishi bilan HAMMASI emas — `inView` bo'lmaguncha
+// useAuthedMediaUrl'ga `null` uzatiladi, u esa mediaKey bo'lmasa hech qanday
+// so'rov yubormaydi (src/lib/useAuthedMedia.js).
 function ImageBubble({ media }) {
-  const { url, error } = useAuthedMediaUrl(media.key);
+  const [viewRef, inView] = useInViewport();
+  const { url, error } = useAuthedMediaUrl(inView ? media.key : null);
   const [open, setOpen] = useState(false);
   if (error) return <MediaError />;
-  if (!url) return <div className="w-40 max-w-full h-32 bg-primary-soft rounded-lg animate-pulse" />;
+  if (!url) {
+    return <div ref={viewRef} className="w-40 max-w-full h-32 bg-primary-soft rounded-lg animate-pulse" />;
+  }
   return (
     <>
       <button
+        ref={viewRef}
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Rasmni kattalashtirish"
@@ -98,11 +135,13 @@ function ImageBubble({ media }) {
 }
 
 function VideoBubble({ media }) {
-  const { url, error } = useAuthedMediaUrl(media.key);
+  const [viewRef, inView] = useInViewport();
+  const { url, error } = useAuthedMediaUrl(inView ? media.key : null);
   if (error) return <MediaError />;
-  if (!url) return <div className="w-56 max-w-full h-40 bg-primary-soft rounded-lg animate-pulse" />;
+  if (!url) return <div ref={viewRef} className="w-56 max-w-full h-40 bg-primary-soft rounded-lg animate-pulse" />;
   return (
     <video
+      ref={viewRef}
       src={url}
       controls
       playsInline
@@ -112,15 +151,35 @@ function VideoBubble({ media }) {
   );
 }
 
+// C-12 — audit ATAYLAB voice xabarlar uchun boshqa qoida beradi: "play bosilganda"
+// (viewport'ga kirganda EMAS — ovoz fayllari kichik bo'lsa ham, ko'rinib turgan
+// har bir ovozli xabarni oldindan so'rash foydasiz). Shu sabab bosilmaguncha
+// mediaKey useAuthedMediaUrl'ga umuman uzatilmaydi (hech qanday IntersectionObserver
+// shart emas — bu yerda oddiy "hali bosilmadi" holati yetarli).
 function VoiceBubble({ media }) {
-  const { url, error } = useAuthedMediaUrl(media.key);
+  const [armed, setArmed] = useState(false);
+  const { url, error } = useAuthedMediaUrl(armed ? media.key : null);
   if (error) return <MediaError />;
+  if (!armed) {
+    return (
+      <button
+        type="button"
+        onClick={() => setArmed(true)}
+        aria-label="Ovozli xabarni ijro etish"
+        className="flex items-center gap-2 w-48 max-w-full h-10 px-3 bg-primary-soft rounded-full text-sm text-accent hover:bg-primary-soft/80 transition-colors"
+      >
+        <Play size={16} className="flex-shrink-0" />
+        Ovozli xabar
+      </button>
+    );
+  }
   if (!url) return <div className="w-48 max-w-full h-10 bg-primary-soft rounded-full animate-pulse" />;
-  return <audio src={url} controls className="block w-56 max-w-full h-10" />;
+  return <audio src={url} controls autoPlay className="block w-56 max-w-full h-10" />;
 }
 
 function FileBubble({ media }) {
-  const { url, error } = useAuthedMediaUrl(media.key);
+  const [viewRef, inView] = useInViewport();
+  const { url, error } = useAuthedMediaUrl(inView ? media.key : null);
   const inner = (
     <>
       <FileText size={16} className="flex-shrink-0" />
@@ -131,7 +190,7 @@ function FileBubble({ media }) {
   // Havola tayyor bo'lguncha bosiladigan '#' emas — bo'sh tab ochilmasin.
   if (!url) {
     return (
-      <span aria-disabled="true" className="flex items-center gap-2 px-3 py-2 bg-surface/70 rounded-lg text-sm text-muted">
+      <span ref={viewRef} aria-disabled="true" className="flex items-center gap-2 px-3 py-2 bg-surface/70 rounded-lg text-sm text-muted">
         {inner}
       </span>
     );
@@ -149,13 +208,16 @@ function FileBubble({ media }) {
   );
 }
 
-// Mobil (<lg) uchun xabar amallari — har pufak yonidagi 3 ta mayda tugma o'rniga
-// bitta "..." tugmasi pastdan chiquvchi menyuni ochadi.
-function MessageActionSheet({ actions, onClose }) {
+// C-10 — BIRDAN-BIR, unifitsirlangan xabar kontekst menyusi (barcha ekran
+// o'lchamlarida): "..." tugmasi, o'ng-klik (onContextMenu) va uzoq-bosish
+// (long-press, ConversationList.jsx'dagi bilan bir xil naqsh) — hammasi shu
+// bitta pastdan chiquvchi menyuni ochadi. Ilgari desktop'da alohida hover
+// ikonkalar qatori bo'lgan (Reply/Edit/Delete/Report) — endi bittalashtirilgan.
+function MessageContextMenu({ actions, onClose }) {
   const firstRef = useRef(null);
   useDialogFocus(firstRef, onClose);
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-end justify-center bg-primary/40 backdrop-blur-sm lg:hidden">
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-end justify-center bg-primary/40 backdrop-blur-sm">
       <div
         role="dialog"
         aria-modal="true"
@@ -230,6 +292,20 @@ function linkifyText(text) {
   return nodes;
 }
 
+// D (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 D — composer) — oddiy Markdown-
+// uslubidagi belgilash (**qalin**, _kursiv_) xabar RENDER qilinish tomonida
+// hal qilinadi (composer'da to'liq WYSIWYG qurish o'rniga — TZ'ning ikkinchi,
+// past xavfli variantiga muvofiq): parseMessageFormatting (src/lib/chatFormatting.js,
+// pure, unit test qilingan) matnni bo'laklarga ajratadi, har bir bo'lak ichida esa
+// havolalar (linkifyText) baribir aniqlanadi.
+function renderFormattedText(text) {
+  return parseMessageFormatting(text).map((tok, i) => {
+    if (tok.type === 'bold') return <strong key={i}>{linkifyText(tok.value)}</strong>;
+    if (tok.type === 'italic') return <em key={i}>{linkifyText(tok.value)}</em>;
+    return <Fragment key={i}>{linkifyText(tok.value)}</Fragment>;
+  });
+}
+
 // C-06 — xabar yuborilgan vaqt, har bir pufakcha tagida: ENDI har doim faqat
 // soat:daqiqa (Telegram/WhatsApp uslubi) — qaysi kun ekanligi endi bubble ichida
 // emas, ConversationView'dagi kun ajratgichida (day separator) ko'rsatiladi,
@@ -243,7 +319,17 @@ function formatMessageTime(dateStr) {
 }
 
 export default function MessageBubble({ message, isMine, myId, onJumpToReply }) {
-  const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage, retryMessage, livePresence } = useChat();
+  const {
+    reportTarget,
+    activeConversation,
+    startEditMessage,
+    startReply,
+    deleteMessage,
+    retryMessage,
+    livePresence,
+    pinMessage,
+    unpinMessage,
+  } = useChat();
   // C-16 — "yetkazildi" (✓✓, rangsiz) holati boshqa tomonning HOZIRGI onlayn
   // holatiga qarab taxmin qilinadi: ular socket orqali ulangan bo'lsa, xabar
   // ularning brauzeriga real-vaqtda allaqachon yetib borgan (haqiqiy per-xabar
@@ -254,6 +340,12 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [forwardOpen, setForwardOpen] = useState(false);
+  // C-10 — uzoq-bosish (long-press), ConversationList.jsx'dagi ConversationRow
+  // bilan bir xil naqsh: faqat TEGIB (touch/pen) ishlaydigan qurilmalarda, sichqon
+  // uchun o'ng-klik (onContextMenu, pastda) va "..." tugmasi allaqachon yetarli.
+  const pressTimer = useRef(null);
+  const longPressFired = useRef(false);
 
   const sticker = message.type === 'sticker' ? findSticker(message.stickerId) : null;
   const deleted = !!message.deletedForEveryone;
@@ -281,9 +373,40 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
   const isPending = message._status === 'sending' || message._status === 'failed';
   const canEdit = isMine && message.type === 'text' && !deleted && !isPending;
   const canReport = !isMine && !reported && !isPending;
+  const messageIdStr = String(message.id || message._id);
+  const isPinned = !isPending && (activeConversation?.pinnedMessageIds || []).some((id) => String(id) === messageIdStr);
 
+  const handleCopyText = async () => {
+    try {
+      await navigator.clipboard.writeText(message.text || '');
+    } catch {
+      // Clipboard ruxsati bo'lmasa — jimgina (ko'rsatiladigan boshqa xato yo'q).
+    }
+  };
+
+  const handleTogglePin = async () => {
+    const res = isPinned ? await unpinMessage(messageIdStr) : await pinMessage(messageIdStr);
+    if (res?.error) alert(res.error);
+  };
+
+  // C-10 — §9.3 C to'liq ro'yxati: Javob, Nusxa olish, Forward (Yuborish), Pin,
+  // (o'ziniki bo'lsa) Tahrirlash/O'chirish, (kelgan bo'lsa) Shikoyat. Reaksiyalar
+  // (👍❤️😂...) ATAYLAB qo'shilmagan — TZ topshirig'ida bu alohida, ma'lumotlar
+  // modeliga qo'shimcha talab qiladigan qadam sifatida ko'rsatilgan (bu bosqichdan
+  // tashqarida).
   const actions = [
     { key: 'reply', label: 'Javob berish', aria: 'Xabarga javob berish', Icon: Reply, onClick: () => startReply(message) },
+    ...(message.text
+      ? [{ key: 'copy', label: 'Nusxa olish', aria: 'Xabar matnini nusxalash', Icon: Copy, onClick: handleCopyText }]
+      : []),
+    { key: 'forward', label: 'Yuborish', aria: 'Boshqa suhbatga yuborish', Icon: Forward, onClick: () => setForwardOpen(true) },
+    {
+      key: 'pin',
+      label: isPinned ? 'Qadashni bekor qilish' : 'Qadash',
+      aria: isPinned ? 'Xabarni qadashni bekor qilish' : 'Xabarni yuqoriga qadash',
+      Icon: isPinned ? PinOff : Pin,
+      onClick: handleTogglePin,
+    },
     ...(canEdit
       ? [{ key: 'edit', label: 'Tahrirlash', aria: 'Xabarni tahrirlash', Icon: Pencil, onClick: () => startEditMessage(message) }]
       : []),
@@ -293,11 +416,41 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
       : []),
   ];
 
+  // C-10 — o'ng-klik (sichqoncha) va uzoq-bosish (touch, ConversationList.jsx'dagi
+  // bilan bir xil chegara/naqsh) ikkalasi ham xuddi shu kontekst menyusini ochadi.
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    setMenuOpen(true);
+  };
+  const startLongPress = (e) => {
+    if (e?.pointerType === 'mouse') return;
+    longPressFired.current = false;
+    clearTimeout(pressTimer.current);
+    pressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      setMenuOpen(true);
+    }, LONG_PRESS_MS);
+  };
+  const cancelLongPress = () => clearTimeout(pressTimer.current);
+  // O'chirilgan/hali yuborilmagan xabarlarda amallar tugmasi ham ko'rsatilmaydi
+  // (pastda), shuning uchun o'ng-klik/uzoq-bosish ham shu holatlarda o'chirilgan.
+  const menuTriggerProps =
+    !deleted && !isPending
+      ? {
+          onContextMenu: handleContextMenu,
+          onPointerDown: startLongPress,
+          onPointerUp: cancelLongPress,
+          onPointerLeave: cancelLongPress,
+          onPointerCancel: cancelLongPress,
+        }
+      : {};
+
   return (
     <div data-msg-id={String(message.id || message._id)} className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
       <div className={`flex flex-col max-w-[85%] ${isMine ? 'items-end' : 'items-start'}`}>
       <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : ''}`}>
-        {/* min-w-0 — media/uzun so'z pufakni max-w-[85%] dan tashqariga cho'zmasin. */}
+        {/* min-w-0 — media/uzun so'z pufakni max-w-[85%] dan tashqariga cho'zmasin.
+            C-10 — o'ng-klik/uzoq-bosish shu pufakning o'zida (menuTriggerProps). */}
         <div
           className={
             isPlain
@@ -313,6 +466,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
                       : 'bg-surface-2 text-ink rounded-bl-md'
                 }`
           }
+          {...menuTriggerProps}
         >
           {deleted ? (
             <p className="flex items-center gap-1.5">
@@ -331,7 +485,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
               )}
               {message.type === 'text' && (
                 <p className={`whitespace-pre-wrap [overflow-wrap:anywhere] font-chat ${emojiOnly ? 'text-4xl leading-tight' : ''}`}>
-                  {emojiOnly ? message.text : linkifyText(message.text)}
+                  {emojiOnly ? message.text : renderFormattedText(message.text)}
                 </p>
               )}
               {message.type === 'sticker' && sticker && (
@@ -343,7 +497,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
               {message.type === 'voice' && <VoiceBubble media={message.media} />}
               {message.type === 'file' && <FileBubble media={message.media} />}
               {message.text && ['image', 'video', 'file'].includes(message.type) && (
-                <p className="whitespace-pre-wrap [overflow-wrap:anywhere] font-chat mt-1.5">{linkifyText(message.text)}</p>
+                <p className="whitespace-pre-wrap [overflow-wrap:anywhere] font-chat mt-1.5">{renderFormattedText(message.text)}</p>
               )}
               {message.edited && (
                 <span className={`block text-[11px] mt-0.5 ${isMine ? 'text-on-accent/60' : 'text-muted'}`}>
@@ -355,33 +509,18 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
         </div>
 
         {!deleted && !isPending && (
-          <>
-            {/* Mobil/planshet (<lg): bitta "..." tugmasi (44px) — amallar pastki menyuda. */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label="Xabar amallari"
-              aria-haspopup="dialog"
-              className="lg:hidden flex-shrink-0 w-11 min-h-11 -mx-1.5 -my-2 inline-flex items-center justify-center text-muted hover:text-accent transition-colors touch-manipulation rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-            {/* Sichqoncha bo'lgan qurilmalarda (lg+) — hover yoki klaviatura fokusida ko'rinadi. */}
-            <div className="hidden lg:flex items-center opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex-shrink-0">
-              {actions.map(({ key, label, aria, Icon, onClick }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={onClick}
-                  title={label}
-                  aria-label={aria}
-                  className="p-2 -m-1 text-muted hover:text-accent transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  <Icon size={13} />
-                </button>
-              ))}
-            </div>
-          </>
+          // C-10 — BITTA "..." tugmasi (barcha ekran o'lchamlarida) — o'ng-klik/
+          // uzoq-bosish bilan bir qatorda, xuddi shu unifitsirlangan kontekst
+          // menyusini ochadi (ilgari desktop'da alohida hover-ikonkalar qatori bor edi).
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Xabar amallari"
+            aria-haspopup="dialog"
+            className="flex-shrink-0 w-11 min-h-11 lg:w-8 lg:min-h-8 -mx-1.5 -my-2 lg:mx-0 lg:my-0 inline-flex items-center justify-center text-muted hover:text-accent transition-colors touch-manipulation rounded-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <MoreHorizontal size={16} />
+          </button>
         )}
       </div>
 
@@ -422,7 +561,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
       </span>
       </div>
 
-      {menuOpen && <MessageActionSheet actions={actions} onClose={() => setMenuOpen(false)} />}
+      {menuOpen && <MessageContextMenu actions={actions} onClose={() => setMenuOpen(false)} />}
 
       <DeleteMessageModal
         open={deleteOpen}
@@ -431,6 +570,8 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
         onConfirm={deleting ? undefined : handleDelete}
         onCancel={() => setDeleteOpen(false)}
       />
+
+      <ForwardMessageModal open={forwardOpen} message={message} onClose={() => setForwardOpen(false)} />
     </div>
   );
 }

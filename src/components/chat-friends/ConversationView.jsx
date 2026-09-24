@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ShieldOff, Bell, BellOff, UserCheck, ArrowDown } from 'lucide-react';
+import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { formatLastSeen, isOnline, useLiveClock } from '@/lib/presence';
-import { TYPING_LABEL } from '@/lib/chatConstants';
+import { TYPING_LABEL, REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 import UserProfileModal from './UserProfileModal';
@@ -48,6 +48,47 @@ function DaySeparator({ label }) {
   );
 }
 
+// C-10 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 B/C) — header ostidagi
+// qadalgan-xabar paneli. Eng oxirgi qadalgan xabar ko'rsatiladi (server
+// `pinnedMessageIds`ga $addToSet bilan qo'shadi, oxirgi element — eng yangi
+// qadalgan). Faqat HOZIR yuklangan xabarlar ro'yxatida (`messages`) topilsa
+// preview ko'rsatiladi va bosilganda o'sha xabarga sirg'aladi — juda eski (hali
+// yuklanmagan) xabar qadalgan bo'lsa umumiy "Qadalgan xabar" yorlig'i qoladi,
+// bosilganda hech narsa qilinmaydi (scope: alohida so'rov qo'shilmadi).
+function PinnedBanner({ pinnedIds, messages, onJump, onUnpin }) {
+  const lastId = pinnedIds[pinnedIds.length - 1];
+  const pinnedMessage = messages.find((m) => String(m.id || m._id) === String(lastId));
+  const preview = pinnedMessage
+    ? pinnedMessage.type === 'text'
+      ? pinnedMessage.text || '…'
+      : REPLY_TYPE_LABEL[pinnedMessage.type] || 'Xabar'
+    : 'Qadalgan xabar';
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-accent-soft/40 flex-shrink-0">
+      <Pin size={14} className="text-accent flex-shrink-0" />
+      <button
+        type="button"
+        onClick={() => pinnedMessage && onJump(String(pinnedMessage.id || pinnedMessage._id))}
+        className="flex-1 min-w-0 text-left rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        <p className="text-[11px] font-semibold text-accent">
+          Qadalgan xabar{pinnedIds.length > 1 ? ` (1/${pinnedIds.length})` : ''}
+        </p>
+        <p className="text-xs text-ink truncate">{preview}</p>
+      </button>
+      <button
+        type="button"
+        onClick={() => onUnpin(lastId)}
+        aria-label="Qadashni bekor qilish"
+        title="Qadashni bekor qilish"
+        className="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 -m-1 text-muted hover:text-danger transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function ConversationView({ onBack }) {
   const {
     activeConversation,
@@ -59,6 +100,7 @@ export default function ConversationView({ onBack }) {
     blockUser,
     toggleMuteConversation,
     toggleNotifyOnline,
+    unpinMessage,
     livePresence,
     typingByConversation,
   } = useChat();
@@ -211,6 +253,11 @@ export default function ConversationView({ onBack }) {
     toggleNotifyOnline(activeConversation.id, !activeConversation.notifyOnline);
   };
 
+  const handleUnpin = async (messageId) => {
+    const res = await unpinMessage(messageId);
+    if (res?.error) alert(res.error);
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full min-w-0 bg-surface">
       <div className="flex items-center gap-1 md:gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
@@ -268,6 +315,15 @@ export default function ConversationView({ onBack }) {
           <ShieldOff size={16} />
         </button>
       </div>
+
+      {!!activeConversation.pinnedMessageIds?.length && (
+        <PinnedBanner
+          pinnedIds={activeConversation.pinnedMessageIds}
+          messages={messages}
+          onJump={jumpToMessage}
+          onUnpin={handleUnpin}
+        />
+      )}
 
       {/* TZ-vocably-v2.md BUG-026 — dark rejimda xabarlar sohasi "ichkarida" hissini
           berishi uchun bg-bg-sunken (§E2); avval alohida fon yo'q edi, sahifa foni bilan

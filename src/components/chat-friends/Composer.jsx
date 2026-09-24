@@ -188,12 +188,15 @@ export default function Composer() {
     stageAttachment(file, type);
   };
 
-  // Boshqa joydan (screenshot, brauzer, fayl menejeri — nusxalangan istalgan fayl)
-  // nusxalangan narsani to'g'ridan-to'g'ri matn maydoniga joylashtirib (Ctrl/Cmd+V)
-  // preview'ga qo'yish — fayl tanlash oynasini ochmasdan, Telegram/WhatsApp Web
-  // uslubida. Rasm/video bo'lsa shu turda, boshqa har qanday fayl (masalan .html,
-  // .json, .pdf) 'file' turida biriktiriladi — mimeType server tomonda ('file'
-  // uchun) cheklanmagan, faqat hajm tekshiriladi (src/lib/s3.js ALLOWED_MEDIA).
+  // D (composer, VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 D) — clipboard'dan
+  // rasm/fayl qo'yish (Ctrl/Cmd+V): boshqa joydan (screenshot, brauzer, fayl
+  // menejeri) nusxalangan narsani to'g'ridan-to'g'ri matn maydoniga joylashtirib
+  // preview'ga qo'yadi — fayl tanlash oynasini ochmasdan, Telegram/WhatsApp Web
+  // uslubida. Rasm/video bo'lsa shu turda, boshqa har qanday fayl 'file' turida
+  // biriktiriladi va xuddi shu (handleFilePick bilan bir xil) stageAttachment/
+  // uploadAndSend oqimidan o'tadi — alohida yuklash logikasi YO'Q. mimeType server
+  // tomonda ('file' uchun) faqat hajm bilan emas, xavfli turlar (.html/.json/.svg
+  // va h.k.) uchun ham tekshiriladi (src/lib/s3.js DANGEROUS_MIME_TYPES, C-14).
   const handlePaste = (e) => {
     const items = Array.from(e.clipboardData?.items || []);
     const fileItem = items.find((it) => it.kind === 'file');
@@ -352,7 +355,13 @@ export default function Composer() {
                 aria-label="Fayl tanlash"
                 className="hidden"
                 onChange={handleFilePick}
-                accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt,.html,.htm,.json"
+                // C-14 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2) — .html/.htm/.json
+                // ILGARI shu ro'yxatda edi; brauzerda ochilsa ichidagi skript bajarilishi
+                // mumkin bo'lgani uchun olib tashlandi. Bu faqat fayl tanlash oynasidagi
+                // UI filtri (foydalanuvchi baribir "barcha fayllar" tanlab chetlab o'tishi
+                // mumkin) — haqiqiy himoya server tarafda (src/lib/s3.js validateUpload,
+                // DANGEROUS_MIME_TYPES).
+                accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt"
               />
               <button
                 type="button"

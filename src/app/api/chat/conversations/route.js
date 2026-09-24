@@ -76,6 +76,8 @@ export async function GET(req) {
         muted: (c.mutedBy || []).some((id) => String(id) === String(user._id)),
         notifyOnline: (c.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
         unreadCount: unreadById.get(String(c._id)) || 0,
+        // C-10 — pin banner (ConversationView.jsx) shu ro'yxatdan foydalanadi.
+        pinnedMessageIds: (c.pinnedMessageIds || []).map(String),
       };
     });
 
@@ -159,6 +161,7 @@ export async function POST(req) {
         lastMessagePreview: clearedAfterLastMessage ? '' : convo.lastMessagePreview || '',
         muted: (convo.mutedBy || []).some((id) => String(id) === String(user._id)),
         notifyOnline: (convo.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
+        pinnedMessageIds: (convo.pinnedMessageIds || []).map(String),
       },
     });
   } catch (err) {

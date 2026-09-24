@@ -3,12 +3,32 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { X, Image as ImageIcon, Video, Mic, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
+import { ImageLightbox } from './MessageBubble';
 
-function GalleryImageBubble({ media }) {
-  const { url } = useAuthedMediaUrl(media.key);
-  if (!url) return <div className="w-36 h-28 bg-bg rounded-lg animate-pulse" />;
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt="Rasm" className="max-w-[min(180px,100%)] max-h-[200px] rounded-lg object-cover" />;
+// C-09 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 E) — 80x80 grid
+// thumbnail, useAuthedMediaUrl orqali (MessageBubble.jsx'dagi ImageBubble bilan
+// AYNAN bir xil signed-URL naqshi — src/lib/useAuthedMedia.js). Bosilganda
+// MessageBubble'dagi lightbox (import qilib qayta ishlatiladi — alohida oyna
+// qurish shart emas).
+function GalleryImageThumb({ media }) {
+  const { url, error } = useAuthedMediaUrl(media.key);
+  const [open, setOpen] = useState(false);
+  if (error) return <div className="w-20 h-20 rounded-lg bg-bg flex items-center justify-center text-[10px] text-muted">Xato</div>;
+  if (!url) return <div className="w-20 h-20 bg-bg rounded-lg animate-pulse" />;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Rasmni kattalashtirish"
+        className="block w-20 h-20 rounded-lg overflow-hidden cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt="Rasm" className="w-full h-full object-cover" />
+      </button>
+      {open && <ImageLightbox url={url} onClose={() => setOpen(false)} />}
+    </>
+  );
 }
 
 function GalleryVideoBubble({ media }) {
@@ -23,7 +43,7 @@ function GalleryVoiceBubble({ media }) {
   return <audio src={url} controls className="w-52 max-w-full h-9" />;
 }
 
-const GALLERY_BUBBLE = { image: GalleryImageBubble, video: GalleryVideoBubble, voice: GalleryVoiceBubble };
+const GALLERY_BUBBLE = { image: GalleryImageThumb, video: GalleryVideoBubble, voice: GalleryVoiceBubble };
 
 // Suhbat ichidagi bitta media turini (rasm/video/ovozli) alohida, eng yangisi
 // tepada ko'rsatadi — admin panelning ConversationViewer.jsx'dagi galereyasi bilan
@@ -98,6 +118,33 @@ function MediaGallery({ conversationId, type }) {
   // himoya sifatida bu yerda ham qoldiriladi — aks holda Bubble komponenti
   // `media.key`ni null'dan o'qishga urinib butun sahifani qulatadi.
   const visibleMessages = data.messages.filter((m) => m.media);
+  // C-09 — rasmlar uchun zich thumbnail GRID (sana matni o'rniga haqiqiy
+  // preview, TZ ko'rsatmasidagi 80x80/object-cover), video/ovozli xabarlar
+  // ilgarigidek — ular allaqachon o'zining nazorat elementiga (play/seek) ega,
+  // kichraytirilgan grid'ga tiqishtirish shart emas.
+  if (type === 'image') {
+    return (
+      <div>
+        <div className="grid grid-cols-3 gap-1.5">
+          {visibleMessages.map((m) => (
+            <GalleryImageThumb key={m.id || m._id} media={m.media} />
+          ))}
+        </div>
+        {visibleMessages.length === 0 && <p className="text-center text-xs text-muted py-8">Bu yerda hali hech narsa yo'q</p>}
+        {data.cursor && (
+          <div className="flex justify-center pt-3">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="min-h-11 md:min-h-0 px-3 py-1.5 bg-bg border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+            >
+              {loadingMore && <Loader2 size={12} className="animate-spin" />} Eskisini yuklash
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>

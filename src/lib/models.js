@@ -319,6 +319,12 @@ const ConversationSchema = new mongoose.Schema({
   // orqali yashirilgan) — aks holda "oke · 2kun" kabi eski preview ko'rinib, lekin
   // suhbat ochilganda "Hali xabar yo'q" chiqib, foydalanuvchini chalg'itardi.
   clearedAt: { type: Map, of: Date, default: {} },
+  // C-10 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 C) — yuqoriga qadalgan
+  // xabarlar, eng ko'pi 5 ta (TZ "5 tagacha" talabi — API tarafda tekshiriladi,
+  // src/app/api/chat/conversations/[id]/messages/[messageId]/pin). Ikkala tomon
+  // uchun UMUMIY (kim qadagan bo'lishidan qat'iy nazar, ikkalasi ham ko'radi) —
+  // mutedBy/nicknames kabi faqat-o'zimga-tegishli maydonlardan farqli.
+  pinnedMessageIds: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }], default: [] },
 });
 // Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
 // yangisi birinchi (src/app/api/chat/conversations); (2) admin panelning BARCHA

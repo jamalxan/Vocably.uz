@@ -545,6 +545,142 @@ export function ChatProvider({ myUserId, children }) {
     [authHeaders]
   );
 
+  // C-10 — xabarni yuqoriga qadaydi/yechadi (Conversation.pinnedMessageIds, ikkala
+  // tomon uchun umumiy — src/app/api/chat/conversations/[id]/messages/[messageId]/pin).
+  // Har ikkalasi ham natijadagi TO'LIQ ro'yxatni qaytaradi (server hisoblagan,
+  // cheklov — ko'pi bilan 5 ta) — shu bilan aktiv suhbat va ro'yxatdagi mos yozuvni
+  // yangilaymiz (mute/notifyOnline'dagi bilan bir xil naqsh).
+  const pinMessage = useCallback(
+    async (messageId) => {
+      if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
+      const conversationId = activeConversation.id;
+      try {
+        const res = await fetch(`/api/chat/conversations/${conversationId}/messages/${messageId}/pin`, {
+          method: 'POST',
+          headers: authHeaders(),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { error: data.error || "Qadalmadi" };
+        setActiveConversation((prev) =>
+          prev && String(prev.id) === String(conversationId) ? { ...prev, pinnedMessageIds: data.pinnedMessageIds } : prev
+        );
+        setConversations((prev) =>
+          prev.map((c) => (String(c.id) === String(conversationId) ? { ...c, pinnedMessageIds: data.pinnedMessageIds } : c))
+        );
+        return { success: true };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [activeConversation, authHeaders]
+  );
+
+  const unpinMessage = useCallback(
+    async (messageId) => {
+      if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
+      const conversationId = activeConversation.id;
+      try {
+        const res = await fetch(`/api/chat/conversations/${conversationId}/messages/${messageId}/pin`, {
+          method: 'DELETE',
+          headers: authHeaders(),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { error: data.error || "Yechilmadi" };
+        setActiveConversation((prev) =>
+          prev && String(prev.id) === String(conversationId) ? { ...prev, pinnedMessageIds: data.pinnedMessageIds } : prev
+        );
+        setConversations((prev) =>
+          prev.map((c) => (String(c.id) === String(conversationId) ? { ...c, pinnedMessageIds: data.pinnedMessageIds } : c))
+        );
+        return { success: true };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [activeConversation, authHeaders]
+  );
+
+  // C-10 — "Yuborish" (forward): tanlangan xabarni BOSHQA suhbatga (target,
+  // hozir ochiq bo'lishi shart emas) yuboradi. Matn/stiker uchun to'g'ridan-to'g'ri
+  // POST; media uchun (rasm/video/ovoz/fayl) asl faylning imzolangan URL'i orqali
+  // olib (useAuthedMediaUrl'dagi bilan bir xil endpoint), qayta uploadAndSend
+  // bosqichlarini (presign -> PUT -> POST) takrorlab, TARGET suhbat papkasiga qayta
+  // yuklaydi — chunki server har bir media kalitini "shu suhbatga tegishlimi"
+  // deb tekshiradi (messages POST route), asl kalitni boshqa suhbatga bevosita
+  // bog'lab bo'lmaydi.
+  const forwardMessage = useCallback(
+    async (message, targetConversationId) => {
+      try {
+        const type = message.type;
+        if (type === 'text') {
+          const res = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ type: 'text', text: message.text, clientMessageId: genClientMessageId() }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) return { error: data.error || "Yuborilmadi" };
+        } else if (type === 'sticker') {
+          const res = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ type: 'sticker', stickerId: message.stickerId, clientMessageId: genClientMessageId() }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) return { error: data.error || "Yuborilmadi" };
+        } else if (['image', 'video', 'voice', 'file'].includes(type) && message.media?.key) {
+          const getRes = await fetch(`/api/chat/media/${message.media.key}`, { headers: authHeaders() });
+          if (!getRes.ok) return { error: 'Media topilmadi' };
+          const { url: sourceUrl } = await getRes.json();
+          const blobRes = await fetch(sourceUrl);
+          if (!blobRes.ok) return { error: 'Media yuklanmadi' };
+          const blob = await blobRes.blob();
+          const mimeType = message.media.mimeType || blob.type || 'application/octet-stream';
+          const file = new File([blob], 'forwarded', { type: mimeType });
+
+          const presignRes = await fetch('/api/chat/upload/presign', {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ conversationId: targetConversationId, type, mimeType, size: file.size }),
+          });
+          const presignData = await presignRes.json();
+          if (!presignRes.ok) return { error: presignData.error || "Yuklab bo'lmadi" };
+
+          const putRes = await fetch(presignData.uploadUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': mimeType },
+            body: file,
+          });
+          if (!putRes.ok) return { error: 'Faylni yuklashda xatolik' };
+
+          const sendRes = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+              type,
+              media: { key: presignData.key, mimeType, size: file.size },
+              ...(message.text ? { text: message.text } : {}),
+              clientMessageId: genClientMessageId(),
+            }),
+          });
+          const sendData = await sendRes.json().catch(() => ({}));
+          if (!sendRes.ok) return { error: sendData.error || "Yuborilmadi" };
+        } else {
+          return { error: "Bu xabarni yuborib bo'lmaydi" };
+        }
+
+        loadConversations();
+        if (String(activeIdRef.current) === String(targetConversationId)) {
+          loadMessages(targetConversationId, { silent: true });
+        }
+        return { success: true };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [authHeaders, loadConversations, loadMessages]
+  );
+
   // Boshqa foydalanuvchiga men (faqat men) uchun ko'rinadigan taxallus qo'yadi —
   // UserProfileModal.jsx'dagi "Saqlash" tugmasi chaqiradi (bo'sh string — o'chirish).
   const setNickname = useCallback(
@@ -874,6 +1010,9 @@ export function ChatProvider({ myUserId, children }) {
     toggleNotifyOnline,
     setNickname,
     deleteConversation,
+    pinMessage,
+    unpinMessage,
+    forwardMessage,
     livePresence,
     typingByConversation,
     sendTyping,

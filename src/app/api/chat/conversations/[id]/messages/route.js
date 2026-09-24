@@ -3,7 +3,8 @@ import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, Message, Block, User } from '@/lib/models';
 import { findSticker } from '@/lib/stickers';
-import { objectExists } from '@/lib/s3';
+import { objectExists, readObjectPrefix } from '@/lib/s3';
+import { isValidImageMagicBytes } from '@/lib/imageMagicBytes';
 import { pushNewMessage } from '@/lib/realtime';
 import { sendPushToUser } from '@/lib/webPush';
 import { markConversationRead } from '@/lib/chatRead';
@@ -161,6 +162,25 @@ export async function POST(req, { params }) {
       }
       if (!(await objectExists(media.key))) {
         return NextResponse.json({ error: 'Fayl topilmadi. Avval yuklang.' }, { status: 400 });
+      }
+      // C-14 — klient to'g'ridan-to'g'ri S3/MinIO'ga yuklagani uchun (presigned PUT,
+      // src/app/api/chat/upload/presign) server hech qachon haqiqiy fayl baytlarini
+      // ko'rmagan edi — faqat client aytgan `type`/`mimeType`ga ishonardi. Endi
+      // "image" turi uchun shu yerda (xabar aynan SHU nuqtada saqlanishidan oldin)
+      // faylning dastlabki baytlari S3'dan o'qilib, haqiqatan mashhur rasm formatlaridan
+      // biriga mos kelishi tekshiriladi — client mimeType'ni yolg'on "image/*" deb
+      // ko'rsatgan (masalan .html/.svg fayl) holatlarni ushlab qoladi.
+      if (type === 'image') {
+        let prefix;
+        try {
+          prefix = await readObjectPrefix(media.key, 16);
+        } catch (readErr) {
+          console.error('[chat] rasm baytlarini tekshirib bo\'lmadi', readErr);
+          return NextResponse.json({ error: "Faylni tekshirib bo'lmadi" }, { status: 400 });
+        }
+        if (!isValidImageMagicBytes(prefix)) {
+          return NextResponse.json({ error: "Bu fayl haqiqiy rasm emas" }, { status: 400 });
+        }
       }
       doc.media = {
         key: media.key,
