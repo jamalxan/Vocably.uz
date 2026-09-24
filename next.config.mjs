@@ -64,9 +64,12 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  // Speaking bo'limi (src/features/exam/speaking) mikrofonni O'Z origin'idan
-  // ishlatadi — shuning uchun butunlay bloklanmagan, faqat 'self'ga cheklangan.
-  { key: 'Permissions-Policy', value: 'microphone=(self), camera=(), geolocation=()' },
+  // Speaking bo'limi (src/features/exam/speaking) mikrofonni, chatdagi video
+  // xabar (src/components/chat-friends/VideoRecorder.jsx) esa kamerani O'Z
+  // origin'idan ishlatadi — ikkalasi ham 'self'ga cheklangan. `camera=()` bo'lganda
+  // brauzer ruxsat so'ramasdan NotAllowedError berardi (sayt ruxsati "Ruxsat
+  // berish" bo'lsa ham) — foydalanuvchi uchun tuzatib bo'lmaydigan xato.
+  { key: 'Permissions-Policy', value: 'microphone=(self), camera=(self), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
 ];
 
