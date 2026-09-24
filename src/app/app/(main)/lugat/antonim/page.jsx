@@ -53,7 +53,7 @@ function AntonimQuiz() {
       const isCorrect = opt === current.correctAnswer;
       if (isCorrect) setScore((s) => s + 1);
       if (current.word._id && activeCategory._id) {
-        reviewWord(activeCategory._id, current.word._id, isCorrect, { mode: 'quiz' });
+        reviewWord(activeCategory._id, current.word._id, isCorrect, { mode: 'antonim' });
       }
       clearTimeout(advanceRef.current);
       advanceRef.current = setTimeout(() => {

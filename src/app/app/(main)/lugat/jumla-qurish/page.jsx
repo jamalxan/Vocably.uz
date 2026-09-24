@@ -71,7 +71,7 @@ function JumlaQurishGame() {
     setChecked(isCorrect);
     if (isCorrect) setScore((s) => s + 1);
     if (current.word._id && activeCategory._id) {
-      reviewWord(activeCategory._id, current.word._id, isCorrect, { mode: 'quiz' });
+      reviewWord(activeCategory._id, current.word._id, isCorrect, { mode: 'sentence_builder' });
     }
   };
 

@@ -1,6 +1,30 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { Bot, Loader2, ScrollText } from 'lucide-react';
+import { formatAuditDiff } from '@/lib/auditDiffFormat';
+
+// U-04 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md P2) — "Admin audit log'da xom JSON".
+// `formatAuditDiff` tanigan shakllar uchun odam o'qiydigan qator(lar) qaytaradi;
+// tanimagan/ichma-ich shakllar uchun `null` — bunda chiroyli formatlangan
+// (indent bilan) JSON'ga tushamiz, avvalgi xom bitta-qatorli JSON o'rniga.
+function DiffDisplay({ diff }) {
+  const lines = formatAuditDiff(diff);
+  if (lines === null) {
+    return (
+      <pre className="text-[11px] text-muted/80 mt-1.5 ml-5 overflow-x-auto whitespace-pre-wrap">
+        {JSON.stringify(diff, null, 2)}
+      </pre>
+    );
+  }
+  if (lines.length === 0) return null;
+  return (
+    <ul className="text-[11px] text-muted/80 mt-1.5 ml-5 space-y-0.5 list-disc list-inside">
+      {lines.map((line, i) => (
+        <li key={i}>{line}</li>
+      ))}
+    </ul>
+  );
+}
 
 const ACTORS = [
   { value: 'admin', label: 'Admin' },
@@ -89,9 +113,7 @@ export default function AuditLogTable() {
                   {l.targetType}: <span className="font-mono">{l.targetId}</span>
                 </p>
               )}
-              {l.diff && (
-                <pre className="text-[11px] text-muted/80 mt-1.5 ml-5 overflow-x-auto">{JSON.stringify(l.diff)}</pre>
-              )}
+              {l.diff && <DiffDisplay diff={l.diff} />}
             </div>
           ))}
           {logs.length === 0 && <p className="text-center text-sm text-muted py-10">Yozuv yo'q</p>}
