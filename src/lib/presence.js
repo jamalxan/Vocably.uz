@@ -71,3 +71,23 @@ export function formatLastSeen(lastActiveAt, liveOnline) {
   if (days < 7) return `oxirgi marta ko'rilgan ${days} kun oldin`;
   return `oxirgi marta ko'rilgan ${new Date(lastActiveAt).toLocaleDateString('uz-UZ')}`;
 }
+
+// H-1 — "Oxirgi marta ko'rilgan"ni kim ko'rishi (`shouldShowLastSeen`) src/lib/chatConstants.js'ga
+// ko'chirildi: bu fayl (presence.js) React hook'lar (useState/useEffect) eksport qilgani
+// uchun Next.js uni "client-only" modul deb hisoblaydi — server API route (chat/conversations)
+// undan sof funksiya import qilsa ham, build vaqtida "faqat Client Component'da ishlaydi"
+// xatosi berardi. chatConstants.js hech qanday React/DB import qilmaydi, shuning uchun
+// ikkala tomondan ham xavfsiz import qilinadi (o'sha faylning boshidagi izohga qarang).
+
+// G-3 — bell tugmasi/sarlavha ostida "necha vaqtgacha ovozsiz" qoldirilganini
+// ko'rsatish uchun qisqa matn. `mutedUntilIso` — o'tmishda yoki bo'sh bo'lsa (masalan
+// muddat allaqachon tugagan) `null` qaytaradi (ChatContext holati keyingi yangilanishda
+// baribir tozalanadi — bu yerda faqat ko'rinish uchun ehtiyot chorasi).
+export function formatMuteUntil(mutedUntilIso) {
+  if (!mutedUntilIso) return null;
+  const diff = new Date(mutedUntilIso).getTime() - Date.now();
+  if (diff <= 0) return null;
+  if (diff < HOUR_MS) return `${Math.max(1, Math.round(diff / MINUTE_MS))} daqiqagacha ovozsiz`;
+  if (diff < DAY_MS) return `${Math.round(diff / HOUR_MS)} soatgacha ovozsiz`;
+  return `${Math.round(diff / DAY_MS)} kungacha ovozsiz`;
+}

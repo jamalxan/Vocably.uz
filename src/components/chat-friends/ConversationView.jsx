@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
-import { formatLastSeen, isOnline, useLiveClock } from '@/lib/presence';
+import { formatLastSeen, formatMuteUntil, isOnline, useLiveClock } from '@/lib/presence';
 import { TYPING_LABEL, REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 import UserProfileModal from './UserProfileModal';
+import MuteDurationModal from './MuteDurationModal';
 import ConfirmModal from '@/components/ConfirmModal';
 
 // Sarlavhadagi ikonka-tugmalar: mobil'da 44px (manfiy margin bilan zichlik saqlanadi), md+ da avvalgidek.
@@ -115,6 +116,7 @@ export default function ConversationView({ onBack }) {
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
+  const [muteModalOpen, setMuteModalOpen] = useState(false);
   useLiveClock();
 
   const scrollToBottom = (behavior = 'smooth') => {
@@ -193,10 +195,18 @@ export default function ConversationView({ onBack }) {
     return <div className="hidden lg:flex flex-1 items-center justify-center text-sm text-muted">Suhbatni tanlang</div>;
   }
 
-  const online = isOnline(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
+  // H-1 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H) — otherUser o'zining
+  // "oxirgi marta ko'rilgan"/onlaynini yashirgan bo'lsa (`lastSeenVisibility:
+  // 'nobody'`, server `showPresence:false` qaytaradi), na jonli nuqta, na matn
+  // ko'rsatilmaydi — hatto socket orqali ANIQ onlayn holat kelsa ham.
+  const showPresence = activeConversation.otherUser?.showPresence !== false;
+  const online = showPresence && isOnline(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
   const typingKind = typingByConversation[activeConversation.id];
   const isTyping = !!typingKind;
-  const lastSeenText = formatLastSeen(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
+  const lastSeenText = showPresence
+    ? formatLastSeen(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)])
+    : null;
+  const muteUntilText = activeConversation.muted ? formatMuteUntil(activeConversation.mutedUntil) : null;
 
   const handleScroll = () => {
     const el = listRef.current;
@@ -245,8 +255,20 @@ export default function ConversationView({ onBack }) {
     if (res?.error) alert(res.error);
   };
 
+  // G-3 — ovozsiz emas bo'lsa bosilganda davomiylik tanlash oynasi ochiladi
+  // (MuteDurationModal.jsx); ovozsiz bo'lsa bitta bosish bilan to'g'ridan-to'g'ri
+  // yoqiladi (Telegram'dagidek — o'chirish tasdiqlash so'ramaydi).
   const handleToggleMute = () => {
-    toggleMuteConversation(activeConversation.id, !activeConversation.muted);
+    if (activeConversation.muted) {
+      toggleMuteConversation(activeConversation.id, false);
+    } else {
+      setMuteModalOpen(true);
+    }
+  };
+
+  const handleSelectMuteDuration = (durationMs) => {
+    setMuteModalOpen(false);
+    toggleMuteConversation(activeConversation.id, true, durationMs);
   };
 
   const handleToggleNotifyOnline = () => {
@@ -305,7 +327,7 @@ export default function ConversationView({ onBack }) {
         </button>
         <button
           onClick={handleToggleMute}
-          title={activeConversation.muted ? 'Bildirishnomani yoqish' : 'Bildirishnomani o\'chirish'}
+          title={activeConversation.muted ? (muteUntilText || 'Bildirishnomani yoqish') : 'Bildirishnomani o\'chirish'}
           aria-label={activeConversation.muted ? 'Bildirishnomani yoqish' : 'Bildirishnomani o\'chirish'}
           className={`${HEADER_BTN} text-muted hover:text-accent`}
         >
@@ -408,6 +430,7 @@ export default function ConversationView({ onBack }) {
       <Composer key={activeConversation.id} />
 
       <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <MuteDurationModal open={muteModalOpen} onSelect={handleSelectMuteDuration} onCancel={() => setMuteModalOpen(false)} />
       <ConfirmModal
         open={blockOpen}
         title="Foydalanuvchini bloklash"

@@ -5,9 +5,17 @@ import { useApp } from '@/context/AppContext';
 import { ChatProvider, useChat } from '@/context/ChatContext';
 import ConversationList from './ConversationList';
 import ConversationView from './ConversationView';
+import NewMessageToast from './NewMessageToast';
 
 function DoStlarShell({ onActiveChange }) {
-  const { activeConversation, selectConversation, closeConversation, openConversationByUsername } = useChat();
+  const {
+    activeConversation,
+    selectConversation,
+    closeConversation,
+    openConversationByUsername,
+    newMessageToast,
+    dismissMessageToast,
+  } = useChat();
   const params = useParams();
   const router = useRouter();
 
@@ -102,6 +110,19 @@ function DoStlarShell({ onActiveChange }) {
       <div className={`${activeConversation ? 'flex' : 'hidden lg:flex'} flex-1 min-w-0 min-h-0`}>
         <ConversationView onBack={closeConversation} />
       </div>
+
+      {/* G-2 — "boshqa suhbatda bo'lsa" toast'i: shu darajada (ro'yxat va aktiv
+          suhbat ustida) turadi, chunki qaysi pastki ko'rinishda bo'lishidan
+          qat'iy nazar ko'rinishi kerak (masalan mobil'da ro'yxat ekranida turib
+          boshqa suhbatga xabar kelsa ham). */}
+      <NewMessageToast
+        toast={newMessageToast}
+        onDismiss={dismissMessageToast}
+        onOpen={(t) => {
+          dismissMessageToast();
+          if (t.conversation) selectConversation(t.conversation);
+        }}
+      />
     </div>
   );
 }

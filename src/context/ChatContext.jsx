@@ -1,8 +1,26 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { connectChatSocket } from '@/lib/socketClient';
+import { enqueueOffline, dequeueOffline, mergeQueuedIntoMessages } from '@/lib/offlineQueue';
+import { PREVIEW_BY_TYPE, isMutedNow } from '@/lib/chatConstants';
 
 const ChatContext = createContext(null);
+
+// F (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 F — "internet uzilsa xabar local'da
+// turadi") — sahifa qayta yuklansa ham navbat yo'qolmasin deb localStorage'da saqlanadi
+// (foydalanuvchiga bog'liq kalit — bir brauzerda bir nechta hisob almashtirilsa
+// navbatlar aralashib ketmasin). Faqat o'qish/yozish shu ikki funksiyada — qolgan
+// hamma joy oddiy JS massiv (offlineQueueRef.current) bilan ishlaydi.
+function readPersistedOfflineQueue(userId) {
+  if (typeof window === 'undefined' || !userId) return [];
+  try {
+    const raw = window.localStorage.getItem(`vocably_chat_offline_queue_${userId}`);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 // Do'stlar bo'limiga xos holat — global AppContext'ga qo'shilmaydi, chunki bu
 // hidden/gated funksiya: faqat chatAccess bo'lgan userlarda, va faqat "Do'stlar"
@@ -42,9 +60,21 @@ export function ChatProvider({ myUserId, children }) {
   // Qaysi suhbatda hozir "yozmoqda..." holati faol: { [conversationId]: true } —
   // har bir yozuv 3s'dan keyin o'zi tozalanadi (pastdagi socket 'typing' handler'i).
   const [typingByConversation, setTypingByConversation] = useState({});
+  // G-2 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 G) — "boshqa suhbatda" (yoki hali
+  // ro'yxatda bo'lmagan, yangi) suhbatga xabar kelganda ko'rsatiladigan in-app toast:
+  // { conversationId, conversation (bo'lsa — selectConversation uchun), senderLabel,
+  // preview }. DoStlarPanel.jsx (NewMessageToast.jsx) shuni render qiladi.
+  const [newMessageToast, setNewMessageToast] = useState(null);
 
   const socketRef = useRef(null);
   const pollRef = useRef(null);
+  // F (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 F) — offline xabar navbati: har
+  // yozuv { clientMessageId, conversationId, body (POST payload), message (optimistik
+  // pufakcha) }. Alohida React state EMAS — o'zgarishi UI'ni to'g'ridan-to'g'ri
+  // qayta chizishi shart emas (pufakchaning o'zi `messages` state orqali ko'rinadi),
+  // faqat localStorage bilan sinxron oddiy ref (src/lib/offlineQueue.js — sof funksiyalar).
+  const offlineQueueRef = useRef(null);
+  if (offlineQueueRef.current === null) offlineQueueRef.current = readPersistedOfflineQueue(myUserId);
   // Har bir suhbat uchun oxirgi ko'rilgan xabarlar ro'yxatini eslab qoladi —
   // ikkita suhbat orasida oldinga-orqaga o'tilganda (masalan ikki do'st bilan
   // navbatma-navbat yozishganda) HAR SAFAR bo'sh ekrandan spinner ko'rsatib
@@ -74,6 +104,19 @@ export function ChatProvider({ myUserId, children }) {
   // saqlab qolingan, xatti-harakati esa endi to'g'ri (hech qanday header
   // qo'lda biriktirilmaydi).
   const authHeaders = useCallback((extra = {}) => extra, []);
+
+  // F — navbat o'zgargan har safar (qo'shildi/olib tashlandi) localStorage'ga yoziladi.
+  const persistOfflineQueue = useCallback(() => {
+    if (typeof window === 'undefined' || !myIdRef.current) return;
+    try {
+      window.localStorage.setItem(
+        `vocably_chat_offline_queue_${myIdRef.current}`,
+        JSON.stringify(offlineQueueRef.current)
+      );
+    } catch {
+      // localStorage yo'q/to'lgan — navbat shunchaki shu sessiyada (xotirada) qoladi.
+    }
+  }, []);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -116,7 +159,10 @@ export function ChatProvider({ myUserId, children }) {
         if (res.ok) {
           const list = data.messages || [];
           hasMoreOlderRef.current = list.length >= 50;
-          setMessages(list);
+          // F — serverda hali yo'q, lekin offline navbatda kutayotgan xabarlar
+          // (masalan sahifa qayta yuklangan, ulanish hali tiklanmagan) ro'yxat
+          // oxiriga "yuborilmoqda" pufakchasi sifatida qo'shiladi.
+          setMessages(mergeQueuedIntoMessages(list, offlineQueueRef.current, conversationId));
           if (!silent) setMessagesError(false);
         } else if (!silent) {
           setMessagesError(true);
@@ -164,7 +210,7 @@ export function ChatProvider({ myUserId, children }) {
       const cached = messagesCacheRef.current.get(String(conversationId));
       hasMoreOlderRef.current = true;
       if (cached) {
-        setMessages(cached);
+        setMessages(mergeQueuedIntoMessages(cached, offlineQueueRef.current, conversationId));
         // Oldingi (boshqa suhbatning) yuklanish/xato holati bu suhbatga o'tmasin.
         setLoadingMessages(false);
         setMessagesError(false);
@@ -177,6 +223,58 @@ export function ChatProvider({ myUserId, children }) {
     },
     [loadMessages]
   );
+
+  // F — navbatdagi xabarlarni KETMA-KET (bittadan, tartib bilan — "internet o'chirib
+  // 3 ta xabar yozish -> ulanganda tartib bilan yuboriladi" TZ talabi), xuddi shu
+  // idempotent (`clientMessageId`) yo'l bilan yuboradi. `window.addEventListener('online')`
+  // va socket'ning har bir 'connect' (shu jumladan reconnect) hodisasida chaqiriladi.
+  const flushOfflineQueue = useCallback(async () => {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return; // yana uzilib qoldi
+      const item = offlineQueueRef.current[0];
+      if (!item) return;
+      try {
+        const res = await fetch(`/api/chat/conversations/${item.conversationId}/messages`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(item.body),
+        });
+        const data = await res.json().catch(() => ({}));
+        offlineQueueRef.current = dequeueOffline(offlineQueueRef.current, item.clientMessageId);
+        persistOfflineQueue();
+
+        if (!res.ok) {
+          // Server chindan rad etdi (masalan shu orada bloklangan) — qayta urinish
+          // ma'nosiz, pufakchani "failed"ga o'tkazib keyingi navbatdagiga o'tamiz.
+          if (String(activeIdRef.current) === String(item.conversationId)) {
+            setMessages((prev) =>
+              prev.map((m) => (String(m.clientMessageId) === String(item.clientMessageId) ? { ...m, _status: 'failed' } : m))
+            );
+          }
+          continue;
+        }
+
+        if (String(activeIdRef.current) === String(item.conversationId)) {
+          const finalMsg = { ...data.message, clientMessageId: item.clientMessageId, _status: 'sent' };
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => String(m.clientMessageId) === String(item.clientMessageId));
+            if (idx === -1) {
+              return prev.some((m) => String(m.id || m._id) === String(finalMsg.id || finalMsg._id)) ? prev : [...prev, finalMsg];
+            }
+            const next = [...prev];
+            next[idx] = finalMsg;
+            return next;
+          });
+        }
+        loadConversations();
+      } catch {
+        // Tarmoq hali beqaror (masalan 'online' hodisasi biroz erta yuborildi) —
+        // navbatni SAQLAB qoldiramiz, keyingi 'online'/socket 'connect' kutiladi.
+        return;
+      }
+    }
+  }, [authHeaders, persistOfflineQueue, loadConversations]);
 
   const openConversationByUsername = useCallback(
     async (username) => {
@@ -264,43 +362,64 @@ export function ChatProvider({ myUserId, children }) {
       const replyId = replyingToRef.current?.id;
       const conversationId = activeConversation.id;
       const clientMessageId = existingClientId || genClientMessageId();
+      // F — offline navbatga ham, muvaffaqiyatli bo'lsa serverga ham AYNAN shu tana
+      // yuboriladi (src/lib/offlineQueue.js) — ikkalasi mos kelmay qolmasin.
+      const body = { ...(replyId ? { ...payload, replyTo: replyId } : payload), clientMessageId };
+      // Sahifa qayta yuklanganda/suhbat almashtirilganda pufakchani tiklash uchun ham
+      // kerak (mergeQueuedIntoMessages), shuning uchun har doim hisoblanadi (offline
+      // navbatga tushmasa ham hech narsa yo'qotmaydi).
+      const optimisticMsg = {
+        id: clientMessageId,
+        clientMessageId,
+        conversationId,
+        senderId: myIdRef.current,
+        type: payload.type,
+        text: payload.text || '',
+        media: payload.media || null,
+        stickerId: payload.stickerId || null,
+        // Server javobidagi shaklga mos: `messageId` (`id` emas) — MessageBubble'dagi
+        // ReplyQuote shu maydonga qarab asl xabarga sakraydi (jumpToMessage).
+        replyTo: replyId
+          ? {
+              messageId: replyId,
+              senderId: replyingToRef.current.senderId,
+              type: replyingToRef.current.type,
+              text: replyingToRef.current.text,
+            }
+          : null,
+        createdAt: new Date().toISOString(),
+        _status: 'sending',
+      };
 
       // Qayta urinish (retry) bo'lmasa — darhol "yuborilmoqda" optimistik pufakchasini qo'shamiz.
       if (!existingClientId && String(activeIdRef.current) === String(conversationId)) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: clientMessageId,
-            clientMessageId,
-            conversationId,
-            senderId: myIdRef.current,
-            type: payload.type,
-            text: payload.text || '',
-            media: payload.media || null,
-            stickerId: payload.stickerId || null,
-            // Server javobidagi shaklga mos: `messageId` (`id` emas) — MessageBubble'dagi
-            // ReplyQuote shu maydonga qarab asl xabarga sakraydi (jumpToMessage).
-            replyTo: replyId
-              ? {
-                  messageId: replyId,
-                  senderId: replyingToRef.current.senderId,
-                  type: replyingToRef.current.type,
-                  text: replyingToRef.current.text,
-                }
-              : null,
-            createdAt: new Date().toISOString(),
-            _status: 'sending',
-          },
-        ]);
+        setMessages((prev) => [...prev, optimisticMsg]);
       } else if (existingClientId) {
         setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'sending' } : m)));
+      }
+
+      // F (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 F — "internet uzilsa xabar
+      // local'da turadi, ulanganda yuboriladi") — internet uzilgan bo'lsa tarmoq
+      // so'rovini umuman urinib ko'rmaymiz (baribir muvaffaqiyatsiz tugaydi): xabar
+      // "sending" holatida (yuqorida qo'shilgan pufakcha) navbatga qo'yiladi, ulanish
+      // qaytganda (window 'online' yoki socket 'connect' — flushOfflineQueue) tartib
+      // bilan, bittadan yuboriladi.
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        offlineQueueRef.current = enqueueOffline(offlineQueueRef.current, {
+          clientMessageId,
+          conversationId,
+          body,
+          message: optimisticMsg,
+        });
+        persistOfflineQueue();
+        return { queued: true };
       }
 
       try {
         const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ ...(replyId ? { ...payload, replyTo: replyId } : payload), clientMessageId }),
+          body: JSON.stringify(body),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -326,7 +445,7 @@ export function ChatProvider({ myUserId, children }) {
         return { error: 'Tarmoq xatoligi' };
       }
     },
-    [activeConversation, authHeaders, loadConversations]
+    [activeConversation, authHeaders, loadConversations, persistOfflineQueue]
   );
 
   // MessageBubble'dagi "Qayta yuborish" — xuddi shu clientMessageId bilan qayta
@@ -475,13 +594,15 @@ export function ChatProvider({ myUserId, children }) {
     [authHeaders]
   );
 
+  // H-2 — `category` endi asosiy signal (src/lib/chatConstants.js#REPORT_REASON_CATEGORIES,
+  // ReportReasonModal.jsx select'i), `reason` ixtiyoriy qo'shimcha izoh.
   const reportTarget = useCallback(
-    async (targetType, targetId, reason) => {
+    async (targetType, targetId, category, reason) => {
       try {
         const res = await fetch('/api/chat/report', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ targetType, targetId, reason }),
+          body: JSON.stringify({ targetType, targetId, category, reason }),
         });
         return res.ok;
       } catch {
@@ -713,17 +834,27 @@ export function ChatProvider({ myUserId, children }) {
 
   // Faqat menda (bu userda) shu suhbatning push/bell bildirishnomasini o'chiradi —
   // boshqa tomon buni bilmaydi, xabarlar odatdagidek yetib boraveradi.
+  // G-3 — `durationMs` berilsa (MuteDurationModal.jsx tanlovi) muddatli mute, aks
+  // holda (mute=true, durationMs yo'q — "Doimiy") doimiy. Unmute (`mute=false`)da
+  // durationMs e'tiborga olinmaydi.
   const toggleMuteConversation = useCallback(
-    async (conversationId, mute) => {
+    async (conversationId, mute, durationMs) => {
       try {
         const res = await fetch(`/api/chat/conversations/${conversationId}/mute`, {
           method: mute ? 'POST' : 'DELETE',
-          headers: authHeaders(),
+          headers: mute ? authHeaders({ 'Content-Type': 'application/json' }) : authHeaders(),
+          ...(mute ? { body: JSON.stringify({ durationMs: durationMs || null }) } : {}),
         });
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) return { error: "Bajarilmadi" };
-        setConversations((prev) => prev.map((c) => (String(c.id) === String(conversationId) ? { ...c, muted: mute } : c)));
-        setActiveConversation((prev) => (prev && String(prev.id) === String(conversationId) ? { ...prev, muted: mute } : prev));
-        return { success: true };
+        const mutedUntil = mute ? data.mutedUntil || null : null;
+        setConversations((prev) =>
+          prev.map((c) => (String(c.id) === String(conversationId) ? { ...c, muted: mute, mutedUntil } : c))
+        );
+        setActiveConversation((prev) =>
+          prev && String(prev.id) === String(conversationId) ? { ...prev, muted: mute, mutedUntil } : prev
+        );
+        return { success: true, mutedUntil };
       } catch {
         return { error: 'Tarmoq xatoligi' };
       }
@@ -778,10 +909,31 @@ export function ChatProvider({ myUserId, children }) {
     });
   }, []);
 
+  // G-2 — toast'ni yopish (avtomatik 5s'dan keyin yoki "X" bosilganda,
+  // NewMessageToast.jsx) yoki bosilib suhbat ochilgandan keyin.
+  const dismissMessageToast = useCallback(() => setNewMessageToast(null), []);
+
   useEffect(() => {
     loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // F — sahifa qayta yuklanganda (yoki komponent birinchi mount bo'lganda) oflayn
+  // paytda to'plangan navbat bo'lishi mumkin (localStorage'dan o'qilgan, yuqoridagi
+  // offlineQueueRef lazy-init) — hozir onlayn bo'lsak darhol bo'shatishga urinamiz.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) flushOfflineQueue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // F — brauzer "internet qaytdi" deb bildirganda (window 'online') navbatni
+  // bo'shatishga urinamiz — socket ulanmagan/REST orqali ishlayotgan holatlarda ham
+  // ishlaydi (socket 'connect' hodisasidan mustaqil).
+  useEffect(() => {
+    const onOnline = () => flushOfflineQueue();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [flushOfflineQueue]);
 
   // Faol suhbatning xabarlar ro'yxati o'zgargan sayin (yuklandi, yangi xabar
   // keldi, tahrirlandi/o'chirildi) keshni ham yangilab boradi — shu suhbatga
@@ -850,6 +1002,20 @@ export function ChatProvider({ myUserId, children }) {
       socket.on('connect', () => {
         setSocketConnected(true);
         queryPresenceForKnownUsers();
+        // F — reconnect sync ("Reconnect'da o'tkazib yuborilgan xabarlarni sync
+        // qilish"): bu HAR bir 'connect'da ishlaydi (dastlabki ulanishda ham,
+        // keyingi qayta-ulanishlarda ham — socket.io ikkalasida ham xuddi shu
+        // 'connect' hodisasini beradi). To'liq "since=lastEventId" event-log o'rniga
+        // soddalashtirilgan variant: ro'yxatni va (bo'lsa) aktiv suhbatning oxirgi
+        // xabarlarini jimgina qayta so'raymiz — uzilib turgan paytda o'tkazib
+        // yuborilgan xabarlar/o'qilganlik/preview shu bilan tutib olinadi.
+        loadConversations();
+        if (activeIdRef.current) loadMessages(activeIdRef.current, { silent: true });
+        // F — ulanish tiklanishi bilan offline navbatni ham bo'shatamiz (socket
+        // ulanishi tiklangani REST'ning ham ishlashi ehtimoli yuqoriligini bildiradi,
+        // window 'online' hodisasi kechroq yoki umuman kelmasligi mumkin bo'lgan
+        // holatlarda ham — masalan VPN/tunnel qayta ulanishi).
+        flushOfflineQueue();
       });
       socket.on('disconnect', () => setSocketConnected(false));
       socket.on('message:new', ({ conversationId, message }) => {
@@ -863,6 +1029,18 @@ export function ChatProvider({ myUserId, children }) {
           // effekti o'sha paytda orqada qolganini tutib oladi, avvalgi xato manbai:
           // yashirin tabda ham xabar darhol "o'qilgan" deb ko'rsatilardi).
           if (!document.hidden) markRead(conversationId);
+        } else {
+          // G-2 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 G — "Tab ochiq, lekin
+          // boshqa suhbatda bo'lsa — in-app toast") — bu ilova 1:1 bo'lgani uchun
+          // xabar yuboruvchisi HAR DOIM shu suhbatning otherUser'i (conversationsRef
+          // ro'yxatidan topiladi — hali ro'yxatda yo'q, chindan yangi suhbat bo'lsa,
+          // mute holatini bilmaymiz, ehtiyot chorasi sifatida baribir ko'rsatamiz).
+          const conv = conversationsRef.current.find((c) => String(c.id) === String(conversationId));
+          if (!isMutedNow(conv)) {
+            const senderLabel = conv?.otherUser?.nickname || (conv?.otherUser?.username ? `@${conv.otherUser.username}` : 'Yangi xabar');
+            const preview = message.type === 'text' ? (message.text || '').slice(0, 80) : PREVIEW_BY_TYPE[message.type] || 'Xabar';
+            setNewMessageToast({ conversationId, conversation: conv || null, senderLabel, preview });
+          }
         }
         loadConversations();
       });
@@ -1016,6 +1194,8 @@ export function ChatProvider({ myUserId, children }) {
     livePresence,
     typingByConversation,
     sendTyping,
+    newMessageToast,
+    dismissMessageToast,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

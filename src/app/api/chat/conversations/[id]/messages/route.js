@@ -9,7 +9,7 @@ import { pushNewMessage } from '@/lib/realtime';
 import { sendPushToUser } from '@/lib/webPush';
 import { markConversationRead } from '@/lib/chatRead';
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
-import { PREVIEW_BY_TYPE } from '@/lib/chatConstants';
+import { PREVIEW_BY_TYPE, isConversationMuted } from '@/lib/chatConstants';
 import { NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
@@ -250,7 +250,9 @@ export async function POST(req, { params }) {
     // hujjati) chat xabarlari uchun ATAYLAB endi bildirishnoma yaratilmaydi — buning
     // o'rniga adminga Telegram orqali xabar boradi (pastga qarang).
     const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
-    const recipientMuted = (convo.mutedBy || []).some((id) => String(id) === String(otherId));
+    // G-3 — endi doimiy (`mutedBy`) VA muddatli (`mutedUntil`, hali tugamagan) mute'ni
+    // ham hisobga oladi (src/lib/chatConstants.js#isConversationMuted).
+    const recipientMuted = isConversationMuted(convo, otherId);
     if (!recipientMuted) {
       const pushUrl = user.username ? `/app/dostlar/${user.username}` : '/app/dostlar';
       sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }).catch(() => {});

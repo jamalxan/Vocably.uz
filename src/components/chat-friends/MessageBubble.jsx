@@ -28,6 +28,7 @@ import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import { parseMessageFormatting } from '@/lib/chatFormatting';
 import DeleteMessageModal from './DeleteMessageModal';
 import ForwardMessageModal from './ForwardMessageModal';
+import ReportReasonModal from './ReportReasonModal';
 
 // Uzoq bosish (long-press) uchun chegara — ConversationList.jsx'dagi bilan bir xil
 // naqsh/vaqt (C-10 — xabar pufakchasida ham o'sha uslub bilan kontekst menyu).
@@ -341,6 +342,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
   const [deleting, setDeleting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   // C-10 — uzoq-bosish (long-press), ConversationList.jsx'dagi ConversationRow
   // bilan bir xil naqsh: faqat TEGIB (touch/pen) ishlaydigan qurilmalarda, sichqon
   // uchun o'ng-klik (onContextMenu, pastda) va "..." tugmasi allaqachon yetarli.
@@ -351,10 +353,13 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
   const deleted = !!message.deletedForEveryone;
   const emojiOnly = !deleted && message.type === 'text' && isEmojiOnly(message.text);
 
-  const handleReport = async () => {
-    const reason = window.prompt("Shikoyat sababi:");
-    if (!reason?.trim()) return;
-    const ok = await reportTarget('message', message.id || message._id, reason.trim());
+  // H-2 — ilgari window.prompt() bilan erkin matn so'raladigan edi; endi kategoriya
+  // tanlash oynasi (ReportReasonModal.jsx) ochiladi.
+  const handleReport = () => setReportOpen(true);
+
+  const submitReport = async (category, note) => {
+    setReportOpen(false);
+    const ok = await reportTarget('message', message.id || message._id, category, note);
     if (ok) setReported(true);
   };
 
@@ -572,6 +577,8 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
       />
 
       <ForwardMessageModal open={forwardOpen} message={message} onClose={() => setForwardOpen(false)} />
+
+      <ReportReasonModal open={reportOpen} onSubmit={submitReport} onCancel={() => setReportOpen(false)} />
     </div>
   );
 }

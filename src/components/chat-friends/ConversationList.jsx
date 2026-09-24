@@ -195,7 +195,10 @@ export default function ConversationList({ onSelect, selectedId }) {
             selected={String(selectedId) === String(c.id)}
             onSelect={onSelect}
             onDeleteRequest={setDeleteTarget}
-            online={isOnline(c.otherUser?.lastActiveAt, livePresence[String(c.otherUser?.id)])}
+            online={
+              c.otherUser?.showPresence !== false &&
+              isOnline(c.otherUser?.lastActiveAt, livePresence[String(c.otherUser?.id)])
+            }
             typing={typingByConversation[c.id]}
           />
         ))}

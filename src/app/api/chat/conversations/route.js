@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { requireChatUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, User, Block, Message } from '@/lib/models';
+import { isConversationMuted, shouldShowLastSeen } from '@/lib/chatConstants';
 import { NextResponse } from 'next/server';
 
 function sortedPair(a, b) {
@@ -10,6 +11,17 @@ function sortedPair(a, b) {
 
 function pairKey(a, b) {
   return sortedPair(a, b).join('_');
+}
+
+// G-3 — hali TUGAMAGAN muddatli mute'ning tugash vaqtini ISO shaklida qaytaradi
+// (klient shu bilan "necha vaqtgacha ovozsiz" matnini hisoblaydi,
+// src/lib/presence.js#formatMuteUntil). Muddat o'tib ketgan bo'lsa `null` — bu holda
+// `muted` (isConversationMuted) ham `false`ga tushadi (doimiy belgi bo'lmasa).
+function activeMutedUntilIso(convo, userId) {
+  const uid = String(userId);
+  const raw = convo?.mutedUntil?.get ? convo.mutedUntil.get(uid) : convo?.mutedUntil?.[uid];
+  if (!raw) return null;
+  return new Date(raw).getTime() > Date.now() ? new Date(raw).toISOString() : null;
 }
 
 export async function GET(req) {
@@ -29,7 +41,9 @@ export async function GET(req) {
     const otherIds = conversations.map(
       (c) => c.participantIds.find((id) => String(id) !== String(user._id))
     );
-    const others = await User.find({ _id: { $in: otherIds } }).select('username name lastActiveAt').lean();
+    const others = await User.find({ _id: { $in: otherIds } })
+      .select('username name lastActiveAt lastSeenVisibility')
+      .lean();
     const byId = new Map(others.map((u) => [String(u._id), u]));
 
     // "Do'stlar" ro'yxatida kimdan o'qilmagan xabar borligini ko'rsatish uchun —
@@ -66,14 +80,26 @@ export async function GET(req) {
       // userning barcha eski xabarlari allaqachon deletedFor orqali yashirilgan).
       const clearedAt = c.clearedAt?.[String(user._id)] || null;
       const clearedAfterLastMessage = clearedAt && new Date(clearedAt) >= new Date(c.lastMessageAt);
+      // H-1 — bu suhbat ikkovi orasida MAVJUD, shuning uchun `lastSeenVisibility:
+      // 'friends'` shu kontekstda har doim "ko'rsatiladi" deb hisoblanadi (yuqoridagi
+      // shouldShowLastSeen izohiga qarang).
+      const showPresence = other ? shouldShowLastSeen(other.lastSeenVisibility, true) : true;
       return {
         id: c._id,
         otherUser: other
-          ? { id: other._id, username: other.username, name: other.name || '', lastActiveAt: other.lastActiveAt || null, nickname }
+          ? {
+              id: other._id,
+              username: other.username,
+              name: other.name || '',
+              lastActiveAt: showPresence ? other.lastActiveAt || null : null,
+              showPresence,
+              nickname,
+            }
           : null,
         lastMessageAt: clearedAfterLastMessage ? null : c.lastMessageAt,
         lastMessagePreview: clearedAfterLastMessage ? '' : c.lastMessagePreview || '',
-        muted: (c.mutedBy || []).some((id) => String(id) === String(user._id)),
+        muted: isConversationMuted(c, user._id),
+        mutedUntil: activeMutedUntilIso(c, user._id),
         notifyOnline: (c.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
         unreadCount: unreadById.get(String(c._id)) || 0,
         // C-10 — pin banner (ConversationView.jsx) shu ro'yxatdan foydalanadi.
@@ -147,6 +173,8 @@ export async function POST(req) {
       : convo.clearedAt?.[String(user._id)];
     const clearedAfterLastMessage = clearedAtRaw && new Date(clearedAtRaw) >= new Date(convo.lastMessageAt);
 
+    const showPresence = shouldShowLastSeen(target.lastSeenVisibility, true);
+
     return NextResponse.json({
       conversation: {
         id: convo._id,
@@ -154,12 +182,14 @@ export async function POST(req) {
           id: target._id,
           username: target.username,
           name: target.name || '',
-          lastActiveAt: target.lastActiveAt || null,
+          lastActiveAt: showPresence ? target.lastActiveAt || null : null,
+          showPresence,
           nickname: convo.nicknames?.get ? convo.nicknames.get(String(user._id)) || '' : convo.nicknames?.[String(user._id)] || '',
         },
         lastMessageAt: clearedAfterLastMessage ? null : convo.lastMessageAt,
         lastMessagePreview: clearedAfterLastMessage ? '' : convo.lastMessagePreview || '',
-        muted: (convo.mutedBy || []).some((id) => String(id) === String(user._id)),
+        muted: isConversationMuted(convo, user._id),
+        mutedUntil: activeMutedUntilIso(convo, user._id),
         notifyOnline: (convo.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
         pinnedMessageIds: (convo.pinnedMessageIds || []).map(String),
       },

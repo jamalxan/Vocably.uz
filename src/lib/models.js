@@ -155,6 +155,13 @@ const UserSchema = new mongoose.Schema({
   // Do'stlar bo'limida "oxirgi marta ko'rilgan" uchun — requireChatUser() har /api/chat/*
   // so'rovida (throttled) yangilaydi, src/lib/chatAuth.js.
   lastActiveAt: { type: Date, default: null },
+  // H-1 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H) — "Oxirgi marta ko'rilgan"/onlayn
+  // holatini kim ko'rishi mumkinligi. 'friends' — bu ilovada alohida "do'stlar ro'yxati"
+  // tushunchasi yo'qligi sababli, eng oddiy talqin bilan: "shu user bilan mavjud suhbati
+  // bor kishi" (src/lib/presence.js#shouldShowLastSeen, chat/conversations route'lari
+  // shu yerda hisoblanadi — suhbat ro'yxati/oynasi har doim ikkalasi orasida suhbat
+  // borligini bildiradi, shuning uchun bu kontekstda 'friends' === 'everyone').
+  lastSeenVisibility: { type: String, enum: ['everyone', 'friends', 'nobody'], default: 'everyone' },
   categories: [CategorySchema],
   // Eski, uzluksiz chat tarixi — endi ishlatilmaydi, faqat orqaga moslik uchun saqlanadi.
   chatHistory: [ChatMessageSchema],
@@ -289,6 +296,13 @@ const ConversationSchema = new mongoose.Schema({
   // Kim shu suhbatni "ovozsiz" qilgan (push/bell bildirishnoma o'chirilgan) —
   // faqat o'sha userga ta'sir qiladi, ikkinchi tomon buni bilmaydi/ko'rmaydi.
   mutedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  // G-3 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 G — "Mute: 1 soat / 8 soat / 1 kun /
+  // doimiy") — `mutedBy` yuqorida ENDI faqat "doimiy" ovozsizlantirishni bildiradi;
+  // muddatli mute shu Map'da alohida saqlanadi (kalit — userId string, qiymat — tugash
+  // vaqti). Ikkalasi ham faqat shu userga tegishli (mutedBy kabi). Muddat o'tgach alohida
+  // tozalash job'i kerak emas — src/lib/chatConstants.js#isConversationMuted shunchaki
+  // "hozir > tugash vaqti" deb tekshiradi (dangasa/lazy expiry).
+  mutedUntil: { type: Map, of: Date, default: {} },
   // Kim shu suhbatning IKKINCHI tomoni onlayn bo'lganda Telegram bot orqali xabar
   // olishni so'ragan — faqat o'sha userga ta'sir qiladi (ikkinchi tomon buni
   // bilmaydi/ko'rmaydi). realtime-server foydalanuvchi onlaynga o'tganda
@@ -421,7 +435,14 @@ const ReportSchema = new mongoose.Schema({
   reporterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   targetType: { type: String, enum: ['user', 'message'], required: true },
   targetId: { type: mongoose.Schema.Types.ObjectId, required: true },
-  reason: { type: String, trim: true, required: true },
+  // H-2 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H — "sabab kategoriyasi + xabar
+  // konteksti admin'ga boradi") — ilgari faqat erkin `reason` matni bor edi. Kategoriya
+  // ro'yxati src/lib/chatConstants.js#REPORT_REASON_CATEGORIES (client select va admin
+  // ReportsQueue.jsx yorlig'i shu bitta manbadan). Bu maydon qo'shilishidan OLDINGI
+  // eski report'larda yo'q — default 'other' bilan orqaga moslik ta'minlanadi.
+  category: { type: String, enum: ['spam', 'harassment', 'inappropriate_content', 'other'], default: 'other' },
+  // Endi ixtiyoriy qo'shimcha izoh — asosiy signal yuqoridagi `category`.
+  reason: { type: String, trim: true, default: '' },
   status: { type: String, enum: ['open', 'reviewed', 'actioned'], default: 'open' },
   createdAt: { type: Date, default: Date.now },
   reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

@@ -1,11 +1,20 @@
 'use client';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { LogOut, Sun, Moon, Monitor, Flame, Trophy, Target } from 'lucide-react';
+import { LogOut, Sun, Moon, Monitor, Flame, Trophy, Target, Eye } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
+
+// H-1 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H) — "Oxirgi marta ko'rilgan"/onlayn
+// holatini kim ko'rishi. `/api/chat/settings` bilan mos qiymatlar (src/lib/models.js
+// User.lastSeenVisibility).
+const VISIBILITY_OPTIONS = [
+  { value: 'everyone', label: 'Hamma' },
+  { value: 'friends', label: "Suhbatlashganlar" },
+  { value: 'nobody', label: 'Hech kim' },
+];
 
 // EDU-01a (VOCABLY_TZ_FINAL...2026-09-20.md §11 "Onboarding") — target band
 // 5.0-9.0, 0.5 qadam bilan (TZ shakli).
@@ -24,10 +33,55 @@ const THEME_OPTIONS = [
 ];
 
 export default function ProfilPage() {
-  const { displayName, username, phone, logout, reviewStreak } = useApp();
+  const { displayName, username, phone, logout, reviewStreak, chatAccess } = useApp();
   const { theme, setTheme } = useTheme();
   const [gami, setGami] = useState(null);
   const [gamiFailed, setGamiFailed] = useState(false);
+
+  // H-1 — faqat chatAccess bo'lgan foydalanuvchida ma'noli (Do'stlar bo'limi
+  // umuman yashirin bo'lganlarda bu sozlama hech narsaga ta'sir qilmaydi).
+  const [lastSeenVisibility, setLastSeenVisibility] = useState('everyone');
+  const [visibilityLoading, setVisibilityLoading] = useState(true);
+  const [visibilitySaving, setVisibilitySaving] = useState(false);
+  const [visibilityError, setVisibilityError] = useState(false);
+
+  useEffect(() => {
+    if (!chatAccess) {
+      setVisibilityLoading(false);
+      return;
+    }
+    let cancelled = false;
+    fetch('/api/chat/settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.lastSeenVisibility) setLastSeenVisibility(data.lastSeenVisibility);
+      })
+      .catch(() => {})
+      .finally(() => !cancelled && setVisibilityLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [chatAccess]);
+
+  const saveVisibility = async (value) => {
+    const prev = lastSeenVisibility;
+    setLastSeenVisibility(value);
+    setVisibilitySaving(true);
+    setVisibilityError(false);
+    try {
+      const res = await fetch('/api/chat/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lastSeenVisibility: value }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setLastSeenVisibility(prev);
+      setVisibilityError(true);
+    } finally {
+      setVisibilitySaving(false);
+    }
+  };
 
   // EDU-01a — Onboarding/IELTS profil maydonlari. Sahifaning qolgan qismi
   // hech qanday tahrirlash routega ega emas edi (faqat mavzu/chiqish) —
@@ -286,6 +340,41 @@ export default function ProfilPage() {
           ))}
         </div>
       </section>
+
+      {chatAccess && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5 flex items-center gap-1.5">
+            <Eye size={13} /> Maxfiylik (Do'stlar)
+          </h2>
+          <div className="bg-surface border border-border rounded-2xl shadow-card p-5">
+            <p className="text-sm text-ink font-medium mb-1">Oxirgi marta ko'rilgan / onlayn holatini kim ko'radi</p>
+            <p className="text-xs text-muted mb-3">
+              "Suhbatlashganlar" — sizga xabar yozgan yoki siz yozgan foydalanuvchilar.
+            </p>
+            {visibilityLoading ? (
+              <Skeleton className="h-11 w-full rounded-xl" />
+            ) : (
+              <div role="group" aria-label="Ko'rinish" className="flex flex-col sm:flex-row gap-2 p-1 bg-bg rounded-xl">
+                {VISIBILITY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => saveVisibility(opt.value)}
+                    disabled={visibilitySaving}
+                    aria-pressed={lastSeenVisibility === opt.value}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                      lastSeenVisibility === opt.value ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {visibilityError && <p className="text-xs text-danger font-medium mt-2">Saqlanmadi, qayta urinib ko'ring</p>}
+          </div>
+        </section>
+      )}
 
       <Button variant="secondary" onClick={logout} className="w-full">
         <LogOut size={16} />

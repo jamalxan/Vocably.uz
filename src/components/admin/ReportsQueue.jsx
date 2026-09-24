@@ -2,6 +2,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Loader2, Flag, MessageSquareText, Clock } from 'lucide-react';
+import { REPORT_REASON_CATEGORIES } from '@/lib/chatConstants';
+
+// H-2 — kategoriya kodi -> o'zbekcha yorliq, client select'i (ReportReasonModal.jsx)
+// bilan bitta manbadan (src/lib/chatConstants.js).
+const REPORT_CATEGORY_LABEL = Object.fromEntries(REPORT_REASON_CATEGORIES.map((c) => [c.value, c.label]));
 
 // Qiymatlar (`value`) API/DB status maydoni bilan bir xil bo'lishi kerak — faqat ko'rinadigan
 // yorliq (`label`) o'zbekchaga tarjima qilingan, admin panelning qolgan qismi bilan izchillik uchun.
@@ -141,7 +146,10 @@ export default function ReportsQueue() {
                   ) : (
                     <p className="text-xs font-mono text-muted mt-1 break-all">{r.targetId}</p>
                   )}
-                  <p className="text-sm text-muted mt-1 break-words">Sabab: {r.reason}</p>
+                  <p className="text-sm text-muted mt-1 break-words">
+                    Sabab: <span className="font-medium text-ink">{REPORT_CATEGORY_LABEL[r.category] || 'Boshqa'}</span>
+                    {r.reason ? ` — ${r.reason}` : ''}
+                  </p>
                   <p className="text-[11px] text-muted/70 mt-1.5">{new Date(r.createdAt).toLocaleString('uz-UZ')}</p>
                   {r.targetType === 'message' && r.conversationId && (
                     <Link
