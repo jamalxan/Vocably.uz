@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { EmojiPicker as Frimousse } from 'frimousse';
-import { Search, Clock } from 'lucide-react';
+import { Search, Clock, Smile, Sticker } from 'lucide-react';
+import { STICKER_PACKS } from '@/lib/stickers';
 
 // Emoji rasm/sprite sifatida EMAS — native unicode belgi sifatida render qilinadi.
 // Brauzer platformaning o'z emoji shriftini ishlatadi (iPhone/Mac'da Apple emoji,
@@ -313,15 +314,147 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
   );
 }
 
+// --- Stikerlar (Telegram: emoji oynasining pastidagi "Stikerlar" tabi) ---
+// Bosilishi bilan DARHOL yuboriladi (matnga qo'shilmaydi), oyna yopiladi.
+const STICKER_RECENTS_KEY = 'vocably.recentStickers';
+const STICKER_RECENTS_MAX = 8;
+const STICKER_BY_ID = new Map(STICKER_PACKS.flatMap((p) => p.stickers.map((s) => [s.id, s])));
+
+function loadStickerRecents() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STICKER_RECENTS_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter((id) => STICKER_BY_ID.has(id)).slice(0, STICKER_RECENTS_MAX) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStickerRecent(id) {
+  try {
+    const next = [id, ...loadStickerRecents().filter((x) => x !== id)].slice(0, STICKER_RECENTS_MAX);
+    localStorage.setItem(STICKER_RECENTS_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage yo'q (maxfiy rejim) — "yaqinda" shunchaki saqlanmaydi
+  }
+}
+
+function StickerButton({ sticker, onPick }) {
+  return (
+    <button
+      type="button"
+      title={sticker.label}
+      aria-label={`Stiker: ${sticker.label}`}
+      onClick={() => onPick(sticker.id)}
+      className="aspect-square p-1.5 rounded-xl hover:bg-accent-soft transition-transform duration-100 hover:scale-[1.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={sticker.file} alt="" draggable={false} className="w-full h-full" />
+    </button>
+  );
+}
+
+function StickerBody({ onPickSticker }) {
+  const [recents, setRecents] = useState([]);
+  useEffect(() => setRecents(loadStickerRecents()), []);
+  const pick = (id) => {
+    saveStickerRecent(id);
+    onPickSticker(id);
+  };
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pt-2.5 pb-2">
+      {recents.length > 0 && (
+        <section className="mb-2">
+          <p className="px-1 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Yaqinda ishlatilgan</p>
+          <div className="grid grid-cols-4 gap-1">
+            {recents.map((id) => (
+              <StickerButton key={id} sticker={STICKER_BY_ID.get(id)} onPick={pick} />
+            ))}
+          </div>
+        </section>
+      )}
+      {STICKER_PACKS.map((pack) => (
+        <section key={pack.id} className="mb-2">
+          <p className="px-1 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wide">{pack.name}</p>
+          <div className="grid grid-cols-4 gap-1">
+            {pack.stickers.map((s) => (
+              <StickerButton key={s.id} sticker={s} onPick={pick} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+const PANEL_TAB_KEY = 'vocably.emojiPanelTab';
+const PANEL_TABS = [
+  { key: 'emoji', label: 'Emoji', Icon: Smile },
+  { key: 'sticker', label: 'Stikerlar', Icon: Sticker },
+];
+
+// Oxirgi ochilgan tab eslab qolinadi (Telegram ham oxirgi bo'limni ochadi).
+function usePanelTab(enabled) {
+  const [tab, setTabState] = useState(() => {
+    try {
+      return enabled && localStorage.getItem(PANEL_TAB_KEY) === 'sticker' ? 'sticker' : 'emoji';
+    } catch {
+      return 'emoji';
+    }
+  });
+  const setTab = useCallback((t) => {
+    setTabState(t);
+    try {
+      localStorage.setItem(PANEL_TAB_KEY, t);
+    } catch {
+      // e'tiborsiz
+    }
+  }, []);
+  return [enabled ? tab : 'emoji', setTab];
+}
+
 // `onPick(emoji)` — tanlangan emoji belgisi (masalan "😀"). Joylashtirish joyi
 // (kursor pozitsiyasi) chaqiruvchi (Composer.jsx) tomonidan hal qilinadi.
-export default function EmojiPicker({ onPick, onClose, triggerRef }) {
+// `onPickSticker(stickerId)` — ixtiyoriy; berilsa pastda "Emoji / Stikerlar" tablari chiqadi.
+export default function EmojiPicker({ onPick, onPickSticker, onClose, triggerRef }) {
   const rootRef = useRef(null);
   const headerRefs = useRef({});
   const viewportRef = useRef(null);
   const columns = useResponsiveColumns();
   const isMobile = useIsMobile();
   const touchStartY = useRef(null);
+  const [tab, setTab] = usePanelTab(!!onPickSticker);
+
+  const body = (
+    <>
+      {tab === 'sticker' ? (
+        <StickerBody onPickSticker={onPickSticker} />
+      ) : (
+        <PickerBody onPick={onPick} headerRefs={headerRefs} viewportRef={viewportRef} columns={columns} />
+      )}
+      {onPickSticker && (
+        <div
+          role="tablist"
+          aria-label="Emoji yoki stiker"
+          className="flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1.5 border-t border-border bg-surface"
+        >
+          {PANEL_TABS.map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={`min-h-11 md:min-h-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                tab === key ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink hover:bg-bg'
+              }`}
+            >
+              <Icon size={15} /> {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
 
   // Escape — yopish, tashqariga bosilganda — yopish. `triggerRef` (ochish/yopish
   // tugmasi) ataylab chetlab o'tiladi — aks holda tugma bosilganda avval bu listener
@@ -381,7 +514,7 @@ export default function EmojiPicker({ onPick, onClose, triggerRef }) {
           <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-border" />
           </div>
-          <PickerBody onPick={onPick} headerRefs={headerRefs} viewportRef={viewportRef} columns={columns} />
+          {body}
         </div>
       </div>
     );
@@ -394,7 +527,7 @@ export default function EmojiPicker({ onPick, onClose, triggerRef }) {
       // aks holda chap chetdan ekrandan tashqariga chiqib ketardi.
       className="absolute bottom-full mb-2 left-0 lg:left-auto lg:right-0 w-80 max-w-[calc(100vw-2rem)] h-96 max-h-[60dvh] bg-surface border border-border rounded-2xl shadow-card flex flex-col overflow-hidden z-20"
     >
-      <PickerBody onPick={onPick} headerRefs={headerRefs} viewportRef={viewportRef} columns={columns} />
+      {body}
     </div>
   );
 }

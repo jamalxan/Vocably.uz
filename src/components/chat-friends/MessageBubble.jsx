@@ -493,10 +493,14 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
                   {emojiOnly ? message.text : renderFormattedText(message.text)}
                 </p>
               )}
-              {message.type === 'sticker' && sticker && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={sticker.file} alt={sticker.label} className="w-24 h-24" />
-              )}
+              {message.type === 'sticker' &&
+                (sticker ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={sticker.file} alt={sticker.label} draggable={false} className="w-32 h-32 md:w-36 md:h-36" />
+                ) : (
+                  // Manifestdan olib tashlangan (eski) stiker — bo'sh pufakcha emas, yorliq.
+                  <p className="text-sm text-muted">😊 Stiker</p>
+                ))}
               {message.type === 'image' && <ImageBubble media={message.media} />}
               {message.type === 'video' && <VideoBubble media={message.media} />}
               {message.type === 'voice' && <VoiceBubble media={message.media} />}

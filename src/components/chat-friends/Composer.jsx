@@ -239,6 +239,15 @@ export default function Composer() {
     });
   };
 
+  // Stiker — Telegram kabi darhol yuboriladi (javob rejimida bo'lsa javob sifatida).
+  // Tahrirlash rejimida stiker yuborilmaydi (matnli xabar stikerga aylanmaydi).
+  const handleStickerPick = async (stickerId) => {
+    setEmojiOpen(false);
+    if (editingMessage) return;
+    const res = await sendMessage({ type: 'sticker', stickerId });
+    if (res?.error) alert(res.error);
+  };
+
   const replySenderLabel = replyingTo
     ? String(replyingTo.senderId) === String(myId)
       ? 'Siz'
@@ -322,6 +331,7 @@ export default function Composer() {
                 onPick={(e) => {
                   handleEmojiPick(e);
                 }}
+                onPickSticker={handleStickerPick}
                 onClose={() => setEmojiOpen(false)}
               />
             )}
