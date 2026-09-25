@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { EmojiPicker as Frimousse } from 'frimousse';
 import { Search, Clock, Smile, Sticker } from 'lucide-react';
-import { STICKER_PACKS } from '@/lib/stickers';
+import { useChat } from '@/context/ChatContext';
 
 // Emoji rasm/sprite sifatida EMAS — native unicode belgi sifatida render qilinadi.
 // Brauzer platformaning o'z emoji shriftini ishlatadi (iPhone/Mac'da Apple emoji,
@@ -316,14 +316,14 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
 
 // --- Stikerlar (Telegram: emoji oynasining pastidagi "Stikerlar" tabi) ---
 // Bosilishi bilan DARHOL yuboriladi (matnga qo'shilmaydi), oyna yopiladi.
+// To'plamlar ChatContext'dan (statik "Standart" + admin yaratganlar, /api/chat/stickers).
 const STICKER_RECENTS_KEY = 'vocably.recentStickers';
 const STICKER_RECENTS_MAX = 8;
-const STICKER_BY_ID = new Map(STICKER_PACKS.flatMap((p) => p.stickers.map((s) => [s.id, s])));
 
 function loadStickerRecents() {
   try {
     const raw = JSON.parse(localStorage.getItem(STICKER_RECENTS_KEY) || '[]');
-    return Array.isArray(raw) ? raw.filter((id) => STICKER_BY_ID.has(id)).slice(0, STICKER_RECENTS_MAX) : [];
+    return Array.isArray(raw) ? raw.map(String) : [];
   } catch {
     return [];
   }
@@ -333,8 +333,9 @@ function saveStickerRecent(id) {
   try {
     const next = [id, ...loadStickerRecents().filter((x) => x !== id)].slice(0, STICKER_RECENTS_MAX);
     localStorage.setItem(STICKER_RECENTS_KEY, JSON.stringify(next));
+    return next;
   } catch {
-    // localStorage yo'q (maxfiy rejim) — "yaqinda" shunchaki saqlanmaydi
+    return [id];
   }
 }
 
@@ -342,46 +343,90 @@ function StickerButton({ sticker, onPick }) {
   return (
     <button
       type="button"
-      title={sticker.label}
-      aria-label={`Stiker: ${sticker.label}`}
-      onClick={() => onPick(sticker.id)}
+      title={sticker.label || undefined}
+      aria-label={sticker.label ? `Stiker: ${sticker.label}` : 'Stiker'}
+      onClick={() => onPick(String(sticker.id))}
       className="aspect-square p-1.5 rounded-xl hover:bg-accent-soft transition-transform duration-100 hover:scale-[1.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={sticker.file} alt="" draggable={false} className="w-full h-full" />
+      <img src={sticker.file} alt="" loading="lazy" draggable={false} className="w-full h-full object-contain" />
     </button>
   );
 }
 
 function StickerBody({ onPickSticker }) {
+  const { stickerPacks, loadStickers } = useChat();
   const [recents, setRecents] = useState([]);
+  const sectionRefs = useRef({});
+
   useEffect(() => setRecents(loadStickerRecents()), []);
+  // Admin yangi to'plam qo'shgan bo'lsa — sahifani yangilamasdan ko'rinsin.
+  useEffect(() => {
+    loadStickers();
+  }, [loadStickers]);
+
+  // "Yaqinda" faqat HOZIR tanlab bo'ladigan stikerlardan (o'chirilganlari chiqmaydi).
+  const selectable = useMemo(() => {
+    const m = new Map();
+    stickerPacks.forEach((p) => p.stickers.forEach((s) => m.set(String(s.id), s)));
+    return m;
+  }, [stickerPacks]);
+  const recentStickers = recents.map((id) => selectable.get(id)).filter(Boolean);
+
   const pick = (id) => {
-    saveStickerRecent(id);
+    setRecents(saveStickerRecent(id));
     onPickSticker(id);
   };
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pt-2.5 pb-2">
-      {recents.length > 0 && (
-        <section className="mb-2">
-          <p className="px-1 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Yaqinda ishlatilgan</p>
-          <div className="grid grid-cols-4 gap-1">
-            {recents.map((id) => (
-              <StickerButton key={id} sticker={STICKER_BY_ID.get(id)} onPick={pick} />
-            ))}
-          </div>
-        </section>
+    <div className="flex-1 min-h-0 flex flex-col">
+      {/* To'plamlar tablari (Telegram: har to'plamning birinchi stikeri ikonka) */}
+      {stickerPacks.length > 1 && (
+        <div className="flex-shrink-0 flex items-center gap-1 px-2 pt-2 pb-1 overflow-x-auto border-b border-border">
+          {stickerPacks.map((pack) => (
+            <button
+              key={pack.id}
+              type="button"
+              title={pack.name}
+              aria-label={pack.name}
+              onClick={() => sectionRefs.current[pack.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="flex-shrink-0 w-11 h-11 md:w-9 md:h-9 p-1 rounded-lg hover:bg-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={pack.stickers[0]?.file} alt="" loading="lazy" className="w-full h-full object-contain" />
+            </button>
+          ))}
+        </div>
       )}
-      {STICKER_PACKS.map((pack) => (
-        <section key={pack.id} className="mb-2">
-          <p className="px-1 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wide">{pack.name}</p>
-          <div className="grid grid-cols-4 gap-1">
-            {pack.stickers.map((s) => (
-              <StickerButton key={s.id} sticker={s} onPick={pick} />
-            ))}
-          </div>
-        </section>
-      ))}
+      <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pt-2 pb-2">
+        {recentStickers.length > 0 && (
+          <section className="mb-2">
+            <p className="px-1 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wide">Yaqinda ishlatilgan</p>
+            <div className="grid grid-cols-4 gap-1">
+              {recentStickers.map((s) => (
+                <StickerButton key={s.id} sticker={s} onPick={pick} />
+              ))}
+            </div>
+          </section>
+        )}
+        {stickerPacks.map((pack) => (
+          <section
+            key={pack.id}
+            ref={(node) => {
+              if (node) sectionRefs.current[pack.id] = node;
+            }}
+            className="mb-2 scroll-mt-1"
+          >
+            <p className="px-1 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wide">{pack.name}</p>
+            <div className="grid grid-cols-4 gap-1">
+              {pack.stickers.map((s) => (
+                <StickerButton key={s.id} sticker={s} onPick={pick} />
+              ))}
+            </div>
+          </section>
+        ))}
+        {stickerPacks.length === 0 && <p className="text-center text-xs text-muted py-6">Stikerlar yo'q</p>}
+      </div>
     </div>
   );
 }

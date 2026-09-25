@@ -3,6 +3,14 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { connectChatSocket } from '@/lib/socketClient';
 import { enqueueOffline, dequeueOffline, mergeQueuedIntoMessages } from '@/lib/offlineQueue';
 import { PREVIEW_BY_TYPE, isMutedNow } from '@/lib/chatConstants';
+import { STICKER_PACKS as STATIC_STICKER_PACKS } from '@/lib/stickers';
+
+function buildStickerCatalog({ packs = [], extra = [] }) {
+  const byId = new Map();
+  packs.forEach((p) => p.stickers.forEach((s) => byId.set(String(s.id), s)));
+  extra.forEach((s) => byId.set(String(s.id), s));
+  return { packs, byId };
+}
 
 const ChatContext = createContext(null);
 
@@ -65,6 +73,10 @@ export function ChatProvider({ myUserId, children }) {
   // { conversationId, conversation (bo'lsa — selectConversation uchun), senderLabel,
   // preview }. DoStlarPanel.jsx (NewMessageToast.jsx) shuni render qiladi.
   const [newMessageToast, setNewMessageToast] = useState(null);
+  // Stiker katalogi (/api/chat/stickers): `packs` — tanlash oynasi uchun, `byId` —
+  // xabar pufakchasida stikerni topish uchun (o'chirilganlari ham, eski xabarlar
+  // uchun). Server javob bermaguncha statik "Standart" to'plam bilan boshlanadi.
+  const [stickerCatalog, setStickerCatalog] = useState(() => buildStickerCatalog({ packs: STATIC_STICKER_PACKS }));
 
   const socketRef = useRef(null);
   const pollRef = useRef(null);
@@ -918,6 +930,20 @@ export function ChatProvider({ myUserId, children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const loadStickers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/chat/stickers');
+      if (!res.ok) return;
+      setStickerCatalog(buildStickerCatalog(await res.json()));
+    } catch {
+      // tarmoq xatosi — statik to'plam bilan qolinadi
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStickers();
+  }, [loadStickers]);
+
   // F — sahifa qayta yuklanganda (yoki komponent birinchi mount bo'lganda) oflayn
   // paytda to'plangan navbat bo'lishi mumkin (localStorage'dan o'qilgan, yuqoridagi
   // offlineQueueRef lazy-init) — hozir onlayn bo'lsak darhol bo'shatishga urinamiz.
@@ -1196,6 +1222,9 @@ export function ChatProvider({ myUserId, children }) {
     sendTyping,
     newMessageToast,
     dismissMessageToast,
+    stickerPacks: stickerCatalog.packs,
+    stickerById: stickerCatalog.byId,
+    loadStickers,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles } from 'lucide-react';
+import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { registerChatsTap } from '@/lib/adminHiddenChats';
@@ -15,6 +15,7 @@ const NAV = [
   { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare, also: ['/admin/c/'], secretTap: true },
   { href: '/admin/reports', label: 'Reportlar', icon: Flag },
   { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
+  { href: '/admin/stickers', label: 'Stikerlar', icon: Sticker },
   // 2026-09-24 — AI chat (kontent agenti) endi kontent yuklashning ASOSIY
   // yo'li: admin faylni chatga tashlaydi, agent uni bo'limlarga ajratib
   // joylashtiradi. Shuning uchun ro'yxatda kontent bo'limlaridan OLDIN

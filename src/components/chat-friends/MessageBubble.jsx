@@ -330,6 +330,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
     livePresence,
     pinMessage,
     unpinMessage,
+    stickerById,
   } = useChat();
   // C-16 — "yetkazildi" (✓✓, rangsiz) holati boshqa tomonning HOZIRGI onlayn
   // holatiga qarab taxmin qilinadi: ular socket orqali ulangan bo'lsa, xabar
@@ -349,7 +350,9 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
   const pressTimer = useRef(null);
   const longPressFired = useRef(false);
 
-  const sticker = message.type === 'sticker' ? findSticker(message.stickerId) : null;
+  // Katalog (admin to'plamlari ham) — hali yuklanmagan bo'lsa statik manifestdan.
+  const sticker =
+    message.type === 'sticker' ? stickerById?.get(String(message.stickerId)) || findSticker(message.stickerId) : null;
   const deleted = !!message.deletedForEveryone;
   const emojiOnly = !deleted && message.type === 'text' && isEmojiOnly(message.text);
 

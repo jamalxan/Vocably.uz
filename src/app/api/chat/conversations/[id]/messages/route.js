@@ -2,7 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, Message, Block, User } from '@/lib/models';
-import { findSticker } from '@/lib/stickers';
+import { resolveSendableSticker } from '@/lib/stickerCatalog';
 import { objectExists, readObjectPrefix } from '@/lib/s3';
 import { isValidImageMagicBytes } from '@/lib/imageMagicBytes';
 import { pushNewMessage } from '@/lib/realtime';
@@ -146,7 +146,7 @@ export async function POST(req, { params }) {
       doc.text = text;
       preview = text.slice(0, 80);
     } else if (type === 'sticker') {
-      const sticker = findSticker(body.stickerId);
+      const sticker = await resolveSendableSticker(body.stickerId);
       if (!sticker) return NextResponse.json({ error: "Noto'g'ri stiker" }, { status: 400 });
       doc.stickerId = sticker.id;
       preview = PREVIEW_BY_TYPE.sticker;

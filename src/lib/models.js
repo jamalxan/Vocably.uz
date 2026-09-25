@@ -442,6 +442,38 @@ MessageSchema.index({ type: 1 });
 
 export const Message = mongoose.models.Message || mongoose.model('Message', MessageSchema);
 
+// Admin yaratadigan stiker to'plamlari (src/lib/stickers.js'dagi statik "Standart"
+// to'plamga QO'SHIMCHA). Fayllar S3'da `stickers/{packId}/{stickerId}.{ext}`
+// (src/lib/s3.js#buildStickerKey). Message.stickerId — stikerning `_id` satri.
+// O'chirish YUMSHOQ (`deletedAt`): stiker/to'plam tanlash oynasidan yo'qoladi,
+// lekin ilgari yuborilgan xabarlarda ko'rinishda qoladi (Telegram'dagidek).
+const StickerItemSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true },
+    mimeType: { type: String, required: true },
+    label: { type: String, trim: true, default: '' },
+    deletedAt: { type: Date, default: null },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: true }
+);
+
+const StickerPackSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  // O'chirilgan (active=false) to'plam foydalanuvchilarga ko'rinmaydi — admin
+  // tayyorlab bo'lgach yoqadi.
+  active: { type: Boolean, default: true },
+  order: { type: Number, default: 0 },
+  stickers: { type: [StickerItemSchema], default: [] },
+  deletedAt: { type: Date, default: null },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+StickerPackSchema.index({ deletedAt: 1, order: 1 });
+StickerPackSchema.index({ 'stickers._id': 1 });
+
+export const StickerPack = mongoose.models.StickerPack || mongoose.model('StickerPack', StickerPackSchema);
+
 // Bir tomonlama bloklash — bloklovchi bloklanganning xabarini ko'rmaydi/qabul qilmaydi.
 const BlockSchema = new mongoose.Schema({
   blockerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },

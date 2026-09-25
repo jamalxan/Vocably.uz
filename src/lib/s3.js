@@ -167,10 +167,38 @@ export function isOwnAvatarKey(userId, key) {
 // vaqti soat boshiga yaxlitlanadi (`signingDate`), muddat esa 2 soat — bir
 // soat ichida bir xil kalit uchun AYNAN bir xil URL chiqadi (brauzer rasmni
 // keshdan oladi), va eng yomon holatda ham URL kamida 1 soat amal qiladi.
-export async function presignAvatarDownload(key) {
+// Stikerlar ham shu keshlanadigan imzodan foydalanadi (presignStableDownload).
+export async function presignStableDownload(key) {
   const hourStart = new Date(Math.floor(Date.now() / 3600000) * 3600000);
   const cmd = new GetObjectCommand({ Bucket: BUCKET(), Key: key });
   return getSignedUrl(getClient(), cmd, { expiresIn: 7200, signingDate: hourStart });
+}
+
+export const presignAvatarDownload = presignStableDownload;
+
+// ---------------------------------------------------------------------------
+// Admin yuklaydigan stikerlar — `stickers/{packId}/{stickerId}.{ext}`. Faqat
+// rastr formatlar: SVG ATAYLAB yo'q (ichida <script> bo'lishi mumkin — yuqoridagi
+// DANGEROUS_MIME_TYPES izohiga q.). PNG/WEBP — shaffof fon, GIF/WEBP — animatsiya.
+export const STICKER_MIME_EXT = { 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
+export const STICKER_MAX_BYTES = 512 * 1024;
+
+export function buildStickerKey(packId, stickerId, mimeType) {
+  const ext = STICKER_MIME_EXT[mimeType];
+  if (!ext) throw new Error('Noto\'g\'ri stiker formati');
+  return `stickers/${packId}/${stickerId}.${ext}`;
+}
+
+// Fayl boshidagi baytlar e'lon qilingan formatga AYNAN mos kelishi kerak
+// (masalan .png deb yuklangan HTML rad etiladi).
+export function stickerMagicMatches(mimeType, bytes) {
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+  if (mimeType === 'image/png') return [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((v, i) => b[i] === v);
+  if (mimeType === 'image/gif') return b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38;
+  if (mimeType === 'image/webp') {
+    return b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50;
+  }
+  return false;
 }
 
 export async function deleteObjects(keys) {
