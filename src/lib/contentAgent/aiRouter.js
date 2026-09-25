@@ -41,6 +41,8 @@ export const DEFAULT_MODEL_MATRIX = {
   // sozlanishi mumkin.
   'agent.classify': { primary: 'google/gemini-2.5-flash', fallback: ['google/gemini-2.5-pro'], temperature: 0.1, maxTokens: 1000, costCapUsd: 0.05 },
   'audio.match': { primary: 'google/gemini-2.5-flash', fallback: ['google/gemini-2.5-pro'], temperature: 0.1, maxTokens: 2000, costCapUsd: 0.1 },
+  // Admin agent chatining oddiy matnli javobi — tez model (interaktiv).
+  'agent.converse': { primary: 'google/gemini-2.5-flash', fallback: ['google/gemini-2.5-pro'], temperature: 0.3, maxTokens: 1500, costCapUsd: 0.05 },
   'writing.grade': { primary: 'anthropic/claude-sonnet-4.5', fallback: ['google/gemini-2.5-pro'], temperature: 0.2, maxTokens: 4000, costCapUsd: 0.2 },
   'speaking.grade': { primary: 'anthropic/claude-sonnet-4.5', fallback: ['google/gemini-2.5-pro'], temperature: 0.2, maxTokens: 4000, costCapUsd: 0.2 },
 };
@@ -48,10 +50,11 @@ export const DEFAULT_MODEL_MATRIX = {
 const RETRY_DELAYS_MS = [1000, 4000, 16000]; // §5.3 item 5 — 1s -> 4s -> 16s, 3 urinish
 
 export class AiRouterError extends Error {
-  constructor(message, { retryable = false, status = null, retryAfterSec = null } = {}) {
+  constructor(message, { retryable = false, status = null, retryAfterSec = null, timeout = false } = {}) {
     super(message);
     this.name = 'AiRouterError';
     this.retryable = retryable;
+    this.timeout = timeout;
     this.status = status;
     this.retryAfterSec = retryAfterSec;
   }
@@ -106,8 +109,21 @@ function classifyHttpError(status, retryAfterHeader) {
   return new AiRouterError(`So'rov rad etildi (${status})`, { retryable: false, status });
 }
 
+// Bitta chaqiruvga ajratiladigan eng kam vaqt — bundan kam qolgan bo'lsa
+// modelni chaqirishning ma'nosi yo'q (javob baribir ulgurmaydi).
+const MIN_CALL_MS = 8000;
+const DEFAULT_CALL_TIMEOUT_MS = 120000;
+
+function remainingMs(deadlineAt) {
+  return deadlineAt ? deadlineAt - Date.now() : Infinity;
+}
+
 // §5.3 item 5 — eksponensial backoff, `Retry-After` hurmat qilinadi.
-async function withRetry(attemptFn, { maxAttempts = RETRY_DELAYS_MS.length + 1, sleepFn = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+// `deadlineAt` (ixtiyoriy, epoch ms) — interaktiv so'rovlar (admin chat)
+// uchun: kutish muddatdan oshib ketadigan bo'lsa qayta urinmaymiz, xatoni
+// darhol qaytaramiz (serverless 300s chegarasiga urilib, JSON o'rniga
+// "An error occurred..." matni qaytishidan ko'ra).
+async function withRetry(attemptFn, { maxAttempts = RETRY_DELAYS_MS.length + 1, sleepFn = (ms) => new Promise((r) => setTimeout(r, ms)), deadlineAt = null } = {}) {
   let lastError;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
@@ -116,6 +132,7 @@ async function withRetry(attemptFn, { maxAttempts = RETRY_DELAYS_MS.length + 1, 
       lastError = err;
       if (!(err instanceof AiRouterError) || !err.retryable || attempt === maxAttempts - 1) throw err;
       const delayMs = err.retryAfterSec != null ? err.retryAfterSec * 1000 : RETRY_DELAYS_MS[attempt] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+      if (remainingMs(deadlineAt) - delayMs < MIN_CALL_MS) throw err;
       await sleepFn(delayMs);
     }
   }
@@ -125,7 +142,7 @@ async function withRetry(attemptFn, { maxAttempts = RETRY_DELAYS_MS.length + 1, 
 // Bitta model bilan bitta (retry ichidagi) urinish — mock qilinishi uchun
 // `fetchImpl` inject qilinadi (aynan shu narsa `aiRouter.test.js`da haqiqiy
 // tarmoqsiz sinashga imkon beradi).
-async function callModelOnce({ apiKey, model, body, fetchImpl, timeoutMs = 60000 }) {
+async function callModelOnce({ apiKey, model, body, fetchImpl, timeoutMs = DEFAULT_CALL_TIMEOUT_MS }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let res;
@@ -137,7 +154,11 @@ async function callModelOnce({ apiKey, model, body, fetchImpl, timeoutMs = 60000
       signal: controller.signal,
     });
   } catch (err) {
-    if (err.name === 'AbortError') throw new AiRouterError('Vaqt tugadi (timeout)', { retryable: true });
+    // Timeout — o'sha modelni XUDDI SHU katta so'rov bilan qayta urish odatda
+    // yana timeout beradi (jonli Vercel logida: bitta model 4 x 60s + backoff
+    // ~4.5 daqiqa, so'ng "Task timed out after 300 seconds"). Shuning uchun
+    // darhol keyingi (fallback) modelga o'tamiz.
+    if (err.name === 'AbortError') throw new AiRouterError('Vaqt tugadi (timeout)', { retryable: false, timeout: true });
     throw new AiRouterError(err.message || 'Tarmoq xatoligi', { retryable: true });
   } finally {
     clearTimeout(timeout);
@@ -184,6 +205,8 @@ export async function callTask({
   apiKey,
   fetchImpl = typeof fetch !== 'undefined' ? fetch : undefined,
   sleepFn, // faqat testlar uchun — chaqiruvchi haqiqiy kodda bermaydi, haqiqiy backoff ishlaydi
+  deadlineAt = null, // ixtiyoriy epoch ms — interaktiv so'rovlar uchun qat'iy muddat
+  timeoutMs = DEFAULT_CALL_TIMEOUT_MS,
 }) {
   if (!apiKey) throw new AiRouterError('OPENROUTER_API_KEY berilmagan', { retryable: false });
   if (!fetchImpl) throw new AiRouterError('fetch mavjud emas', { retryable: false });
@@ -196,6 +219,10 @@ export async function callTask({
   let lastError;
 
   for (const model of models) {
+    if (remainingMs(deadlineAt) < MIN_CALL_MS) {
+      lastError = lastError || new AiRouterError('Vaqt chegarasi — model chaqirilmadi', { retryable: false, timeout: true });
+      break;
+    }
     const body = buildRequestBody({
       model,
       systemPrompt,
@@ -208,8 +235,15 @@ export async function callTask({
     const startedAt = Date.now();
     try {
       const result = await withRetry(
-        (attempt) => callModelOnce({ apiKey, model, body, fetchImpl }).then((r) => ({ ...r, attempt })),
-        sleepFn ? { sleepFn } : undefined
+        (attempt) =>
+          callModelOnce({
+            apiKey,
+            model,
+            body,
+            fetchImpl,
+            timeoutMs: Math.max(1000, Math.min(timeoutMs, remainingMs(deadlineAt) - 2000)),
+          }).then((r) => ({ ...r, attempt })),
+        { ...(sleepFn ? { sleepFn } : {}), deadlineAt }
       );
       attempts.push({ model, ok: true, latencyMs: Date.now() - startedAt });
       return { ...result, model, attempts };
@@ -220,7 +254,10 @@ export async function callTask({
     }
   }
 
-  const err = new AiRouterError(`Barcha modellar muvaffaqiyatsiz: ${lastError?.message || 'noma\'lum xato'}`, { retryable: false });
+  const err = new AiRouterError(`Barcha modellar muvaffaqiyatsiz: ${lastError?.message || 'noma\'lum xato'}`, {
+    retryable: false,
+    timeout: !!lastError?.timeout,
+  });
   err.attempts = attempts;
   throw err;
 }

@@ -13,6 +13,7 @@ export const AGENT_REPLY_SCHEMA = {
     reply: { type: 'string' },
   },
   required: ['reply'],
+  additionalProperties: false,
 };
 
 export interface PlatformState {

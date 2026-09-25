@@ -24,8 +24,13 @@ export const maxDuration = 300;
 
 // Serverless vaqt chegarasiga (300s) urilib, hech narsa qaytarmasdan
 // "yo'qolib qolish"dan ko'ra — qilinganini qaytarib, qolganini keyingi
-// bosishga qoldirgan ma'qul.
-const TIME_BUDGET_MS = 230 * 1000;
+// bosishga qoldirgan ma'qul. `REQUEST_BUDGET_MS` — butun so'rov uchun qat'iy
+// muddat (har AI chaqiruvi ham shunga bo'ysunadi, `aiRouter` deadlineAt);
+// qolgan 30s — DB yozuvlari va javob uchun zaxira.
+const REQUEST_BUDGET_MS = 265 * 1000;
+// Yangi testni boshlash uchun kamida shuncha vaqt qolgan bo'lishi kerak —
+// aks holda keyingi bosishga qoldiriladi (yarim yo'lda to'xtab qolmasin).
+const MIN_TEST_MS = 90 * 1000;
 
 async function resolveUniqueSlug(base) {
   const existing = await ExamTest.find({ slug: new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(-\\d+)?$`) })
@@ -43,7 +48,7 @@ async function resolveUniqueSlug(base) {
  * ham tuzatildi, lekin bu yerda — server tomonida — HAM tekshiriladi:
  * boshqa tab/qurilma yoki tarmoq qayta urinishi kabi client himoyasi
  * qamrab olmaydigan holatlar uchun. */
-async function ingestOneTest({ attachment, testEntry, bookTitle, adminId, req }) {
+async function ingestOneTest({ attachment, testEntry, bookTitle, adminId, req, deadlineAt }) {
   const existing = await ExamTest.findOne({
     'source.agentAttachmentId': attachment._id,
     'source.testIndex': testEntry.index,
@@ -76,11 +81,13 @@ async function ingestOneTest({ attachment, testEntry, bookTitle, adminId, req })
     // sarlavha bo'yicha kesilgan matn — `analyzeDocument` uni allaqachon
     // hisoblab, tahlil bilan birga saqlagan.
     fallbackTexts: analysis.headingSplit || null,
+    deadlineAt,
   });
 
   const sections = buildSections(parsed);
   if (Object.keys(sections).length === 0) {
-    return { ok: false, summary: `Test ${testEntry.index}: kontent ajratib bo'lmadi (bo'lim matni bo'sh yoki tanib bo'lmadi).` };
+    const why = warnings.length ? ` ${warnings.join(' ')}` : " (bo'lim matni bo'sh yoki tanib bo'lmadi).";
+    return { ok: false, summary: `Test ${testEntry.index}: kontent ajratib bo'lmadi.${why}` };
   }
 
   const title = `${bookTitle} — Test ${testEntry.index}`;
@@ -135,7 +142,7 @@ async function ingestOneTest({ attachment, testEntry, bookTitle, adminId, req })
   };
 }
 
-async function handleIngest({ payload, all, admin, req }) {
+async function handleIngest({ payload, all, admin, req, deadlineAt }) {
   const attachment = await AgentAttachment.findOne({ _id: payload.attachmentId, adminId: admin._id });
   if (!attachment) return { content: 'Fayl topilmadi — qaytadan yuklang.', proposals: [] };
 
@@ -146,17 +153,18 @@ async function handleIngest({ payload, all, admin, req }) {
   if (entries.length === 0) return { content: "Bu fayl ichida joylashtiriladigan test topilmadi.", proposals: [] };
 
   const bookTitle = payload.title || analysis.bookTitle || attachment.filename.replace(/\.[a-z0-9]+$/i, '');
-  const startedAt = Date.now();
   const results = [];
   const remaining = [];
 
   for (const entry of entries) {
-    if (Date.now() - startedAt > TIME_BUDGET_MS) {
+    // Birinchi test har doim boshlanadi; keyingilari faqat yetarli vaqt
+    // qolgan bo'lsa.
+    if (results.length > 0 && deadlineAt - Date.now() < MIN_TEST_MS) {
       remaining.push(entry);
       continue;
     }
     try {
-      results.push(await ingestOneTest({ attachment, testEntry: entry, bookTitle, adminId: admin._id, req }));
+      results.push(await ingestOneTest({ attachment, testEntry: entry, bookTitle, adminId: admin._id, req, deadlineAt }));
     } catch (err) {
       results.push({ ok: false, summary: `Test ${entry.index}: ${String(err?.message || err).slice(0, 200)}` });
     }
@@ -203,7 +211,7 @@ async function handleIngest({ payload, all, admin, req }) {
   return { content: lines.join('\n\n'), proposals };
 }
 
-async function handleAttachAudio({ payload, admin, req }) {
+async function handleAttachAudio({ payload, admin, req, deadlineAt }) {
   const attachment = await AgentAttachment.findOne({ _id: payload.attachmentId, adminId: admin._id });
   if (!attachment?.audioFileId) return { content: 'Audio fayl topilmadi — qaytadan yuklang.', proposals: [] };
 
@@ -230,6 +238,7 @@ async function handleAttachAudio({ payload, admin, req }) {
         userContent: buildAudioVerifyPrompt(transcript, candidate),
         jsonSchema: AUDIO_VERIFY_SCHEMA,
         schemaName: 'audio_verify',
+        deadlineAt,
       });
       ai = verified.data;
     } catch {
@@ -361,6 +370,7 @@ async function handlePublish({ payload, admin, req }) {
 }
 
 export async function POST(req) {
+  const deadlineAt = Date.now() + REQUEST_BUDGET_MS;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -381,13 +391,13 @@ export async function POST(req) {
     let result;
     switch (proposal.type) {
       case 'ingest_test':
-        result = await handleIngest({ payload, all: false, admin, req });
+        result = await handleIngest({ payload, all: false, admin, req, deadlineAt });
         break;
       case 'ingest_all':
-        result = await handleIngest({ payload, all: true, admin, req });
+        result = await handleIngest({ payload, all: true, admin, req, deadlineAt });
         break;
       case 'attach_audio':
-        result = await handleAttachAudio({ payload, admin, req });
+        result = await handleAttachAudio({ payload, admin, req, deadlineAt });
         break;
       case 'attach_image_writing':
         result = await handleAttachImage({ payload, admin, req });

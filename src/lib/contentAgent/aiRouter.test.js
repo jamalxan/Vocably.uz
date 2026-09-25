@@ -180,3 +180,41 @@ describe('callTask', () => {
     expect(sentBody.messages).toEqual([{ role: 'system', content: 's' }, { role: 'user', content: 'hi' }]);
   });
 });
+
+describe('callTask — timeout and deadline', () => {
+  const config = { primary: 'model-a', fallback: ['model-b'], temperature: 0.1, maxTokens: 100 };
+  const abortError = () => Object.assign(new Error('aborted'), { name: 'AbortError' });
+
+  it('moves to the fallback model on timeout instead of retrying the same model', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValueOnce(abortError())
+      .mockResolvedValueOnce(jsonResponse(chatCompletion({ ok: true })));
+    const result = await callTask({ taskKey: 'reading.parse', systemPrompt: 's', userContent: 'u', config, apiKey: 'k', fetchImpl, sleepFn: noSleep });
+    expect(result.model).toBe('model-b');
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not call any model once the deadline has passed', async () => {
+    const fetchImpl = vi.fn();
+    const err = await callTask({
+      taskKey: 'reading.parse', systemPrompt: 's', userContent: 'u', config, apiKey: 'k', fetchImpl, sleepFn: noSleep,
+      deadlineAt: Date.now() - 1,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(AiRouterError);
+    expect(err.timeout).toBe(true);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('stops retrying when the backoff would cross the deadline', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}, { status: 503 }));
+    await expect(
+      callTask({
+        taskKey: 'reading.parse', systemPrompt: 's', userContent: 'u', config: { ...config, fallback: [] }, apiKey: 'k', fetchImpl, sleepFn: noSleep,
+        deadlineAt: Date.now() + 8500,
+      })
+    ).rejects.toThrow(AiRouterError);
+    // 1s backoff + 8s minimum call window no longer fit — only the first attempt runs.
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});

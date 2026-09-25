@@ -66,6 +66,23 @@ function randomId() {
   return `u${Date.now()}${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// Server har doim JSON qaytarmaydi: Vercel funksiya vaqt chegarasidan
+// oshsa yoki yiqilsa "An error occurred..." degan MATN sahifasini beradi —
+// `res.json()` esa `Unexpected token 'A'...` bilan yiqilib, asl sababni
+// yashirardi. Endi javob matn sifatida o'qiladi va tushunarli xato qaytadi.
+async function readJson(res) {
+  const raw = await res.text();
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    if (res.status === 504 || /timed out|timeout|FUNCTION_INVOCATION_TIMEOUT/i.test(raw)) {
+      return { error: "Server javob berishga ulgurmadi (vaqt chegarasi). Qayta urinib ko'ring — tayyor bo'lgan qismlar saqlangan." };
+    }
+    if (res.status === 413) return { error: "So'rov juda katta (413)." };
+    return { error: `Server xatosi (${res.status}). Qayta urinib ko'ring.` };
+  }
+}
+
 async function uploadInChunks(file, threadId, onProgress) {
   const uploadId = randomId();
   const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_BYTES));
@@ -82,7 +99,7 @@ async function uploadInChunks(file, threadId, onProgress) {
     if (threadId) form.append('threadId', threadId);
 
     const res = await fetch('/api/admin/agent/upload', { method: 'POST', body: form });
-    const data = await res.json().catch(() => ({}));
+    const data = await readJson(res);
     if (!res.ok) {
       // Server JSON emas (Vercel 413/504 sahifasi, route yiqilishi) qaytarsa ham
       // admin nima bo'lganini ko'rsin — quruq "Yuklashda xatolik" sababni yashirardi.
@@ -132,7 +149,7 @@ export default function AdminAgentChat() {
   const loadThreads = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/agent/threads');
-      const data = await res.json();
+      const data = await readJson(res);
       if (res.ok) setThreads(data.threads || []);
     } catch {
       /* ro'yxat ochilmasa ham chat ishlayveradi */
@@ -148,7 +165,7 @@ export default function AdminAgentChat() {
     setError('');
     try {
       const res = await fetch(`/api/admin/agent/threads/${id}`);
-      const data = await res.json();
+      const data = await readJson(res);
       if (!res.ok) throw new Error(data.error);
       setThreadId(id);
       setMessages(data.thread.messages || []);
@@ -234,7 +251,7 @@ export default function AdminAgentChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ threadId, text, attachmentIds: ready.map((p) => p.attachment.id) }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || 'Javob kelmadi');
 
       setThreadId(data.threadId);
@@ -264,7 +281,7 @@ export default function AdminAgentChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ threadId, proposal }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || 'Bajarilmadi');
       setAppliedKeys((prev) => new Set(prev).add(key));
       setMessages((prev) => [...prev, ...data.messages]);

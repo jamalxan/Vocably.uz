@@ -83,7 +83,7 @@ const CLASSIFY_SCHEMA = {
 
 /** Sarlavhasiz, bitta bo'limdan iborat matn uchun — "bu qaysi mashq turi?"
  * (foydalanuvchi talabi: "AI o'zi aniqlasin qaysi mashq turiga kiradi"). */
-export async function classifyDocument(text) {
+export async function classifyDocument(text, { deadlineAt = null } = {}) {
   const prompt = `Quyida IELTS o'quv materiali matni berilgan. Bu QAYSI bo'limga tegishli — Reading, Listening, Writing yoki Speaking?
 
 MATN:
@@ -99,6 +99,7 @@ Belgilar: Reading — uzun passage + savollar; Listening — audio uchun mo'ljal
     userContent: prompt,
     jsonSchema: CLASSIFY_SCHEMA,
     schemaName: 'document_classify',
+    deadlineAt,
   });
   return data;
 }
@@ -112,7 +113,7 @@ Belgilar: Reading — uzun passage + savollar; Listening — audio uchun mo'ljal
  * ishlatiladi, lekin pastdagi qatlamlar natijasi ham qaytariladi
  * (`headingSplit`) — `parseTestSections` bo'sh bo'lim uchun ularga
  * qaytadi. */
-export async function analyzeDocument({ pages }) {
+export async function analyzeDocument({ pages, deadlineAt = null }) {
   const safePages = (pages || []).map((p) => ({ n: p.n, text: p.text || '' }));
   const fullText = safePages.map((p) => p.text).join('\n\n');
 
@@ -122,6 +123,7 @@ export async function analyzeDocument({ pages }) {
     userContent: buildSegmentPrompt(safePages),
     jsonSchema: SEGMENT_SCHEMA,
     schemaName: 'book_segment',
+    deadlineAt,
   });
 
   const tests = (Array.isArray(data.tests) ? data.tests : []).map((t, i) => ({
@@ -140,7 +142,7 @@ export async function analyzeDocument({ pages }) {
 
   let classified = null;
   if (!mapHasSections && headingSections.length === 0 && fullText.trim()) {
-    classified = await classifyDocument(fullText);
+    classified = await classifyDocument(fullText, { deadlineAt });
   }
 
   // Xarita bo'sh bo'lsa — zaxira qatlamlardan test yozuvi yasaymiz, shunda
@@ -186,7 +188,7 @@ export async function analyzeDocument({ pages }) {
 /** Bitta test uchun mavjud bo'limlarni parse qiladi. `only` berilsa (masalan
  * ['reading']), faqat o'sha bo'lim(lar) ishlanadi — admin chatda "faqat
  * Reading'ni ol" deyishi mumkin. */
-export async function parseTestSections({ pages, test, answerKeyText, audioscriptText, fallbackTexts = null, only = null }) {
+export async function parseTestSections({ pages, test, answerKeyText, audioscriptText, fallbackTexts = null, only = null, deadlineAt = null }) {
   const safePages = (pages || []).map((p) => ({ n: p.n, text: p.text || '' }));
   const fromPages = sliceSections(safePages, test, audioscriptText || '');
 
@@ -207,68 +209,103 @@ export async function parseTestSections({ pages, test, answerKeyText, audioscrip
   const warnings = [];
   const needsReview = [];
 
+  // Bo'limlar bir-biridan MUSTAQIL — avval ketma-ket chaqirilardi (4 ta
+  // og'ir model chaqiruvi ketma-ket = bitta test uchun bir necha daqiqa,
+  // Vercel 300s chegarasiga urilib "Task timed out" bo'lardi). Endi parallel:
+  // umumiy vaqt eng sekin bo'lim vaqtiga teng. Bitta bo'lim yiqilsa qolganlari
+  // saqlanadi — xato ogohlantirish sifatida qaytadi.
+  const jobs = [];
+
   if (wanted('reading')) {
     const readingInput = `${sliced.reading}\n\n=== JAVOB KALITI ===\n${(answerKeyText || '').slice(0, 8000)}`;
-    const { data } = await runAgentAi({
-      taskKey: 'reading.parse',
-      systemPrompt: "Sen IELTS Reading kontentini JSON strukturaga o'giradigan yordamchisan. Faqat so'ralgan JSON'ni qaytar.",
-      userContent: buildAiImportPrompt(readingInput),
-      jsonSchema: AI_IMPORT_RESPONSE_SCHEMA,
-      schemaName: 'reading_section',
-    });
-    const { passages, needsReview: readingReview } = normalizeAiPassages(data);
-    parsed.reading = passages;
-    needsReview.push(...readingReview.map((r) => ({ section: 'reading', ...r })));
+    jobs.push([
+      'reading',
+      runAgentAi({
+        taskKey: 'reading.parse',
+        systemPrompt: "Sen IELTS Reading kontentini JSON strukturaga o'giradigan yordamchisan. Faqat so'ralgan JSON'ni qaytar.",
+        userContent: buildAiImportPrompt(readingInput),
+        jsonSchema: AI_IMPORT_RESPONSE_SCHEMA,
+        schemaName: 'reading_section',
+        deadlineAt,
+      }).then(({ data }) => {
+        const { passages, needsReview: readingReview } = normalizeAiPassages(data);
+        parsed.reading = passages;
+        needsReview.push(...readingReview.map((r) => ({ section: 'reading', ...r })));
+      }),
+    ]);
   }
 
   if (wanted('listening')) {
-    const { data } = await runAgentAi({
-      taskKey: 'listening.parse',
-      systemPrompt: "Sen IELTS Listening kontentini JSON strukturaga o'giradigan yordamchisan. Faqat so'ralgan JSON'ni qaytar.",
-      userContent: buildListeningPrompt(sliced.listening, resolvedAnswerKey),
-      jsonSchema: LISTENING_SCHEMA,
-      schemaName: 'listening_section',
-    });
-    const { parts, needsReview: listeningReview } = normalizeListeningParts(data, `t${test.index}`);
-    parsed.listening = parts;
-    needsReview.push(...listeningReview.map((r) => ({ section: 'listening', ...r })));
+    jobs.push([
+      'listening',
+      runAgentAi({
+        taskKey: 'listening.parse',
+        systemPrompt: "Sen IELTS Listening kontentini JSON strukturaga o'giradigan yordamchisan. Faqat so'ralgan JSON'ni qaytar.",
+        userContent: buildListeningPrompt(sliced.listening, resolvedAnswerKey),
+        jsonSchema: LISTENING_SCHEMA,
+        schemaName: 'listening_section',
+        deadlineAt,
+      }).then(({ data }) => {
+        const { parts, needsReview: listeningReview } = normalizeListeningParts(data, `t${test.index}`);
+        parsed.listening = parts;
+        needsReview.push(...listeningReview.map((r) => ({ section: 'listening', ...r })));
 
-    // Audioscript matnini part'larga taqsimlash — DETERMINISTIK, AI'siz:
-    // audioscriptda "PART 1/SECTION 1" sarlavhalari bo'lsa shular bo'yicha
-    // kesiladi. Topilmasa umuman biriktirilmaydi (noto'g'ri transkript
-    // biriktirishdan ko'ra, transkriptsiz qolgani yaxshi — u faqat
-    // practice rejimida ko'rsatiladi va audio moslik tekshiruvida dalil
-    // sifatida ishlatiladi).
-    parsed.transcripts = splitAudioscriptByPart(sliced.audioscript);
+        // Audioscript matnini part'larga taqsimlash — DETERMINISTIK, AI'siz:
+        // audioscriptda "PART 1/SECTION 1" sarlavhalari bo'lsa shular bo'yicha
+        // kesiladi. Topilmasa umuman biriktirilmaydi (noto'g'ri transkript
+        // biriktirishdan ko'ra, transkriptsiz qolgani yaxshi — u faqat
+        // practice rejimida ko'rsatiladi va audio moslik tekshiruvida dalil
+        // sifatida ishlatiladi).
+        parsed.transcripts = splitAudioscriptByPart(sliced.audioscript);
+      }),
+    ]);
   }
 
   if (wanted('writing')) {
-    const { data } = await runAgentAi({
-      taskKey: 'writing.parse',
-      systemPrompt: "Sen IELTS Writing topshiriqlarini JSON strukturaga o'giradigan yordamchisan. Faqat so'ralgan JSON'ni qaytar.",
-      userContent: buildWritingPrompt(sliced.writing),
-      jsonSchema: WRITING_SCHEMA,
-      schemaName: 'writing_section',
-    });
-    parsed.writing = normalizeWritingTasks(data);
-    const withVisual = parsed.writing.filter((t) => t.hasVisual);
-    if (withVisual.length) {
-      warnings.push(
-        `Writing Task ${withVisual.map((t) => t.order).join(', ')} uchun grafik/diagramma kerak — rasmni chatga tashlasangiz, o'sha taskka biriktiraman.`
-      );
-    }
+    jobs.push([
+      'writing',
+      runAgentAi({
+        taskKey: 'writing.parse',
+        systemPrompt: "Sen IELTS Writing topshiriqlarini JSON strukturaga o'giradigan yordamchisan. Faqat so'ralgan JSON'ni qaytar.",
+        userContent: buildWritingPrompt(sliced.writing),
+        jsonSchema: WRITING_SCHEMA,
+        schemaName: 'writing_section',
+        deadlineAt,
+      }).then(({ data }) => {
+        parsed.writing = normalizeWritingTasks(data);
+        const withVisual = parsed.writing.filter((t) => t.hasVisual);
+        if (withVisual.length) {
+          warnings.push(
+            `Writing Task ${withVisual.map((t) => t.order).join(', ')} uchun grafik/diagramma kerak — rasmni chatga tashlasangiz, o'sha taskka biriktiraman.`
+          );
+        }
+      }),
+    ]);
   }
 
   if (wanted('speaking')) {
-    const { data } = await runAgentAi({
-      taskKey: 'speaking.parse',
-      systemPrompt: "Sen IELTS Speaking savollarini JSON strukturaga o'giradigan yordamchisan. Faqat so'ralgan JSON'ni qaytar.",
-      userContent: buildSpeakingPrompt(sliced.speaking),
-      jsonSchema: SPEAKING_SCHEMA,
-      schemaName: 'speaking_section',
-    });
-    parsed.speaking = normalizeSpeakingSection(data);
+    jobs.push([
+      'speaking',
+      runAgentAi({
+        taskKey: 'speaking.parse',
+        systemPrompt: "Sen IELTS Speaking savollarini JSON strukturaga o'giradigan yordamchisan. Faqat so'ralgan JSON'ni qaytar.",
+        userContent: buildSpeakingPrompt(sliced.speaking),
+        jsonSchema: SPEAKING_SCHEMA,
+        schemaName: 'speaking_section',
+        deadlineAt,
+      }).then(({ data }) => {
+        parsed.speaking = normalizeSpeakingSection(data);
+      }),
+    ]);
   }
+
+  const settled = await Promise.allSettled(jobs.map(([, job]) => job));
+  settled.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      const reason = String(r.reason?.message || r.reason).slice(0, 160);
+      warnings.push(`${jobs[i][0]} bo'limi ajratilmadi: ${reason}`);
+    }
+  });
 
   return { parsed, warnings, needsReview, sliced };
 }

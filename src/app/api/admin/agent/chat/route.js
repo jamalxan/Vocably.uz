@@ -2,7 +2,6 @@ import { connectToDatabase } from '@/lib/db';
 import { requireAdminUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { aiErrorResponse } from '@/lib/ai/client';
-import { generateJson } from '@/lib/aiJson';
 import { runAgentAi } from '@/lib/contentAgent/agent/aiCall';
 import { AgentThread, AgentAttachment } from '@/lib/models';
 import { analyzeDocument } from '@/lib/contentAgent/agent/analyze';
@@ -26,6 +25,11 @@ import { NextResponse } from 'next/server';
 export const maxDuration = 300;
 
 const MAX_TEXT = 4000;
+// Butun so'rov uchun qat'iy muddat (Vercel 300s'da funksiyani o'ldiradi va
+// client JSON o'rniga "An error occurred..." matnini oladi).
+const REQUEST_BUDGET_MS = 265 * 1000;
+// Suhbat javobi (matnli xabar) uchun kamida shuncha vaqt qolishi kerak.
+const MIN_REPLY_MS = 40 * 1000;
 const SECTION_KEYS = ['listening', 'reading', 'writing', 'speaking'];
 
 function messageOut(m) {
@@ -107,7 +111,7 @@ function documentTurn(attachment, analysis) {
 }
 
 /** Audio -> qaysi Listening part ekanini aniqlash/so'rash. */
-async function audioTurn(attachment) {
+async function audioTurn(attachment, deadlineAt) {
   const candidates = await listListeningCandidates();
   const proposals = [];
   const lines = [];
@@ -134,6 +138,7 @@ async function audioTurn(attachment) {
         userContent: buildAudioPickPrompt(transcript, candidates.slice(0, 12)),
         jsonSchema: AUDIO_PICK_SCHEMA,
         schemaName: 'audio_pick',
+        deadlineAt,
       });
       aiPick = picked.data;
     } catch {
@@ -202,6 +207,7 @@ async function imageTurn(attachment) {
 }
 
 export async function POST(req) {
+  const deadlineAt = Date.now() + REQUEST_BUDGET_MS;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -236,12 +242,12 @@ export async function POST(req) {
       attachment.threadId = thread._id;
       try {
         if (attachment.kind === 'document' || attachment.kind === 'text') {
-          const analysis = await analyzeDocument({ pages: attachment.pages || [] });
+          const analysis = await analyzeDocument({ pages: attachment.pages || [], deadlineAt });
           attachment.analysis = analysis;
           attachment.status = 'analyzed';
           assistantMessages.push({ ...documentTurn(attachment, analysis), attachmentId: attachment._id });
         } else if (attachment.kind === 'audio') {
-          const turn = await audioTurn(attachment);
+          const turn = await audioTurn(attachment, deadlineAt);
           attachment.status = 'analyzed';
           assistantMessages.push({ ...turn, attachmentId: attachment._id });
         } else if (attachment.kind === 'image') {
@@ -265,11 +271,21 @@ export async function POST(req) {
     // TASHQARI: admin ko'pincha faylni izoh bilan birga tashlaydi, izohga
     // javob bermaslik "eshitmaganday" ko'rinardi). Faqat fayl tashlangan
     // bo'lsa model ortiqcha chaqirilmaydi — narx va kutish vaqti.
-    if (text) {
+    if (text && (assistantMessages.length === 0 || deadlineAt - Date.now() > MIN_REPLY_MS)) {
       try {
         const state = await getPlatformState();
         const history = thread.messages.slice(-12).map((m) => ({ role: m.role, content: m.content, data: m.data }));
-        const data = await generateJson(buildConversationPrompt(state, history, text), AGENT_REPLY_SCHEMA);
+        // `generateJson` (Groq -> Gemini -> ... zanjiri) o'rniga `runAgentAi`:
+        // unda so'rov muddati (deadlineAt) va har chaqiruv timeout'i bor,
+        // shuning uchun sekin provayder butun so'rovni 300s'ga osib qo'ymaydi.
+        const { data } = await runAgentAi({
+          taskKey: 'agent.converse',
+          systemPrompt: "Sen Vocably admin kontent agentisan. Faqat so'ralgan JSON'ni qaytar.",
+          userContent: buildConversationPrompt(state, history, text),
+          jsonSchema: AGENT_REPLY_SCHEMA,
+          schemaName: 'agent_reply',
+          deadlineAt,
+        });
         const reply = String(data.reply || '').trim();
         if (reply) assistantMessages.push({ content: reply, proposals: [] });
       } catch (aiErr) {

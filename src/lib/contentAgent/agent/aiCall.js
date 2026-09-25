@@ -24,7 +24,16 @@ import { generateJson } from '@/lib/aiJson';
 // `OPENROUTER_API_KEY` bo'lmasa — funksionallik BUTUNLAY yo'qolmasin
 // uchun `generateJson` zanjiriga qaytamiz (sxemasiz, ya'ni ishonchsizroq),
 // lekin buni chaqiruvchiga aytib qo'yamiz (`schemaEnforced:false`).
-export async function runAgentAi({ taskKey, systemPrompt, userContent, jsonSchema, promptVersion = 'agent-v1', schemaName }) {
+// `deadlineAt` (epoch ms) — so'rovning qat'iy muddati. Vercel funksiyasi
+// 300s'da o'ldiriladi va client JSON o'rniga "An error occurred..." matnini
+// oladi; shu sababli har AI chaqiruvi qolgan vaqtga sig'ishi kerak.
+const MIN_FALLBACK_MS = 45000;
+
+export function timeLeftMs(deadlineAt) {
+  return deadlineAt ? deadlineAt - Date.now() : Infinity;
+}
+
+export async function runAgentAi({ taskKey, systemPrompt, userContent, jsonSchema, promptVersion = 'agent-v1', schemaName, deadlineAt = null }) {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
@@ -53,6 +62,7 @@ export async function runAgentAi({ taskKey, systemPrompt, userContent, jsonSchem
       jsonSchema: { name: schemaName || taskKey.replace(/\./g, '_'), schema: jsonSchema },
       config,
       apiKey,
+      deadlineAt,
     });
 
     recordAiCall({
@@ -84,7 +94,9 @@ export async function runAgentAi({ taskKey, systemPrompt, userContent, jsonSchem
     // Router butunlay yiqilsa (masalan OpenRouter ishlamayotgan bo'lsa) —
     // oxirgi chora sifatida sxemasiz zanjir. Bu yerda ham jim qolmaymiz:
     // natija `schemaEnforced:false` bilan keladi.
-    if (err instanceof AiRouterError) {
+    // Vaqt deyarli tugagan bo'lsa zaxira zanjirini boshlamaymiz — u ham
+    // bir necha provayderni qayta urinadi va 300s chegarasini buzadi.
+    if (err instanceof AiRouterError && timeLeftMs(deadlineAt) > MIN_FALLBACK_MS) {
       const data = await generateJson(`${systemPrompt}\n\n${userContent}`, jsonSchema);
       return { data, model: 'fallback-chain', schemaEnforced: false };
     }
