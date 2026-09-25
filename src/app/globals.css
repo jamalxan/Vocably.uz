@@ -208,6 +208,14 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+/* Gorizontal "chip/tab" qatorlari (emoji/stiker tablari) — surish ishlaydi,
+   lekin 8px scrollbar chizig'i ko'rinmaydi (Telegram kabi). */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 /* Umumiy klaviatura fokus halqasi. :where() — specificity 0, shuning uchun
    o'z fokus uslubi bor komponentlar (focus-visible:ring / outline-none) ustun turadi. */
 :where(:focus-visible) {

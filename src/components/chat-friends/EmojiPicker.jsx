@@ -263,7 +263,7 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
 
       {/* Kategoriya tablari — bosilganda mos kategoriyaga o'tadi, joriysi belgilanadi. */}
       {!searching && (
-        <div className="flex items-center gap-0.5 px-2 pb-1.5 overflow-x-auto flex-shrink-0">
+        <div className="flex items-center gap-0.5 px-2 pb-1.5 overflow-x-auto no-scrollbar flex-shrink-0">
           {CATEGORY_ORDER.map((label) => (
             <button
               key={label}
@@ -290,7 +290,7 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
       {!searching && recents.length > 0 && (
         <div className="flex items-center gap-1 px-2 pb-1.5 flex-shrink-0 border-b border-border">
           <Clock size={13} className="text-muted flex-shrink-0 mx-1" aria-hidden="true" />
-          <div role="group" aria-label="Yaqinda ishlatilgan" className="flex gap-0.5 overflow-x-auto min-w-0">
+          <div role="group" aria-label="Yaqinda ishlatilgan" className="flex gap-0.5 overflow-x-auto no-scrollbar min-w-0">
             {recents.map((e, i) => (
               <button
                 key={`${e}-${i}`}
@@ -382,7 +382,7 @@ function StickerBody({ onPickSticker }) {
     <div className="flex-1 min-h-0 flex flex-col">
       {/* To'plamlar tablari (Telegram: har to'plamning birinchi stikeri ikonka) */}
       {stickerPacks.length > 1 && (
-        <div className="flex-shrink-0 flex items-center gap-1 px-2 pt-2 pb-1 overflow-x-auto border-b border-border">
+        <div className="flex-shrink-0 flex items-center gap-1 px-2 pt-2 pb-1 overflow-x-auto no-scrollbar border-b border-border">
           {stickerPacks.map((pack) => (
             <button
               key={pack.id}
