@@ -4,6 +4,9 @@ import { X, Image as ImageIcon, Video, Mic, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
 import { ImageLightbox } from './MessageBubble';
+import Avatar from '@/components/avatar/Avatar';
+import PhotoViewer from '@/components/avatar/PhotoViewer';
+import { fetchUserPhotos } from '@/lib/profilePhotosClient';
 
 // C-09 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 E) — 80x80 grid
 // thumbnail, useAuthedMediaUrl orqali (MessageBubble.jsx'dagi ImageBubble bilan
@@ -183,6 +186,8 @@ const TABS = [
 // rasm/video/ovozli xabarlarni har birini alohida ko'rish.
 export default function UserProfileModal({ open, onClose }) {
   const { activeConversation, setNickname } = useChat();
+  const [viewerPhotos, setViewerPhotos] = useState(null);
+  const [photosLoading, setPhotosLoading] = useState(false);
   const [tab, setTab] = useState('image');
   const [nicknameInput, setNicknameInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -208,13 +213,28 @@ export default function UserProfileModal({ open, onClose }) {
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
-      if (e.key === 'Escape') onClose?.();
+      // Rasm ko'ruvchi ochiq bo'lsa, Escape uni yopadi (o'zi ushlaydi) — modal emas.
+      if (e.key === 'Escape' && !viewerPhotos) onClose?.();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, viewerPhotos]);
 
   if (!open || !activeConversation) return null;
+
+  const other = activeConversation.otherUser || {};
+  const displayTitle = other.nickname || other.name || `@${other.username}`;
+
+  // Telegram: avatarga bosilsa — shu odamning BARCHA profil rasmlari (maxfiylik
+  // sozlamasiga qarab server filtrlaydi) to'liq ekranda varaqlanadi.
+  const openPhotos = async () => {
+    if (!other.photoId || photosLoading) return;
+    setPhotosLoading(true);
+    const res = await fetchUserPhotos(other.id);
+    setPhotosLoading(false);
+    const list = res.photos?.length ? res.photos : [{ id: other.photoId }];
+    setViewerPhotos(list);
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -236,22 +256,36 @@ export default function UserProfileModal({ open, onClose }) {
         aria-labelledby={titleId}
         className="bg-surface rounded-2xl shadow-card border border-border w-full max-w-sm max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] flex flex-col overflow-hidden"
       >
-        <div className="flex items-center gap-3 p-5 pb-3 flex-shrink-0">
-          <div className="w-11 h-11 rounded-full bg-accent-soft text-accent flex items-center justify-center text-sm font-bold flex-shrink-0">
-            {(activeConversation.otherUser?.username || '?')[0]?.toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p id={titleId} className="text-sm font-bold text-ink truncate">@{activeConversation.otherUser?.username}</p>
-          </div>
+        <div className="relative flex flex-col items-center text-center px-5 pt-6 pb-4 flex-shrink-0">
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
             aria-label="Yopish"
-            className="inline-flex items-center justify-center w-11 h-11 -m-2.5 md:w-auto md:h-auto md:m-0 md:p-1 rounded-lg text-muted hover:text-ink transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="absolute top-3 right-3 inline-flex items-center justify-center w-11 h-11 md:w-9 md:h-9 rounded-lg text-muted hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <X size={18} />
           </button>
+          <button
+            type="button"
+            onClick={openPhotos}
+            disabled={!other.photoId}
+            aria-label={other.photoId ? "Profil rasmlarini ko'rish" : undefined}
+            className="relative rounded-full disabled:cursor-default enabled:cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+          >
+            <Avatar userId={other.id} photoId={other.photoId} name={other.nickname || other.name} username={other.username} size={96} />
+            {photosLoading && (
+              <span className="absolute inset-0 rounded-full bg-black/35 flex items-center justify-center">
+                <Loader2 size={22} className="animate-spin text-white" />
+              </span>
+            )}
+          </button>
+          <p id={titleId} className="mt-3 text-base font-bold text-ink truncate max-w-full">
+            {displayTitle}
+          </p>
+          {other.username && displayTitle !== `@${other.username}` && (
+            <p className="text-xs text-muted truncate max-w-full">@{other.username}</p>
+          )}
         </div>
 
         <form onSubmit={handleSave} className="flex items-center gap-2 px-5 pb-3.5 flex-shrink-0">
@@ -293,6 +327,14 @@ export default function UserProfileModal({ open, onClose }) {
           <MediaGallery conversationId={activeConversation.id} type={tab} />
         </div>
       </div>
+      {viewerPhotos && (
+        <PhotoViewer
+          userId={other.id}
+          photos={viewerPhotos}
+          title={displayTitle}
+          onClose={() => setViewerPhotos(null)}
+        />
+      )}
     </div>
   );
 }

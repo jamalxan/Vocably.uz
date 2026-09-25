@@ -8,6 +8,7 @@ import { TYPING_LABEL, REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 import UserProfileModal from './UserProfileModal';
+import Avatar from '@/components/avatar/Avatar';
 import MuteDurationModal from './MuteDurationModal';
 import ConfirmModal from '@/components/ConfirmModal';
 
@@ -286,14 +287,22 @@ export default function ConversationView({ onBack }) {
         <button onClick={onBack} aria-label="Suhbatlar ro'yxatiga qaytish" className={`lg:hidden -ml-2.5 md:ml-0 text-muted hover:text-ink ${HEADER_BTN}`}>
           <ArrowLeft size={18} />
         </button>
-        <div className="relative flex-shrink-0">
-          <div className="w-8 h-8 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">
-            {(activeConversation.otherUser?.username || '?')[0]?.toUpperCase()}
-          </div>
-          {online && (
-            <span title="Onlayn" className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-bg" />
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          aria-label="Foydalanuvchi profili"
+          className="flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <Avatar
+            userId={activeConversation.otherUser?.id}
+            photoId={activeConversation.otherUser?.photoId}
+            name={activeConversation.otherUser?.nickname || activeConversation.otherUser?.name}
+            username={activeConversation.otherUser?.username}
+            size={38}
+            online={online}
+            ringClass="border-surface"
+          />
+        </button>
         <button
           onClick={() => setProfileOpen(true)}
           className="min-w-0 flex-1 text-left ml-1.5 md:ml-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"

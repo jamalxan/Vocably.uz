@@ -64,6 +64,9 @@ export function AppProvider({ children }) {
   // decode qilib (src/lib/jwtClient.js) olardi; endi JWT client'da yo'q, shuning
   // uchun bu ID shu javobdan (chat/me/route.js) keladi.
   const [chatUserId, setChatUserId] = useState(null);
+  // O'z asosiy profil rasmim id'si — sidebar/profil avatarlari shu bilan chiziladi,
+  // MyProfilePhoto.jsx rasm qo'yilganda/o'chirilganda yangilaydi.
+  const [myPhotoId, setMyPhotoId] = useState(null);
 
   const fetchChatAccess = useCallback(async () => {
     try {
@@ -74,6 +77,7 @@ export function AppProvider({ children }) {
       setChatUsername(data.username || null);
       setChatRole(data.role || 'user');
       setChatUserId(data.id || null);
+      setMyPhotoId(data.photoId || null);
     } catch {
       // jimgina e'tiborsiz qoldiramiz — bo'lim shunchaki ko'rinmay qoladi
     }
@@ -574,6 +578,8 @@ export function AppProvider({ children }) {
     chatUsername,
     chatRole,
     chatUserId,
+    myPhotoId,
+    setMyPhotoId,
     fetchUserData,
     refreshCategories,
     syncData,

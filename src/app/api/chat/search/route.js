@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { User, Block } from '@/lib/models';
+import { currentPhotoId } from '@/lib/avatars';
 import { NextResponse } from 'next/server';
 
 // Regex maxsus belgilarini "yasab" bo'lmasligi (masalan `.*` bilan butun kolleksiyani
@@ -40,7 +41,7 @@ export async function GET(req) {
       chatBanned: { $ne: true },
       _id: { $ne: user._id },
     })
-      .select('username name')
+      .select('username name photos photoVisibility')
       .limit(8)
       .lean();
 
@@ -58,7 +59,14 @@ export async function GET(req) {
 
     const results = found
       .filter((f) => !blockedIds.has(String(f._id)))
-      .map((f) => ({ id: f._id, username: f.username, name: f.name || '' }));
+      .map((f) => ({
+        id: f._id,
+        username: f.username,
+        name: f.name || '',
+        // Qidiruvda suhbat bor-yo'qligi noma'lum — 'friends' maxfiyligida rasm
+        // ko'rsatilmaydi (xavfsiz tomonga), 'everyone'da ko'rsatiladi.
+        photoId: currentPhotoId(f),
+      }));
 
     return NextResponse.json({ results });
   } catch (err) {

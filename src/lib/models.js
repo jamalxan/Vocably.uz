@@ -162,6 +162,28 @@ const UserSchema = new mongoose.Schema({
   // shu yerda hisoblanadi — suhbat ro'yxati/oynasi har doim ikkalasi orasida suhbat
   // borligini bildiradi, shuning uchun bu kontekstda 'friends' === 'everyone').
   lastSeenVisibility: { type: String, enum: ['everyone', 'friends', 'nobody'], default: 'everyone' },
+  // Profil rasmlari — Telegram uslubida TARIX bilan: massivning 0-elementi HAR DOIM
+  // joriy (asosiy) rasm, qolganlari eskiroqlari (yangisi oldinga qo'shiladi, "Asosiy
+  // qilish" esa tanlanganini 0-o'ringa ko'chiradi). Har bir rasm ikki o'lchamda
+  // saqlanadi (klient kesib/kichraytirib yuklaydi, src/lib/avatarCrop.js): `key` —
+  // 640x640 (ko'ruvchi uchun), `smallKey` — 160x160 (ro'yxat/sarlavha avatarlari).
+  // Kalitlar S3'da `avatars/{userId}/...` ostida (src/lib/s3.js#buildAvatarKey).
+  photos: {
+    type: [
+      new mongoose.Schema(
+        {
+          key: { type: String, required: true },
+          smallKey: { type: String, required: true },
+          createdAt: { type: Date, default: Date.now },
+        },
+        { _id: true }
+      ),
+    ],
+    default: [],
+  },
+  // Profil rasmini kim ko'radi — lastSeenVisibility bilan bir xil qiymatlar va
+  // talqin (src/lib/chatConstants.js#shouldShowLastSeen). Egasi o'zinikini har doim ko'radi.
+  photoVisibility: { type: String, enum: ['everyone', 'friends', 'nobody'], default: 'everyone' },
   categories: [CategorySchema],
   // Eski, uzluksiz chat tarixi — endi ishlatilmaydi, faqat orqaga moslik uchun saqlanadi.
   chatHistory: [ChatMessageSchema],

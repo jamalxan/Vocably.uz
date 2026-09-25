@@ -3,6 +3,7 @@ import { requireChatUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, User, Block, Message } from '@/lib/models';
 import { isConversationMuted, shouldShowLastSeen } from '@/lib/chatConstants';
+import { currentPhotoId } from '@/lib/avatars';
 import { NextResponse } from 'next/server';
 
 function sortedPair(a, b) {
@@ -42,9 +43,24 @@ export async function GET(req) {
       (c) => c.participantIds.find((id) => String(id) !== String(user._id))
     );
     const others = await User.find({ _id: { $in: otherIds } })
-      .select('username name lastActiveAt lastSeenVisibility')
+      .select('username name lastActiveAt lastSeenVisibility photos photoVisibility')
       .lean();
     const byId = new Map(others.map((u) => [String(u._id), u]));
+
+    // Telegram'dagidek: blok (qaysi tomondan bo'lmasin) bo'lsa profil rasmi ko'rinmaydi.
+    const blocks = otherIds.length
+      ? await Block.find({
+          $or: [
+            { blockerId: user._id, blockedId: { $in: otherIds } },
+            { blockedId: user._id, blockerId: { $in: otherIds } },
+          ],
+        })
+          .select('blockerId blockedId')
+          .lean()
+      : [];
+    const blockedIds = new Set(
+      blocks.map((b) => (String(b.blockerId) === String(user._id) ? String(b.blockedId) : String(b.blockerId)))
+    );
 
     // "Do'stlar" ro'yxatida kimdan o'qilmagan xabar borligini ko'rsatish uchun —
     // bitta aggregatsiya bilan HAMMA suhbat uchun birdek hisoblanadi (har biri uchun
@@ -94,6 +110,9 @@ export async function GET(req) {
               lastActiveAt: showPresence ? other.lastActiveAt || null : null,
               showPresence,
               nickname,
+              // Suhbat mavjud (hasConversation) — 'friends' maxfiyligi shu yerda o'tadi.
+              // Blok bo'lsa ham suhbat ro'yxatda qolishi mumkin — pastda filtrlanadi.
+              photoId: currentPhotoId(other, { hasConversation: true, blocked: blockedIds.has(String(other._id)) }),
             }
           : null,
         lastMessageAt: clearedAfterLastMessage ? null : c.lastMessageAt,
@@ -184,6 +203,7 @@ export async function POST(req) {
           name: target.name || '',
           lastActiveAt: showPresence ? target.lastActiveAt || null : null,
           showPresence,
+          photoId: currentPhotoId(target, { hasConversation: true }),
           nickname: convo.nicknames?.get ? convo.nicknames.get(String(user._id)) || '' : convo.nicknames?.[String(user._id)] || '',
         },
         lastMessageAt: clearedAfterLastMessage ? null : convo.lastMessageAt,

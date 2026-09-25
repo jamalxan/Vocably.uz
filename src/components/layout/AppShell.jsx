@@ -7,6 +7,7 @@ import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import IconButton from '@/components/ui/IconButton';
 import NotificationBell from '@/components/NotificationBell';
+import Avatar from '@/components/avatar/Avatar';
 import AiPanel from './AiPanel';
 import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
 
@@ -25,7 +26,7 @@ import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { displayName, logout, chatAccess, chatRole } = useApp();
+  const { displayName, username, logout, chatAccess, chatRole, chatUserId, myPhotoId } = useApp();
 
   // TCH-01/02 — "O'qituvchi paneli" yorlig'i xuddi "Do'stlar" (requiresChatAccess)
   // kabi, faqat mos rolga ega foydalanuvchilarga ko'rinadi. `chatRole` —
@@ -138,9 +139,7 @@ export default function AppShell({ children }) {
 
         <div className="p-4 border-t border-on-primary/10 flex items-center justify-between">
           <Link href="/app/profil" className="flex items-center gap-2.5 truncate pr-2 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 text-accent flex items-center justify-center text-xs font-bold flex-shrink-0">
-              {displayName?.[0]?.toUpperCase() || '?'}
-            </div>
+            <Avatar userId={chatUserId} photoId={myPhotoId} name={displayName} username={username} size={32} />
             <div className="truncate">
               <p className="text-[11px] text-on-primary/70">Profil</p>
               <p className="text-sm font-semibold text-on-primary truncate">{displayName}</p>

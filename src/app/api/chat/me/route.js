@@ -14,7 +14,7 @@ export async function GET(req) {
 
     await connectToDatabase();
 
-    const user = await User.findById(userId).select('username chatAccess chatBanned role name');
+    const user = await User.findById(userId).select('username chatAccess chatBanned role name photos');
     if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
 
     return NextResponse.json({
@@ -26,6 +26,8 @@ export async function GET(req) {
       username: user.username || null,
       role: user.role || 'user',
       name: user.name || '',
+      // O'z asosiy profil rasmim (sidebar/profil sahifasi avatari uchun).
+      photoId: user.photos?.[0] ? String(user.photos[0]._id) : null,
     });
   } catch (err) {
     return serverError(err, 'chat/me');

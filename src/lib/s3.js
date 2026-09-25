@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 
@@ -139,5 +139,55 @@ export async function objectExists(key) {
     return true;
   } catch {
     return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Profil rasmlari (Telegram uslubi) — chat media bilan BIR bucket, lekin alohida
+// `avatars/{userId}/` prefiksi ostida. Kalit hech qachon klientdan olinmaydi:
+// server `photoId` (yangi ObjectId) va o'lcham bo'yicha o'zi yasaydi, klient faqat
+// o'sha kalitga presigned PUT oladi (src/app/api/profile/photos/presign).
+// Klient allaqachon kesib, JPEG'ga o'girib yuklaydi (src/lib/avatarCrop.js), shuning
+// uchun kengaytma doim `.jpg`.
+export const AVATAR_SIZES = { full: 640, small: 160 };
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 640x640 JPEG odatda ~60-150KB
+
+export function buildAvatarKey(userId, photoId, size) {
+  return `avatars/${userId}/${photoId}_${size === 'small' ? 's' : 'f'}.jpg`;
+}
+
+export function isOwnAvatarKey(userId, key) {
+  if (typeof key !== 'string' || !/^[a-f0-9]{24}$/.test(String(userId))) return false;
+  return new RegExp(String.raw`^avatars/${userId}/[a-f0-9]{24}_[sf]\.jpg$`).test(key);
+}
+
+// Avatar URL'lari ro'yxatda o'nlab marta chiqadi — har safar YANGI imzo
+// (getSignedUrl `Date.now()`dan foydalanadi) brauzer keshini butunlay
+// buzardi: bir xil rasm har renderda qayta yuklanardi. Shuning uchun imzo
+// vaqti soat boshiga yaxlitlanadi (`signingDate`), muddat esa 2 soat — bir
+// soat ichida bir xil kalit uchun AYNAN bir xil URL chiqadi (brauzer rasmni
+// keshdan oladi), va eng yomon holatda ham URL kamida 1 soat amal qiladi.
+export async function presignAvatarDownload(key) {
+  const hourStart = new Date(Math.floor(Date.now() / 3600000) * 3600000);
+  const cmd = new GetObjectCommand({ Bucket: BUCKET(), Key: key });
+  return getSignedUrl(getClient(), cmd, { expiresIn: 7200, signingDate: hourStart });
+}
+
+export async function deleteObjects(keys) {
+  const list = (keys || []).filter(Boolean);
+  if (!list.length) return;
+  await getClient().send(
+    new DeleteObjectsCommand({ Bucket: BUCKET(), Delete: { Objects: list.map((Key) => ({ Key })), Quiet: true } })
+  );
+}
+
+// Obyekt hajmi (baytlarda) yoki mavjud bo'lmasa null — avatar yuklangandan keyin
+// klient da'vo qilgan emas, S3'dagi HAQIQIY hajmni tekshirish uchun.
+export async function objectSize(key) {
+  try {
+    const res = await getClient().send(new HeadObjectCommand({ Bucket: BUCKET(), Key: key }));
+    return typeof res.ContentLength === 'number' ? res.ContentLength : null;
+  } catch {
+    return null;
   }
 }

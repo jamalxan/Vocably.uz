@@ -6,6 +6,7 @@ import { isOnline, useLiveClock, formatRelativeTime } from '@/lib/presence';
 import { TYPING_LABEL } from '@/lib/chatConstants';
 import UserSearchBar from './UserSearchBar';
 import DeleteConversationModal from './DeleteConversationModal';
+import Avatar from '@/components/avatar/Avatar';
 
 // Uzoq bosish (long-press) uchun chegara — bundan qisqarog'i oddiy bosish
 // (suhbatni ochish) hisoblanadi, uzunrog'i esa o'chirish menyusini chiqaradi
@@ -65,21 +66,15 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
         aria-current={selected ? 'true' : undefined}
         className="flex-1 min-w-0 flex items-center gap-2.5 pl-2.5 pr-1 lg:pr-2.5 py-2.5 rounded-lg text-left cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <span className="relative flex-shrink-0">
-          <span className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">
-            {(c.otherUser?.username || '?')[0]?.toUpperCase()}
-          </span>
-          {/* Onlayn belgisi — 2026-09-10 so'rovi: avval `border-surface` edi, lekin bu
-              qator haqiqatda `bg-bg` fonida turadi (ConversationList'ning o'zi alohida
-              fon bermaydi) — mos kelmagan ramka nuqtani "kesib olingan" his qildirmay,
-              xira ko'rsatardi. Endi to'g'ri fon (`border-bg`) + semantik `success` rang. */}
-          {online && (
-            <span
-              title="Onlayn"
-              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-bg"
-            />
-          )}
-        </span>
+        {/* Onlayn belgisi ramkasi qator foniga mos (`border-bg`) — 2026-09-10 so'rovi. */}
+        <Avatar
+          userId={c.otherUser?.id}
+          photoId={c.otherUser?.photoId}
+          name={c.otherUser?.nickname || c.otherUser?.name}
+          username={c.otherUser?.username}
+          size={44}
+          online={online}
+        />
         <span className="block min-w-0 flex-1">
           <span className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-1 min-w-0">

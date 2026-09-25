@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
+import MyProfilePhoto from '@/components/avatar/MyProfilePhoto';
 
 // H-1 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H) — "Oxirgi marta ko'rilgan"/onlayn
 // holatini kim ko'rishi. `/api/chat/settings` bilan mos qiymatlar (src/lib/models.js
@@ -41,6 +42,7 @@ export default function ProfilPage() {
   // H-1 — faqat chatAccess bo'lgan foydalanuvchida ma'noli (Do'stlar bo'limi
   // umuman yashirin bo'lganlarda bu sozlama hech narsaga ta'sir qilmaydi).
   const [lastSeenVisibility, setLastSeenVisibility] = useState('everyone');
+  const [photoVisibility, setPhotoVisibility] = useState('everyone');
   const [visibilityLoading, setVisibilityLoading] = useState(true);
   const [visibilitySaving, setVisibilitySaving] = useState(false);
   const [visibilityError, setVisibilityError] = useState(false);
@@ -54,7 +56,9 @@ export default function ProfilPage() {
     fetch('/api/chat/settings')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (!cancelled && data?.lastSeenVisibility) setLastSeenVisibility(data.lastSeenVisibility);
+        if (cancelled) return;
+        if (data?.lastSeenVisibility) setLastSeenVisibility(data.lastSeenVisibility);
+        if (data?.photoVisibility) setPhotoVisibility(data.photoVisibility);
       })
       .catch(() => {})
       .finally(() => !cancelled && setVisibilityLoading(false));
@@ -63,20 +67,22 @@ export default function ProfilPage() {
     };
   }, [chatAccess]);
 
-  const saveVisibility = async (value) => {
-    const prev = lastSeenVisibility;
-    setLastSeenVisibility(value);
+  // `field` — 'lastSeenVisibility' yoki 'photoVisibility' (ikkalasi ham /api/chat/settings).
+  const saveVisibility = async (value, field = 'lastSeenVisibility') => {
+    const [prev, setter] =
+      field === 'photoVisibility' ? [photoVisibility, setPhotoVisibility] : [lastSeenVisibility, setLastSeenVisibility];
+    setter(value);
     setVisibilitySaving(true);
     setVisibilityError(false);
     try {
       const res = await fetch('/api/chat/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lastSeenVisibility: value }),
+        body: JSON.stringify({ [field]: value }),
       });
       if (!res.ok) throw new Error();
     } catch {
-      setLastSeenVisibility(prev);
+      setter(prev);
       setVisibilityError(true);
     } finally {
       setVisibilitySaving(false);
@@ -168,9 +174,7 @@ export default function ProfilPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 w-full max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4 p-5 bg-surface border border-border rounded-2xl shadow-card">
-        <div className="w-14 h-14 rounded-full bg-accent/15 border border-accent/30 text-accent flex items-center justify-center text-xl font-bold flex-shrink-0">
-          {displayName?.[0]?.toUpperCase() || '?'}
-        </div>
+        <MyProfilePhoto size={72} />
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-ink font-display truncate">{displayName}</h1>
           <p className="text-sm text-muted truncate">{username ? `@${username}` : phone}</p>
@@ -364,6 +368,28 @@ export default function ProfilPage() {
                     aria-pressed={lastSeenVisibility === opt.value}
                     className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                       lastSeenVisibility === opt.value ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="text-sm text-ink font-medium mt-5 mb-1">Profil rasmimni kim ko'radi</p>
+            <p className="text-xs text-muted mb-3">Siz o'z rasmlaringizni har doim ko'rasiz.</p>
+            {visibilityLoading ? (
+              <Skeleton className="h-11 w-full rounded-xl" />
+            ) : (
+              <div role="group" aria-label="Profil rasmi ko'rinishi" className="flex flex-col sm:flex-row gap-2 p-1 bg-bg rounded-xl">
+                {VISIBILITY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => saveVisibility(opt.value, 'photoVisibility')}
+                    disabled={visibilitySaving}
+                    aria-pressed={photoVisibility === opt.value}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                      photoVisibility === opt.value ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
                     }`}
                   >
                     {opt.label}

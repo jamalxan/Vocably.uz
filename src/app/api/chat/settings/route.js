@@ -18,8 +18,11 @@ export async function GET(req) {
 
     await connectToDatabase();
 
-    const full = await User.findById(user._id).select('lastSeenVisibility').lean();
-    return NextResponse.json({ lastSeenVisibility: full?.lastSeenVisibility || 'everyone' });
+    const full = await User.findById(user._id).select('lastSeenVisibility photoVisibility').lean();
+    return NextResponse.json({
+      lastSeenVisibility: full?.lastSeenVisibility || 'everyone',
+      photoVisibility: full?.photoVisibility || 'everyone',
+    });
   } catch (err) {
     return serverError(err, 'chat/settings GET');
   }
@@ -32,14 +35,22 @@ export async function PATCH(req) {
 
     await connectToDatabase();
 
-    const { lastSeenVisibility } = await req.json().catch(() => ({}));
-    if (!VISIBILITY_VALUES.includes(lastSeenVisibility)) {
-      return NextResponse.json({ error: "Noto'g'ri qiymat" }, { status: 400 });
+    // Har ikkala maxfiylik sozlamasi (oxirgi ko'rilgan / profil rasmi) shu bitta
+    // endpoint orqali — so'rovda qaysi biri kelsa, faqat o'shasi yangilanadi.
+    const body = await req.json().catch(() => ({}));
+    const update = {};
+    for (const field of ['lastSeenVisibility', 'photoVisibility']) {
+      if (!(field in body)) continue;
+      if (!VISIBILITY_VALUES.includes(body[field])) {
+        return NextResponse.json({ error: "Noto'g'ri qiymat" }, { status: 400 });
+      }
+      update[field] = body[field];
     }
+    if (!Object.keys(update).length) return NextResponse.json({ error: "Noto'g'ri qiymat" }, { status: 400 });
 
-    await User.updateOne({ _id: user._id }, { $set: { lastSeenVisibility } });
+    await User.updateOne({ _id: user._id }, { $set: update });
 
-    return NextResponse.json({ success: true, lastSeenVisibility });
+    return NextResponse.json({ success: true, ...update });
   } catch (err) {
     return serverError(err, 'chat/settings PATCH');
   }

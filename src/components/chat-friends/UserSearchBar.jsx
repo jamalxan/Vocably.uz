@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
+import Avatar from '@/components/avatar/Avatar';
 
 // C-08 — min 2 belgi bosilmaguncha qidirilmaydi (bitta harf butun kolleksiyani
 // qimmat skanerlashga olib kelardi, natija ham foydasiz keng bo'lardi).
@@ -80,9 +81,7 @@ export default function UserSearchBar({ onOpen }) {
                 disabled={openingUsername === result.username}
                 className="w-full min-h-11 flex items-center gap-2.5 text-left px-1.5 py-1 rounded-lg hover:bg-bg disabled:opacity-50"
               >
-                <div className="w-8 h-8 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold flex-shrink-0">
-                  {result.username[0]?.toUpperCase()}
-                </div>
+                <Avatar userId={result.id} photoId={result.photoId} name={result.name} username={result.username} size={36} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-ink truncate">@{result.username}</p>
                   {result.name && <p className="text-xs text-muted truncate">{result.name}</p>}

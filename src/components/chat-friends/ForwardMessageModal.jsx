@@ -2,6 +2,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Loader2, Search, Send, X } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
+import Avatar from '@/components/avatar/Avatar';
 
 // C-10 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 C) — "Forward" uchun
 // yengil "suhbat tanlash" oynasi: alohida so'rov/endpoint kerak emas —
@@ -102,9 +103,13 @@ export default function ForwardMessageModal({ open, message, onClose }) {
               disabled={!!sendingId}
               className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left hover:bg-bg transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              <span className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold flex-shrink-0">
-                {(c.otherUser?.username || '?')[0]?.toUpperCase()}
-              </span>
+              <Avatar
+                userId={c.otherUser?.id}
+                photoId={c.otherUser?.photoId}
+                name={c.otherUser?.nickname || c.otherUser?.name}
+                username={c.otherUser?.username}
+                size={36}
+              />
               <span className="flex-1 min-w-0 text-sm font-medium text-ink truncate">
                 {c.otherUser?.nickname || `@${c.otherUser?.username || "noma'lum"}`}
               </span>
