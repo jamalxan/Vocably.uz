@@ -1,17 +1,24 @@
 'use client';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { EmojiPicker as Frimousse } from 'frimousse';
 import { Search, Clock } from 'lucide-react';
 
 // Emoji rasm/sprite sifatida EMAS — native unicode belgi sifatida render qilinadi.
 // Brauzer platformaning o'z emoji shriftini ishlatadi (iPhone/Mac'da Apple emoji,
-// xuddi Telegramdagidek). Hech qanday asset yuklab olinmaydi — emoji ma'lumotlari
-// frimousse tomonidan tashqi CDN'dan (emojibase) so'ralganda lazy-fetch qilinadi,
-// bizning bundle'imizga qo'shilmaydi.
+// xuddi Telegramdagidek). Emoji ma'lumotlari (emojibase) bundle'ga qo'shilmaydi —
+// frimousse ularni birinchi ochilganda lazy-fetch qiladi va localStorage'da keshlaydi.
+//
+// MUHIM: ma'lumot O'Z serverimizdan (/emojibase — scripts/copy-emojibase.mjs
+// predev/prebuild'da `emojibase-data` paketidan public/'ga ko'chiradi). Ilgari
+// frimousse'ning sukut manbai — cdn.jsdelivr.net — ishlatilardi; next.config.mjs'ga
+// CSP (`connect-src 'self' ...`) qo'shilgach bu so'rov bloklanib, picker keshsiz
+// brauzerlarda abadiy "Yuklanmoqda..."da qotib qolardi.
+const EMOJIBASE_URL = '/emojibase';
 
 // Emojibase'da "uz" locale yo'q (faqat en/ru va h.k.) — shuning uchun qidiruv
 // kalit so'zlari uchun "en" ishlatiladi, lekin KO'RINADIGAN barcha matn (sarlavhalar,
 // placeholder) qo'lda o'zbekchaga tarjima qilingan (pastdagi CATEGORY_META).
+// Boshqa locale qo'shilsa — scripts/copy-emojibase.mjs#LOCALES ham yangilansin.
 const LOCALE = 'en';
 
 // DIQQAT: kalitlar emojibase'ning haqiqiy (en) kategoriya matnlariga aynan mos
@@ -28,6 +35,7 @@ const CATEGORY_META = {
   Symbols: { uz: 'Belgilar', icon: '❤️' },
   Flags: { uz: 'Bayroqlar', icon: '🏳️' },
 };
+const CATEGORY_ORDER = Object.keys(CATEGORY_META);
 
 const RECENTS_KEY = 'vocably.recentEmojis';
 const RECENTS_MAX = 24;
@@ -57,8 +65,13 @@ function CategoryHeader({ category, headerRefs, ...props }) {
   return (
     <div
       {...props}
+      // Ro'yxat virtualizatsiyalangan — header ekrandan chiqsa unmount bo'ladi.
+      // Eskirgan (DOM'dan uzilgan) tugun saqlanib qolmasligi uchun null'da o'chiramiz.
       ref={(node) => {
         if (node) headerRefs.current[category.label] = node;
+        else if (headerRefs.current[category.label] && !headerRefs.current[category.label].isConnected) {
+          delete headerRefs.current[category.label];
+        }
       }}
       className="sticky top-0 z-10 bg-surface/95 backdrop-blur-sm px-1 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wide"
     >
@@ -113,10 +126,20 @@ function useIsMobile() {
   return isMobile;
 }
 
+// Header'ning kategoriya bloki ([frimousse-category]) viewport ichidagi haqiqiy
+// scroll pozitsiyasi (bloklar absolyut joylashtirilgan, header esa sticky —
+// shuning uchun header'ning o'zi emas, uning bloki o'lchanadi).
+function categoryTop(viewport, headerNode) {
+  const block = headerNode.closest('[frimousse-category]') || headerNode;
+  return viewport.scrollTop + block.getBoundingClientRect().top - viewport.getBoundingClientRect().top;
+}
+
 function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
   const [recents, setRecents] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(CATEGORY_ORDER[0]);
   const searchInputRef = useRef(null);
+  const jumpRef = useRef(null);
 
   useEffect(() => {
     setRecents(loadRecents());
@@ -124,7 +147,7 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
 
   // Frimousse.Search'ning ichki filtrlash mantig'iga aralashmaslik uchun onChange
   // prop orqali emas, xom DOM 'input' hodisasi orqali kuzatiladi — faqat
-  // "qidiruv bo'shmi" degan holatni bilish uchun (Yaqinda ishlatilgan bo'limini
+  // "qidiruv bo'shmi" degan holatni bilish uchun (Yaqinda ishlatilgan lentasini
   // ko'rsatish/yashirish), haqiqiy filtrlash to'liq kutubxonaning o'zida qoladi.
   useEffect(() => {
     const el = searchInputRef.current;
@@ -134,6 +157,8 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
     return () => el.removeEventListener('input', onInput);
   }, []);
 
+  useEffect(() => () => cancelAnimationFrame(jumpRef.current), []);
+
   const pick = useCallback(
     (emoji) => {
       setRecents(saveRecent(emoji));
@@ -142,13 +167,85 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
     [onPick]
   );
 
+  // Joriy kategoriyani (tab belgisi uchun) scroll paytida aniqlash: yuqori
+  // chegaradan o'tgan eng oxirgi (mount qilingan) kategoriya.
+  const onViewportScroll = useCallback(() => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+    let best = null;
+    let bestTop = -Infinity;
+    for (const [label, node] of Object.entries(headerRefs.current)) {
+      if (!node?.isConnected) continue;
+      const top = categoryTop(vp, node);
+      if (top <= vp.scrollTop + 4 && top > bestTop) {
+        best = label;
+        bestTop = top;
+      }
+    }
+    if (best) setActiveCategory(best);
+  }, [headerRefs, viewportRef]);
+
+  // Tabga bosilganda kategoriyaga o'tish. Ro'yxat virtualizatsiyalangan: uzoqdagi
+  // kategoriya header'i hali DOM'da YO'Q (ilgari shuning uchun ko'p tablar hech
+  // narsa qilmasdi). Shu sabab header mount bo'lguncha kerakli yo'nalishda katta
+  // qadamlar bilan suramiz, topilgach aniq joyiga o'rnatamiz.
+  const scrollToCategory = useCallback(
+    (label) => {
+      const vp = viewportRef.current;
+      if (!vp) return;
+      cancelAnimationFrame(jumpRef.current);
+      const target = CATEGORY_ORDER.indexOf(label);
+      setActiveCategory(label);
+      let tries = 0;
+      const step = () => {
+        const node = headerRefs.current[label];
+        if (node?.isConnected) {
+          vp.scrollTo({ top: Math.max(0, categoryTop(vp, node)), behavior: 'instant' });
+          return;
+        }
+        const mounted = Object.entries(headerRefs.current)
+          .filter(([, n]) => n?.isConnected)
+          .map(([l]) => CATEGORY_ORDER.indexOf(l))
+          .filter((i) => i >= 0);
+        const current = mounted.length ? Math.max(...mounted) : 0;
+        const dir = target > current ? 1 : -1;
+        const before = vp.scrollTop;
+        vp.scrollTop += dir * vp.clientHeight * 2;
+        if (vp.scrollTop === before || ++tries > 60) return; // chetga yetdi / himoya
+        // Ikki kadr — frimousse scroll hodisasidan keyin yangi qatorlarni render qilsin.
+        jumpRef.current = requestAnimationFrame(() => {
+          jumpRef.current = requestAnimationFrame(step);
+        });
+      };
+      step();
+    },
+    [headerRefs, viewportRef]
+  );
+
+  // `components` BARQAROR bo'lishi shart: ilgari JSX ichida inline arrow sifatida
+  // berilardi — har renderda yangi komponent turi = React butun ro'yxatni (har bir
+  // qator va emoji tugmasini) unmount/mount qilardi (hover'da miltillash, sekinlik).
+  const listComponents = useMemo(
+    () => ({
+      CategoryHeader: (props) => <CategoryHeader {...props} headerRefs={headerRefs} />,
+      Row: ({ children, ...props }) => (
+        <div {...props} className="grid gap-0.5" style={{ ...props.style, gridTemplateColumns: `repeat(${columns}, minmax(0,1fr))` }}>
+          {children}
+        </div>
+      ),
+      Emoji: EmojiCell,
+    }),
+    [columns, headerRefs]
+  );
+
   return (
     <Frimousse.Root
       locale={LOCALE}
+      emojibaseUrl={EMOJIBASE_URL}
       columns={columns}
       sticky
       onEmojiSelect={(e) => pick(e.emoji)}
-      className="flex flex-col h-full font-chat"
+      className="flex flex-col h-full min-h-0 font-chat"
     >
       <div className="flex items-center gap-2 px-2.5 pt-2.5 pb-2">
         <div className="relative flex-1 min-w-0">
@@ -163,64 +260,54 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
         <Frimousse.SkinToneSelector aria-label="Teri rangi" className="flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-lg hover:bg-bg transition-colors emoji" />
       </div>
 
-      {/* Kategoriya tablari — bosilganda mos sarlavhaga scroll qiladi. */}
-      <div className="flex items-center gap-0.5 px-2 pb-1.5 overflow-x-auto flex-shrink-0">
-        <button
-          type="button"
-          onClick={() => viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-          title="Yaqinda ishlatilgan"
-          aria-label="Yaqinda ishlatilgan"
-          className="flex-shrink-0 w-11 h-11 md:w-7 md:h-7 flex items-center justify-center rounded-lg text-muted hover:bg-bg hover:text-accent transition-colors"
-        >
-          <Clock size={14} />
-        </button>
-        {Object.entries(CATEGORY_META).map(([label, meta]) => (
-          <button
-            key={label}
-            type="button"
-            title={meta.uz}
-            aria-label={meta.uz}
-            onClick={() => headerRefs.current[label]?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="flex-shrink-0 w-11 h-11 md:w-7 md:h-7 flex items-center justify-center rounded-lg emoji hover:bg-bg transition-colors"
-          >
-            {meta.icon}
-          </button>
-        ))}
-      </div>
+      {/* Kategoriya tablari — bosilganda mos kategoriyaga o'tadi, joriysi belgilanadi. */}
+      {!searching && (
+        <div className="flex items-center gap-0.5 px-2 pb-1.5 overflow-x-auto flex-shrink-0">
+          {CATEGORY_ORDER.map((label) => (
+            <button
+              key={label}
+              type="button"
+              title={CATEGORY_META[label].uz}
+              aria-label={CATEGORY_META[label].uz}
+              aria-pressed={activeCategory === label}
+              onClick={() => scrollToCategory(label)}
+              className={`flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-lg emoji transition-colors ${
+                activeCategory === label ? 'bg-accent-soft' : 'opacity-60 hover:opacity-100 hover:bg-bg'
+              }`}
+            >
+              {CATEGORY_META[label].icon}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <Frimousse.Viewport ref={viewportRef} className="flex-1 overflow-y-auto px-2 pb-2 min-h-0">
-        {!searching && recents.length > 0 && (
-          <div className="mb-1">
-            <p className="sticky top-0 z-10 bg-surface/95 backdrop-blur-sm px-1 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wide">
-              Yaqinda ishlatilgan
-            </p>
-            <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0,1fr))` }}>
-              {recents.map((e, i) => (
-                <button
-                  key={`${e}-${i}`}
-                  type="button"
-                  onClick={() => pick(e)}
-                  className="emoji font-chat flex items-center justify-center rounded-lg aspect-square transition-transform duration-100 hover:scale-[1.15] hover:bg-accent-soft"
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
+      {/* "Yaqinda ishlatilgan" — ATAYLAB Viewport'dan TASHQARIDA: frimousse ko'rinadigan
+          qatorlarni viewport scrollTop'idan hisoblaydi va ro'yxat viewport'ning eng
+          boshida turadi deb hisoblaydi. Ilgari bu bo'lim ro'yxat ustida (viewport
+          ichida) edi — butun hisob shu balandlikka siljib, pastki qatorlar bo'sh
+          qolardi va sticky sarlavhalar noto'g'ri kategoriyani ko'rsatardi. */}
+      {!searching && recents.length > 0 && (
+        <div className="flex items-center gap-1 px-2 pb-1.5 flex-shrink-0 border-b border-border">
+          <Clock size={13} className="text-muted flex-shrink-0 mx-1" aria-hidden="true" />
+          <div role="group" aria-label="Yaqinda ishlatilgan" className="flex gap-0.5 overflow-x-auto min-w-0">
+            {recents.map((e, i) => (
+              <button
+                key={`${e}-${i}`}
+                type="button"
+                onClick={() => pick(e)}
+                className="emoji font-chat flex-shrink-0 w-9 h-9 text-xl flex items-center justify-center rounded-lg transition-transform duration-100 hover:scale-[1.15] hover:bg-accent-soft"
+              >
+                {e}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+      )}
+
+      <Frimousse.Viewport ref={viewportRef} onScroll={onViewportScroll} className="flex-1 overflow-y-auto px-2 pb-2 min-h-0">
         <Frimousse.Loading className="block py-6 text-center text-xs text-muted">Yuklanmoqda...</Frimousse.Loading>
         <Frimousse.Empty className="block py-6 text-center text-xs text-muted">Hech narsa topilmadi</Frimousse.Empty>
-        <Frimousse.List
-          components={{
-            CategoryHeader: (props) => <CategoryHeader {...props} headerRefs={headerRefs} />,
-            Row: ({ children, ...props }) => (
-              <div {...props} className="grid gap-0.5" style={{ ...props.style, gridTemplateColumns: `repeat(${columns}, minmax(0,1fr))` }}>
-                {children}
-              </div>
-            ),
-            Emoji: EmojiCell,
-          }}
-        />
+        <Frimousse.List components={listComponents} />
       </Frimousse.Viewport>
     </Frimousse.Root>
   );

@@ -18,3 +18,6 @@ memory/
 # (har transkript satri uchun alohida WAV) — faqat scripts/tts/concat-parts.mjs
 # uchun kirish, yakuniy fayllar public/audio/exam/ ga yoziladi.
 scripts/tts/out/
+
+# scripts/copy-emojibase.mjs tomonidan predev/prebuild paytida yaratiladi.
+public/emojibase/
