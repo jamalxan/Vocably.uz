@@ -31,6 +31,12 @@ export async function PATCH(req, { params }) {
       diff.chatBanned = { from: target.chatBanned, to: body.chatBanned };
       target.chatBanned = body.chatBanned;
     }
+    // Yoqilsa — shu userga Do'stlar'da kim yozsa ham Telegram bot orqali xabar boradi
+    // (user o'zi alohida suhbatlar uchun buni o'zgartira oladi — isTgMessageNotifyOn).
+    if (typeof body.tgMessageNotify === 'boolean') {
+      diff.tgMessageNotify = { from: target.tgMessageNotify, to: body.tgMessageNotify };
+      target.tgMessageNotify = body.tgMessageNotify;
+    }
     // TCH-01 — 'teacher' shu bir xil oqimga qo'shildi (admin/chat/users PATCH),
     // alohida teacher-tayinlash UI/endpoint yaratilmadi.
     if (typeof body.role === 'string' && ['user', 'admin', 'teacher'].includes(body.role)) {
@@ -73,6 +79,8 @@ export async function PATCH(req, { params }) {
         role: target.role,
         chatAccess: target.chatAccess,
         chatBanned: target.chatBanned,
+        tgMessageNotify: target.tgMessageNotify,
+        telegramLinked: !!target.telegramChatId,
         subscriptionTier: target.subscriptionTier,
       },
     });

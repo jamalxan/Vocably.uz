@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X } from 'lucide-react';
+import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X, Send } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { formatLastSeen, formatMuteUntil, isOnline, useLiveClock } from '@/lib/presence';
@@ -102,6 +102,7 @@ export default function ConversationView({ onBack }) {
     blockUser,
     toggleMuteConversation,
     toggleNotifyOnline,
+    toggleTgMessageNotify,
     unpinMessage,
     livePresence,
     typingByConversation,
@@ -276,6 +277,11 @@ export default function ConversationView({ onBack }) {
     toggleNotifyOnline(activeConversation.id, !activeConversation.notifyOnline);
   };
 
+  const handleToggleTgMessageNotify = async () => {
+    const res = await toggleTgMessageNotify(activeConversation.id, !activeConversation.tgMessageNotify);
+    if (res?.error) alert(res.error);
+  };
+
   const handleUnpin = async (messageId) => {
     const res = await unpinMessage(messageId);
     if (res?.error) alert(res.error);
@@ -333,6 +339,23 @@ export default function ConversationView({ onBack }) {
         >
           {/* Wifi ikonkasi ro'yxatda "ulanish holati" ma'nosida — bu yerda boshqa ikonka. */}
           <UserCheck size={16} />
+        </button>
+        <button
+          onClick={handleToggleTgMessageNotify}
+          title={
+            activeConversation.tgMessageNotify
+              ? "Yangi xabarlar haqida Telegram bildirishnomasini o'chirish"
+              : 'Yangi xabar kelganda Telegram bot orqali xabar ber'
+          }
+          aria-label={
+            activeConversation.tgMessageNotify
+              ? "Yangi xabarlar haqida Telegram bildirishnomasini o'chirish"
+              : 'Yangi xabar kelganda Telegram bot orqali xabar ber'
+          }
+          aria-pressed={!!activeConversation.tgMessageNotify}
+          className={`${HEADER_BTN} ${activeConversation.tgMessageNotify ? 'text-accent' : 'text-muted hover:text-accent'}`}
+        >
+          <Send size={16} />
         </button>
         <button
           onClick={handleToggleMute}

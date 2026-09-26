@@ -2,7 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { requireChatUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, User, Block, Message } from '@/lib/models';
-import { isConversationMuted, shouldShowLastSeen } from '@/lib/chatConstants';
+import { isConversationMuted, isTgMessageNotifyOn, shouldShowLastSeen } from '@/lib/chatConstants';
 import { currentPhotoId } from '@/lib/avatars';
 import { NextResponse } from 'next/server';
 
@@ -120,6 +120,7 @@ export async function GET(req) {
         muted: isConversationMuted(c, user._id),
         mutedUntil: activeMutedUntilIso(c, user._id),
         notifyOnline: (c.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
+        tgMessageNotify: isTgMessageNotifyOn(c, user._id, user.tgMessageNotify),
         unreadCount: unreadById.get(String(c._id)) || 0,
         // C-10 — pin banner (ConversationView.jsx) shu ro'yxatdan foydalanadi.
         pinnedMessageIds: (c.pinnedMessageIds || []).map(String),
@@ -211,6 +212,7 @@ export async function POST(req) {
         muted: isConversationMuted(convo, user._id),
         mutedUntil: activeMutedUntilIso(convo, user._id),
         notifyOnline: (convo.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
+        tgMessageNotify: isTgMessageNotifyOn(convo, user._id, user.tgMessageNotify),
         pinnedMessageIds: (convo.pinnedMessageIds || []).map(String),
       },
     });

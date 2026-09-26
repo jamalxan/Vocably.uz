@@ -72,6 +72,21 @@ export function isConversationMuted(convo, userId, now = Date.now()) {
   return new Date(raw).getTime() > now;
 }
 
+// Shu suhbatga yangi xabar kelganda `userId`ga Telegram bot orqali xabar borishi
+// kerakmi. Userning shu suhbatdagi aniq tanlovi (tgMessageNotifyOn/Off) har doim
+// ustun; tanlov bo'lmasa — admin userga bergan umumiy sozlama (`userDefault`,
+// User.tgMessageNotify) amal qiladi.
+export function isTgMessageNotifyOn(convo, userId, userDefault) {
+  const uid = String(userId);
+  if ((convo?.tgMessageNotifyOff || []).some((id) => String(id) === uid)) return false;
+  if ((convo?.tgMessageNotifyOn || []).some((id) => String(id) === uid)) return true;
+  return !!userDefault;
+}
+
+// Bitta suhbatdan ketma-ket kelgan xabarlar uchun Telegram bildirishnomasi orasidagi
+// minimal oraliq — har bir xabarga alohida bot xabari kelib spam bo'lmasligi uchun.
+export const TG_MESSAGE_NOTIFY_THROTTLE_MS = 60 * 1000;
+
 // Xuddi shu g'oya, lekin klientning GET /conversations javobidan kelgan, ALLAQACHON
 // tekislangan shakli uchun ({muted, mutedUntil}) — ChatContext.jsx yangi xabar
 // toast'ini ko'rsatishdan oldin server round-trip'ni kutmasdan shu bilan tekshiradi.

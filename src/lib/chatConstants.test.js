@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isConversationMuted, isMutedNow, shouldShowLastSeen } from './chatConstants';
+import { isConversationMuted, isMutedNow, isTgMessageNotifyOn, shouldShowLastSeen } from './chatConstants';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -73,5 +73,28 @@ describe('isMutedNow', () => {
   it('treats an expired mutedUntil as not muted', () => {
     const iso = new Date(Date.now() - HOUR).toISOString();
     expect(isMutedNow({ muted: true, mutedUntil: iso })).toBe(false);
+  });
+});
+
+describe('isTgMessageNotifyOn', () => {
+  const uid = 'u1';
+
+  it('tanlov bo\'lmasa admin sozlamasiga tayanadi', () => {
+    expect(isTgMessageNotifyOn({}, uid, false)).toBe(false);
+    expect(isTgMessageNotifyOn({}, uid, true)).toBe(true);
+    expect(isTgMessageNotifyOn({}, uid, undefined)).toBe(false);
+  });
+
+  it('suhbatda aniq yoqilgan bo\'lsa admin o\'chiq bo\'lsa ham yoqiq', () => {
+    expect(isTgMessageNotifyOn({ tgMessageNotifyOn: [uid] }, uid, false)).toBe(true);
+  });
+
+  it('suhbatda aniq o\'chirilgan bo\'lsa admin yoqqan bo\'lsa ham o\'chiq', () => {
+    expect(isTgMessageNotifyOn({ tgMessageNotifyOff: [uid] }, uid, true)).toBe(false);
+  });
+
+  it('boshqa userning tanlovi ta\'sir qilmaydi', () => {
+    expect(isTgMessageNotifyOn({ tgMessageNotifyOn: ['u2'] }, uid, false)).toBe(false);
+    expect(isTgMessageNotifyOn({ tgMessageNotifyOff: ['u2'] }, uid, true)).toBe(true);
   });
 });

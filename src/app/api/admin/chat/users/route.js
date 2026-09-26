@@ -31,7 +31,7 @@ export async function GET(req) {
     // Cursor-based (createdAt bo'yicha) — skip() o'rniga, chunki ma'lumot ko'paygan sari
     // sekinlashmaydi. +1 chegara: navbatdagi sahifa bor-yo'qligini bitta so'rovda bilish uchun.
     const users = await User.find(filter)
-      .select('phone name username role chatAccess chatBanned createdAt subscriptionTier')
+      .select('phone name username role chatAccess chatBanned createdAt subscriptionTier tgMessageNotify telegramChatId')
       .sort({ createdAt: -1 })
       .limit(limit + 1)
       .lean();
@@ -41,7 +41,12 @@ export async function GET(req) {
     const nextCursor = hasMore ? page[page.length - 1].createdAt : null;
 
     return NextResponse.json({
-      users: page.map((u) => ({ ...u, phoneDisplay: formatPhoneDisplay(u.phone) })),
+      // telegramChatId o'zi klientga chiqarilmaydi — faqat "botga ulanganmi" belgisi.
+      users: page.map(({ telegramChatId, ...u }) => ({
+        ...u,
+        telegramLinked: !!telegramChatId,
+        phoneDisplay: formatPhoneDisplay(u.phone),
+      })),
       nextCursor,
     });
   } catch (err) {

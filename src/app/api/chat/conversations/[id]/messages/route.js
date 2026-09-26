@@ -9,7 +9,12 @@ import { pushNewMessage } from '@/lib/realtime';
 import { sendPushToUser } from '@/lib/webPush';
 import { markConversationRead } from '@/lib/chatRead';
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
-import { PREVIEW_BY_TYPE, isConversationMuted } from '@/lib/chatConstants';
+import {
+  PREVIEW_BY_TYPE,
+  isConversationMuted,
+  isTgMessageNotifyOn,
+  TG_MESSAGE_NOTIFY_THROTTLE_MS,
+} from '@/lib/chatConstants';
 import { NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
@@ -248,7 +253,7 @@ export async function POST(req, { params }) {
     // orqali) odatdagidek yetib boradi; yuboruvchi bu haqda hech narsa bilmaydi — API
     // javobi ikkala holatda ham bir xil. Ilova ichidagi qo'ng'iroq belgisida (Notification
     // hujjati) chat xabarlari uchun ATAYLAB endi bildirishnoma yaratilmaydi — buning
-    // o'rniga adminga Telegram orqali xabar boradi (pastga qarang).
+    // o'rniga Telegram orqali xabar boradi (pastga qarang).
     const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
     // G-3 — endi doimiy (`mutedBy`) VA muddatli (`mutedUntil`, hali tugamagan) mute'ni
     // ham hisobga oladi (src/lib/chatConstants.js#isConversationMuted).
@@ -258,24 +263,76 @@ export async function POST(req, { params }) {
       sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }).catch(() => {});
     }
 
-    // Telegram xabari — FAQAT xabar aynan adminning o'ziga (qabul qiluvchi roli
-    // 'admin' bo'lganda) yozilganda yuboriladi, boshqa har qanday ikki foydalanuvchi
-    // suhbatlashganda EMAS (aks holda admin o'zi kimgadir yozganda ham unga bekorga
-    // bildirishnoma kelaverardi). Foydalanuvchining shaxsiy "ovozsiz" sozlamasidan
-    // qat'iy nazar yuboriladi. ATAYLAB butunlay umumiy: kim yozgani, xabar turi yoki
-    // mazmuni (`preview`) hech qachon ko'rsatilmaydi — faqat "sizga xabar keldi" signali.
-    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-    if (adminChatId) {
-      const recipient = await User.findById(otherId).select('role').lean();
-      if (recipient?.role === 'admin') {
-        sendTelegramMessage(adminChatId, '💬 Sizga xabar keldi.').catch((err) =>
-          console.error('[telegram] admin chat xabari yuborilmadi', err)
-        );
-      }
-    }
+    // Telegram bildirishnomalari. Xato bo'lsa faqat log qilinadi (xabar allaqachon
+    // saqlangan). `await` ataylab — Vercel serverless'da javob qaytgach "osilib" qolgan
+    // promise o'ldirilishi mumkin, bildirishnoma esa yo'qolib ketardi.
+    await notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipientMuted, senderUsername: user.username }).catch(
+      (err) => console.error('[telegram] chat xabari bildirishnomasi yuborilmadi', err)
+    );
 
     return NextResponse.json({ message });
   } catch (err) {
     return serverError(err, 'chat/messages POST');
   }
+}
+
+// Qabul qiluvchiga Telegram bot orqali "yangi xabar" signali. Ikki manba:
+//
+// 1. Qabul qiluvchi o'zi uchun (yoki admin unga) yoqib qo'ygan bo'lsa — uning o'z
+//    telegramChatId'siga. Shu suhbatdagi shaxsiy tanlovi (tgMessageNotifyOn/Off)
+//    ustun, tanlov bo'lmasa admin bergan umumiy sozlama (User.tgMessageNotify) —
+//    src/lib/chatConstants.js#isTgMessageNotifyOn. Umumiy (admin) sozlama bo'yicha
+//    yuborilganda suhbat "ovozsiz" (mute) bo'lsa yuborilmaydi; user AYNAN shu suhbat
+//    uchun aniq yoqib qo'ygan bo'lsa — mute'dan qat'iy nazar yuboriladi. Xabar
+//    mazmuni hech qachon ko'rsatilmaydi — faqat kim yozgani.
+// 2. Eski xatti-harakat saqlangan: xabar aynan adminga (role 'admin') yozilsa —
+//    TELEGRAM_ADMIN_CHAT_ID'ga umumiy "Sizga xabar keldi" (kim yozgani ko'rsatilmaydi).
+//    Shu chat 1-banddagi bilan bir xil bo'lsa ikki marta yuborilmaydi.
+//
+// Ketma-ket yozilgan xabarlar spam bo'lmasligi uchun bir suhbatdan bir userga
+// TG_MESSAGE_NOTIFY_THROTTLE_MS'da ko'pi bilan bitta bildirishnoma (atomik
+// updateOne — parallel so'rovlarda ham faqat bittasi "yutadi").
+async function notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipientMuted, senderUsername }) {
+  const recipient = await User.findById(otherId).select('role telegramChatId tgMessageNotify').lean();
+  if (!recipient) return;
+
+  const targets = new Map(); // chatId -> matn
+  const explicitOn = (convo.tgMessageNotifyOn || []).some((id) => String(id) === String(otherId));
+  const wantsNotify = isTgMessageNotifyOn(convo, otherId, recipient.tgMessageNotify);
+  if (recipient.telegramChatId && wantsNotify && (explicitOn || !recipientMuted)) {
+    targets.set(String(recipient.telegramChatId), `💬 ${escapeHtml(senderLabel)} sizga yangi xabar yozdi.`);
+  }
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (adminChatId && recipient.role === 'admin' && !targets.has(String(adminChatId))) {
+    targets.set(String(adminChatId), '💬 Sizga xabar keldi.');
+  }
+  if (!targets.size) return;
+
+  const key = `tgMessageNotifiedAt.${String(otherId)}`;
+  const now = new Date();
+  const claimed = await Conversation.updateOne(
+    {
+      _id: convo._id,
+      $or: [{ [key]: { $exists: false } }, { [key]: { $lt: new Date(now.getTime() - TG_MESSAGE_NOTIFY_THROTTLE_MS) } }],
+    },
+    { $set: { [key]: now } }
+  );
+  if (!claimed.modifiedCount) return;
+
+  const appUrl = process.env.APP_URL?.replace(/\/$/, '');
+  const extra =
+    appUrl && senderUsername
+      ? { reply_markup: { inline_keyboard: [[{ text: 'Suhbatni ochish', url: `${appUrl}/app/dostlar/${senderUsername}` }]] } }
+      : {};
+
+  const results = await Promise.allSettled(
+    [...targets].map(([chatId, text]) => sendTelegramMessage(chatId, text, extra))
+  );
+  results
+    .filter((r) => r.status === 'rejected')
+    .forEach((r) => console.error('[telegram] chat xabari bildirishnomasi yuborilmadi', r.reason));
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

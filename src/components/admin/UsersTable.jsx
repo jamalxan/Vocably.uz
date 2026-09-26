@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User as UserIcon, GraduationCap } from 'lucide-react';
+import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User as UserIcon, GraduationCap, Send } from 'lucide-react';
 import { SUBSCRIPTION_TIERS, TIER_CONFIG } from '@/lib/entitlements';
 
 export default function UsersTable() {
@@ -118,6 +118,7 @@ export default function UsersTable() {
                   <th className="px-5 py-3.5 font-semibold">Ro'yxatdan o'tgan</th>
                   <th className="px-5 py-3.5 font-semibold">Username</th>
                   <th className="px-5 py-3.5 font-semibold">Do'stlar</th>
+                  <th className="px-5 py-3.5 font-semibold" title="Yoqilsa — kim yozsa ham Telegram bot orqali xabar boradi">TG xabar</th>
                   <th className="px-5 py-3.5 font-semibold">Rol</th>
                   <th className="px-5 py-3.5 font-semibold">Tarif</th>
                   <th className="px-5 py-3.5 font-semibold">Holat</th>
@@ -180,6 +181,31 @@ export default function UsersTable() {
                           <ShieldOff size={13} /> Ruxsat berish
                         </button>
                       )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {/* Yoqilsa — shu userga Do'stlar'da kim yozsa ham Telegram bot
+                          orqali xabar boradi. User o'zi har bir suhbat uchun alohida
+                          yoqib/o'chira oladi (suhbat sarlavhasidagi tugma), bu esa
+                          shu sozlamadan ustun turadi. */}
+                      <button
+                        disabled={savingId === u._id || (!u.tgMessageNotify && !u.telegramLinked)}
+                        onClick={() => patchUser(u._id, { tgMessageNotify: !u.tgMessageNotify })}
+                        title={
+                          !u.telegramLinked
+                            ? "Foydalanuvchi Telegram botga ulanmagan"
+                            : u.tgMessageNotify
+                              ? "Telegram xabarini o'chirish"
+                              : 'Kim yozsa ham Telegram bot orqali xabar borsin'
+                        }
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                          u.tgMessageNotify
+                            ? 'bg-accent-soft border border-accent/25 text-accent hover:bg-accent/15'
+                            : 'bg-bg border border-border text-muted hover:border-accent/40 hover:text-accent'
+                        }`}
+                      >
+                        <Send size={13} />
+                        {u.tgMessageNotify ? 'Yoqilgan' : u.telegramLinked ? "O'chiq" : 'Ulanmagan'}
+                      </button>
                     </td>
                     <td className="px-5 py-3.5">
                       <select

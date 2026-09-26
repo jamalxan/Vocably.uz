@@ -152,6 +152,10 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, trim: true, unique: true, sparse: true, index: true },
   chatAccess: { type: Boolean, default: false },
   chatBanned: { type: Boolean, default: false },
+  // Admin yoqsa — shu userga Do'stlar bo'limida KIM yozsa ham Telegram bot orqali
+  // "yangi xabar" bildirishnomasi boradi (barcha suhbatlar uchun standart). User o'zi
+  // har bir suhbat uchun alohida yoqib/o'chirib qo'yishi mumkin (Conversation.tgMessageNotifyOn/Off).
+  tgMessageNotify: { type: Boolean, default: false },
   // Do'stlar bo'limida "oxirgi marta ko'rilgan" uchun — requireChatUser() har /api/chat/*
   // so'rovida (throttled) yangilaydi, src/lib/chatAuth.js.
   lastActiveAt: { type: Date, default: null },
@@ -331,6 +335,16 @@ const ConversationSchema = new mongoose.Schema({
   // /api/internal/presence-online'ga xabar beradi, u esa shu massivni tekshirib
   // Telegram orqali "onlayn bo'ldi" xabarini yuboradi (src/app/api/internal/presence-online).
   onlineNotifyBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  // Yangi xabar kelganda Telegram bot orqali xabar berish — har bir user uchun SHU
+  // suhbatdagi shaxsiy tanlovi (ikkinchi tomon buni bilmaydi). `On` — aniq yoqilgan,
+  // `Off` — aniq o'chirilgan; ikkalasida ham bo'lmasa admin tomonidan userga berilgan
+  // umumiy sozlama (User.tgMessageNotify) amal qiladi. Hisoblash: src/lib/chatConstants.js
+  // #isTgMessageNotifyOn, yuborish: src/app/api/chat/conversations/[id]/messages POST.
+  tgMessageNotifyOn: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  tgMessageNotifyOff: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  // Oxirgi Telegram "yangi xabar" bildirishnomasi vaqti (kalit — qabul qiluvchi userId) —
+  // ketma-ket yozilgan har bir xabar uchun botdan spam kelmasligi uchun throttle.
+  tgMessageNotifiedAt: { type: Map, of: Date, default: {} },
   // Kim "Do'stlar" ro'yxatidan shu suhbatni o'chirgan (hujjat o'zi o'chmaydi —
   // faqat shu userning ro'yxatida yashiriladi). Bitta tomon o'chirsa — faqat shu
   // ro'yxatdan yashiriladi (deletedFor xabarlarga qo'shiladi, ikkinchi tomon

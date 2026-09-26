@@ -900,6 +900,34 @@ export function ChatProvider({ myUserId, children }) {
     [authHeaders]
   );
 
+  // Faqat menda — shu suhbatga yangi xabar kelganda menga Telegram bot orqali xabar
+  // kelishini yoqadi/o'chiradi. Bu tanlov admin menga bergan umumiy sozlamadan ustun
+  // (src/app/api/chat/conversations/[id]/message-notify).
+  const toggleTgMessageNotify = useCallback(
+    async (conversationId, enabled) => {
+      try {
+        const res = await fetch(`/api/chat/conversations/${conversationId}/message-notify`, {
+          method: enabled ? 'POST' : 'DELETE',
+          headers: authHeaders(),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          return { error: data.error || 'Bajarilmadi' };
+        }
+        setConversations((prev) =>
+          prev.map((c) => (String(c.id) === String(conversationId) ? { ...c, tgMessageNotify: enabled } : c))
+        );
+        setActiveConversation((prev) =>
+          prev && String(prev.id) === String(conversationId) ? { ...prev, tgMessageNotify: enabled } : prev
+        );
+        return { success: true };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [authHeaders]
+  );
+
   // Hozir bilingan barcha "boshqa foydalanuvchi"lar (suhbatlar ro'yxati + ochiq
   // suhbat) uchun realtime-server'dan ANIQ onlayn holatni so'raydi (ack orqali) —
   // presence:update hodisasini kutib o'tirmasdan darhol to'g'ri ko'rsatish uchun
@@ -1212,6 +1240,7 @@ export function ChatProvider({ myUserId, children }) {
     blockUser,
     toggleMuteConversation,
     toggleNotifyOnline,
+    toggleTgMessageNotify,
     setNickname,
     deleteConversation,
     pinMessage,
