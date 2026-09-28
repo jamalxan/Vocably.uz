@@ -1,6 +1,39 @@
 'use client';
 import { useEffect, useState } from 'react';
 
+// Galereya/suhbat bir vaqtda o'nlab media xabarni render qilganda, har biri
+// mustaqil useEffect orqali DARHOL o'z fetch'ini otadi — bularning har biri
+// serverda alohida DB so'rov (admin/foydalanuvchi tekshiruvi + audit log) qiladi.
+// O'nlab bunday so'rov bir millisoniyada birga kelsa, MongoDB Atlas ulanish
+// pool'ini portlatib, "MongoPoolClearedError"/TLS xatolariga olib kelgan (2026-09-28
+// production log'da kuzatilgan). Shu modul darajasidagi navbat orqali bir vaqtning
+// o'zida ko'pi bilan MAX_CONCURRENT ta so'rov yuborilishini ta'minlaymiz — qolganlari
+// navbatda kutadi, DB'ga zarba bir vaqtda emas, oqim bo'lib boradi.
+const MAX_CONCURRENT = 6;
+let activeCount = 0;
+const queue = [];
+
+function runNext() {
+  if (activeCount >= MAX_CONCURRENT) return;
+  const next = queue.shift();
+  if (!next) return;
+  activeCount++;
+  next();
+}
+
+function enqueue(task) {
+  return new Promise((resolve, reject) => {
+    const run = () => {
+      task().then(resolve, reject).finally(() => {
+        activeCount--;
+        runNext();
+      });
+    };
+    queue.push(run);
+    runNext();
+  });
+}
+
 // <img src>/<video src> Authorization header yubora olmaydi, shuning uchun avval
 // (auth tekshiruvi bilan) qisqa JSON so'rov orqali S3/MinIO'ning presigned GET
 // URL'ini olamiz — o'sha URL o'zida vaqtinchalik imzoni olib yuradi, shuning
@@ -26,13 +59,15 @@ export function useAuthedMediaUrl(mediaKey) {
     if (!mediaKey) return undefined;
     let cancelled = false;
 
-    fetch(`/api/chat/media/${mediaKey}`)
-      .then((res) => {
+    enqueue(() => {
+      if (cancelled) return Promise.resolve();
+      return fetch(`/api/chat/media/${mediaKey}`).then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
-      })
+      });
+    })
       .then((data) => {
-        if (!cancelled) setUrl(data.url);
+        if (!cancelled && data) setUrl(data.url);
       })
       .catch(() => !cancelled && setError(true));
 
@@ -55,13 +90,15 @@ export function useAuthedAdminMediaUrl(mediaKey) {
     if (!mediaKey) return undefined;
     let cancelled = false;
 
-    fetch(`/api/admin/chat/media/${mediaKey}`)
-      .then((res) => {
+    enqueue(() => {
+      if (cancelled) return Promise.resolve();
+      return fetch(`/api/admin/chat/media/${mediaKey}`).then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
-      })
+      });
+    })
       .then((data) => {
-        if (!cancelled) setUrl(data.url);
+        if (!cancelled && data) setUrl(data.url);
       })
       .catch(() => !cancelled && setError(true));
 
