@@ -18,6 +18,8 @@ import {
   X,
 } from 'lucide-react';
 
+import AgentStatusBar from './AgentStatusBar';
+
 // Admin kontent agenti — CHAT (foydalanuvchi so'rovi: "admin paneldagi AI
 // qism chat ko'rinishida bo'lsin, asosiy AI assistent kabi, lekin vazifasi
 // bilan farq qilsin").
@@ -151,6 +153,21 @@ export default function AdminAgentChat() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, sending, applying, pending]);
 
+  // What still needs attention (ready drafts, missing audio/images) — shown
+  // above the chat and refreshed after every agent turn.
+  const [status, setStatus] = useState(null);
+  const loadStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/agent/status');
+      if (res.ok) setStatus(await res.json());
+    } catch {
+      /* status bar is optional */
+    }
+  }, []);
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
   const loadThreads = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/agent/threads');
@@ -273,6 +290,7 @@ export default function AdminAgentChat() {
       setThreadId(data.threadId);
       setMessages((prev) => [...prev.filter((m) => m.id !== optimistic.id), ...data.messages]);
       loadThreads();
+      loadStatus();
     } catch (err) {
       setError(err.message || 'Tarmoq xatosi');
       return;
@@ -364,6 +382,7 @@ export default function AdminAgentChat() {
       setAppliedKeys((prev) => new Set(prev).add(key));
       setMessages((prev) => [...prev, ...data.messages]);
       loadThreads();
+      loadStatus();
       return data.messages;
     } catch (err) {
       setError(err.message || 'Tarmoq xatosi');
@@ -490,6 +509,8 @@ export default function AdminAgentChat() {
           </>
         )}
       </div>
+
+      <AgentStatusBar status={status} onChanged={loadStatus} />
 
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-4 space-y-3">
         {messages.length === 0 && <EmptyState autoMode={autoMode} onPick={() => fileInputRef.current?.click()} />}
