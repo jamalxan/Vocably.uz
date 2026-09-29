@@ -156,6 +156,11 @@ const UserSchema = new mongoose.Schema({
   // "yangi xabar" bildirishnomasi boradi (barcha suhbatlar uchun standart). User o'zi
   // har bir suhbat uchun alohida yoqib/o'chirib qo'yishi mumkin (Conversation.tgMessageNotifyOn/Off).
   tgMessageNotify: { type: Boolean, default: false },
+  // Daily Telegram mini-test (src/lib/telegramQuiz.js). On by default for
+  // users who linked the bot; every message has a one-tap "turn off".
+  tgDailyPractice: { type: Boolean, default: true },
+  tgDailySentOn: { type: String, default: null }, // 'YYYY-MM-DD' (Tashkent)
+  tgQuiz: { type: mongoose.Schema.Types.Mixed, default: null },
   // Do'stlar bo'limida "oxirgi marta ko'rilgan" uchun — requireChatUser() har /api/chat/*
   // so'rovida (throttled) yangilaydi, src/lib/chatAuth.js.
   lastActiveAt: { type: Date, default: null },

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { LogOut, Sun, Moon, Monitor, Flame, Trophy, Target, Eye, BarChart3 } from 'lucide-react';
+import { LogOut, Sun, Moon, Monitor, Flame, Trophy, Target, Eye, BarChart3, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import Button from '@/components/ui/Button';
@@ -93,6 +93,20 @@ export default function ProfilPage() {
   // EDU-01a — Onboarding/IELTS profil maydonlari. Sahifaning qolgan qismi
   // hech qanday tahrirlash routega ega emas edi (faqat mavzu/chiqish) —
   // shuning uchun bu yerda alohida, o'z holatiga ega kichik forma.
+  // Telegram daily mini-test (only meaningful once the bot is linked).
+  const [tg, setTg] = useState(null); // { linked, daily }
+  const toggleTgDaily = async () => {
+    if (!tg) return;
+    const next = !tg.daily;
+    setTg({ ...tg, daily: next });
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tgDailyPractice: next }),
+    }).catch(() => null);
+    if (!res?.ok) setTg((cur) => ({ ...cur, daily: !next }));
+  };
+
   const [prepLoading, setPrepLoading] = useState(true);
   const [prepFailed, setPrepFailed] = useState(false);
   const [prep, setPrep] = useState({
@@ -118,6 +132,7 @@ export default function ProfilPage() {
           currentLevel: data.currentLevel ?? '',
           dailyStudyMinutes: data.dailyStudyMinutes ?? '',
         });
+        setTg({ linked: !!data.telegramLinked, daily: data.tgDailyPractice !== false });
       })
       .catch(() => !cancelled && setPrepFailed(true))
       .finally(() => !cancelled && setPrepLoading(false));
@@ -335,6 +350,31 @@ export default function ProfilPage() {
       </section>
 
       <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5">Telegram</h2>
+        <div className="flex items-center gap-3 p-4 bg-surface border border-border rounded-2xl shadow-card mb-6">
+          <Send size={18} className="text-accent flex-shrink-0" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink">Kunlik 5 daqiqalik mashq</p>
+            <p className="text-xs text-muted">
+              {tg?.linked
+                ? "Har kuni kechqurun bot lug'atingizdan 5 ta savol yuboradi. Botda /mashq — hozir boshlash."
+                : "Telegram bot hisobingizga ulanmagan."}
+            </p>
+          </div>
+          {tg?.linked && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={tg.daily}
+              aria-label="Kunlik Telegram mashqi"
+              onClick={toggleTgDaily}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${tg.daily ? 'bg-accent' : 'bg-border'}`}
+            >
+              <span className={`absolute left-0 top-0.5 w-5 h-5 rounded-full bg-surface shadow transition-transform ${tg.daily ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+            </button>
+          )}
+        </div>
+
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5">Ko'rinish</h2>
         <div role="group" aria-label="Mavzu" className="flex gap-2 p-1 bg-surface border border-border rounded-xl">
           {THEME_OPTIONS.map((opt) => (

@@ -20,7 +20,7 @@ export async function GET(req) {
     await connectToDatabase();
 
     const user = await User.findById(userId)
-      .select(`${EDITABLE_FIELDS.join(' ')} subscriptionTier subscriptionExpiresAt`)
+      .select(`${EDITABLE_FIELDS.join(' ')} subscriptionTier subscriptionExpiresAt telegramChatId tgDailyPractice`)
       .lean();
     if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
 
@@ -36,6 +36,8 @@ export async function GET(req) {
       // EFFECTIVE tier: a lapsed plan (past expiry + grace) reads as free.
       subscriptionTier: subscriptionState(user).effectiveTier,
       subscription: subscriptionState(user),
+      telegramLinked: !!user.telegramChatId,
+      tgDailyPractice: user.tgDailyPractice !== false,
     });
   } catch (err) {
     return serverError(err, 'profile');
@@ -84,6 +86,8 @@ export async function PATCH(req) {
         update.currentLevel = body.currentLevel;
       }
     }
+    if (typeof body.tgDailyPractice === 'boolean') update.tgDailyPractice = body.tgDailyPractice;
+
     if ('dailyStudyMinutes' in body) {
       if (body.dailyStudyMinutes === null) {
         update.dailyStudyMinutes = null;
