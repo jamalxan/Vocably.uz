@@ -1,12 +1,13 @@
 'use client';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { LogOut, Sun, Moon, Monitor, Flame, Trophy, Target, Eye } from 'lucide-react';
+import { LogOut, Sun, Moon, Monitor, Flame, Trophy, Target, Eye, BarChart3 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import MyProfilePhoto from '@/components/avatar/MyProfilePhoto';
+import ProfileStats from '@/components/profile/ProfileStats';
 
 // H-1 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H) — "Oxirgi marta ko'rilgan"/onlayn
 // holatini kim ko'rishi. `/api/chat/settings` bilan mos qiymatlar (src/lib/models.js
@@ -34,7 +35,7 @@ const THEME_OPTIONS = [
 ];
 
 export default function ProfilPage() {
-  const { displayName, username, phone, logout, reviewStreak, chatAccess } = useApp();
+  const { displayName, chatUsername, phone, logout, reviewStreak, chatAccess } = useApp();
   const { theme, setTheme } = useTheme();
   const [gami, setGami] = useState(null);
   const [gamiFailed, setGamiFailed] = useState(false);
@@ -177,7 +178,7 @@ export default function ProfilPage() {
         <MyProfilePhoto size={72} />
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-ink font-display truncate">{displayName}</h1>
-          <p className="text-sm text-muted truncate">{username ? `@${username}` : phone}</p>
+          <p className="text-sm text-muted truncate">{chatUsername ? `@${chatUsername}` : phone}</p>
         </div>
         {!!reviewStreak && (
           <div className="ml-auto flex items-center gap-1.5 text-warning font-semibold text-sm flex-shrink-0">
@@ -235,6 +236,13 @@ export default function ProfilPage() {
           )}
         </section>
       )}
+
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5 flex items-center gap-1.5">
+          <BarChart3 size={13} /> Statistika
+        </h2>
+        <ProfileStats />
+      </section>
 
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5 flex items-center gap-1.5">

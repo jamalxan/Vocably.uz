@@ -1,25 +1,11 @@
 import '@/app/globals.css';
-import { Poppins, IBM_Plex_Mono } from 'next/font/google';
+import { landingFontVariables } from '@/components/landing/fonts';
 import { ThemeProvider, themeInitScript } from '@/context/ThemeContext';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 
-// Butun ilova uchun yagona shrift — Poppins. Sarlavha/matn/logotip/so'z
-// o'zgaruvchilari (--font-display, --font-luxury, --font-word) globals.css'da
-// shu --font-body'ga ulangan, shuning uchun komponentlardagi klasslar o'zgarmaydi.
-const poppins = Poppins({
-  subsets: ['latin', 'latin-ext'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-body',
-  display: 'swap',
-});
-
-// Faqat kod bloklari, ID va JSON maydonlari uchun (font-mono).
-const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-mono',
-  display: 'swap',
-});
+// Type system (self-hosted, src/components/landing/fonts.js): Sora for
+// headings and the word being learned, Inter for text, JetBrains Mono for
+// code/IDs. globals.css maps the app's role variables onto these.
 
 // VOCABLY-TZ.md §17.3 (SEO). `metadataBase` — nisbiy OG-rasm/canonical
 // yo'llarni (masalan opengraph-image.tsx, har sahifadagi alternates.canonical)
@@ -90,7 +76,7 @@ export default function RootLayout({ children }) {
     // suppressHydrationWarning: <body> boshidagi bloklovchi skript hydration'dan oldin
     // data-theme atributini o'rnatishi mumkin — bu server/klient farqi kutilgan va
     // zararsiz, React shu haqidagi ogohlantirishni shu yerda bosib qo'ymasa bo'ladi.
-    <html lang="uz" className={`${poppins.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="uz" className={landingFontVariables} suppressHydrationWarning>
       <body className="bg-bg text-ink min-h-dvh antialiased font-body" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>{children}</ThemeProvider>

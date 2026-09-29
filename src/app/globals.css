@@ -12,10 +12,13 @@
  * ========================================================================== */
 :root {
   color-scheme: light;
-  /* Yagona shrift (Poppins, layout.jsx) — barcha rollar bitta shriftga ishora qiladi. */
-  --font-display: var(--font-body);
-  --font-luxury: var(--font-body);
-  --font-word: var(--font-body);
+  /* Shrift tizimi (layout.jsx, landing/fonts.js): Sora — sarlavha va o'rganilayotgan
+     so'z, Inter — matn, JetBrains Mono — kod/ID. */
+  --font-body: var(--font-landing-body);
+  --font-display: var(--font-landing-display);
+  --font-luxury: var(--font-landing-display);
+  --font-word: var(--font-landing-display);
+  --font-mono: var(--font-landing-mono);
   --color-bg: 243 237 230;             /* #F3EDE6 — sahifa foni */
   --color-bg-sunken: 235 227 218;      /* #EBE3DA — chuqurroq zona (masalan AppShell fon ostki qatlami) */
   --color-surface: 250 246 242;        /* #FAF6F2 — karta foni */
@@ -191,6 +194,16 @@ html, body {
 
 body {
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  text-rendering: optimizeLegibility;
+}
+
+/* Sarlavhalar — Sora (display), zich harf oralig'i. Exam ekranlaridagi
+   inglizcha matn (Reading passage) body shriftida qoladi — h1-h3 bu
+   qoidaga faqat shrift oilasi bilan bog'liq. */
+h1, h2, h3 {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.012em;
 }
 
 .font-display {

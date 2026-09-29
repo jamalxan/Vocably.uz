@@ -8,16 +8,16 @@ module.exports = {
       fontFamily: {
         display: ['var(--font-display)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         body: ['var(--font-body)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        luxury: ['var(--font-luxury)', 'Georgia', 'serif'],
+        luxury: ['var(--font-luxury)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         // Faqat o'rganilayotgan so'zning o'zi uchun (flashcard/test/quiz) — bosh
-        // so'z uslubidagi dictionary-serif, layout.jsx'dagi izohga q.
-        word: ['var(--font-word)', 'Georgia', 'serif'],
+        // so'z uslubida (Sora), layout.jsx'dagi izohga q.
+        word: ['var(--font-word)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         // Do'stlar chat'i (xabarlar, input, emoji picker) uchun — matn shriftidan keyin
         // platformaning emoji shriftiga tushadi, shunda emoji hech qachon lotin harflari
         // shriftidan (glyph yo'qligi sababli) render bo'lmaydi.
         chat: ['var(--font-body)', 'var(--font-emoji)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        // Faqat kod bloklari, ID va JSON uchun (IBM Plex Mono). Statistika raqamlari
-        // endi asosiy shriftda (Poppins) + tabular-nums.
+        // Faqat kod bloklari, ID va JSON uchun (JetBrains Mono). Statistika raqamlari
+        // asosiy shriftda (Inter) + tabular-nums.
         mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
         // Landing page premium redesign only (src/components/landing/fonts.js) —
         // mustaqil token, yuqoridagi display/body/mono'ga ta'sir qilmaydi.
