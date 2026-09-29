@@ -35,6 +35,7 @@ import {
   Target,
   Trophy,
   GraduationCap,
+  BookX,
 } from 'lucide-react';
 
 // Ko'nikma bo'limlari — /app/mashq menyusida va desktop sidebar'da ishlatiladi.
@@ -45,6 +46,7 @@ export const SKILL_SECTIONS = [
   { key: 'gapirish', label: 'Speaking', href: '/app/gapirish', icon: Mic, matchPrefix: true, description: 'Speaking — ovozli javob va AI baho' },
   { key: 'yozish-skill', label: 'Writing', href: '/app/yozish', icon: PenLine, matchPrefix: true, description: 'Writing — insho va AI baho' },
   { key: 'mock', label: 'Mock exam', href: '/app/mock', icon: Target, matchPrefix: true, description: "To'liq 4 bo'limli sinov imtihoni" },
+  { key: 'xatolar', label: 'Mistakes', href: '/app/xatolar', icon: BookX, matchPrefix: true, description: "Xatolar daftari — xato javoblar va ulardagi so'zlarni takrorlash" },
 ];
 
 // Desktop sidebar / planshet rail — joy yetarli, hammasi alohida ko'rinadi.
