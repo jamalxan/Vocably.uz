@@ -134,7 +134,14 @@ function renderTemplateNode(node: GapTemplateNode, ctx: GapFillContext, key: str
     );
   }
 
-  const Tag = node.tag as keyof JSX.IntrinsicElements;
+  // `any`, not `keyof JSX.IntrinsicElements`: with @react-three/fiber's global
+  // JSX.IntrinsicElements augmentation present in the program (landing page's
+  // 3D scene), a dynamic tag typed as a union of *every* intrinsic element
+  // requires props satisfying all of them at once (some three.js elements
+  // have required props like `map`), which broke this generic HTML-tag
+  // renderer. The tag here is always a plain HTML tag name parsed from admin
+  // content, never a three.js element.
+  const Tag = node.tag as any;
   return <Tag key={key}>{node.children.map((c, i) => renderTemplateNode(c, ctx, `${key}-${i}`))}</Tag>;
 }
 

@@ -448,3 +448,22 @@ body:has([data-exam][data-exam-contrast="high"]) {
     animation: none !important;
   }
 }
+
+/* Landing page premium redesign (src/components/landing) — audio waveform
+   bars (Listening/Speaking skill cards) and a slow ambient float used by a
+   few decorative elements. Covered by the global prefers-reduced-motion
+   rule above (animation-duration: 0.01ms) like everything else on the site. */
+@keyframes landing-waveform {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.landing-waveform-bar {
+  animation: landing-waveform 1.1s ease-in-out infinite;
+}
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.landing-float {
+  animation: landing-float 4s ease-in-out infinite;
+}

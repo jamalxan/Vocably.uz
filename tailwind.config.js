@@ -19,6 +19,11 @@ module.exports = {
         // Faqat kod bloklari, ID va JSON uchun (IBM Plex Mono). Statistika raqamlari
         // endi asosiy shriftda (Poppins) + tabular-nums.
         mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        // Landing page premium redesign only (src/components/landing/fonts.js) —
+        // mustaqil token, yuqoridagi display/body/mono'ga ta'sir qilmaydi.
+        'landing-display': ['var(--font-landing-display)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'landing-body': ['var(--font-landing-body)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'landing-mono': ['var(--font-landing-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       boxShadow: {
         // "Deep Merlot" — qora emas, brendning o'z (primary) rangiga to'yingan yumshoq soya —

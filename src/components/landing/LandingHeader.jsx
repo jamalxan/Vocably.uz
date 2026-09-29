@@ -11,8 +11,15 @@ const NAV_LINKS = [
 
 // Faqat mobil menyu ochiq/yopiqligi uchun client — qolgan butun landing sahifa
 // server komponent (statik generatsiya, tezroq LCP).
-export default function LandingHeader() {
+//
+// `floating` (faqat "/" bosh sahifasida, Hero ustida transparent turishi
+// kerak bo'lgan joyda) yoqilganda navbar scroll holatiga qarab shaffofdan
+// blur qilingan sirtga o'tadi (redesign brief §8). Boshqa marketing
+// sahifalar (lugat, narxlar, blog, demo) bu prop'ni bermaydi — ular avvalgi
+// statik ko'rinishida qoladi, hech narsa buzilmaydi.
+export default function LandingHeader({ floating = false }) {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(!floating);
 
   // Escape bosilganda mobil menyu yopiladi
   useEffect(() => {
@@ -24,8 +31,26 @@ export default function LandingHeader() {
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
+  useEffect(() => {
+    if (!floating) return undefined;
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [floating]);
+
   return (
-    <header className="relative z-20 px-4 sm:px-6 py-4">
+    <header
+      className={`z-20 px-4 sm:px-6 py-4 transition-all duration-300 ${
+        floating
+          ? `sticky top-0 ${
+              scrolled
+                ? 'bg-surface/85 backdrop-blur-md border-b border-border shadow-sm'
+                : 'bg-transparent border-b border-transparent'
+            }`
+          : 'relative'
+      }`}
+    >
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center text-on-accent shadow-glow">
