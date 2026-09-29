@@ -14,11 +14,15 @@ const TOKENS = [
   'color-surface-2',
   'color-primary',
   'color-primary-hover',
+  'color-primary-soft',
   'color-accent',
   'color-accent-hover',
   'color-accent-soft',
   'color-ink',
   'color-border',
+  // Existing semantic gold (#8A5A12 / dark #E0AC5B) — used only as a faint
+  // highlight in the 3D lighting, the classic merlot + gold + cream pairing.
+  'color-warning',
 ];
 
 // "R G B" (space-separated, 0-255) -> "#rrggbb", the format three.js's
@@ -34,7 +38,8 @@ function readBrandColors() {
   const style = getComputedStyle(document.documentElement);
   const out = {};
   for (const token of TOKENS) {
-    const key = token.replace(/^color-/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    // 'color-surface-2' -> 'surface2', 'color-primary-soft' -> 'primarySoft'
+    const key = token.replace(/^color-/, '').replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
     out[key] = rgbTripletToHex(style.getPropertyValue(`--${token}`)) || '#4A1226';
   }
   return out;

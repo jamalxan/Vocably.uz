@@ -1,86 +1,161 @@
 'use client';
-import { useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { BookOpenText, Ear, Mic, PenLine, Brain } from 'lucide-react';
-import useRevealOnScroll from './useRevealOnScroll';
-import useScrollScrub from './useScrollScrub';
+import { ScrollTrigger } from './gsapConfig';
+import useChapter from './experience/useChapter';
+import { experience } from './experience/store';
+import DarkVeil from './DarkVeil';
 
-// Brief §10: the vocabulary token that just formed in the orb travels
-// through the four skills into long-term memory. The moving accent dot on
-// the vertical line is the "camera follows the token" beat — implemented as
-// a scroll-scrubbed line-fill rather than a pinned 3D camera move, which
-// keeps it cheap and robust while still reading as one continuous journey.
 const STEPS = [
-  { label: 'Reading', icon: BookOpenText },
-  { label: 'Listening', icon: Ear },
-  { label: 'Speaking', icon: Mic },
-  { label: 'Writing', icon: PenLine },
-  { label: 'Long-term memory', icon: Brain },
+  {
+    label: 'Reading',
+    icon: BookOpenText,
+    title: 'Matnda uchratasiz',
+    body: "Ertasi kuni “resilient” sizning darajangizdagi Reading matnida qaytadi — endi kontekst ichida.",
+  },
+  {
+    label: 'Listening',
+    icon: Ear,
+    title: 'Dialogda eshitasiz',
+    body: "So'z tabiiy nutqda — talaffuzi va urg'usi bilan quloqqa tanish bo'ladi.",
+  },
+  {
+    label: 'Speaking',
+    icon: Mic,
+    title: "O'zingiz gapirasiz",
+    body: "Speaking savoliga javobda ishlatasiz — AI talaffuz va ravonlikni baholaydi.",
+  },
+  {
+    label: 'Writing',
+    icon: PenLine,
+    title: "Yozuvda qo'llaysiz",
+    body: "Task 2 inshoda to'g'ri kollokatsiya bilan yozasiz — AI tekshiradi va tuzatadi.",
+  },
+  {
+    label: 'Long-term memory',
+    icon: Brain,
+    title: 'Xotirada qoladi',
+    body: "To'rt ko'nikmadan o'tgan so'z endi passiv emas — imtihon kuni o'zi esga tushadi.",
+  },
 ];
 
+// Pinned for ~3 screens of scroll. Progress drives both the DOM step panels
+// and (via the experience store) the 3D token hopping between skill nodes
+// around the Learning Core, which sits in the middle column.
 export default function ProductStory() {
   const sectionRef = useRef(null);
-  const headingRef = useRef(null);
-  const tokenRef = useRef(null);
-  const lineFillRef = useRef(null);
-  const stepsRef = useRef(null);
+  const barRef = useRef(null);
+  const activeRef = useRef(0);
+  const [active, setActive] = useState(0);
+  const [pinned, setPinned] = useState(true);
+  // Unpinned (reduced motion) the steps are a plain centered list, so the
+  // core parks in a corner instead of sitting behind the text.
+  useChapter(sectionRef, pinned ? 'story' : 'manifesto', { dark: true });
 
-  useRevealOnScroll(headingRef, { y: 24 });
-  useRevealOnScroll(stepsRef, { y: 28, stagger: 0.12, start: 'top 78%' });
+  useLayoutEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setPinned(false);
+      return undefined;
+    }
+    const st = ScrollTrigger.create({
+      trigger: sectionRef.current,
+      start: 'top top',
+      end: () => `+=${window.innerHeight * 3.2}`,
+      pin: true,
+      anticipatePin: 1,
+      invalidateOnRefresh: true,
+      onUpdate: (self) => {
+        experience.story.progress = self.progress;
+        if (barRef.current) barRef.current.style.transform = `scaleY(${self.progress})`;
+        const idx = Math.min(STEPS.length - 1, Math.floor(self.progress * STEPS.length));
+        if (idx !== activeRef.current) {
+          activeRef.current = idx;
+          setActive(idx);
+        }
+      },
+    });
+    return () => st.kill();
+  }, []);
 
-  useScrollScrub(
-    lineFillRef,
-    { scaleY: 1 },
-    { triggerRef: sectionRef, start: 'top 60%', end: 'bottom 70%', scrub: 0.5 },
-  );
-  useScrollScrub(
-    tokenRef,
-    { top: '96%' },
-    { triggerRef: sectionRef, start: 'top 60%', end: 'bottom 70%', scrub: 0.5 },
-  );
+  if (!pinned) {
+    return (
+      <section ref={sectionRef} id="qanday-ishlaydi" className="relative z-10 px-4 sm:px-6 py-24 text-on-primary">
+        <DarkVeil />
+        <div className="relative max-w-3xl mx-auto" key="static">
+          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] landing-dark-accent mb-4">
+            So'z → Ko'nikma
+          </p>
+          <h2 className="font-landing-display text-4xl font-semibold tracking-tight mb-10">
+            Bitta so'z — beshta ko'nikmada tirik qoladi
+          </h2>
+          <ol className="space-y-6">
+            {STEPS.map((s) => (
+              <li key={s.label}>
+                <p className="font-landing-display text-2xl font-semibold">{s.title}</p>
+                <p className="text-on-primary/75">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+    );
+  }
+
+  const Icon = STEPS[active].icon;
 
   return (
-    <section id="qanday-ishlaydi" ref={sectionRef} className="relative px-4 sm:px-6 py-20 sm:py-28">
-      <div className="max-w-2xl mx-auto text-center mb-14 sm:mb-16" ref={headingRef}>
-        <p className="font-landing-mono text-xs tracking-widest text-accent uppercase mb-3">So'z → Ko'nikma</p>
-        <h2 className="font-landing-display text-3xl sm:text-4xl lg:text-[44px] font-semibold text-ink leading-tight">
-          Bitta so'z — beshta ko'nikmada tirik qoladi
-        </h2>
-      </div>
+    <section ref={sectionRef} id="qanday-ishlaydi" className="relative z-10 h-[100svh] overflow-hidden text-on-primary">
+      <DarkVeil edge={6} />
 
-      <div className="max-w-md mx-auto relative">
-        {/* vocabulary token that "enters" the chain */}
-        <div className="flex justify-center mb-8">
-          <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent-soft px-4 py-2 text-sm font-landing-mono text-accent shadow-glow">
-            resilient
-          </span>
+      <div className="relative h-full max-w-7xl mx-auto px-5 sm:px-8 flex flex-col lg:grid lg:grid-cols-[1fr_1.05fr_1fr] lg:items-center pt-24 pb-8 lg:py-0">
+        <div className="lg:pr-6">
+          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] landing-dark-accent mb-4">
+            So'z → Ko'nikma
+          </p>
+          <h2 className="font-landing-display font-semibold tracking-[-0.035em] leading-[1.02] text-[30px] sm:text-[40px] lg:text-[52px]">
+            Bitta so'z — beshta ko'nikmada tirik qoladi
+          </h2>
+          <div className="hidden lg:flex items-end gap-5 mt-12">
+            <span className="font-landing-display font-bold leading-none text-[120px] tabular-nums landing-stroke-light">
+              0{active + 1}
+            </span>
+            <span className="mb-4 font-landing-mono text-sm text-on-primary/60">/ 0{STEPS.length}</span>
+            <span className="relative mb-4 ml-2 h-24 w-[2px] overflow-hidden rounded-full bg-on-primary/15">
+              <span ref={barRef} className="absolute inset-0 origin-top bg-accent" style={{ transform: 'scaleY(0)' }} />
+            </span>
+          </div>
         </div>
 
-        <div className="relative pl-12">
-          {/* static track */}
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-border" aria-hidden="true" />
-          {/* scrubbed fill representing the token's progress */}
-          <div
-            ref={lineFillRef}
-            className="absolute left-4 top-0 w-px bg-accent origin-top"
-            style={{ height: '100%', transform: 'scaleY(0)' }}
-            aria-hidden="true"
-          />
-          {/* traveling dot */}
-          <div
-            ref={tokenRef}
-            className="absolute -left-[3px] w-[9px] h-[9px] rounded-full bg-accent shadow-glow"
-            style={{ top: '0%' }}
-            aria-hidden="true"
-          />
+        <div className="flex-1 lg:h-full" aria-hidden="true" />
 
-          <div ref={stepsRef} className="flex flex-col gap-7">
-            {STEPS.map((s) => (
-              <div key={s.label} className="flex items-center gap-4">
-                <div className="w-9 h-9 -ml-[2px] rounded-xl bg-surface border border-border flex items-center justify-center text-accent flex-shrink-0">
-                  <s.icon size={17} />
-                </div>
-                <span className="font-landing-body font-medium text-ink">{s.label}</span>
+        <div className="relative min-h-[210px] lg:min-h-[260px] lg:pl-6">
+          {STEPS.map((s, i) => (
+            <div
+              key={s.label}
+              aria-hidden={i !== active}
+              className="absolute inset-0 transition-all duration-700 ease-[cubic-bezier(.16,1,.3,1)]"
+              style={{
+                opacity: i === active ? 1 : 0,
+                transform: `translateY(${i === active ? 0 : i < active ? -28 : 28}px)`,
+              }}
+            >
+              <div className="inline-flex items-center gap-2 rounded-full border border-on-primary/15 bg-on-primary/10 px-3 py-1 mb-5 font-landing-mono text-[11px] uppercase tracking-[0.2em]">
+                {i === active && <Icon size={13} />}
+                {s.label}
               </div>
+              <h3 className="font-landing-display font-semibold tracking-tight text-[30px] lg:text-[44px] leading-[1.05] mb-4">
+                {s.title}
+              </h3>
+              <p className="font-landing-body text-base lg:text-lg text-on-primary/75 leading-relaxed max-w-sm">{s.body}</p>
+            </div>
+          ))}
+          <div className="lg:hidden absolute -bottom-2 left-0 right-0 flex gap-1.5">
+            {STEPS.map((s, i) => (
+              <span
+                key={s.label}
+                className="h-1 flex-1 rounded-full transition-colors duration-500"
+                style={{ background: i <= active ? 'rgb(var(--color-accent))' : 'rgb(var(--color-on-primary) / .15)' }}
+              />
             ))}
           </div>
         </div>
