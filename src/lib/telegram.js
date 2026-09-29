@@ -31,6 +31,9 @@ async function callTelegramApi(method, payload) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    // A hung Telegram call must not hold up the request that triggered it
+    // (e.g. sending a chat message).
+    signal: AbortSignal.timeout(8000),
   });
   const data = await res.json();
   if (!data.ok) {

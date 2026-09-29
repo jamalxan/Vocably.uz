@@ -28,6 +28,7 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
   const timerRef = useRef(null);
   const flippingRef = useRef(false);
   const unmountedRef = useRef(false);
+  const startedAtRef = useRef(0);
 
   // VOCABLY-TZ.md (chat audit) — kamera almashtirish ILGARI bitta MediaStream
   // ICHIDA faqat video trekni almashtirar edi, MediaRecorder qayta
@@ -69,10 +70,11 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
       if (chunksRef.current.length === 0) return;
       const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' });
       const file = new File([blob], `video-${Date.now()}.webm`, { type: blob.type });
-      onRecorded(file);
+      onRecorded(file, (Date.now() - startedAtRef.current) / 1000);
     };
     mediaRecorderRef.current = recorder;
     recorder.start();
+    startedAtRef.current = Date.now();
     setFacing(mode);
     setSeconds(0);
     clearInterval(timerRef.current);
@@ -304,9 +306,9 @@ export default function VideoRecorderButton({ onRecorded }) {
       </button>
       {active && (
         <VideoRecorderPanel
-          onRecorded={(file) => {
+          onRecorded={(file, durationSec) => {
             setActive(false);
-            onRecorded(file);
+            onRecorded(file, durationSec);
           }}
           onCancel={() => setActive(false)}
         />

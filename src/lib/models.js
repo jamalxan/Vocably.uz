@@ -403,6 +403,8 @@ const MessageMediaSchema = new mongoose.Schema(
     width: { type: Number, default: null },
     height: { type: Number, default: null },
     durationSec: { type: Number, default: null },
+    // Video note (recorded with the in-chat camera) — shown as a circle.
+    round: { type: Boolean, default: false },
   },
   { _id: false }
 );

@@ -1,6 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { connectChatSocket } from '@/lib/socketClient';
+import { mergePolledMessages } from '@/lib/chatMerge';
 import { enqueueOffline, dequeueOffline, mergeQueuedIntoMessages } from '@/lib/offlineQueue';
 import { PREVIEW_BY_TYPE, isMutedNow } from '@/lib/chatConstants';
 import { STICKER_PACKS as STATIC_STICKER_PACKS } from '@/lib/stickers';
@@ -174,7 +175,10 @@ export function ChatProvider({ myUserId, children }) {
           // F — serverda hali yo'q, lekin offline navbatda kutayotgan xabarlar
           // (masalan sahifa qayta yuklangan, ulanish hali tiklanmagan) ro'yxat
           // oxiriga "yuborilmoqda" pufakchasi sifatida qo'shiladi.
-          setMessages(mergeQueuedIntoMessages(list, offlineQueueRef.current, conversationId));
+          // Silent refresh (poll) merges instead of replacing — see src/lib/chatMerge.js.
+          setMessages((prev) =>
+            mergeQueuedIntoMessages(silent ? mergePolledMessages(prev, list) : list, offlineQueueRef.current, conversationId)
+          );
           if (!silent) setMessagesError(false);
         } else if (!silent) {
           setMessagesError(true);
@@ -368,6 +372,11 @@ export function ChatProvider({ myUserId, children }) {
   const genClientMessageId = () =>
     (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `c${Date.now()}${Math.random().toString(16).slice(2)}`;
 
+  // Telegram-like sending: the composer never waits for the server — each
+  // message is shown at once and the network requests go out one after
+  // another through this chain, so rapid messages keep their order.
+  const sendChainRef = useRef(Promise.resolve());
+
   const sendMessage = useCallback(
     async (payload, existingClientId) => {
       if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
@@ -406,6 +415,9 @@ export function ChatProvider({ myUserId, children }) {
       // Qayta urinish (retry) bo'lmasa — darhol "yuborilmoqda" optimistik pufakchasini qo'shamiz.
       if (!existingClientId && String(activeIdRef.current) === String(conversationId)) {
         setMessages((prev) => [...prev, optimisticMsg]);
+        // The reply quote belongs to this message only — clear it now, not after
+        // the server answers, or the next message would quote the same one.
+        if (replyId) setReplyingTo(null);
       } else if (existingClientId) {
         setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'sending' } : m)));
       }
@@ -427,12 +439,17 @@ export function ChatProvider({ myUserId, children }) {
         return { queued: true };
       }
 
-      try {
-        const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
+      const post = () =>
+        fetch(`/api/chat/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(body),
         });
+      const queued = sendChainRef.current.then(post, post);
+      sendChainRef.current = queued.catch(() => {});
+
+      try {
+        const res = await queued;
         const data = await res.json();
         if (!res.ok) {
           setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'failed' } : m)));
@@ -450,7 +467,6 @@ export function ChatProvider({ myUserId, children }) {
           });
         }
         loadConversations();
-        if (replyId) setReplyingTo(null);
         return { message: data.message };
       } catch {
         setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'failed' } : m)));
@@ -556,7 +572,7 @@ export function ChatProvider({ myUserId, children }) {
   );
 
   const uploadAndSend = useCallback(
-    async (file, type, caption) => {
+    async (file, type, caption, mediaExtra) => {
       if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
       try {
         const presignRes = await fetch('/api/chat/upload/presign', {
@@ -581,7 +597,7 @@ export function ChatProvider({ myUserId, children }) {
 
         return sendMessage({
           type,
-          media: { key: presignData.key, mimeType: file.type, size: file.size },
+          media: { key: presignData.key, mimeType: file.type, size: file.size, ...(mediaExtra || {}) },
           ...(caption ? { text: caption } : {}),
         });
       } catch {
@@ -1179,20 +1195,34 @@ export function ChatProvider({ myUserId, children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fallback when the realtime socket is down or not configured: poll the open
+  // conversation — every 2s while the tab is visible (close to live), every
+  // 15s in the background, and at once when the tab comes back.
   useEffect(() => {
-    clearInterval(pollRef.current);
-    if (activeConversation && !socketConnected) {
-      pollRef.current = setInterval(async () => {
-        // `noRead: true` — bu shunchaki fon rejimidagi qayta tekshirish, tab
-        // yashirin bo'lsa ham ishlaydi (setInterval brauzerda davom etaveradi),
-        // shuning uchun server tarafda avtomatik "o'qildi" belgilanmaydi. Tab
-        // haqiqatan ham ko'rinib turgan bo'lsagina alohida (yengil) /read
-        // so'rovi bilan o'qilgan deb belgilaymiz.
-        await loadMessages(activeConversation.id, { silent: true, noRead: true });
-        if (!document.hidden) markRead(activeConversation.id);
-      }, 5000);
-    }
-    return () => clearInterval(pollRef.current);
+    clearTimeout(pollRef.current);
+    if (!activeConversation || socketConnected) return undefined;
+    let stopped = false;
+    const tick = async () => {
+      // `noRead: true` — bu shunchaki fon rejimidagi qayta tekshirish, shuning
+      // uchun server tarafda avtomatik "o'qildi" belgilanmaydi. Tab haqiqatan
+      // ham ko'rinib turgan bo'lsagina alohida (yengil) /read so'rovi bilan
+      // o'qilgan deb belgilaymiz.
+      await loadMessages(activeConversation.id, { silent: true, noRead: true }).catch(() => {});
+      if (!document.hidden) markRead(activeConversation.id);
+      if (!stopped) pollRef.current = setTimeout(tick, document.hidden ? 15000 : 2000);
+    };
+    pollRef.current = setTimeout(tick, 2000);
+    const onVisible = () => {
+      if (document.hidden || stopped) return;
+      clearTimeout(pollRef.current);
+      tick();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      stopped = true;
+      clearTimeout(pollRef.current);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [activeConversation, socketConnected, loadMessages, markRead]);
 
   // Foydalanuvchi tabga qaytganda (masalan boshqa tabda edi yoki oynani
