@@ -3,6 +3,7 @@ import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { User } from '@/lib/models';
 import { SUBSCRIPTION_TIERS } from '@/lib/entitlements';
+import { activationUpdate, subscriptionState } from '@/lib/subscription';
 import { NextResponse } from 'next/server';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
@@ -60,11 +61,21 @@ export async function PATCH(req, { params }) {
     // subscriptionSetAt/subscriptionSetBy audit uchun — kim/qachon tayinlagani
     // (diff'da ham `role`/`chatAccess` kabi boshqa maydonlar bilan bir xil
     // tarzda AdminAuditLog'ga tushadi).
+    //
+    // Lifecycle (src/lib/subscription.js): activating a paid tier sets a term of
+    // `subscriptionMonths` (default 1) — features open immediately; renewing the
+    // same tier before it locks continues from the current expiry.
     if (typeof body.subscriptionTier === 'string' && SUBSCRIPTION_TIERS.includes(body.subscriptionTier)) {
+      const months = [1, 3, 6, 12].includes(Number(body.subscriptionMonths)) ? Number(body.subscriptionMonths) : 1;
+      const update = activationUpdate(target, body.subscriptionTier, { months, by: admin._id });
       diff.subscriptionTier = { from: target.subscriptionTier, to: body.subscriptionTier };
-      target.subscriptionTier = body.subscriptionTier;
-      target.subscriptionSetAt = new Date();
-      target.subscriptionSetBy = admin._id;
+      if (update.subscriptionExpiresAt || target.subscriptionExpiresAt) {
+        diff.subscriptionExpiresAt = {
+          from: target.subscriptionExpiresAt ? new Date(target.subscriptionExpiresAt).toISOString() : null,
+          to: update.subscriptionExpiresAt ? update.subscriptionExpiresAt.toISOString() : null,
+        };
+      }
+      Object.assign(target, update);
     }
 
     await target.save();
@@ -82,6 +93,8 @@ export async function PATCH(req, { params }) {
         tgMessageNotify: target.tgMessageNotify,
         telegramLinked: !!target.telegramChatId,
         subscriptionTier: target.subscriptionTier,
+        subscriptionExpiresAt: target.subscriptionExpiresAt,
+        subscription: subscriptionState(target),
       },
     });
   } catch (err) {

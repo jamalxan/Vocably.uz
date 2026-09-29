@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import { Search, Loader2, ShieldCheck, ShieldOff, Ban, CheckCircle2, Crown, User as UserIcon, GraduationCap, Send } from 'lucide-react';
-import { SUBSCRIPTION_TIERS, TIER_CONFIG } from '@/lib/entitlements';
+import SubscriptionCell from './SubscriptionCell';
 
 export default function UsersTable() {
   const [users, setUsers] = useState([]);
@@ -235,33 +235,7 @@ export default function UsersTable() {
                       </select>
                     </td>
                     <td className="px-5 py-3.5">
-                      {/* BILL-01/02 — haqiqiy to'lov integratsiyasi yo'q, tarif FAQAT
-                          shu yerdan admin tomonidan qo'lda tayinlanadi (PATCH
-                          subscriptionTier -> subscriptionSetAt/By + audit log). */}
-                      <select
-                        value={u.subscriptionTier || 'free'}
-                        disabled={savingId === u._id}
-                        onChange={(e) => {
-                          const nextTier = e.target.value;
-                          if (
-                            !confirm(
-                              `${u.name || u.phoneDisplay} uchun tarifni "${TIER_CONFIG[nextTier]?.label || nextTier}"ga o'zgartirasizmi?`
-                            )
-                          ) {
-                            e.target.value = u.subscriptionTier || 'free';
-                            return;
-                          }
-                          patchUser(u._id, { subscriptionTier: nextTier });
-                        }}
-                        aria-label={`${u.name || u.phoneDisplay} tarifi`}
-                        className="px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent transition-colors"
-                      >
-                        {SUBSCRIPTION_TIERS.map((tier) => (
-                          <option key={tier} value={tier}>
-                            {TIER_CONFIG[tier].label}
-                          </option>
-                        ))}
-                      </select>
+                      <SubscriptionCell user={u} saving={savingId === u._id} onPatch={(body) => patchUser(u._id, body)} />
                     </td>
                     <td className="px-5 py-3.5">
                       <button

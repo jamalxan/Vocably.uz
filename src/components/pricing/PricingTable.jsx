@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Check, Loader2, MessageCircle, Sparkles } from 'lucide-react';
 import { TIER_CONFIG } from '@/lib/entitlements';
 import { getBotUsername } from '@/lib/telegram';
+import { formatUzDate } from '@/lib/uzDate';
 
 // BILL-01/02 — haqiqiy (placeholder emas) pricing sahifasi. Narx/feature
 // ro'yxati src/lib/entitlements.js'dan keladi (TZ §46.2: hardcode qilinmaydi).
@@ -25,6 +26,7 @@ export default function PricingTable() {
   const [period, setPeriod] = useState('monthly'); // 'monthly' | 'yearly'
   const [authState, setAuthState] = useState('loading'); // 'loading' | 'in' | 'out'
   const [currentTier, setCurrentTier] = useState(null);
+  const [subscription, setSubscription] = useState(null);
   const [interestSent, setInterestSent] = useState({});
 
   useEffect(() => {
@@ -39,7 +41,10 @@ export default function PricingTable() {
         return res.json();
       })
       .then((data) => {
-        if (data) setCurrentTier(data.subscriptionTier || 'free');
+        if (data) {
+          setCurrentTier(data.subscriptionTier || 'free');
+          setSubscription(data.subscription || null);
+        }
       })
       .catch((err) => {
         if (err?.name !== 'AbortError') setAuthState('out');
@@ -64,8 +69,34 @@ export default function PricingTable() {
 
   const telegramHref = `https://t.me/${getBotUsername()}`;
 
+  const fmtDate = (d) => formatUzDate(d, { year: true });
+
   return (
     <div>
+      {subscription?.expiresAt && subscription.status !== 'free' && (
+        <div
+          role="status"
+          className={`mx-auto mb-8 max-w-xl rounded-2xl border px-5 py-4 text-center text-sm ${
+            subscription.status === 'active' ? 'border-border bg-surface text-ink' : 'border-warning/30 bg-warning-soft text-ink'
+          }`}
+        >
+          {subscription.status === 'active' && (
+            <>
+              Joriy tarif: <strong>{TIER_CONFIG[subscription.tier]?.label}</strong> — {fmtDate(subscription.expiresAt)} gacha ({subscription.daysLeft} kun).
+            </>
+          )}
+          {subscription.status === 'grace' && (
+            <>
+              <strong>{TIER_CONFIG[subscription.tier]?.label}</strong> muddati tugadi. Imkoniyatlar {fmtDate(subscription.graceEndsAt)} gacha ochiq ({subscription.graceDaysLeft} kun) — uzaytirish uchun quyidagi tarifni tanlang.
+            </>
+          )}
+          {subscription.status === 'expired' && (
+            <>
+              <strong>{TIER_CONFIG[subscription.tier]?.label}</strong> obunangiz {fmtDate(subscription.graceEndsAt)} kuni yopilgan. Qayta faollashtirish uchun tarifni tanlang.
+            </>
+          )}
+        </div>
+      )}
       <div className="flex justify-center mb-10">
         <div className="inline-flex items-center gap-1 p-1 bg-surface border border-border rounded-xl">
           {[

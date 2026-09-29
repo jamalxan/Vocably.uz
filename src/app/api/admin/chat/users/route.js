@@ -3,6 +3,7 @@ import { requireAdminUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { User } from '@/lib/models';
 import { formatPhoneDisplay } from '@/lib/phone';
+import { subscriptionState } from '@/lib/subscription';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -31,7 +32,7 @@ export async function GET(req) {
     // Cursor-based (createdAt bo'yicha) — skip() o'rniga, chunki ma'lumot ko'paygan sari
     // sekinlashmaydi. +1 chegara: navbatdagi sahifa bor-yo'qligini bitta so'rovda bilish uchun.
     const users = await User.find(filter)
-      .select('phone name username role chatAccess chatBanned createdAt subscriptionTier tgMessageNotify telegramChatId')
+      .select('phone name username role chatAccess chatBanned createdAt subscriptionTier subscriptionExpiresAt tgMessageNotify telegramChatId')
       .sort({ createdAt: -1 })
       .limit(limit + 1)
       .lean();
@@ -46,6 +47,7 @@ export async function GET(req) {
         ...u,
         telegramLinked: !!telegramChatId,
         phoneDisplay: formatPhoneDisplay(u.phone),
+        subscription: subscriptionState(u),
       })),
       nextCursor,
     });

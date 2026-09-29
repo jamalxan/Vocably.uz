@@ -228,6 +228,15 @@ const UserSchema = new mongoose.Schema({
   subscriptionTier: { type: String, enum: ['free', 'standard', 'premium'], default: 'free' },
   subscriptionSetAt: { type: Date, default: null },
   subscriptionSetBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  // Subscription lifecycle (src/lib/subscription.js): a paid tier runs until
+  // `subscriptionExpiresAt`, then stays open for GRACE_DAYS with daily
+  // warnings, then the EFFECTIVE tier falls back to free (computed on read —
+  // `subscriptionTier` keeps the last paid tier for history). null expiry =
+  // legacy manual grant from before terms existed (stays active).
+  subscriptionStartedAt: { type: Date, default: null },
+  subscriptionExpiresAt: { type: Date, default: null },
+  // Delivered reminder keys ("<expiryISO>:grace-2" …) — makes the sweep idempotent.
+  subscriptionNotices: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -241,6 +250,8 @@ UserSchema.index({ role: 1 });
 UserSchema.index({ chatAccess: 1, chatBanned: 1 });
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ telegramChatId: 1 });
+// Reminder sweep scans only paid users near/after their expiry.
+UserSchema.index({ subscriptionTier: 1, subscriptionExpiresAt: 1 });
 
 export const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
@@ -587,7 +598,7 @@ export const AiUsage = mongoose.models.AiUsage || mongoose.model('AiUsage', AiUs
 
 const NotificationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['chat_message', 'announcement'], required: true },
+  type: { type: String, enum: ['chat_message', 'announcement', 'subscription'], required: true },
   title: { type: String, required: true, trim: true },
   body: { type: String, default: '', trim: true },
   // 'chat_message' uchun suhbat ID'si, 'announcement' uchun Announcement ID'si —

@@ -10,6 +10,7 @@ import NotificationBell from '@/components/NotificationBell';
 import Avatar from '@/components/avatar/Avatar';
 import AiPanel from './AiPanel';
 import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
+import SubscriptionBanner from '@/components/SubscriptionBanner';
 
 // AppShell — VOCABLY-TZ.md 3.2 (navigatsiya modeli) va R1 (planshet layout yo'q)
 // muammosini yopadi: UCHTA holat, hammasi shu bitta komponentda, JS breakpoint
@@ -263,7 +264,10 @@ export default function AppShell({ children }) {
             uzun kontent baribir konteyner chegarasidan "toshib" ketaveradi va
             hujjat odatdagidek scroll bo'ladi, faqat endi flex-1 zanjiri uchun ham
             haqiqiy asos bor. Https://vocably.uz'da jonli DOM orqali tasdiqlangan. */}
-        <main className="flex-1 min-h-0 flex flex-col">{children}</main>
+        <main className="flex-1 min-h-0 flex flex-col">
+          <SubscriptionBanner />
+          {children}
+        </main>
       </div>
       <AiPanel />
     </div>

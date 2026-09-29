@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { BLOG_POSTS, getBlogPost } from '@/lib/blogPosts';
 import LandingHeader from '@/components/landing/LandingHeader';
+import { formatUzDate } from '@/lib/uzDate';
 
 export function generateStaticParams() {
   return BLOG_POSTS.map((p) => ({ slug: p.slug }));
@@ -28,7 +29,7 @@ export function generateMetadata({ params }) {
 }
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long', day: 'numeric' });
+  return formatUzDate(iso, { year: true });
 }
 
 // Tailwind typography plugin ulanmagan (loyihada yo'q) — shuning uchun har

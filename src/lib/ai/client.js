@@ -144,8 +144,10 @@ async function checkMonthlyGradingLimit(userId) {
   const { hasReachedMonthlyLimit, monthlyGradingLimitMessage } = await import('@/lib/entitlements');
   const { AiUsage, User } = await import('@/lib/models');
 
-  const user = await User.findById(userId).select('subscriptionTier').lean();
-  const tier = user?.subscriptionTier || 'free';
+  const { effectiveTier } = await import('@/lib/subscription');
+  const user = await User.findById(userId).select('subscriptionTier subscriptionExpiresAt').lean();
+  // Effective tier: a paid plan past its expiry + grace days counts as free here.
+  const tier = effectiveTier(user);
   if (tier !== 'free') return { allowed: true };
 
   const now = new Date();
