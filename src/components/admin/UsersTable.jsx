@@ -111,23 +111,25 @@ export default function UsersTable() {
       ) : (
         <div className="rounded-2xl border border-border bg-surface shadow-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
+            <table className="w-full text-sm max-md:block">
+              <thead className="max-md:hidden">
                 <tr className="text-left text-[11px] text-accent uppercase tracking-[0.15em] border-b border-border">
-                  <th className="px-5 py-3.5 font-semibold">Foydalanuvchi</th>
-                  <th className="px-5 py-3.5 font-semibold">Ro'yxatdan o'tgan</th>
-                  <th className="px-5 py-3.5 font-semibold">Username</th>
-                  <th className="px-5 py-3.5 font-semibold">Do'stlar</th>
-                  <th className="px-5 py-3.5 font-semibold" title="Yoqilsa — kim yozsa ham Telegram bot orqali xabar boradi">TG xabar</th>
-                  <th className="px-5 py-3.5 font-semibold">Rol</th>
-                  <th className="px-5 py-3.5 font-semibold">Tarif</th>
-                  <th className="px-5 py-3.5 font-semibold">Holat</th>
+                  <th className="px-3.5 py-3.5 font-semibold">Foydalanuvchi</th>
+                  <th className="px-3.5 py-3.5 font-semibold">Qo'shilgan</th>
+                  <th className="px-3.5 py-3.5 font-semibold">Username</th>
+                  <th className="px-3.5 py-3.5 font-semibold">Do'stlar</th>
+                  <th className="px-3.5 py-3.5 font-semibold">Rol</th>
+                  <th className="px-3.5 py-3.5 font-semibold">Tarif</th>
+                  <th className="px-3.5 py-3.5 font-semibold">Holat</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="max-md:block">
                 {users.map((u) => (
-                  <tr key={u._id} className="border-t border-border hover:bg-bg/60 transition-colors">
-                    <td className="px-5 py-3.5">
+                  <tr
+                    key={u._id}
+                    className="border-t border-border hover:bg-bg/60 transition-colors max-md:block max-md:p-4 max-md:space-y-2.5"
+                  >
+                    <td className="px-3.5 py-3.5 max-md:block max-md:p-0">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-primary-soft border border-primary/10 flex items-center justify-center text-ink flex-shrink-0">
                           {u.role === 'admin' ? (
@@ -140,14 +142,20 @@ export default function UsersTable() {
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium text-ink truncate">{u.name || '—'}</p>
-                          <p className="text-xs text-muted">{u.phoneDisplay}</p>
+                          <p className="text-xs text-muted whitespace-nowrap">{u.phoneDisplay}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-muted">
+                    <td
+                      data-label="Ro'yxatdan o'tgan"
+                      className="px-3.5 py-3.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-3 max-md:p-0 max-md:before:content-[attr(data-label)] max-md:before:text-xs max-md:before:text-muted max-md:before:flex-shrink-0 text-xs text-muted"
+                    >
                       {u.createdAt ? new Date(u.createdAt).toLocaleDateString('uz-UZ') : '—'}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td
+                      data-label="Username"
+                      className="px-3.5 py-3.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-3 max-md:p-0 max-md:before:content-[attr(data-label)] max-md:before:text-xs max-md:before:text-muted max-md:before:flex-shrink-0"
+                    >
                       <input
                         defaultValue={u.username || ''}
                         placeholder="username"
@@ -160,54 +168,66 @@ export default function UsersTable() {
                             saveUsername(u);
                           }
                         }}
-                        className="w-32 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent transition-colors"
+                        className="w-28 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-xs text-ink outline-none focus:border-accent transition-colors"
                       />
                     </td>
-                    <td className="px-5 py-3.5">
-                      {u.chatAccess ? (
-                        <button
-                          disabled={savingId === u._id}
-                          onClick={() => patchUser(u._id, { chatAccess: false })}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 bg-accent-soft border border-accent/25 text-accent rounded-lg text-xs font-medium hover:bg-accent/15 transition-colors disabled:opacity-50"
-                        >
-                          <ShieldCheck size={13} /> Yoqilgan
-                        </button>
-                      ) : (
-                        <button
-                          disabled={savingId === u._id}
-                          onClick={() => grantAccess(u)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 bg-bg border border-border text-muted rounded-lg text-xs font-medium hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50"
-                        >
-                          <ShieldOff size={13} /> Ruxsat berish
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {/* Yoqilsa — shu userga Do'stlar'da kim yozsa ham Telegram bot
+                    <td
+                      data-label="Do'stlar"
+                      className="px-3.5 py-3.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-3 max-md:p-0 max-md:before:content-[attr(data-label)] max-md:before:text-xs max-md:before:text-muted max-md:before:flex-shrink-0"
+                    >
+                      {/* Do'stlar ruxsati va Telegram xabari bitta ustunda — jadval
+                          desktopda ham gorizontal scrollsiz sig'sin. */}
+                      <div className="flex flex-col max-md:flex-row items-start max-md:items-center gap-1.5">
+                        {u.chatAccess ? (
+                          <button
+                            disabled={savingId === u._id}
+                            onClick={() => patchUser(u._id, { chatAccess: false })}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 bg-accent-soft border border-accent/25 text-accent rounded-lg text-xs font-medium hover:bg-accent/15 transition-colors disabled:opacity-50"
+                          >
+                            <ShieldCheck size={13} /> Yoqilgan
+                          </button>
+                        ) : (
+                          <button
+                            disabled={savingId === u._id}
+                            onClick={() => grantAccess(u)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 bg-bg border border-border text-muted rounded-lg text-xs font-medium hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50"
+                          >
+                            <ShieldOff size={13} /> Ruxsat berish
+                          </button>
+                        )}
+                        {/* Yoqilsa — shu userga Do'stlar'da kim yozsa ham Telegram bot
                           orqali xabar boradi. User o'zi har bir suhbat uchun alohida
                           yoqib/o'chira oladi (suhbat sarlavhasidagi tugma), bu esa
                           shu sozlamadan ustun turadi. */}
-                      <button
-                        disabled={savingId === u._id || (!u.tgMessageNotify && !u.telegramLinked)}
-                        onClick={() => patchUser(u._id, { tgMessageNotify: !u.tgMessageNotify })}
-                        title={
-                          !u.telegramLinked
-                            ? "Foydalanuvchi Telegram botga ulanmagan"
-                            : u.tgMessageNotify
-                              ? "Telegram xabarini o'chirish"
-                              : 'Kim yozsa ham Telegram bot orqali xabar borsin'
-                        }
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
-                          u.tgMessageNotify
-                            ? 'bg-accent-soft border border-accent/25 text-accent hover:bg-accent/15'
-                            : 'bg-bg border border-border text-muted hover:border-accent/40 hover:text-accent'
-                        }`}
-                      >
-                        <Send size={13} />
-                        {u.tgMessageNotify ? 'Yoqilgan' : u.telegramLinked ? "O'chiq" : 'Ulanmagan'}
-                      </button>
+                        <button
+                          disabled={savingId === u._id || (!u.tgMessageNotify && !u.telegramLinked)}
+                          onClick={() =>
+                            patchUser(u._id, {
+                              tgMessageNotify: !u.tgMessageNotify,
+                            })
+                          }
+                          title={
+                            !u.telegramLinked
+                              ? 'Foydalanuvchi Telegram botga ulanmagan'
+                              : u.tgMessageNotify
+                                ? "Telegram xabarini o'chirish"
+                                : 'Kim yozsa ham Telegram bot orqali xabar borsin'
+                          }
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                            u.tgMessageNotify
+                              ? 'bg-accent-soft border border-accent/25 text-accent hover:bg-accent/15'
+                              : 'bg-bg border border-border text-muted hover:border-accent/40 hover:text-accent'
+                          }`}
+                        >
+                          <Send size={13} />
+                          {u.tgMessageNotify ? 'Yoqilgan' : u.telegramLinked ? "O'chiq" : 'Ulanmagan'}
+                        </button>
+                      </div>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td
+                      data-label="Rol"
+                      className="px-3.5 py-3.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-3 max-md:p-0 max-md:before:content-[attr(data-label)] max-md:before:text-xs max-md:before:text-muted max-md:before:flex-shrink-0"
+                    >
                       <select
                         value={u.role}
                         disabled={savingId === u._id}
@@ -216,11 +236,7 @@ export default function UsersTable() {
                           // Rol o'zgartirish qaytarilishi mumkin bo'lsa ham (admin
                           // huquqi berish yoki olib tashlash) og'ir oqibatli — tasodifiy
                           // bosishning oldini olish uchun tasdiqlash so'raladi.
-                          if (
-                            !confirm(
-                              `${u.name || u.phoneDisplay} uchun rolni "${nextRole}"ga o'zgartirasizmi?`
-                            )
-                          ) {
+                          if (!confirm(`${u.name || u.phoneDisplay} uchun rolni "${nextRole}"ga o'zgartirasizmi?`)) {
                             e.target.value = u.role;
                             return;
                           }
@@ -234,10 +250,16 @@ export default function UsersTable() {
                         <option value="admin">admin</option>
                       </select>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td
+                      data-label="Tarif"
+                      className="px-3.5 py-3.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-3 max-md:p-0 max-md:before:content-[attr(data-label)] max-md:before:text-xs max-md:before:text-muted max-md:before:flex-shrink-0"
+                    >
                       <SubscriptionCell user={u} saving={savingId === u._id} onPatch={(body) => patchUser(u._id, body)} />
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td
+                      data-label="Holat"
+                      className="px-3.5 py-3.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-3 max-md:p-0 max-md:before:content-[attr(data-label)] max-md:before:text-xs max-md:before:text-muted max-md:before:flex-shrink-0"
+                    >
                       <button
                         disabled={savingId === u._id}
                         onClick={() => patchUser(u._id, { chatBanned: !u.chatBanned })}

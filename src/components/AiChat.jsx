@@ -673,6 +673,10 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
               <p className="text-[11px] text-ink-subtle mt-2">
                 Masalan: "arise" so'zini bir nechta gapda ishlatib ko'rsat, yoki rasm yuboring
               </p>
+              {/* Til qoidasi (src/lib/ai/replyLanguage.js) — foydalanuvchi oldindan bilsin. */}
+              <p className="text-[11px] text-ink-subtle mt-1">
+                Javoblar ingliz tilida — o'zbekcha yozsangiz yoki «o'zbekcha gapir» desangiz, o'zbekcha javob beraman.
+              </p>
               {/* Tez amallar (TZ-vocably-v2.md §D2.3) — avval Word Picker'ni ochadi. */}
               <div className="flex flex-wrap justify-center gap-1.5 mt-5 max-w-sm mx-auto">
                 {QUICK_ACTIONS.map((qa) => (

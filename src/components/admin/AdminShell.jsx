@@ -30,7 +30,7 @@ const NAV_GROUPS = [
   {
     label: 'Foydalanuvchilar',
     items: [
-      { href: '/admin/users', label: 'Foydalanuvchilar va tariflar', icon: Users },
+      { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
       // `/admin/c/<id>` — bitta suhbatning to'g'ridan-to'g'ri havolasi, ham shu bo'limga tegishli.
       { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare, also: ['/admin/c/'], secretTap: true },
       { href: '/admin/reports', label: 'Reportlar', icon: Flag },
