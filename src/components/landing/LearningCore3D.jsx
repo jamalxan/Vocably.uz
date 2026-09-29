@@ -62,7 +62,7 @@ export default function LearningCore3D({ size = 480 }) {
   const showFallback = canRenderWebGL === false || !colors;
 
   return (
-    <div ref={containerRef} style={{ width: size, height: size, maxWidth: '100%', aspectRatio: '1 / 1' }}>
+    <div ref={containerRef} className="min-w-0" style={{ width: '100%', maxWidth: size, aspectRatio: '1 / 1' }}>
       {showFallback ? (
         <LearningCoreFallback size={size} />
       ) : canRenderWebGL === null ? null : (

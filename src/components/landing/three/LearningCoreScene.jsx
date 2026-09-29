@@ -62,12 +62,12 @@ function SkillNode({ angle, label, radius, colors, reducedMotion }) {
   );
 }
 
-function VocabToken({ word, angle, radius, colors, reducedMotion }) {
+function VocabToken({ word, angle, radius, colors, reducedMotion, yOffset = 1.1 }) {
   const ref = useRef(null);
   const rad = (angle * Math.PI) / 180;
   const basePos = useMemo(
-    () => new THREE.Vector3(Math.cos(rad) * radius, Math.sin(rad) * radius * 0.4 + 1.1, Math.sin(rad * 0.7) * 1.2),
-    [rad, radius],
+    () => new THREE.Vector3(Math.cos(rad) * radius, Math.sin(rad) * radius * 0.4 + yOffset, Math.sin(rad * 0.7) * 1.2),
+    [rad, radius, yOffset],
   );
 
   useFrame(({ clock }) => {
@@ -102,7 +102,10 @@ export default function LearningCoreScene({ colors, reducedMotion, quality = 'fu
 
   const isLite = quality === 'lite';
   const nodes = isLite ? SKILL_NODES.slice(0, 4) : SKILL_NODES;
-  const words = isLite ? VOCAB_WORDS.slice(0, 2) : VOCAB_WORDS;
+  // Mobile keeps just one vocab token, pulled in close to center — the HTML
+  // label pill's own rendered width (it's DOM, not WebGL, so it doesn't get
+  // clipped to the 3D frustum) otherwise pokes past a narrow mobile canvas.
+  const words = isLite ? VOCAB_WORDS.slice(0, 1) : VOCAB_WORDS;
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -159,15 +162,23 @@ export default function LearningCoreScene({ colors, reducedMotion, quality = 'fu
       </Torus>
 
       {nodes.map((n) => (
-        <SkillNode key={n.label} angle={n.angle} label={n.label} radius={2.1} colors={colors} reducedMotion={reducedMotion} />
+        <SkillNode
+          key={n.label}
+          angle={n.angle}
+          label={n.label}
+          radius={isLite ? 1.55 : 2.1}
+          colors={colors}
+          reducedMotion={reducedMotion}
+        />
       ))}
 
       {words.map((w, i) => (
         <VocabToken
           key={w}
           word={w}
-          angle={(360 / words.length) * i + 20}
-          radius={2.9}
+          angle={isLite ? 0 : (360 / words.length) * i + 20}
+          radius={isLite ? 1.1 : 2.9}
+          yOffset={isLite ? 0.3 : 1.1}
           colors={colors}
           reducedMotion={reducedMotion}
         />
