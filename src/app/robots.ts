@@ -15,7 +15,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       { userAgent: '*', allow: '/', disallow: PRIVATE },
-      { userAgent: AI_BOTS, allow: ['/', '/llms.txt'], disallow: PRIVATE },
+      { userAgent: AI_BOTS, allow: ['/', '/llms.txt', '/llms-full.txt'], disallow: PRIVATE },
     ],
     sitemap: 'https://vocably.uz/sitemap.xml',
     host: 'https://vocably.uz',

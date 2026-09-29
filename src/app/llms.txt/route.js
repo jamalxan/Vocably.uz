@@ -2,6 +2,7 @@ import { BLOG_POSTS } from '@/lib/blogPosts';
 import { SEO_WORDS } from '@/lib/seoWords';
 import { TIER_CONFIG, SUBSCRIPTION_TIERS } from '@/lib/entitlements';
 import { SITE_URL, SITE_SUMMARY_EN } from '@/lib/seo/site';
+import { IELTS_GUIDES } from '@/lib/seo/ieltsGuides';
 
 // https://llmstxt.org — a short, plain-markdown map of the site for AI
 // assistants and answer engines. Generated from the same data the pages
@@ -15,6 +16,7 @@ function price(n) {
 export function GET() {
   const tiers = SUBSCRIPTION_TIERS.map((t) => `- ${TIER_CONFIG[t].label}: ${price(TIER_CONFIG[t].priceMonthly)}`).join('\n');
   const posts = BLOG_POSTS.map((p) => `- [${p.title}](${SITE_URL}/blog/${p.slug}): ${p.excerpt}`).join('\n');
+  const guides = IELTS_GUIDES.map((g) => `- [${g.title}](${SITE_URL}/ielts/${g.slug}): ${g.description}`).join('\n');
   const words = SEO_WORDS.map((w) => `- [${w.word}](${SITE_URL}/lugat/${w.slug}): ${w.translations.join(', ')}`).join('\n');
 
   const body = `# Vocably
@@ -31,6 +33,9 @@ Audience: Uzbek speakers preparing for IELTS (Academic) or improving general Eng
 - [Pricing](${SITE_URL}/narxlar): plans and what each includes
 - [Blog](${SITE_URL}/blog): articles on learning vocabulary and IELTS preparation
 - [Dictionary](${SITE_URL}/lugat): English words with Uzbek translations, IPA and examples
+- [IELTS guide](${SITE_URL}/ielts): IELTS format and strategy in Uzbek
+- [IELTS band calculator](${SITE_URL}/ielts/band-kalkulyator): raw score → band for Listening/Reading, overall band
+- [Full text for LLMs](${SITE_URL}/llms-full.txt): all guides and articles in one file
 
 ## Key facts
 
@@ -43,6 +48,10 @@ Audience: Uzbek speakers preparing for IELTS (Academic) or improving general Eng
 ## Plans
 
 ${tiers}
+
+## IELTS guides (Uzbek)
+
+${guides}
 
 ## Blog
 

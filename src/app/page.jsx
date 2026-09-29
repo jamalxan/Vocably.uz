@@ -33,6 +33,7 @@ export const metadata = {
     "Vocably — o'zbek tilida so'zlashuvchilar uchun ingliz tili platformasi. So'z boyligini ilmiy asoslangan takrorlash (SRS) tizimi bilan quring va Reading, Listening, Writing, Speaking, Vocabulary, AI va Mock testlarni bitta tizimga birlashtiradi.",
   alternates: { canonical: '/' },
   openGraph: {
+    url: '/',
     title: 'Vocably — Ingliz tilini ilmiy asoslangan usulda o\'rganing',
     description: "So'z boyligini SRS tizimi bilan quring, Reading/Listening/Speaking/Writing'da darhol ishlating.",
     type: 'website',

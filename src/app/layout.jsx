@@ -35,6 +35,14 @@ export const metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
   },
   formatDetection: { telephone: false },
+  // Search Console / Yandex Webmaster / Bing ownership — set the codes in the
+  // environment (Vercel → Settings → Environment Variables); nothing is
+  // emitted while they are empty.
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    yandex: process.env.YANDEX_VERIFICATION || undefined,
+    other: process.env.BING_SITE_VERIFICATION ? { 'msvalidate.01': process.env.BING_SITE_VERIFICATION } : undefined,
+  },
   manifest: '/manifest.webmanifest',
   // Statik OG-rasm (scripts/generate-og-image.mjs) — dinamik next/og ImageResponse
   // shu loyihada Windows'da build vaqtida "Invalid URL" bilan yiqilgani uchun

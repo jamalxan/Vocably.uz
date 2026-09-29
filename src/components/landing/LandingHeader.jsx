@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Menu, X, BookOpen } from 'lucide-react';
 
 const NAV_LINKS = [
+  { href: '/ielts', label: 'IELTS' },
   { href: '/lugat', label: "Lug'at" },
   { href: '/blog', label: 'Blog' },
   { href: '/narxlar', label: 'Narxlar' },

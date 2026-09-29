@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import { BLOG_POSTS, getBlogPost } from '@/lib/blogPosts';
 import LandingHeader from '@/components/landing/LandingHeader';
 import { formatUzDate } from '@/lib/uzDate';
+import { SITE_URL, organizationLd, breadcrumbLd, ldGraph } from '@/lib/seo/site';
 
 export function generateStaticParams() {
   return BLOG_POSTS.map((p) => ({ slug: p.slug }));
@@ -21,6 +22,7 @@ export function generateMetadata({ params }) {
     openGraph: {
       title: post.title,
       description: post.excerpt,
+      url: `/blog/${post.slug}`,
       type: 'article',
       publishedTime: post.date,
       images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Vocably' }],
@@ -74,14 +76,27 @@ export default function BlogPostPage({ params }) {
   const post = getBlogPost(params.slug);
   if (!post) notFound();
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: post.title,
-    description: post.excerpt,
-    datePublished: post.date,
-    author: { '@type': 'Organization', name: 'Vocably' },
-  };
+  const jsonLd = ldGraph([
+    organizationLd,
+    {
+      '@type': 'BlogPosting',
+      headline: post.title,
+      description: post.excerpt,
+      datePublished: post.date,
+      dateModified: post.date,
+      inLanguage: 'uz',
+      url: `${SITE_URL}/blog/${post.slug}`,
+      mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
+      image: `${SITE_URL}/og-image.png`,
+      author: { '@id': `${SITE_URL}/#organization` },
+      publisher: { '@id': `${SITE_URL}/#organization` },
+    },
+    breadcrumbLd([
+      ['Bosh sahifa', '/'],
+      ['Blog', '/blog'],
+      [post.title, `/blog/${post.slug}`],
+    ]),
+  ]);
 
   return (
     <div className="min-h-dvh bg-bg">

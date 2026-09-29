@@ -12,6 +12,16 @@ const COLUMNS = [
     ],
   },
   {
+    title: 'IELTS',
+    links: [
+      { href: '/ielts', label: "IELTS qo'llanma" },
+      { href: '/ielts/band-kalkulyator', label: 'Band kalkulyatori' },
+      { href: '/ielts/mock-test', label: 'Mock test onlayn' },
+      { href: '/ielts/reading', label: 'Reading' },
+      { href: '/ielts/writing', label: 'Writing' },
+    ],
+  },
+  {
     title: 'Hisob',
     links: [
       { href: '/kirish', label: 'Kirish' },

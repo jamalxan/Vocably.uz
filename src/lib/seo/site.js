@@ -17,7 +17,31 @@ export const organizationLd = {
   name: SITE_NAME,
   url: SITE_URL,
   logo: `${SITE_URL}/icons/icon-512.png`,
+  description: SITE_TAGLINE,
+  areaServed: 'UZ',
+  knowsLanguage: ['uz', 'en'],
+  sameAs: ['https://t.me/howtolearnvocabbot'],
 };
+
+/** BreadcrumbList for a public page: [['Bosh sahifa', '/'], ['IELTS', '/ielts'], ...] */
+export function breadcrumbLd(items) {
+  return {
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map(([name, path], i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name,
+      item: `${SITE_URL}${path === '/' ? '' : path}`,
+    })),
+  };
+}
+
+export function faqLd(pairs) {
+  return {
+    '@type': 'FAQPage',
+    mainEntity: pairs.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+  };
+}
 
 export function tierOffers() {
   return SUBSCRIPTION_TIERS.map((t) => ({
