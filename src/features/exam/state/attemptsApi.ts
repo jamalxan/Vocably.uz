@@ -136,8 +136,8 @@ export interface SectionAttemptStatus {
 
 /** VOCABLY-TZ.md §2.4/§5 item 12 — TestPicker'dagi har test kartasida holat
  * (Boshlanmagan / Davom etmoqda / Tugallangan: Band X) ko'rsatish uchun. */
-export async function fetchSectionStatuses(section: string): Promise<Record<string, SectionAttemptStatus>> {
-  const res = await authedFetch(`/api/exam/attempts/section-status?section=${section}`);
+export async function fetchSectionStatuses(section: string, mode: 'section' | 'practice' = 'section'): Promise<Record<string, SectionAttemptStatus>> {
+  const res = await authedFetch(`/api/exam/attempts/section-status?section=${section}&mode=${mode}`);
   if (!res.ok) return {};
   const data = await res.json();
   return data.statuses || {};

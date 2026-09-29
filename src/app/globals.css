@@ -611,3 +611,11 @@ html.lenis, html.lenis body { height: auto; }
   .landing-core-label { font-size: 10px; padding: 3px 8px; transform: translateY(18px); }
   .landing-core-token { font-size: 9px; padding: 2px 7px; }
 }
+
+/* Exam text highlighting on React-rendered question text (features/exam/
+   highlight/TextMarker.tsx) — painted by the CSS Custom Highlight API, so no
+   DOM is wrapped. Same yellow as the passage <mark>s. */
+::highlight(exam-mark) {
+  background-color: #fde68a;
+  color: #1f1f1f;
+}

@@ -23,6 +23,7 @@ export interface ExamHeaderProps {
   onVolumeChange?: (v: number) => void;
   onOpenSettings: () => void;
   onOpenHelp: () => void;
+  untimed?: boolean;
 }
 
 export default function ExamHeader({
@@ -37,6 +38,7 @@ export default function ExamHeader({
   onVolumeChange,
   onOpenSettings,
   onOpenHelp,
+  untimed = false,
 }: ExamHeaderProps) {
   return (
     <header
@@ -51,7 +53,16 @@ export default function ExamHeader({
       </div>
 
       <div className="flex-shrink-0">
-        <ExamTimer remainingSec={remainingSec} hidden={timerHidden} onThresholdCrossed={onThresholdCrossed} />
+        {untimed ? (
+          <span
+            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+            style={{ color: 'var(--exam-accent)', border: '1px solid var(--exam-chrome-border)' }}
+          >
+            Practice · no time limit
+          </span>
+        ) : (
+          <ExamTimer remainingSec={remainingSec} hidden={timerHidden} onThresholdCrossed={onThresholdCrossed} />
+        )}
       </div>
 
       <div className="flex-1 flex items-center justify-end gap-1 sm:gap-2">
@@ -90,16 +101,18 @@ export default function ExamHeader({
         >
           <HelpCircle size={18} />
         </button>
-        <button
-          type="button"
-          onClick={onToggleTimerHidden}
-          aria-label={timerHidden ? 'Show timer' : 'Hide timer'}
-          title={timerHidden ? 'Show timer' : 'Hide timer'}
-          className={EXAM_ICON_BTN}
-          style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
-        >
-          <Monitor size={18} />
-        </button>
+        {!untimed && (
+          <button
+            type="button"
+            onClick={onToggleTimerHidden}
+            aria-label={timerHidden ? 'Show timer' : 'Hide timer'}
+            title={timerHidden ? 'Show timer' : 'Hide timer'}
+            className={EXAM_ICON_BTN}
+            style={{ color: 'var(--exam-muted)', minWidth: 44, minHeight: 44 }}
+          >
+            <Monitor size={18} />
+          </button>
+        )}
       </div>
     </header>
   );

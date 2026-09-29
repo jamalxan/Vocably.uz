@@ -23,8 +23,12 @@ export async function GET(req) {
       return NextResponse.json({ error: "Noto'g'ri bo'lim" }, { status: 400 });
     }
 
+    // `mode=practice` — o'sha ro'yxat mashq (vaqtsiz) urinishlari bo'yicha
+    // (2026-09-29: skill sahifasi Practice/Timed almashtirgichi bilan bitta).
+    const mode = searchParams.get('mode') === 'practice' ? 'practice' : 'section';
+
     await connectToDatabase();
-    const attempts = await ExamAttempt.find({ userId, mode: 'section', sections: section })
+    const attempts = await ExamAttempt.find({ userId, mode, sections: section })
       .sort({ createdAt: -1 })
       .select('testId status result submittedAt endsAt')
       .lean();

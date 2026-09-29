@@ -26,16 +26,16 @@ export default function YozishMashqAttemptPage() {
         <WritingResult attemptId={attemptId} result={result} onRegraded={setResult} />
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 pb-10">
           <Link
-            href="/app/yozish/mashq"
+            href="/app/yozish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-accent hover:underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Yangi mashq boshlash
+            Yana mashq qilish
           </Link>
           <Link
-            href="/app/mashq"
+            href="/app/yozish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-muted hover:text-ink font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Mashq bo&apos;limiga
+            Writing sahifasiga
           </Link>
         </div>
       </div>

@@ -9,6 +9,7 @@ import AudioEngine, { type AudioEngineHandle } from './AudioEngine';
 import { resolveListeningAudioSrc } from './audioSrc';
 import AudioProgress from './AudioProgress';
 import QuestionGroupBlock from '../questions/QuestionGroupBlock';
+import TextMarker from '../highlight/TextMarker';
 import ConfirmFinishModal from '../mock/ConfirmFinishModal';
 import { ExamLoadError, ExamLoading, SubmitErrorBanner } from '../shell/ExamStatus';
 import { unansweredNumbers } from '../state/unanswered';
@@ -125,12 +126,12 @@ export default function ListeningPracticeSection({ attemptId, onSubmitted }: Lis
     <div data-exam="" className="min-h-dvh">
       <div className="max-w-[860px] mx-auto px-4 sm:px-6 py-6 space-y-4">
         <Link
-          href="/app/mashq"
+          href="/app/tinglash"
           className="inline-flex items-center gap-1.5 min-h-11 -ml-2 px-2 rounded-lg text-sm font-semibold focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
           style={{ color: 'var(--exam-muted)' }}
         >
           <ArrowLeft size={16} aria-hidden="true" />
-          Mashq
+          Listening
         </Link>
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -258,11 +259,11 @@ export default function ListeningPracticeSection({ attemptId, onSubmitted }: Lis
           </p>
         )}
 
-        <div className="space-y-4">
+        <TextMarker storageKey={`${attemptId}:listening`} className="space-y-4">
           {currentPart.questionGroups.map((g) => (
             <QuestionGroupBlock key={g.id} group={g} answers={answers} onAnswerChange={(qNum, value) => setAnswer(qNum, value)} />
           ))}
-        </div>
+        </TextMarker>
       </div>
       {submitError && <SubmitErrorBanner message={submitError} onRetry={doSubmit} retrying={submitting} />}
       {confirmUnanswered && (
