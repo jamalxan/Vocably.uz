@@ -72,7 +72,7 @@ export default function SubscriptionBanner() {
       <Icon size={17} className={`flex-shrink-0 mt-0.5 sm:mt-0 ${iconClass}`} aria-hidden="true" />
       <p className="flex-1 leading-snug">{text}</p>
       <Link
-        href="/narxlar"
+        href={`/app/tolov?tier=${sub.tier}`}
         className="flex-shrink-0 inline-flex items-center min-h-9 px-3 rounded-lg bg-accent text-on-accent text-xs font-semibold hover:bg-accent-hover"
       >
         {sub.status === 'expired' ? 'Qayta faollashtirish' : 'Uzaytirish'}

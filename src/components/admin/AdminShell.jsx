@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker } from 'lucide-react';
+import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker, Wallet } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { registerChatsTap } from '@/lib/adminHiddenChats';
@@ -31,6 +31,7 @@ const NAV_GROUPS = [
     label: 'Foydalanuvchilar',
     items: [
       { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
+      { href: '/admin/payments', label: "To'lovlar", icon: Wallet, badgeKey: 'payments' },
       // `/admin/c/<id>` — bitta suhbatning to'g'ridan-to'g'ri havolasi, ham shu bo'limga tegishli.
       { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare, also: ['/admin/c/'], secretTap: true },
       { href: '/admin/reports', label: 'Reportlar', icon: Flag },
@@ -55,7 +56,7 @@ function isActive(item, pathname) {
   return pathname.startsWith(item.href) || (item.also || []).some((p) => pathname.startsWith(p));
 }
 
-function NavLink({ item, pathname, onClick }) {
+function NavLink({ item, pathname, onClick, badge }) {
   const active = isActive(item, pathname);
   const Icon = item.icon;
   return (
@@ -73,6 +74,11 @@ function NavLink({ item, pathname, onClick }) {
     >
       <Icon size={17} strokeWidth={2} />
       <span>{item.label}</span>
+      {badge > 0 && (
+        <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-warning text-white text-[11px] font-bold grid place-items-center" aria-label={`${badge} ta kutilmoqda`}>
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -86,6 +92,23 @@ export default function AdminShell({ children }) {
   const wasOpen = useRef(false);
 
   const activeItem = NAV.find((n) => isActive(n, pathname));
+
+  // Pending payment receipts — shown as a badge so none waits unnoticed.
+  const [badges, setBadges] = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      fetch('/api/admin/payments?status=pending')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => !cancelled && d && setBadges({ payments: d.pendingCount || 0 }))
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [pathname]);
   const pageTitle = activeItem?.label || 'Admin';
 
   // Drawer ochiq: Escape yopadi, fokus ichkariga o'tadi, fon scroll bo'lmaydi.
@@ -158,7 +181,13 @@ export default function AdminShell({ children }) {
               <p className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-on-primary/40">{group.label}</p>
               <div className="space-y-1">
                 {group.items.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMobileOpen(false)} />
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    badge={item.badgeKey ? badges[item.badgeKey] : 0}
+                    onClick={() => setMobileOpen(false)}
+                  />
                 ))}
               </div>
             </div>

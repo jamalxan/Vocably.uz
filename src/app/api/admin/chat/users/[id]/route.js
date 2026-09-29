@@ -18,6 +18,7 @@ export async function PATCH(req, { params }) {
 
     await connectToDatabase();
 
+    if (!/^[a-f0-9]{24}$/i.test(String(params.id))) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
     const target = await User.findById(params.id);
     if (!target) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
 

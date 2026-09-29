@@ -575,6 +575,40 @@ BillingInterestSchema.index({ createdAt: -1 });
 export const BillingInterest =
   mongoose.models.BillingInterest || mongoose.model('BillingInterest', BillingInterestSchema);
 
+// A request to activate a paid plan. Today it is paid manually (card transfer)
+// and the user uploads the receipt; an admin approves it and the plan opens
+// (src/lib/payments/approve.js). Payme/Click, once configured, settle the same
+// document automatically — `method` says which path it took.
+const PaymentRequestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  tier: { type: String, enum: ['standard', 'premium'], required: true },
+  months: { type: Number, enum: [1, 12], required: true },
+  amount: { type: Number, required: true }, // so'm
+  method: { type: String, enum: ['manual', 'payme', 'click'], default: 'manual' },
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'], default: 'pending' },
+  receiptFileId: { type: String, default: null }, // GridFS (paymentReceipts)
+  receiptMime: { type: String, default: null },
+  note: { type: String, default: '', maxlength: 500 },
+  rejectReason: { type: String, default: '' },
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  reviewedAt: { type: Date, default: null },
+  // Provider transaction state (Payme/Click). Unused for manual payments.
+  provider: {
+    txId: { type: String, default: null },
+    state: { type: Number, default: null },
+    createdAt: { type: Date, default: null },
+    performedAt: { type: Date, default: null },
+    cancelledAt: { type: Date, default: null },
+    reason: { type: Number, default: null },
+  },
+  createdAt: { type: Date, default: Date.now },
+});
+PaymentRequestSchema.index({ status: 1, createdAt: -1 });
+PaymentRequestSchema.index({ userId: 1, createdAt: -1 });
+PaymentRequestSchema.index({ 'provider.txId': 1 }, { sparse: true });
+
+export const PaymentRequest = mongoose.models.PaymentRequest || mongoose.model('PaymentRequest', PaymentRequestSchema);
+
 // TZ-vocably-v2.md §D1.6 — soatlik AI generatsiya limiti (src/lib/ai/client.js
 // checkAndIncrementAiRateLimit). RateLimitHit'dan farqli o'laroq bucket kaliti
 // (userId, hourBucket) juftligi — bir soat davomida bitta hujjat, TTL orqali
@@ -600,7 +634,7 @@ export const AiUsage = mongoose.models.AiUsage || mongoose.model('AiUsage', AiUs
 
 const NotificationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['chat_message', 'announcement', 'subscription'], required: true },
+  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment'], required: true },
   title: { type: String, required: true, trim: true },
   body: { type: String, default: '', trim: true },
   // 'chat_message' uchun suhbat ID'si, 'announcement' uchun Announcement ID'si —

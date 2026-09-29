@@ -9,11 +9,8 @@ import { formatUzDate } from '@/lib/uzDate';
 // BILL-01/02 — haqiqiy (placeholder emas) pricing sahifasi. Narx/feature
 // ro'yxati src/lib/entitlements.js'dan keladi (TZ §46.2: hardcode qilinmaydi).
 //
-// MUHIM: bu yerda haqiqiy to'lov/checkout YO'Q — Stripe/Payme/Click kabi
-// gateway ulanmagan (bu FAZA uchun qasddan chetlab o'tilgan, chunki haqiqiy
-// merchant hisob ma'lumotlari kerak). STANDARD/PREMIUM uchun CTA "Sotib
-// olish" emas — "Bog'lanish" (Telegram orqali qiziqish bildirish), tarifni
-// admin panel orqali qo'lda tayinlaydi (src/components/admin/UsersTable.jsx).
+// STANDARD/PREMIUM CTA → /app/tolov (karta orqali to'lov + chek, admin
+// tasdiqlaydi; Payme/Click sozlansa o'sha sahifada o'zi paydo bo'ladi).
 
 const ORDER = ['free', 'standard', 'premium'];
 
@@ -165,7 +162,19 @@ export default function PricingTable() {
                 ))}
               </ul>
 
-              {isCurrent ? (
+              {isCurrent && tier !== 'free' ? (
+                <div className="flex flex-col gap-2">
+                  <span className="inline-flex items-center justify-center gap-2 border border-accent/40 bg-accent-soft text-accent font-semibold px-5 py-2.5 rounded-xl text-sm">
+                    Joriy rejangiz
+                  </span>
+                  <Link
+                    href={`/app/tolov?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`}
+                    className="inline-flex items-center justify-center text-sm font-semibold text-accent hover:underline py-1"
+                  >
+                    Muddatni uzaytirish →
+                  </Link>
+                </div>
+              ) : isCurrent ? (
                 <span className="inline-flex items-center justify-center gap-2 border border-accent/40 bg-accent-soft text-accent font-semibold px-5 py-3 rounded-xl text-sm">
                   Joriy rejangiz
                 </span>
@@ -177,15 +186,30 @@ export default function PricingTable() {
                   {authState === 'loading' ? <Loader2 size={15} className="animate-spin" /> : 'Hozir boshlash'}
                 </Link>
               ) : (
-                <a
-                  href={telegramHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => registerInterest(tier)}
-                  className="inline-flex items-center justify-center gap-2 bg-bg border border-border hover:border-accent/50 text-ink font-semibold px-5 py-3 rounded-xl text-sm transition-colors"
-                >
-                  <MessageCircle size={15} /> Bog'lanish
-                </a>
+                <div className="flex flex-col gap-2">
+                  {/* Checkout: card transfer + receipt today, Payme/Click once connected (/app/tolov). */}
+                  <Link
+                    href={
+                      authState === 'in'
+                        ? `/app/tolov?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`
+                        : `/royxat?next=${encodeURIComponent(`/app/tolov?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`)}`
+                    }
+                    onClick={() => registerInterest(tier)}
+                    className={`inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl text-sm transition-colors ${
+                      isPopular ? 'bg-accent hover:bg-accent-hover text-on-accent shadow-glow' : 'bg-ink text-bg hover:opacity-90'
+                    }`}
+                  >
+                    {subscription?.tier === tier && subscription.status !== 'free' ? 'Uzaytirish' : 'Sotib olish'}
+                  </Link>
+                  <a
+                    href={telegramHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-muted hover:text-accent py-1"
+                  >
+                    <MessageCircle size={13} /> Savol bormi? Telegram
+                  </a>
+                </div>
               )}
             </div>
           );
@@ -193,9 +217,8 @@ export default function PricingTable() {
       </div>
 
       <p className="text-center text-xs text-ink-subtle max-w-lg mx-auto mt-8">
-        STANDARD va PREMIUM rejalar hozircha qo'lda ulanadi — "Bog'lanish" tugmasi Telegram orqali
-        bizga yozadi, so'ng rejangizni faollashtiramiz. Narxlar dastlabki launch taklifi va
-        keyinchalik o'zgarishi mumkin.
+        To'lov karta orqali: summani o'tkazib, chekni yuklaysiz — tasdiqlangach tarif darhol ochiladi
+        va 1 oy (yoki 1 yil) amal qiladi. Muddat tugagach yana 3 kun ochiq turadi.
       </p>
     </div>
   );
