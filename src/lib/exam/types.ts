@@ -436,6 +436,8 @@ export interface SpeakingScore {
   strengths: string[];
   corrections: { original: string; suggestion: string }[];
   nextStepsUz: string[];
+  // Objective fluency measures (speakingMetrics.ts) — absent on old results.
+  metrics?: import('./speakingMetrics').SpeakingMetrics;
 }
 
 // ============================================================================
