@@ -509,10 +509,21 @@ export interface AttemptHistoryEntry {
   testTitle: string;
   mode: AttemptMode;
   submittedAt: string | null;
+  /** Only for mock attempts — a single-section drill has no overall band. */
   overall: number | null;
   listening: number | null;
   reading: number | null;
   writing: number | null;
+  speaking: number | null;
+}
+
+export interface SkillBandEstimate {
+  /** Latest graded band per skill (null = never attempted). */
+  bands: { listening: number | null; reading: number | null; writing: number | null; speaking: number | null };
+  /** IELTS-rounded mean of the skills that have a band; null if none. */
+  estimate: number | null;
+  /** How many of the 4 skills the estimate is based on. */
+  skillsCovered: number;
 }
 
 export interface ReviewSpeakingRecording {

@@ -2,8 +2,6 @@
 // scripts/seed-practice-tests.mjs to seed real Reading/Listening/Writing content,
 // replacing the placeholder demo test from scripts/seed-exam-test.mjs) must always
 // pass the same admin-authoring validator real content goes through (TZ §15.2).
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { validateTest, hasBlockingErrors } from '../../src/lib/exam/contentValidator';
 import { buildListeningSection, buildWritingSection } from '../seed-practice-tests.mjs';
@@ -12,8 +10,12 @@ import test2 from './practice-test-2.mjs';
 import test3 from './practice-test-3.mjs';
 import test4 from './practice-test-4.mjs';
 
-const DURATIONS = JSON.parse(readFileSync(path.join(__dirname, '..', 'tts', 'out', 'durations.json'), 'utf-8'));
-const PARTS = JSON.parse(readFileSync(path.join(__dirname, '..', 'tts', 'out', 'parts.json'), 'utf-8'));
+import { partsFromContent, durationsFromWavs } from '../tts/rebuild-durations.mjs';
+
+// Derived from the committed content + final WAVs (scripts/tts/out/ is
+// gitignored, so reading it only ever worked on the machine that synthesized it).
+const PARTS = partsFromContent([test1, test2, test3, test4]);
+const DURATIONS = durationsFromWavs(PARTS);
 
 /** The document shape actually inserted into Mongo by scripts/seed-practice-tests.mjs
  * — includes the real synthesized audioUrl/durationSec and the rendered chart

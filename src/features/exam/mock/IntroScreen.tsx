@@ -82,6 +82,13 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
 
           <h1 className="text-lg font-bold text-ink font-display">{test.title}</h1>
           <p className="text-xs uppercase tracking-wide text-muted mt-1">{test.module === 'academic' ? 'Academic' : 'General Training'}</p>
+          {test.format === 'mini' && (
+            <p className="mt-3 flex items-start gap-2 rounded-lg bg-info-soft px-3 py-2.5 text-xs leading-relaxed text-ink">
+              <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-info" />
+              Mini mock: tuzilishi haqiqiy IELTS bilan bir xil (3 passage / 40 savol, 4 part, 2 task), lekin
+              matnlar rasmiy uzunlikdan qisqaroq. Natija taxminiy band sifatida ko&apos;rsatiladi.
+            </p>
+          )}
 
           <div className="mt-5 space-y-2.5">
             {listening && (

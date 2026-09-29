@@ -31,6 +31,7 @@ export async function GET(req, { params }) {
         testId: String(attempt.testId),
         mode: attempt.mode,
         mockKind: attempt.mockKind,
+        mockFormat: attempt.mockFormat || 'full',
         sections: attempt.sections,
         currentSection: attempt.currentSection,
         status: attempt.status,

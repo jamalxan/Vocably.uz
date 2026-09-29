@@ -29,6 +29,8 @@
 // Then seed (needs MONGODB_URI + a real network — this sandbox has neither, so
 // this script is written to be run by the user in their own shell):
 //   node --env-file=.env.local scripts/seed-practice-tests.mjs
+// Off Windows (no SAPI), rebuild the small TTS outputs from the committed WAVs first:
+//   node scripts/tts/rebuild-durations.mjs
 import { MongoClient } from 'mongodb';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -38,6 +40,9 @@ import { renderChartSvg } from '../src/lib/chartSvg.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DURATIONS_PATH = path.join(__dirname, 'tts', 'out', 'durations.json');
 const PARTS_PATH = path.join(__dirname, 'tts', 'out', 'parts.json');
+// Speaking Part 1/2/3 sets per test slug — this file existed but no script
+// loaded it, so no published test had a Speaking section (audit N-04).
+const SPEAKING_PATH = path.join(__dirname, 'speaking-content-seed.json');
 
 export function chartToImage(chart) {
   const svg = renderChartSvg(chart);
@@ -104,6 +109,7 @@ async function main() {
   }
   const durations = JSON.parse(readFileSync(DURATIONS_PATH, 'utf-8'));
   const parts = JSON.parse(readFileSync(PARTS_PATH, 'utf-8'));
+  const speaking = existsSync(SPEAKING_PATH) ? JSON.parse(readFileSync(SPEAKING_PATH, 'utf-8')) : {};
 
   const client = new MongoClient(mongoUri);
   await client.connect();
@@ -127,6 +133,7 @@ async function main() {
           reading: content.reading,
           listening: buildListeningSection(content, durations, parts),
           writing: buildWritingSection(content),
+          ...(speaking[content.slug] ? { speaking: speaking[content.slug] } : {}),
         },
         bandTable: null,
         isPublished: true,

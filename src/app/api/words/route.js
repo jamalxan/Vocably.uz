@@ -19,9 +19,14 @@ export async function GET(req) {
     // `categories` (ba'zi userlarda bir necha MB) DB'dan o'qilmaydi va
     // javobga qo'shilmaydi, faqat sessiya + reviewStreak tekshiriladi.
     if (req.nextUrl.searchParams.get('light') === '1') {
-      const light = await User.findById(userId).select('reviewStreak lastReviewDate').lean();
+      const light = await User.findById(userId).select('reviewStreak lastReviewDate name phone').lean();
       if (!light) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
-      return NextResponse.json({ reviewStreak: light.reviewStreak || 0, lastReviewDate: light.lastReviewDate || null });
+      return NextResponse.json({
+        reviewStreak: light.reviewStreak || 0,
+        lastReviewDate: light.lastReviewDate || null,
+        name: light.name || '',
+        phone: light.phone || '',
+      });
     }
 
     const user = await User.findById(userId).select('-password');
@@ -38,6 +43,10 @@ export async function GET(req) {
       categories: user.categories,
       reviewStreak: user.reviewStreak || 0,
       lastReviewDate: user.lastReviewDate || null,
+      // Source of truth for the greeting/sidebar name (localStorage alone
+      // showed "Foydalanuvchi" whenever storage was cleared).
+      name: user.name || '',
+      phone: user.phone || '',
     });
   } catch (err) {
     return serverError(err, 'words');

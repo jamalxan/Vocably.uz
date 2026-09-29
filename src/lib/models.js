@@ -935,6 +935,10 @@ const ExamAttemptSchema = new mongoose.Schema(
     // amalda bo'lgan qat'iy-timer/section-locking xatti-harakatini saqlab
     // qoladi (orqaga moslik — attempts/route.js va attemptServer.ts izohiga q.).
     mockKind: { type: String, enum: ['practice', 'exam', 'secure'], default: 'exam' },
+    // 'mini' = structurally complete mock whose Reading is shorter than the
+    // official word-count window (src/lib/exam/mockPools.js fallback) — the
+    // UI labels it so a Mini mock band isn't mistaken for a full-format one.
+    mockFormat: { type: String, enum: ['full', 'mini'], default: 'full' },
     sections: [{ type: String, enum: ['listening', 'reading', 'writing', 'speaking'] }],
     currentSection: { type: String, enum: ['listening', 'reading', 'writing', 'speaking'], required: true },
     status: { type: String, enum: ['in_progress', 'submitted', 'graded', 'expired', 'abandoned'], default: 'in_progress' },

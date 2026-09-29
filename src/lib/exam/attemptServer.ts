@@ -5,7 +5,7 @@
 // bilan ishlaydi (`@/lib/models`) — eski `ExamSession`ga TEGMAYDI.
 import crypto from 'crypto';
 import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel, ExamTestVersion as ExamTestVersionModel, User as UserModel } from '@/lib/models';
-import { isCorrect, isSetCorrect, listeningBand, readingBand, officialStyleOverallBand } from './scoring';
+import { isCorrect, isSetCorrect, listeningBand, readingBand, officialStyleOverallBand, roundOverall } from './scoring';
 import { sanitizeForExam } from './sanitize';
 import { gradeEssay, combineWritingBand } from './writingGrader';
 import { gradeSpeaking } from './speakingGrader';
@@ -15,6 +15,7 @@ import type {
   AnswerKey,
   AnswerValue,
   AttemptHistoryEntry,
+  SkillBandEstimate,
   AttemptReviewDetail,
   AttemptResult,
   ExamSectionKey,
@@ -875,10 +876,31 @@ export async function getAttemptHistory(userId: string, limit = 20): Promise<Att
       testTitle: titleById.get(String(a.testId)) || '',
       mode: a.mode,
       submittedAt: a.submittedAt ? new Date(a.submittedAt).toISOString() : null,
-      overall: a.result?.overall ?? null,
+      // A single-section drill's "overall" is just that section's band —
+      // showing it as an overall IELTS band misled the dashboard/history.
+      overall: a.mode === 'mock' ? a.result?.overall ?? null : null,
       listening: a.result?.listening?.band ?? null,
       reading: a.result?.reading?.band ?? null,
       writing: a.result?.writing?.band ?? null,
+      speaking: a.result?.speaking?.band ?? null,
     }))
     .reverse(); // eng eskisi birinchi — grafik chapdan o'ngga o'sadi
+}
+
+/** Pure: latest band per skill from newest-first history rows, and an
+ * IELTS-rounded estimate over the skills that have one. */
+export function estimateFromHistory(newestFirst: Pick<AttemptHistoryEntry, 'listening' | 'reading' | 'writing' | 'speaking'>[]): SkillBandEstimate {
+  const bands: SkillBandEstimate['bands'] = { listening: null, reading: null, writing: null, speaking: null };
+  for (const row of newestFirst) {
+    for (const key of ['listening', 'reading', 'writing', 'speaking'] as const) {
+      if (bands[key] == null && row[key] != null) bands[key] = row[key];
+    }
+  }
+  const vals = Object.values(bands).filter((v): v is number => v != null);
+  return { bands, estimate: vals.length ? roundOverall(vals.reduce((a, b) => a + b, 0) / vals.length) : null, skillsCovered: vals.length };
+}
+
+export async function getSkillBandEstimate(userId: string): Promise<SkillBandEstimate> {
+  const history = await getAttemptHistory(userId, 60);
+  return estimateFromHistory([...history].reverse());
 }

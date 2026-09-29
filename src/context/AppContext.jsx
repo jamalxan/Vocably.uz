@@ -125,6 +125,14 @@ export function AppProvider({ children }) {
         vocabLoadedRef.current = true;
       }
       setReviewStreak(data.reviewStreak || 0);
+      if (data.name) {
+        setUsername(data.name);
+        localStorage.setItem('username', data.name);
+      }
+      if (data.phone) {
+        setPhone(data.phone);
+        localStorage.setItem('phone', data.phone);
+      }
       setIsAuthed(true);
       localStorage.setItem('vocably_authed', '1');
     } catch {

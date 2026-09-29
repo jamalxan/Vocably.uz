@@ -118,6 +118,7 @@ export default function DashboardHome() {
             goal={data.today.goal}
             goalPct={data.today.goalPct}
             onStart={goToReview}
+            totalWords={data.totals?.words}
           />
         </div>
         {/* activity7 — xuddi shu 7 kunning sanalari (API'da bitta last7 massividan). */}
