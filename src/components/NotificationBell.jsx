@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Bell, BellRing, MessageCircle, Megaphone, Loader2 } from 'lucide-react';
+import { Bell, BellRing, MessageCircle, Megaphone, Loader2, CreditCard } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { pushSupported, getPushPermissionState, isPushSubscribed, subscribeToPush } from '@/lib/pushClient';
 
 const POLL_MS = 25_000;
@@ -22,6 +23,7 @@ function timeAgo(dateStr) {
 // orqali autentifikatsiya qilinadi (bu komponent faqat AppShell ichida,
 // autentifikatsiyadan o'tgan foydalanuvchi uchun render qilinadi).
 export default function NotificationBell({ onOpenFriends }) {
+  const router = useRouter();
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -143,6 +145,9 @@ export default function NotificationBell({ onOpenFriends }) {
     if (n.type === 'chat_message') {
       setOpen(false);
       onOpenFriends?.();
+    } else if (n.type === 'subscription' && n.link) {
+      setOpen(false);
+      router.push(n.link);
     } else {
       setExpandedId((cur) => (cur === n._id ? null : n._id));
     }
@@ -234,7 +239,7 @@ export default function NotificationBell({ onOpenFriends }) {
                 }`}
               >
                 <div className="w-7 h-7 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {n.type === 'chat_message' ? <MessageCircle size={13} /> : <Megaphone size={13} />}
+                  {n.type === 'chat_message' ? <MessageCircle size={13} /> : n.type === 'subscription' ? <CreditCard size={13} /> : <Megaphone size={13} />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className={`text-xs break-words ${n.read ? 'text-ink/80' : 'text-ink font-semibold'}`}>

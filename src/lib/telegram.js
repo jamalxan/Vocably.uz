@@ -2,7 +2,8 @@
 // Bot polling qilmaydi — Telegram har bir xabarni bizning /api/telegram/webhook
 // manzilimizga POST qilib yuboradi (bu Vercel'ning serverless funksiyalariga mos keladi).
 
-const TELEGRAM_API_BASE = 'https://api.telegram.org';
+// Overridable for local testing against a stub server.
+const TELEGRAM_API_BASE = process.env.TELEGRAM_API_BASE || 'https://api.telegram.org';
 
 function getBotToken() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -31,6 +32,9 @@ async function callTelegramApi(method, payload) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    // A hung Telegram call must not hold up the request that triggered it
+    // (e.g. sending a chat message).
+    signal: AbortSignal.timeout(8000),
   });
   const data = await res.json();
   if (!data.ok) {
@@ -64,11 +68,20 @@ export function removeKeyboard() {
   return { reply_markup: { remove_keyboard: true } };
 }
 
+export async function editMessageText(chatId, messageId, text, extra = {}) {
+  return callTelegramApi('editMessageText', { chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML', ...extra });
+}
+
+export async function answerCallbackQuery(callbackQueryId, text) {
+  return callTelegramApi('answerCallbackQuery', { callback_query_id: callbackQueryId, ...(text ? { text } : {}) });
+}
+
 export async function setWebhook(url, secretToken) {
   return callTelegramApi('setWebhook', {
     url,
     secret_token: secretToken,
-    allowed_updates: ['message'],
+    // callback_query — inline-button answers of the daily mini-test.
+    allowed_updates: ['message', 'callback_query'],
   });
 }
 

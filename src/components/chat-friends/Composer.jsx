@@ -97,8 +97,9 @@ export default function Composer() {
 
   const handleSendText = async (e) => {
     e?.preventDefault();
-    if (sending) return;
     const clean = text.trim();
+    // Only edits and attachment uploads are exclusive; plain text never blocks.
+    if (sending && (editingMessage || pendingAttachment)) return;
 
     if (editingMessage) {
       if (!clean) return;
@@ -133,14 +134,15 @@ export default function Composer() {
     }
 
     if (!clean) return;
-    setSending(true);
+    // Telegram-like: no waiting for the server — the bubble appears at once
+    // (ChatContext keeps sends in order) and the user can type the next
+    // message straight away. A failed one stays in the chat with "Retry";
+    // only a server refusal (e.g. rate limit) is announced.
     setText('');
-    const res = await sendMessage({ type: 'text', text: clean });
-    if (res.error) {
-      setText(clean);
-      alert(res.error);
-    }
-    setSending(false);
+    textInputRef.current?.focus();
+    sendMessage({ type: 'text', text: clean }).then((res) => {
+      if (res?.error && res.error !== 'Tarmoq xatoligi') alert(res.error);
+    });
   };
 
   const handleCancelEdit = () => {
@@ -208,18 +210,18 @@ export default function Composer() {
     stageAttachment(file, type);
   };
 
-  const handleRecordedVoice = async (file) => {
-    setSending(true);
-    const res = await uploadAndSend(file, 'voice');
-    if (res.error) alert(res.error);
-    setSending(false);
+  // Recorded voice/video uploads run in the background — typing and sending
+  // other messages is never blocked by them (Telegram behaviour).
+  const handleRecordedVoice = (file, durationSec) => {
+    const extra = durationSec > 0 ? { durationSec: Math.round(durationSec) } : undefined;
+    uploadAndSend(file, 'voice', undefined, extra).then((res) => res?.error && alert(res.error));
   };
 
-  const handleRecordedVideo = async (file) => {
-    setSending(true);
-    const res = await uploadAndSend(file, 'video');
-    if (res.error) alert(res.error);
-    setSending(false);
+  // Camera recordings are "video notes": sent with `round: true` so every
+  // client shows them in the same circle they were recorded in.
+  const handleRecordedVideo = (file, durationSec) => {
+    const extra = { round: true, ...(durationSec > 0 ? { durationSec: Math.round(durationSec) } : {}) };
+    uploadAndSend(file, 'video', undefined, extra).then((res) => res?.error && alert(res.error));
   };
 
   // Tanlangan emoji xabar oxiriga emas, aynan kursor turgan joyga qo'shiladi.
@@ -395,7 +397,7 @@ export default function Composer() {
 
         <button
           type="submit"
-          disabled={(!text.trim() && !pendingAttachment) || sending}
+          disabled={(!text.trim() && !pendingAttachment) || (sending && (!!editingMessage || !!pendingAttachment))}
           aria-label={editingMessage ? "Tahrirni saqlash" : 'Xabarni yuborish'}
           className={`${hasContent || editingMessage ? 'inline-flex' : 'hidden'} sm:inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-on-accent rounded-full transition-colors flex-shrink-0`}
         >

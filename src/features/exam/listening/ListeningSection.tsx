@@ -6,6 +6,7 @@ import { useAutosave } from '../state/useAutosave';
 import { fetchAttempt, sendHeartbeat, submitAttempt, advanceMockSection } from '../state/attemptsApi';
 import ExamShell from '../shell/ExamShell';
 import QuestionGroupBlock from '../questions/QuestionGroupBlock';
+import TextMarker from '../highlight/TextMarker';
 import AudioEngine, { type AudioEngineHandle } from './AudioEngine';
 import { resolveListeningAudioSrc } from './audioSrc';
 import AudioProgress from './AudioProgress';
@@ -326,7 +327,8 @@ export default function ListeningSection({
 
       <div className="h-full overflow-y-auto">
         {banner}
-        <div className="max-w-[860px] mx-auto px-6 py-6 space-y-8">
+        {/* Savol matnini belgilash (highlight) — TextMarker.tsx. */}
+        <TextMarker storageKey={`${attemptId}:listening`} className="max-w-[860px] mx-auto px-6 py-6 space-y-8">
           {audioProblem && phase === 'playing' && (
             <div
               role="alert"
@@ -368,7 +370,7 @@ export default function ListeningSection({
               ))}
             </section>
           ))}
-        </div>
+        </TextMarker>
       </div>
       {submitError && <SubmitErrorBanner message={submitError} onRetry={retrySubmit} retrying={submitting} />}
     </ExamShell>

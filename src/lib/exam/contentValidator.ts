@@ -338,7 +338,13 @@ export function hasBlockingErrors(issues: ValidationIssue[]): boolean {
 // xatti-harakatini o'zgartirmaydi — aks holda mavjud 4 ta nashr etilgan test
 // (ular mock shaklga mos kelmasligi mumkin) standalone Reading/Listening/
 // Writing practice uchun ham bloklanib qolardi.
-export function checkMockEligibility(test: Partial<Test>): ValidationIssue[] {
+//
+// `lengthNorms: false` — "Mini mock" (MockFormat 'mini'): the same STRUCTURE
+// (3 passages/40 Qs, 4 parts x 10 Qs + audio, 2 tasks) but without the
+// official Reading word-count window. Used only as a clearly-labelled
+// fallback when no full-length Reading exists yet, so Mock isn't simply
+// unavailable while the content library is still being filled.
+export function checkMockEligibility(test: Partial<Test>, { lengthNorms = true }: { lengthNorms?: boolean } = {}): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const sections = test.sections || {};
 
@@ -366,7 +372,7 @@ export function checkMockEligibility(test: Partial<Test>): ValidationIssue[] {
       (sum, p) => sum + countWords((p.paragraphs || []).map((par) => stripHtml(par.html)).join(' ')),
       0
     );
-    if (totalWords < 2150 || totalWords > 2750) {
+    if (lengthNorms && (totalWords < 2150 || totalWords > 2750)) {
       issues.push({
         severity: 'error',
         path: 'reading',
@@ -434,8 +440,12 @@ export function isMockEligible(test: Partial<Test>): boolean {
 // BITTA BO'LIM darajasida ham berish kerak. Qoidalar TAKRORLANMAYDI —
 // xuddi shu `checkMockEligibility` ishlatiladi, faqat natijasi shu
 // bo'limga tegishli qismi bo'yicha filtrlanadi.
-export function isSectionMockEligible(sectionKey: 'reading' | 'listening' | 'writing', sectionContent: unknown): boolean {
+export function isSectionMockEligible(
+  sectionKey: 'reading' | 'listening' | 'writing',
+  sectionContent: unknown,
+  { lengthNorms = true }: { lengthNorms?: boolean } = {}
+): boolean {
   if (!sectionContent) return false;
-  const issues = checkMockEligibility({ sections: { [sectionKey]: sectionContent } } as Partial<Test>);
+  const issues = checkMockEligibility({ sections: { [sectionKey]: sectionContent } } as Partial<Test>, { lengthNorms });
   return !issues.some((i) => i.path === sectionKey || i.path.startsWith(`${sectionKey}.`));
 }

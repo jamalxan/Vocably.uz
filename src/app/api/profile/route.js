@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
+import { subscriptionState } from '@/lib/subscription';
 import { NextResponse } from 'next/server';
 
 // EDU-01a (VOCABLY_TZ_FINAL...2026-09-20.md §11 "Onboarding") — profil sahifasidagi
@@ -19,7 +20,7 @@ export async function GET(req) {
     await connectToDatabase();
 
     const user = await User.findById(userId)
-      .select(`${EDITABLE_FIELDS.join(' ')} subscriptionTier`)
+      .select(`${EDITABLE_FIELDS.join(' ')} subscriptionTier subscriptionExpiresAt telegramChatId tgDailyPractice`)
       .lean();
     if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
 
@@ -32,7 +33,11 @@ export async function GET(req) {
       // BILL-01/02 — o'qish uchun (/narxlar joriy tarifni ko'rsatadi); bu route
       // faqat EDITABLE_FIELDS'ni PATCH qiladi, shuning uchun bu maydon orqali
       // o'zgartirib bo'lmaydi (faqat admin, UsersTable orqali).
-      subscriptionTier: user.subscriptionTier || 'free',
+      // EFFECTIVE tier: a lapsed plan (past expiry + grace) reads as free.
+      subscriptionTier: subscriptionState(user).effectiveTier,
+      subscription: subscriptionState(user),
+      telegramLinked: !!user.telegramChatId,
+      tgDailyPractice: user.tgDailyPractice !== false,
     });
   } catch (err) {
     return serverError(err, 'profile');
@@ -81,6 +86,8 @@ export async function PATCH(req) {
         update.currentLevel = body.currentLevel;
       }
     }
+    if (typeof body.tgDailyPractice === 'boolean') update.tgDailyPractice = body.tgDailyPractice;
+
     if ('dailyStudyMinutes' in body) {
       if (body.dailyStudyMinutes === null) {
         update.dailyStudyMinutes = null;

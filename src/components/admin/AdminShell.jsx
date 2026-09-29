@@ -1,32 +1,53 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker } from 'lucide-react';
+import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker, Wallet, Gauge } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { registerChatsTap } from '@/lib/adminHiddenChats';
 
-const NAV = [
-  { href: '/admin', label: 'Statistika', icon: BarChart3, exact: true },
-  { href: '/admin/activity', label: 'Faollik', icon: Activity },
-  { href: '/admin/learning', label: "O'quv analitikasi", icon: GraduationCap },
-  { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
-  // `/admin/c/<id>` — bitta suhbatning to'g'ridan-to'g'ri havolasi, ham shu bo'limga tegishli.
-  { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare, also: ['/admin/c/'], secretTap: true },
-  { href: '/admin/reports', label: 'Reportlar', icon: Flag },
-  { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
-  { href: '/admin/stickers', label: 'Stikerlar', icon: Sticker },
-  // 2026-09-24 — AI chat (kontent agenti) endi kontent yuklashning ASOSIY
-  // yo'li: admin faylni chatga tashlaydi, agent uni bo'limlarga ajratib
-  // joylashtiradi. Shuning uchun ro'yxatda kontent bo'limlaridan OLDIN
-  // turadi va nomi "AI sozlamalari" emas ("sozlamalar" endi o'sha
-  // ekranning ichidagi bitta tab, asosiy narsa emas).
-  { href: '/admin/content/ai', label: 'AI chat', icon: Sparkles },
-  { href: '/admin/exam-tests', label: 'IELTS testlar', icon: BookOpen },
-  { href: '/admin/content/books', label: 'Kontent studiyasi', icon: Library },
-  { href: '/admin/content/review', label: 'Tekshiruv navbati', icon: ClipboardCheck },
-  { href: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
+// Grouped so the 13 screens read as four jobs instead of one long list.
+// Content comes first among the working groups' order of daily use:
+// uploading via the AI agent is the main way content gets in.
+const NAV_GROUPS = [
+  {
+    label: 'Umumiy',
+    items: [
+      { href: '/admin', label: 'Statistika', icon: BarChart3, exact: true },
+      { href: '/admin/activity', label: 'Faollik', icon: Activity },
+      { href: '/admin/learning', label: "O'quv analitikasi", icon: GraduationCap },
+    ],
+  },
+  {
+    label: 'Kontent',
+    items: [
+      { href: '/admin/content/ai', label: 'Kontent yuklash (AI)', icon: Sparkles },
+      { href: '/admin/exam-tests', label: 'IELTS testlar', icon: BookOpen },
+      { href: '/admin/content/review', label: 'Tekshiruv navbati', icon: ClipboardCheck },
+      { href: '/admin/content/quality', label: 'Kontent sifati', icon: Gauge },
+      { href: '/admin/content/books', label: 'Kitoblar (fon ishlovi)', icon: Library },
+    ],
+  },
+  {
+    label: 'Foydalanuvchilar',
+    items: [
+      { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
+      { href: '/admin/payments', label: "To'lovlar", icon: Wallet, badgeKey: 'payments' },
+      // `/admin/c/<id>` — bitta suhbatning to'g'ridan-to'g'ri havolasi, ham shu bo'limga tegishli.
+      { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare, also: ['/admin/c/'], secretTap: true },
+      { href: '/admin/reports', label: 'Reportlar', icon: Flag },
+    ],
+  },
+  {
+    label: 'Aloqa va tizim',
+    items: [
+      { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
+      { href: '/admin/stickers', label: 'Stikerlar', icon: Sticker },
+      { href: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
+    ],
+  },
 ];
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
 
 // xl (1280px) dan pastda sidebar drawer bo'ladi — planshetda kontent to'liq kenglikda.
 const DESKTOP_QUERY = '(min-width: 1280px)';
@@ -36,7 +57,7 @@ function isActive(item, pathname) {
   return pathname.startsWith(item.href) || (item.also || []).some((p) => pathname.startsWith(p));
 }
 
-function NavLink({ item, pathname, onClick }) {
+function NavLink({ item, pathname, onClick, badge }) {
   const active = isActive(item, pathname);
   const Icon = item.icon;
   return (
@@ -48,12 +69,17 @@ function NavLink({ item, pathname, onClick }) {
         onClick?.();
       }}
       aria-current={active ? 'page' : undefined}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
         active ? 'bg-accent text-on-accent shadow-glow' : 'text-on-primary/60 hover:text-on-primary hover:bg-primary-hover'
       }`}
     >
       <Icon size={17} strokeWidth={2} />
       <span>{item.label}</span>
+      {badge > 0 && (
+        <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-warning text-white text-[11px] font-bold grid place-items-center" aria-label={`${badge} ta kutilmoqda`}>
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -67,6 +93,23 @@ export default function AdminShell({ children }) {
   const wasOpen = useRef(false);
 
   const activeItem = NAV.find((n) => isActive(n, pathname));
+
+  // Pending payment receipts — shown as a badge so none waits unnoticed.
+  const [badges, setBadges] = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      fetch('/api/admin/payments?status=pending')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => !cancelled && d && setBadges({ payments: d.pendingCount || 0 }))
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [pathname]);
   const pageTitle = activeItem?.label || 'Admin';
 
   // Drawer ochiq: Escape yopadi, fokus ichkariga o'tadi, fon scroll bo'lmaydi.
@@ -133,9 +176,22 @@ export default function AdminShell({ children }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto overscroll-contain">
-          {NAV.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMobileOpen(false)} />
+        <nav className="flex-1 px-4 py-5 space-y-5 overflow-y-auto overscroll-contain">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-on-primary/40">{group.label}</p>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    badge={item.badgeKey ? badges[item.badgeKey] : 0}
+                    onClick={() => setMobileOpen(false)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 

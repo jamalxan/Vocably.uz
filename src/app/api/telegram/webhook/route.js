@@ -2,7 +2,8 @@ import { connectToDatabase } from '@/lib/db';
 import { OtpSession, User, Conversation, Message, AdminAuditLog } from '@/lib/models';
 import { phonesMatch, normalizePhone, formatPhoneDisplay } from '@/lib/phone';
 import { generateCode } from '@/lib/otp';
-import { sendMessage, requestContactKeyboard, removeKeyboard } from '@/lib/telegram';
+import { sendMessage, requestContactKeyboard, removeKeyboard, answerCallbackQuery } from '@/lib/telegram';
+import { handleQuizCallback, sendDailyPractice } from '@/lib/telegramQuiz';
 import { NextResponse } from 'next/server';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
@@ -226,6 +227,18 @@ export async function POST(req) {
 
     await connectToDatabase();
     const update = await req.json();
+
+    // Daily mini-test answers (inline buttons) — src/lib/telegramQuiz.js.
+    const cb = update.callback_query;
+    if (cb?.data?.startsWith('tq:') && cb.message) {
+      const toast = await handleQuizCallback(cb.message.chat.id, cb.message.message_id, cb.data).catch((err) => {
+        console.error('[telegram quiz]', err);
+        return 'Xatolik, qayta urinib ko‘ring';
+      });
+      await answerCallbackQuery(cb.id, toast).catch(() => {});
+      return NextResponse.json({ ok: true });
+    }
+
     const message = update.message;
 
     if (!message) {
@@ -234,6 +247,22 @@ export async function POST(req) {
 
     const chatId = message.chat.id;
     const text = (message.text || '').trim();
+
+    // /mashq — start today's mini-test now (and switch the daily one on);
+    // /stop — switch the daily one off.
+    if (text === '/mashq' || text === '/stop') {
+      const user = await User.findOne({ telegramChatId: chatId }).select('categories reviewStreak telegramChatId tgDailyPractice');
+      if (!user) {
+        await sendMessage(chatId, 'Bu Telegram hisob Vocably’ga ulanmagan. Saytda ro‘yxatdan o‘tishda shu bot orqali raqamni tasdiqlang.');
+      } else if (text === '/stop') {
+        await User.updateOne({ _id: user._id }, { $set: { tgDailyPractice: false, tgQuiz: null } });
+        await sendMessage(chatId, '🔕 Kunlik mashq o‘chirildi. Qayta yoqish: /mashq');
+      } else {
+        await User.updateOne({ _id: user._id }, { $set: { tgDailyPractice: true } });
+        await sendDailyPractice(user);
+      }
+      return NextResponse.json({ ok: true });
+    }
 
     if (await handleAdminCommand(chatId, text)) {
       return NextResponse.json({ ok: true });

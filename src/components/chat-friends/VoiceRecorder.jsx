@@ -32,14 +32,18 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
       recorder.ondataavailable = (e) => e.data.size > 0 && chunksRef.current.push(e.data);
+      let startedAt = 0;
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
         stream.getTracks().forEach((t) => t.stop());
-        onRecorded(file);
+        // MediaRecorder's webm has no duration header (the player reads it as
+        // Infinity), so the recorded length travels with the message.
+        onRecorded(file, (Date.now() - startedAt) / 1000);
       };
       mediaRecorderRef.current = recorder;
       recorder.start();
+      startedAt = Date.now();
       setRecording(true);
       setSeconds(0);
       // Boshqa tomonga "ovoz yubormoqda..." ko'rsatish uchun — sendTyping'ning o'zida
@@ -146,9 +150,9 @@ export function VoiceRecorderButton({ onRecorded, onActiveChange }) {
       </button>
       {active && (
         <VoiceRecorder
-          onRecorded={(file) => {
+          onRecorded={(file, durationSec) => {
             setActive(false);
-            onRecorded(file);
+            onRecorded(file, durationSec);
           }}
           onCancel={() => setActive(false)}
         />

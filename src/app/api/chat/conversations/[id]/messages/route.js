@@ -193,7 +193,8 @@ export async function POST(req, { params }) {
         size: media.size,
         width: media.width || null,
         height: media.height || null,
-        durationSec: media.durationSec || null,
+        durationSec: Number.isFinite(media.durationSec) && media.durationSec > 0 ? Math.min(Math.round(media.durationSec), 3600) : null,
+        round: type === 'video' && media.round === true,
       };
       // Izoh (caption) — ixtiyoriy, faqat Composer'da fayl tanlab/joylab (paste) preview
       // ko'rinishida yozilgan bo'lsa keladi (ovozli xabarda yo'q — u darhol yuboriladi).
@@ -235,7 +236,14 @@ export async function POST(req, { params }) {
     }
     await convo.save();
 
-    pushNewMessage(otherId, String(convo._id), {
+    // Realtime, web push and Telegram go out IN PARALLEL and are awaited
+    // together (2026-09-29 fix): before, the realtime push was fire-and-forget
+    // — on Vercel the function can be frozen right after the response, so the
+    // recipient's live update was sometimes lost and the message only showed
+    // up on the next poll — while Telegram was awaited on its own, delaying
+    // every send. Now the slowest of the three bounds the response.
+    const deliveries = [];
+    deliveries.push(pushNewMessage(otherId, String(convo._id), {
       id: message._id,
       conversationId: convo._id,
       senderId: user._id,
@@ -245,7 +253,7 @@ export async function POST(req, { params }) {
       stickerId: message.stickerId,
       replyTo: message.replyTo,
       createdAt: message.createdAt,
-    });
+    }));
 
     // Brauzer push — javobni bloklamaydi, xato bo'lsa faqat log qilinadi (xabarning
     // o'zi allaqachon saqlangan). Qabul qiluvchi shu suhbatni "ovozsiz" qilgan bo'lsa
@@ -260,15 +268,18 @@ export async function POST(req, { params }) {
     const recipientMuted = isConversationMuted(convo, otherId);
     if (!recipientMuted) {
       const pushUrl = user.username ? `/app/dostlar/${user.username}` : '/app/dostlar';
-      sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }).catch(() => {});
+      deliveries.push(sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }));
     }
 
     // Telegram bildirishnomalari. Xato bo'lsa faqat log qilinadi (xabar allaqachon
     // saqlangan). `await` ataylab — Vercel serverless'da javob qaytgach "osilib" qolgan
     // promise o'ldirilishi mumkin, bildirishnoma esa yo'qolib ketardi.
-    await notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipientMuted, senderUsername: user.username }).catch(
-      (err) => console.error('[telegram] chat xabari bildirishnomasi yuborilmadi', err)
+    deliveries.push(
+      notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipientMuted, senderUsername: user.username }).catch((err) =>
+        console.error('[telegram] chat xabari bildirishnomasi yuborilmadi', err)
+      )
     );
+    await Promise.allSettled(deliveries);
 
     return NextResponse.json({ message });
   } catch (err) {
@@ -328,9 +339,13 @@ async function notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipie
   const results = await Promise.allSettled(
     [...targets].map(([chatId, text]) => sendTelegramMessage(chatId, text, extra))
   );
-  results
-    .filter((r) => r.status === 'rejected')
-    .forEach((r) => console.error('[telegram] chat xabari bildirishnomasi yuborilmadi', r.reason));
+  const failed = results.filter((r) => r.status === 'rejected' || r.value?.ok === false);
+  failed.forEach((r) => console.error('[telegram] chat xabari bildirishnomasi yuborilmadi', r.reason || r.value));
+  // Nothing got through (Telegram hiccup, timeout): release the throttle slot
+  // so the NEXT message notifies instead of being silently swallowed.
+  if (failed.length === results.length) {
+    await Conversation.updateOne({ _id: convo._id, [key]: now }, { $unset: { [key]: '' } });
+  }
 }
 
 function escapeHtml(str) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildAnswersPatchSetOps, extractErrorVocabulary } from './attemptServer';
+import { buildAnswersPatchSetOps, extractErrorVocabulary, estimateFromHistory } from './attemptServer';
 
 // AUDIT PERF-01 — bu faqat `buildAnswersPatchSetOps` (sof funksiya) sinaydi,
 // `patchAttemptAnswers`ning O'ZINI EMAS (u DB'ga yozadi — bu faylning
@@ -127,5 +127,28 @@ describe('extractErrorVocabulary', () => {
   it('returns nothing when the locatorParagraph label does not match any paragraph', () => {
     const test = fakeTest('<p>The archaeological excavation uncovered remarkable artefacts.</p>', 'Z');
     expect(extractErrorVocabulary(test, [{ number: 1, correct: false }])).toEqual([]);
+  });
+});
+
+describe('estimateFromHistory', () => {
+  const row = (l: number | null, r: number | null, w: number | null, s: number | null) => ({ listening: l, reading: r, writing: w, speaking: s });
+
+  it('takes the LATEST band per skill (input is newest-first)', () => {
+    const est = estimateFromHistory([row(null, 7, null, null), row(null, 5, null, null), row(6, null, null, null)]);
+    expect(est.bands).toEqual({ listening: 6, reading: 7, writing: null, speaking: null });
+    expect(est.skillsCovered).toBe(2);
+    expect(est.estimate).toBe(6.5);
+  });
+
+  it('returns null estimate when nothing has been graded', () => {
+    const est = estimateFromHistory([]);
+    expect(est.estimate).toBeNull();
+    expect(est.skillsCovered).toBe(0);
+  });
+
+  it('treats a genuine 0 band as a band, not as missing', () => {
+    const est = estimateFromHistory([row(null, 0, null, null)]);
+    expect(est.bands.reading).toBe(0);
+    expect(est.skillsCovered).toBe(1);
   });
 });

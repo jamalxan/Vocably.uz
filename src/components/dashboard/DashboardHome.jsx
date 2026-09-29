@@ -8,6 +8,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import HeroCard from './HeroCard';
 import StreakCard from './StreakCard';
 import ExamPrepCard from './ExamPrepCard';
+import StudyPlanCard from './StudyPlanCard';
 import KpiRow from './KpiRow';
 import MasteryBreakdown from './MasteryBreakdown';
 import LeechList from './LeechList';
@@ -118,6 +119,7 @@ export default function DashboardHome() {
             goal={data.today.goal}
             goalPct={data.today.goalPct}
             onStart={goToReview}
+            totalWords={data.totals?.words}
           />
         </div>
         {/* activity7 — xuddi shu 7 kunning sanalari (API'da bitta last7 massividan). */}
@@ -129,7 +131,14 @@ export default function DashboardHome() {
         />
       </div>
 
-      <ExamPrepCard examPrep={data.examPrep} />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+        <div className="lg:col-span-2">
+          <StudyPlanCard data={data} />
+        </div>
+        <div className="lg:col-span-3">
+          <ExamPrepCard examPrep={data.examPrep} />
+        </div>
+      </div>
 
       <KpiRow today={data.today} deltas={data.deltas} totals={data.totals} />
 

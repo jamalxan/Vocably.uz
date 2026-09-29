@@ -14,6 +14,7 @@ import {
   Pencil,
   Pin,
   PinOff,
+  Pause,
   Play,
   Reply,
   Trash2,
@@ -139,6 +140,7 @@ function VideoBubble({ media }) {
   const [viewRef, inView] = useInViewport();
   const { url, error } = useAuthedMediaUrl(inView ? media.key : null);
   if (error) return <MediaError />;
+  if (media.round) return <RoundVideo url={url} viewRef={viewRef} />;
   if (!url) return <div ref={viewRef} className="w-56 max-w-full h-40 bg-primary-soft rounded-lg animate-pulse" />;
   return (
     <video
@@ -152,30 +154,195 @@ function VideoBubble({ media }) {
   );
 }
 
-// C-12 — audit ATAYLAB voice xabarlar uchun boshqa qoida beradi: "play bosilganda"
-// (viewport'ga kirganda EMAS — ovoz fayllari kichik bo'lsa ham, ko'rinib turgan
-// har bir ovozli xabarni oldindan so'rash foydasiz). Shu sabab bosilmaguncha
-// mediaKey useAuthedMediaUrl'ga umuman uzatilmaydi (hech qanday IntersectionObserver
-// shart emas — bu yerda oddiy "hali bosilmadi" holati yetarli).
-function VoiceBubble({ media }) {
+// Video note — recorded in a circle, shown in a circle (it used to be sent as
+// a plain video and rendered as a rectangle). Tap to play with sound, tap
+// again to pause; a ring shows progress. Muted autoplay preview is skipped on
+// purpose: many notes in view would all start moving and downloading.
+function RoundVideo({ url, viewRef }) {
+  const videoRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const size = 'w-52 h-52 sm:w-60 sm:h-60';
+  if (!url) return <div ref={viewRef} className={`${size} rounded-full bg-primary-soft animate-pulse`} />;
+  const toggle = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      pauseOtherMedia(v);
+      v.muted = false;
+      v.play().catch(() => {});
+    } else v.pause();
+  };
+  const C = 2 * Math.PI * 49;
+  return (
+    <button
+      ref={viewRef}
+      type="button"
+      onClick={toggle}
+      aria-label={playing ? 'Video xabarni to‘xtatish' : 'Video xabarni ijro etish'}
+      className={`relative block ${size} rounded-full overflow-hidden bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
+    >
+      <video
+        ref={videoRef}
+        src={url}
+        playsInline
+        preload="metadata"
+        data-chat-media=""
+        className="w-full h-full object-cover"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={(e) => {
+          setPlaying(false);
+          setProgress(0);
+          e.currentTarget.currentTime = 0;
+        }}
+        onTimeUpdate={(e) => {
+          const v = e.currentTarget;
+          if (v.duration) setProgress(v.currentTime / v.duration);
+        }}
+      />
+      <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
+        <circle cx="50" cy="50" r="49" fill="none" stroke="white" strokeOpacity="0.25" strokeWidth="1.5" />
+        <circle
+          cx="50"
+          cy="50"
+          r="49"
+          fill="none"
+          stroke="white"
+          strokeWidth="1.5"
+          strokeDasharray={C}
+          strokeDashoffset={C * (1 - progress)}
+          strokeLinecap="round"
+        />
+      </svg>
+      {!playing && (
+        <span className="absolute inset-0 grid place-items-center pointer-events-none">
+          <span className="w-12 h-12 rounded-full bg-black/45 text-white grid place-items-center">
+            <Play size={20} className="ml-0.5" />
+          </span>
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Only one voice/video plays at a time (Telegram behaviour).
+function pauseOtherMedia(current) {
+  document.querySelectorAll('[data-chat-media]').forEach((el) => {
+    if (el !== current && !el.paused) el.pause();
+  });
+}
+
+function fmtTime(sec) {
+  if (!Number.isFinite(sec) || sec < 0) return '0:00';
+  const s = Math.floor(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+// Voice message player. Loads the file on first play only (C-12 rule), then
+// plays through; when it ends, the NEXT voice message below it in the chat
+// starts by itself — like Telegram, a run of voice notes plays as one.
+// Next-in-line is found in DOM order via [data-voice-bubble] and started with
+// a 'voice-play' event, so bubbles don't need to know about each other.
+function VoiceBubble({ media, isMine }) {
+  const rootRef = useRef(null);
+  const audioRef = useRef(null);
   const [armed, setArmed] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [pos, setPos] = useState(0);
+  const [dur, setDur] = useState(media.durationSec || 0);
   const { url, error } = useAuthedMediaUrl(armed ? media.key : null);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return undefined;
+    const onPlayRequest = () => {
+      if (audioRef.current) {
+        pauseOtherMedia(audioRef.current);
+        audioRef.current.play().catch(() => {});
+      } else setArmed(true);
+    };
+    el.addEventListener('voice-play', onPlayRequest);
+    return () => el.removeEventListener('voice-play', onPlayRequest);
+  }, []);
+
+  const playNext = () => {
+    const all = Array.from(document.querySelectorAll('[data-voice-bubble]'));
+    const next = all[all.indexOf(rootRef.current) + 1];
+    next?.dispatchEvent(new Event('voice-play'));
+  };
+
+  const toggle = () => {
+    const a = audioRef.current;
+    if (!a) return setArmed(true);
+    if (a.paused) {
+      pauseOtherMedia(a);
+      a.play().catch(() => {});
+    } else a.pause();
+  };
+
+  const seek = (e) => {
+    const a = audioRef.current;
+    if (!a || !a.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    a.currentTime = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)) * a.duration;
+  };
+
   if (error) return <MediaError />;
-  if (!armed) {
-    return (
+  const loading = armed && !url;
+  const pct = dur ? Math.min(100, (pos / dur) * 100) : 0;
+  const tone = isMine ? 'bg-on-accent text-accent' : 'bg-accent text-on-accent';
+  const track = isMine ? 'bg-on-accent/30' : 'bg-accent/20';
+  const fill = isMine ? 'bg-on-accent' : 'bg-accent';
+
+  return (
+    <div ref={rootRef} data-voice-bubble="" className="flex items-center gap-2.5 w-56 max-w-full py-0.5">
       <button
         type="button"
-        onClick={() => setArmed(true)}
-        aria-label="Ovozli xabarni ijro etish"
-        className="flex items-center gap-2 w-48 max-w-full h-10 px-3 bg-primary-soft rounded-full text-sm text-accent hover:bg-primary-soft/80 transition-colors"
+        onClick={toggle}
+        aria-label={playing ? 'Ovozli xabarni to‘xtatish' : 'Ovozli xabarni ijro etish'}
+        className={`w-10 h-10 rounded-full grid place-items-center flex-shrink-0 ${tone} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
       >
-        <Play size={16} className="flex-shrink-0" />
-        Ovozli xabar
+        {loading ? (
+          <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        ) : playing ? (
+          <Pause size={16} />
+        ) : (
+          <Play size={16} className="ml-0.5" />
+        )}
       </button>
-    );
-  }
-  if (!url) return <div className="w-48 max-w-full h-10 bg-primary-soft rounded-full animate-pulse" />;
-  return <audio src={url} controls autoPlay className="block w-56 max-w-full h-10" />;
+      <div className="flex-1 min-w-0">
+        <div role="presentation" onClick={seek} className={`h-1.5 rounded-full ${track} cursor-pointer overflow-hidden`}>
+          <div className={`h-full rounded-full ${fill}`} style={{ width: `${pct}%` }} />
+        </div>
+        <p className={`mt-1 text-[11px] tabular-nums ${isMine ? 'text-on-accent/75' : 'text-muted'}`}>
+          {playing || pos > 0 ? `${fmtTime(pos)} / ${fmtTime(dur)}` : dur ? fmtTime(dur) : 'Ovozli xabar'}
+        </p>
+      </div>
+      {url && (
+        <audio
+          ref={audioRef}
+          src={url}
+          autoPlay
+          preload="auto"
+          data-chat-media=""
+          className="hidden"
+          onPlay={(e) => {
+            pauseOtherMedia(e.currentTarget);
+            setPlaying(true);
+          }}
+          onPause={() => setPlaying(false)}
+          onLoadedMetadata={(e) => Number.isFinite(e.currentTarget.duration) && setDur(e.currentTarget.duration)}
+          onTimeUpdate={(e) => setPos(e.currentTarget.currentTime)}
+          onEnded={() => {
+            setPlaying(false);
+            setPos(0);
+            playNext();
+          }}
+        />
+      )}
+    </div>
+  );
 }
 
 function FileBubble({ media }) {
@@ -374,7 +541,8 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
     else setDeleteOpen(false);
   };
 
-  const isPlain = !deleted && (message.type === 'sticker' || emojiOnly);
+  // Video notes (round) sit on the chat background without a bubble, like Telegram.
+  const isPlain = !deleted && (message.type === 'sticker' || emojiOnly || (message.type === 'video' && message.media?.round && !message.text));
   // C-16 — hali serverga saqlanmagan ("yuborilmoqda"/"yuborilmadi") xabarlarda
   // haqiqiy server id yo'q, shuning uchun javob/tahrir/o'chirish/shikoyat amallari
   // hali ko'rsatilmaydi (haqiqiy id kelgunga qadar).
@@ -506,7 +674,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
                 ))}
               {message.type === 'image' && <ImageBubble media={message.media} />}
               {message.type === 'video' && <VideoBubble media={message.media} />}
-              {message.type === 'voice' && <VoiceBubble media={message.media} />}
+              {message.type === 'voice' && <VoiceBubble media={message.media} isMine={isMine} />}
               {message.type === 'file' && <FileBubble media={message.media} />}
               {message.text && ['image', 'video', 'file'].includes(message.type) && (
                 <p className="whitespace-pre-wrap [overflow-wrap:anywhere] font-chat mt-1.5">{renderFormattedText(message.text)}</p>

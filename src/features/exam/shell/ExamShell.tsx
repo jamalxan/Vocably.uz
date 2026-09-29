@@ -22,6 +22,9 @@ export interface ExamShellProps {
   // Writing'ning footeri savol paneli emas — Task 1/2 almashtirgich (§8.4).
   // Berilsa `footerGroups`/`onSubmit` o'rniga shu ko'rsatiladi.
   customFooter?: ReactNode;
+  // Practice mode (no time limit): the header shows a "Practice" badge
+  // instead of the countdown.
+  untimed?: boolean;
   children: ReactNode;
 }
 
@@ -40,6 +43,7 @@ export default function ExamShell({
   onSubmit,
   submitLabel,
   customFooter,
+  untimed = false,
   children,
 }: ExamShellProps) {
   const remainingSec = useExamStore((s) => s.remainingSec);
@@ -96,6 +100,7 @@ export default function ExamShell({
         onVolumeChange={onVolumeChange}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenHelp={() => setHelpOpen(true)}
+        untimed={untimed}
       />
 
       <main id="exam-main-content" tabIndex={-1} className="flex-1 min-h-0 overflow-hidden">

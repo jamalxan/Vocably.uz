@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useExamStore } from '../state/examStore';
 import {
   fetchTestPreview,
+  fetchMockPreview,
   createMockAttempt,
   fetchAttempt,
   fetchActiveMock,
@@ -96,11 +97,30 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
   const [switchingSection, setSwitchingSection] = useState(false);
 
   useEffect(() => {
-    if (!testId) {
-      setTestPreview(GENERIC_MOCK_PREVIEW);
-      return;
-    }
     let cancelled = false;
+    if (!testId) {
+      // N-05: real numbers from the server's pool instead of hardcoded 30/60/60.
+      fetchMockPreview()
+        .then((p) => {
+          if (cancelled) return;
+          if (!p.available || !p.sections) {
+            setPreviewError(
+              "Hozircha to'liq mock uchun yetarli test yo'q. Reading, Listening va Writing bo'limlarini alohida mashq qilishingiz mumkin."
+            );
+            return;
+          }
+          setTestPreview({
+            ...GENERIC_MOCK_PREVIEW,
+            title: p.format === 'mini' ? 'Vocably Mini Mock' : GENERIC_MOCK_PREVIEW.title,
+            sections: p.sections,
+            format: p.format,
+          });
+        })
+        .catch(() => !cancelled && setTestPreview(GENERIC_MOCK_PREVIEW));
+      return () => {
+        cancelled = true;
+      };
+    }
     fetchTestPreview(testId)
       .then((p) => !cancelled && setTestPreview(p))
       .catch(() => !cancelled && setPreviewError("Testni yuklab bo'lmadi."));
@@ -234,11 +254,16 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
 
   if (previewError) {
     return (
-      <div className="p-8 text-center text-sm">
-        <p className="text-danger">{previewError}</p>
-        <Link href="/app" className="inline-flex items-center min-h-11 mt-2 font-semibold text-accent hover:underline">
-          Bosh sahifaga qaytish
-        </Link>
+      <div className="mx-auto max-w-md p-8 text-center text-sm">
+        <p className="text-ink leading-relaxed">{previewError}</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <Link href="/app/mashq" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-accent font-semibold text-on-accent hover:bg-accent-hover">
+            Bo&apos;limlar bo&apos;yicha mashq
+          </Link>
+          <Link href="/app" className="inline-flex items-center min-h-11 px-2 font-semibold text-accent hover:underline">
+            Bosh sahifa
+          </Link>
+        </div>
       </div>
     );
   }

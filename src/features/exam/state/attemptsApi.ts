@@ -71,6 +71,22 @@ export interface TestPreview {
     reading?: { durationSec: number; questionCount: number };
     writing?: { durationSec: number; taskCount: number };
   };
+  /** Mock only: 'mini' = structurally complete but shorter than official norms. */
+  format?: 'full' | 'mini';
+}
+
+export interface MockPreview {
+  available: boolean;
+  format?: 'full' | 'mini';
+  sections?: TestPreview['sections'];
+}
+
+/** Mock intro data before an attempt exists — real durations/sizes from the
+ * pool the server will draw from, without revealing which test. */
+export async function fetchMockPreview(): Promise<MockPreview> {
+  const res = await authedFetch('/api/exam/mock-preview');
+  if (!res.ok) throw new Error("Mock ma'lumotini yuklab bo'lmadi");
+  return res.json();
 }
 
 /** TZ §9.2 — Mock intro ekrani uchun, attempt yaratilishidan OLDIN (aks holda
@@ -120,8 +136,8 @@ export interface SectionAttemptStatus {
 
 /** VOCABLY-TZ.md §2.4/§5 item 12 — TestPicker'dagi har test kartasida holat
  * (Boshlanmagan / Davom etmoqda / Tugallangan: Band X) ko'rsatish uchun. */
-export async function fetchSectionStatuses(section: string): Promise<Record<string, SectionAttemptStatus>> {
-  const res = await authedFetch(`/api/exam/attempts/section-status?section=${section}`);
+export async function fetchSectionStatuses(section: string, mode: 'section' | 'practice' = 'section'): Promise<Record<string, SectionAttemptStatus>> {
+  const res = await authedFetch(`/api/exam/attempts/section-status?section=${section}&mode=${mode}`);
   if (!res.ok) return {};
   const data = await res.json();
   return data.statuses || {};

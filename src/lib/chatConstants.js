@@ -85,7 +85,9 @@ export function isTgMessageNotifyOn(convo, userId, userDefault) {
 
 // Bitta suhbatdan ketma-ket kelgan xabarlar uchun Telegram bildirishnomasi orasidagi
 // minimal oraliq — har bir xabarga alohida bot xabari kelib spam bo'lmasligi uchun.
-export const TG_MESSAGE_NOTIFY_THROTTLE_MS = 60 * 1000;
+// 2026-09-29: 60s → 20s — bir daqiqalik jimlik "xabar Telegram'ga bormay qoldi"
+// deb qabul qilinardi; 20s ichidagi ketma-ket xabarlar baribir bitta signal.
+export const TG_MESSAGE_NOTIFY_THROTTLE_MS = 20 * 1000;
 
 // Xuddi shu g'oya, lekin klientning GET /conversations javobidan kelgan, ALLAQACHON
 // tekislangan shakli uchun ({muted, mutedUntil}) — ChatContext.jsx yangi xabar

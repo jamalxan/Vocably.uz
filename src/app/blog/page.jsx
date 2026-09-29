@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Clock } from 'lucide-react';
 import { BLOG_POSTS } from '@/lib/blogPosts';
 import LandingHeader from '@/components/landing/LandingHeader';
+import { formatUzDate } from '@/lib/uzDate';
 
 export const metadata = {
   title: 'Blog — Vocably',
@@ -10,7 +11,7 @@ export const metadata = {
 };
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long', day: 'numeric' });
+  return formatUzDate(iso, { year: true });
 }
 
 export default function BlogIndexPage() {

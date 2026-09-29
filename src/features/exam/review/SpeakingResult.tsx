@@ -98,6 +98,8 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
         )}
       </div>
 
+      {s.metrics && <FluencyMetrics m={s.metrics} />}
+
       {s.strengths.length > 0 && (
         <div className="bg-surface border border-border rounded-2xl p-4">
           <p className="text-xs font-semibold text-ink mb-2">Kuchli tomonlar</p>
@@ -132,6 +134,68 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+function mmss(sec: number) {
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+
+// Measured, not AI-judged: speech rate, fillers, Part 2 length, variety.
+function FluencyMetrics({ m }: { m: NonNullable<NonNullable<AttemptResult['speaking']>['metrics']> }) {
+  const tiles = [
+    {
+      label: 'Nutq tezligi',
+      value: m.wordsPerMinute != null ? `${m.wordsPerMinute}` : '—',
+      unit: 'so‘z/daq',
+      ok: m.wordsPerMinute != null && m.wordsPerMinute >= 100 && m.wordsPerMinute <= 185,
+      hint: 'Band 7: ~120–160',
+    },
+    {
+      label: 'To‘ldiruvchi so‘zlar',
+      value: String(m.fillers.total),
+      unit: `${m.fillers.per100}/100 so‘z`,
+      ok: m.fillers.per100 <= 5,
+      hint: m.fillers.top.map((f) => `${f.word}×${f.count}`).join(', ') || 'yo‘q',
+    },
+    {
+      label: 'Part 2 davomiyligi',
+      value: m.part2Sec != null ? mmss(m.part2Sec) : '—',
+      unit: '/ 2:00',
+      ok: m.part2Sec != null && m.part2Sec >= 90,
+      hint: 'Kamida 1:45',
+    },
+    {
+      label: 'So‘z xilma-xilligi',
+      value: m.lexicalVariety != null ? `${Math.round(m.lexicalVariety * 100)}%` : '—',
+      unit: 'takrorlanmagan',
+      ok: m.lexicalVariety == null || m.lexicalVariety >= 0.45,
+      hint: `${m.totalWords} so‘z jami`,
+    },
+  ];
+  return (
+    <div className="bg-surface border border-border rounded-2xl p-4">
+      <p className="text-xs font-semibold text-ink mb-3">Fluency ko‘rsatkichlari (o‘lchangan)</p>
+      <div className="grid grid-cols-2 gap-2">
+        {tiles.map((t) => (
+          <div key={t.label} className={`rounded-xl border p-3 ${t.ok ? 'border-border bg-bg' : 'border-warning/40 bg-warning-soft'}`}>
+            <p className="text-[11px] text-muted">{t.label}</p>
+            <p className="mt-0.5 text-ink">
+              <span className="text-xl font-bold tabular-nums">{t.value}</span> <span className="text-[11px] text-muted">{t.unit}</span>
+            </p>
+            <p className="text-[11px] text-muted mt-0.5 truncate">{t.hint}</p>
+          </div>
+        ))}
+      </div>
+      {m.tipsUz.length > 0 && (
+        <ul className="mt-3 text-xs text-ink list-disc list-inside space-y-1">
+          {m.tipsUz.map((t, i) => (
+            <li key={i}>{t}</li>
+          ))}
+        </ul>
+      )}
+      <p className="text-[10px] text-muted mt-2">Transkript avtomatik — ba’zi “um”lar yozilmay qolishi mumkin, shuning uchun son minimal qiymat.</p>
     </div>
   );
 }

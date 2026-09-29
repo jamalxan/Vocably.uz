@@ -11,6 +11,14 @@ import { normalizePhone } from '@/lib/phone';
 // Tarmoq uzilishi yoki JSON bo'lmagan javob (502/HTML) foydalanuvchiga xom inglizcha xato bo'lib chiqmasin
 const NETWORK_ERROR = "Server bilan aloqa yo'q, qayta urinib ko'ring";
 
+// Where to go after login/registration: `?next=/app/...` (e.g. from the
+// pricing page's "Sotib olish") — only in-app paths, never another origin.
+function afterAuthPath() {
+  if (typeof window === 'undefined') return '/app';
+  const next = new URLSearchParams(window.location.search).get('next') || '';
+  return /^\/app(\/[\w\-/?=&%.]*)?$/.test(next) && !next.startsWith('//') ? next : '/app';
+}
+
 async function readJson(res) {
   try {
     return await res.json();
@@ -75,7 +83,7 @@ export default function AuthForm({ initialMode = 'login' }) {
   // noto'g'ri bo'lib qolishi xavfsizlik oqibatiga olib kelmaydi.
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('vocably_authed')) {
-      router.replace('/app');
+      router.replace(afterAuthPath());
       return;
     }
     setReady(true);
@@ -204,7 +212,7 @@ export default function AuthForm({ initialMode = 'login' }) {
         localStorage.setItem('vocably_authed', '1');
         localStorage.setItem('username', data.name || '');
         localStorage.setItem('phone', data.phone || phone);
-        router.push('/app');
+        router.push(afterAuthPath());
       } else {
         setStep('newPassword');
         setInfo('');
@@ -268,7 +276,7 @@ export default function AuthForm({ initialMode = 'login' }) {
       localStorage.setItem('vocably_authed', '1');
       localStorage.setItem('username', data.name || '');
       localStorage.setItem('phone', data.phone || phone);
-      router.push('/app');
+      router.push(afterAuthPath());
     } catch (err) {
       setError(errorMessage(err));
     } finally {

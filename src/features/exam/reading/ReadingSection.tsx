@@ -9,7 +9,10 @@ import ExamShell from '../shell/ExamShell';
 import SplitPane from '../split/SplitPane';
 import PassagePane from './PassagePane';
 import QuestionGroupBlock from '../questions/QuestionGroupBlock';
+import TextMarker from '../highlight/TextMarker';
 import { ExamLoadError, ExamLoading, SubmitErrorBanner } from '../shell/ExamStatus';
+import ConfirmFinishModal from '../mock/ConfirmFinishModal';
+import { unansweredNumbers } from '../state/unanswered';
 import type { AttemptResult, SanitizedTest } from '@/lib/exam/types';
 import type { QuestionGroupNav } from '../shell/ExamFooterNav';
 
@@ -33,6 +36,9 @@ export interface ReadingSectionProps {
   // barcha bo'limlarni birga baholaydi — attemptServer.ts).
   isFinal?: boolean;
   onSectionAdvanced?: () => void;
+  // Practice attempt (/app/oqish/mashq/[id]): same exam interface and
+  // highlighting, but no countdown and no auto-submit on expiry.
+  practice?: boolean;
 }
 
 function firstQuestionNumber(test: SanitizedTest): number {
@@ -46,11 +52,13 @@ export default function ReadingSection({
   onSubmitted,
   isFinal = true,
   onSectionAdvanced,
+  practice = false,
 }: ReadingSectionProps) {
   const [test, setTest] = useState<SanitizedTest | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmUnanswered, setConfirmUnanswered] = useState<number[] | null>(null);
 
   const init = useExamStore((s) => s.init);
   const reset = useExamStore((s) => s.reset);
@@ -95,7 +103,7 @@ export default function ReadingSection({
     });
   }, [attemptId, isFinal, onSubmitted, onSectionAdvanced]);
 
-  useExamTimer(doSubmit);
+  useExamTimer(practice ? undefined : doSubmit);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,8 +175,16 @@ export default function ReadingSection({
       candidateName={candidateName}
       candidateId={candidateId}
       footerGroups={footerGroups}
-      onSubmit={isFinal ? doSubmit : undefined}
+      onSubmit={
+        !isFinal
+          ? undefined
+          : practice
+            ? // No timer to end a practice run — confirm first, so a stray click doesn't close it.
+              () => setConfirmUnanswered(unansweredNumbers(footerGroups.flatMap((g) => g.questions), useExamStore.getState().answers))
+            : doSubmit
+      }
       submitLabel={submitting ? 'Submitting…' : 'Finish'}
+      untimed={practice}
     >
       <SplitPane
         ratio={splitRatio}
@@ -185,7 +201,7 @@ export default function ReadingSection({
           />
         }
         right={
-          <div>
+          <TextMarker storageKey={`${attemptId}:reading-questions`}>
             {activePassage.questionGroups.map((g) => (
               <QuestionGroupBlock
                 key={g.id}
@@ -195,7 +211,7 @@ export default function ReadingSection({
                 paragraphLabels={activePassage.paragraphs.map((p) => p.label).filter((l): l is string => !!l)}
               />
             ))}
-          </div>
+          </TextMarker>
         }
       />
       {/* Savol paneli tugmasi bosilganda faqat savol paneli scroll qilishi
@@ -203,6 +219,16 @@ export default function ReadingSection({
           shu savolga scroll qilamiz. */}
       <ScrollToQuestion currentQuestion={currentQuestion} />
       {submitError && <SubmitErrorBanner message={submitError} onRetry={retrySubmit} retrying={submitting} />}
+      {confirmUnanswered && (
+        <ConfirmFinishModal
+          unansweredNumbers={confirmUnanswered}
+          onCancel={() => setConfirmUnanswered(null)}
+          onConfirm={() => {
+            setConfirmUnanswered(null);
+            doSubmit();
+          }}
+        />
+      )}
     </ExamShell>
   );
 }

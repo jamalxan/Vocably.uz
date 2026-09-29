@@ -8,6 +8,151 @@
 // sahifa komponentlarining o'zi o'zgarmaydi.
 export const BLOG_POSTS = [
   {
+    slug: 'ielts-ga-3-oyda-tayyorlanish-rejasi',
+    title: "IELTS'ga 3 oyda tayyorlanish: haftama-hafta reja",
+    excerpt: "Imtihonga 3 oy qoldimi? Mana boshlang'ich darajani aniqlashdan tortib oxirgi mock testgacha bo'lgan aniq, haftalik reja.",
+    date: '2026-09-22',
+    readMinutes: 7,
+    content: `3 oy — bir bandga ko'tarilish uchun real muddat, agar har kuni **1–1,5 soat** muntazam shug'ullansangiz. Asosiy qoida: tasodifiy mashq emas, **zaif joyga yo'naltirilgan** mashq.
+
+## 1-hafta: boshlang'ich nuqta
+
+- To'liq mock test topshiring (Listening, Reading, Writing) va Speaking'ni yozib oling.
+- Har bo'lim bandini yozib qo'ying — bu sizning "0-nuqta"ngiz.
+- Maqsad bandni belgilang va farqni hisoblang: qaysi bo'lim eng ko'p ball "yo'qotyapti"?
+
+## 2–5-haftalar: asos
+
+- **Har kuni 20–30 ta yangi so'z** — SRS (oraliqli takrorlash) bilan. Akademik so'zlar ro'yxatidan boshlang.
+- **Reading**: har kuni 1 ta passage, savol turlari bo'yicha (bir hafta — True/False/Not Given, keyingisi — matching headings).
+- **Listening**: har kuni 1 ta part; xato qilgan joyni transkript bilan qayta tinglang.
+- **Writing**: haftasiga 2 ta Task 2 va 1 ta Task 1. Har birini 4 mezon bo'yicha tahlil qildiring.
+- **Speaking**: har kuni 10 daqiqa — Part 1 savollariga ovoz chiqarib javob, haftada bir marta Part 2 yozib olib tinglash.
+
+## 6–9-haftalar: tezlik va aniqlik
+
+- Reading va Listening'ni **vaqt bilan** ishlang.
+- Xatolar daftarini yuriting: har xato — sababi (so'z bilmadim / vaqt yetmadi / savolni noto'g'ri tushundim).
+- Writing'da avvalgi xatolaringiz qaytarilmayotganini tekshiring.
+
+## 10–12-haftalar: imtihon rejimi
+
+- Haftasiga 1–2 ta to'liq mock test.
+- Imtihon kuni tartibiga ko'niking: bir o'tirishda Listening → Reading → Writing.
+- Oxirgi hafta yangi narsa o'rganmang — faqat takrorlash va dam olish.
+
+---
+
+**Maslahat:** Vocably'da imtihon sanasi va maqsad bandni profilga kiritsangiz, bosh sahifada har kungi mashq rejasi va band bo'yicha taraqqiyot ko'rinib turadi.`,
+  },
+  {
+    slug: 'ielts-reading-true-false-not-given',
+    title: "IELTS Reading: True, False yoki Not Given — qanday qilib adashmaslik",
+    excerpt: "Reading'dagi eng ko'p ball yo'qotiladigan savol turi. 4 qadamli usul va tipik tuzoqlar misollar bilan.",
+    date: '2026-09-18',
+    readMinutes: 5,
+    content: `True/False/Not Given (TFNG) savollarida ko'pchilik **False** bilan **Not Given**ni chalkashtiradi. Farq oddiy, lekin qat'iy qo'llash kerak.
+
+## Qoidalar
+
+- **True** — matn aynan shu fikrni aytadi (boshqa so'zlar bilan).
+- **False** — matn **aksini** aytadi.
+- **Not Given** — matnda bu haqda **ma'lumot yo'q** (tasdiqlash ham, inkor ham qilib bo'lmaydi).
+
+## 4 qadamli usul
+
+1. Gapdagi **kalit so'zlarni** belgilang (ayniqsa ism, sana, raqamlar).
+2. Matndan shu joyni **scanning** bilan toping — savollar matn tartibida keladi.
+3. Gapdagi **"cheklovchi" so'zlarga** qarang: *all, only, never, always, most, some*. Ko'pincha javob shu so'zga bog'liq.
+4. O'zingizga savol bering: "Matnga ko'ra bu gap **noto'g'ri** ekanini isbotlay olamanmi?" Olsangiz — False. Faqat "aytilmagan" bo'lsa — Not Given.
+
+## Misol
+
+Matn: *"The library was open to scholars and royal officials."*
+
+- "The library was open to the general public." → **False** (faqat olimlar va amaldorlar — aksi).
+- "The library was the largest in the world." → **Not Given** (hajm haqida gap yo'q).
+
+## Tipik tuzoqlar
+
+- O'z bilimingiz bilan javob berish — faqat matn hisobga olinadi.
+- Matndagi so'z bilan savoldagi so'z bir xil bo'lsa ham, ma'no farq qilishi mumkin.
+- *Some* va *all* farqi: "Some experts agree" ≠ "Experts agree".
+
+Vocably'da Reading mashq rejimida har bir TFNG javobining izohi va matndagi dalil paragrafi ko'rsatiladi.`,
+  },
+  {
+    slug: 'ielts-writing-task-2-tuzilmasi',
+    title: "IELTS Writing Task 2: band 7 uchun 4 paragrafli tuzilma",
+    excerpt: "Opinion, discussion, problem–solution — barcha insho turlari uchun ishlaydigan tuzilma va har paragrafda nima yozish kerakligi.",
+    date: '2026-09-12',
+    readMinutes: 6,
+    content: `Task 2 — Writing bo'limining eng muhim qismi: u Task 1 dan ko'proq ball beradi. 40 daqiqada kamida **250 so'z** yozishingiz kerak.
+
+## Rejalashtirish (5 daqiqa)
+
+Savolni o'qing va aniqlang: bu **opinion** (fikringiz), **discussion** (ikki tomon), **problem–solution** yoki **advantages–disadvantages**mi? Savolning har bir qismiga javob berish shart — bittasini tashlab ketish Task Response ballini keskin tushiradi.
+
+## 4 paragrafli tuzilma
+
+**1. Introduction (2 gap)** — savolni o'z so'zlaringiz bilan qayta yozing va pozitsiyangizni aniq ayting.
+
+**2. Body 1 (5–6 gap)** — birinchi asosiy fikr: mavzu gapi → tushuntirish → aniq misol → natija.
+
+**3. Body 2 (5–6 gap)** — ikkinchi asosiy fikr xuddi shu tartibda.
+
+**4. Conclusion (2 gap)** — pozitsiyani qisqa takrorlang. Yangi fikr qo'shmang.
+
+## Band 7 ga olib boradigan detallar
+
+- Har paragrafda **bitta** markaziy g'oya.
+- Bog'lovchilarni tabiiy ishlating — har gap boshida "Moreover" emas.
+- Aniq so'zlar: *"a significant rise in unemployment"* — *"a big problem"* o'rniga.
+- Murakkab gaplar: nisbiy gaplar, shart gaplar, passive — lekin xatosiz.
+
+## Tekshirish (3–5 daqiqa)
+
+Artikllar (a/the), fe'l zamoni, birlik–ko'plik moslashuvi — eng ko'p uchraydigan xatolar shular.
+
+Vocably AI inshoingizni 4 ta rasmiy mezon bo'yicha baholab, har paragraf uchun tuzatish beradi.`,
+  },
+  {
+    slug: 'ielts-band-qanday-hisoblanadi',
+    title: "IELTS band qanday hisoblanadi? Listening, Reading va umumiy ball",
+    excerpt: "40 ta savoldan nechtasi band 6, 7 yoki 8 ga teng? Umumiy band qanday yaxlitlanadi? Jadval va misollar bilan.",
+    date: '2026-09-05',
+    readMinutes: 4,
+    content: `IELTS natijasi 0 dan 9 gacha **band**larda beriladi — har bo'lim uchun alohida va umumiy (overall).
+
+## Listening va Reading
+
+Har bir to'g'ri javob — 1 ball, jami 40. Xom ball jadval orqali bandga o'giriladi. Taxminiy qiymatlar:
+
+| To'g'ri javob (Listening) | Band |
+|---|---|
+| 39–40 | 9.0 |
+| 35–36 | 8.0 |
+| 30–31 | 7.0 |
+| 23–25 | 6.0 |
+| 16–17 | 5.0 |
+
+Academic Reading'da band 7 uchun ham taxminan **30/40** kerak; General Training Reading'da esa ko'proq — taxminan **34/40**.
+
+## Writing va Speaking
+
+Bu bo'limlarni imtihonchi 4 ta mezon bo'yicha baholaydi (har biri 25%). Writing'da Task 2 Task 1 dan ko'proq og'irlikka ega.
+
+## Umumiy (overall) band
+
+To'rt bo'lim bandining o'rtachasi olinadi va eng yaqin 0.5 ga yaxlitlanadi:
+
+- o'rtacha **6.25** → **6.5**
+- o'rtacha **6.75** → **7.0**
+- o'rtacha **6.125** → **6.0**
+
+O'z natijangizni tez hisoblash uchun [IELTS band kalkulyatori](/ielts/band-kalkulyator)dan foydalaning.`,
+  },
+  {
     slug: 'sozlarni-unutmaslik-uchun-7-maslahat',
     title: "Ingliz tili so'zlarini unutmaslik uchun 7 amaliy maslahat",
     excerpt: "So'z yodladingiz, lekin bir hafta o'tib eslay olmayapsizmi? Muammo xotirangizda emas — usulingizda. Mana ilmiy asoslangan 7 ta maslahat.",

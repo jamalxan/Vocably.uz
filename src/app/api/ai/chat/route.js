@@ -16,6 +16,7 @@ import {
   rateLimitMessage,
 } from '@/lib/ai/client';
 import { buildDictionaryContext, formatDictionaryContextForPrompt } from '@/lib/ai/dictionaryContext';
+import { chooseReplyLanguage, replyLanguageInstruction } from '@/lib/ai/replyLanguage';
 import { NextResponse } from 'next/server';
 
 const SYSTEM_INSTRUCTION = `Siz Vocably — ingliz tili o'rganish platformasidagi yordamchisiz. Sizning vazifangiz FAQAT ingliz tilini o'rganayotgan o'zbek foydalanuvchilarga yordam berish:
@@ -326,6 +327,16 @@ export async function POST(req) {
       session = user.chatSessions[user.chatSessions.length - 1];
     }
     const isNewConversation = session.messages.length === 0;
+
+    // Reply language is decided in code, not left to the model: English by
+    // default, Uzbek when the user writes in Uzbek or asks for it (see
+    // src/lib/ai/replyLanguage.js). Appended last so it wins over the
+    // Uzbek-language base prompt.
+    const previousUserTexts = session.messages
+      .filter((m) => m.role === 'user')
+      .map((m) => (m.parts || []).map((p) => p.text || '').join(' '))
+      .slice(-12);
+    systemInstruction += `\n\n${replyLanguageInstruction(chooseReplyLanguage(message || '', previousUserTexts))}`;
 
     // Eski sessiyalarda roli 'function'/'assistant' bo'lgan buzuq yozuvlar bo'lishi mumkin —
     // history quruvchilar ularni normallashtiradi yoki tashlab ketadi.

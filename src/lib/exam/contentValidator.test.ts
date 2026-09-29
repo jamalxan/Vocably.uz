@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateTest, hasBlockingErrors, checkMockEligibility, isMockEligible } from './contentValidator';
+import { validateTest, hasBlockingErrors, checkMockEligibility, isMockEligible, isSectionMockEligible } from './contentValidator';
 import type { Test, QuestionGroup } from './types';
 
 function tfngGroup(numbers: number[]): QuestionGroup {
@@ -441,5 +441,25 @@ describe('checkMockEligibility / isMockEligible (EX-06/N-06)', () => {
     const issues = checkMockEligibility(test);
     expect(issues.length).toBeGreaterThan(0);
     expect(issues.every((i) => i.severity === 'error')).toBe(true);
+  });
+});
+
+describe('Mini mock (lengthNorms: false)', () => {
+  const shortReading = {
+    durationSec: 3600,
+    passages: [passageWithWords(1, 500, range(1, 13)), passageWithWords(2, 500, range(14, 26)), passageWithWords(3, 500, range(27, 40))],
+  };
+
+  it('full format rejects a Reading section below 2150 words', () => {
+    expect(isSectionMockEligible('reading', shortReading)).toBe(false);
+  });
+
+  it('mini format accepts the same structurally complete Reading', () => {
+    expect(isSectionMockEligible('reading', shortReading, { lengthNorms: false })).toBe(true);
+  });
+
+  it('mini format still enforces structure (3 passages / 40 questions)', () => {
+    const twoPassages = { durationSec: 3600, passages: shortReading.passages.slice(0, 2) };
+    expect(isSectionMockEligible('reading', twoPassages, { lengthNorms: false })).toBe(false);
   });
 });

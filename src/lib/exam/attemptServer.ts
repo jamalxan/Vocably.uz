@@ -5,8 +5,9 @@
 // bilan ishlaydi (`@/lib/models`) — eski `ExamSession`ga TEGMAYDI.
 import crypto from 'crypto';
 import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel, ExamTestVersion as ExamTestVersionModel, User as UserModel } from '@/lib/models';
-import { isCorrect, isSetCorrect, listeningBand, readingBand, officialStyleOverallBand } from './scoring';
+import { isCorrect, isSetCorrect, listeningBand, readingBand, officialStyleOverallBand, roundOverall } from './scoring';
 import { sanitizeForExam } from './sanitize';
+import { mistakeVocabulary } from './mistakes';
 import { gradeEssay, combineWritingBand } from './writingGrader';
 import { gradeSpeaking } from './speakingGrader';
 import { uploadAudioBuffer } from './audioStorage';
@@ -15,6 +16,7 @@ import type {
   AnswerKey,
   AnswerValue,
   AttemptHistoryEntry,
+  SkillBandEstimate,
   AttemptReviewDetail,
   AttemptResult,
   ExamSectionKey,
@@ -385,30 +387,9 @@ export function scoreSection(test: Test, attemptAnswers: Record<string, AnswerVa
 // (AI chaqiruvisiz) ajratib olamiz. Faqat READING uchun: Listening'da
 // `locatorParagraph`ning ekvivalenti yo'q (transkript vaqt-bog'liq segment,
 // paragraf emas) — shuning uchun Listening bu bosqichda ATAYLAB QOLDIRILDI.
+// 2026-09-29: endi ./mistakes.ts — Listening ham (javob so'zlari), savol
+// matnidagi parafrazalar birinchi, paragraf faqat zaxira sifatida.
 // ============================================================================
-
-// Juda kichik, funktsional-so'zlar ro'yxati — lingvistik jihatdan TO'LIQ EMAS,
-// faqat heuristikani "the", "with" kabi juda keng tarqalgan so'zlardan
-// tozalash uchun yetarli (uzunlik filtri — pastda — asosiy ishni qiladi).
-const ERROR_VOCAB_STOPWORDS = new Set([
-  'about', 'after', 'again', 'against', 'almost', 'along', 'already', 'although', 'always',
-  'among', 'another', 'around', 'because', 'become', 'before', 'being', 'below', 'between',
-  'could', 'during', 'each', 'either', 'every', 'first', 'from', 'further', 'having',
-  'however', 'into', 'itself', 'least', 'might', 'more', 'most', 'much', 'never', 'often',
-  'other', 'others', 'ought', 'over', 'own', 'perhaps', 'rather', 'same', 'shall', 'should',
-  'since', 'some', 'still', 'such', 'than', 'that', 'their', 'them', 'then', 'there', 'these',
-  'they', 'this', 'those', 'though', 'through', 'toward', 'towards', 'under', 'until', 'upon',
-  'very', 'were', 'what', 'when', 'where', 'whether', 'which', 'while', 'whose',
-  'with', 'within', 'without', 'would',
-]);
-
-function stripHtmlToText(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ');
-}
-
-function tokenizeContentWords(text: string): string[] {
-  return text.toLowerCase().match(/[a-z]+/g) || [];
-}
 
 // Minimal, faqat shu funksiya uchun kerakli shakl — to'liq `Test` turini
 // import qilish o'rniga (test qulayligi uchun: fake bo'lak obyekt kifoya).
@@ -423,43 +404,15 @@ interface ErrorVocabReadingShape {
   };
 }
 
-/** Sof, deterministik funksiya (DB/AI'siz) — shuning uchun to'g'ridan-to'g'ri
- * birlik-test qilinadi (`buildAnswersPatchSetOps`dagi kabi naqsh). Faqat
- * `correct: false` bo'lgan savollarni ko'rib chiqadi; savol/paragraf/
- * `locatorParagraph` topilmasa yoki `test`da Reading bo'lmasa, xatosiz
- * bo'sh massiv qaytaradi — chaqiruvchi (submitAttempt) hech qachon bu
- * yerdan uloqtirilgan xatoga qolmasligi kerak. */
+/** Reading-only word list — kept for existing callers/tests; the actual
+ * selection lives in `./mistakes.ts#mistakeVocabulary` (answer words and
+ * question paraphrases first, paragraph words only as a fallback). */
 export function extractErrorVocabulary(
   test: ErrorVocabReadingShape | null | undefined,
   perQuestion: { number: number; correct: boolean }[] | null | undefined
 ): string[] {
-  const passages = test?.sections?.reading?.passages;
-  if (!Array.isArray(passages) || !Array.isArray(perQuestion)) return [];
-
-  const wrongNumbers = new Set(perQuestion.filter((p) => p && p.correct === false).map((p) => p.number));
-  if (wrongNumbers.size === 0) return [];
-
-  const words = new Set<string>();
-  for (const passage of passages) {
-    for (const group of passage.questionGroups || []) {
-      for (const q of group.questions || []) {
-        if (!wrongNumbers.has(q.number) || !q.locatorParagraph) continue;
-        const paragraph = (passage.paragraphs || []).find((p) => p.label === q.locatorParagraph);
-        if (!paragraph?.html) continue;
-
-        // Heuristika: uzunroq so'zlar odatda kamroq uchraydigan content-so'zlar
-        // (funktsional so'zlar deyarli har doim qisqa) — AI/chastota lug'ati
-        // yo'qligida bu oddiy, deterministik va yetarlicha oqilona proksi.
-        const candidates = [...new Set(tokenizeContentWords(stripHtmlToText(paragraph.html)))]
-          .filter((w) => w.length >= 5 && !ERROR_VOCAB_STOPWORDS.has(w))
-          .sort((a, b) => b.length - a.length || a.localeCompare(b));
-
-        candidates.slice(0, 4).forEach((w) => words.add(w));
-      }
-    }
-  }
-
-  return [...words];
+  if (!test?.sections?.reading) return [];
+  return mistakeVocabulary({ sections: { reading: test.sections.reading as any } }, perQuestion).map((m) => m.word);
 }
 
 const ERROR_VOCAB_CATEGORY_NAME = "Xato asosida qo'shilgan so'zlar";
@@ -471,8 +424,9 @@ const ERROR_VOCAB_CATEGORY_NAME = "Xato asosida qo'shilgan so'zlar";
  * allaqachon bor so'z QAYTA qo'shilmaydi. `POST /api/words/add`dan farqli —
  * bu yerda tarjima (`syns`) shart emas: chaqiruv AI'siz, sinxron va
  * submitAttempt oqimini SEKINLASHTIRMASLIGI kerak. */
-async function autoAddErrorVocabulary(userId: string, newWordsRaw: string[]): Promise<void> {
-  const wanted = [...new Set(newWordsRaw.map((w) => w.trim().toLowerCase()).filter(Boolean))];
+async function autoAddErrorVocabulary(userId: string, items: { word: string; skill: 'reading' | 'listening' }[]): Promise<void> {
+  const skillOf = new Map(items.map((i) => [i.word.trim().toLowerCase(), i.skill]));
+  const wanted = [...skillOf.keys()].filter(Boolean);
   if (wanted.length === 0) return;
 
   const user = await User.findById(userId).select('categories');
@@ -501,7 +455,7 @@ async function autoAddErrorVocabulary(userId: string, newWordsRaw: string[]): Pr
       // xatosidan kelib chiqqani ma'lum, shuning uchun shu bitta taxonomy
       // maydoni to'ldiriladi; band-daraja/to'liq taxonomy hali content-
       // kurasiya vazifasi (bu yerda QILINMAYDI).
-      enrichment: { ieltsSkillTag: 'reading' },
+      enrichment: { ieltsSkillTag: skillOf.get(w) || 'reading' },
     });
   }
 
@@ -565,16 +519,12 @@ export async function submitAttempt(attemptId: string, userId: string, reason: s
     perQuestion: [],
   };
 
-  // EDU-03 — pastda, Reading skorlangandan keyin, shu bo'limning perQuestion'idan
-  // xato-asosidagi lug'atni ajratib olish uchun ishlatiladi (faqat Reading).
-  let readingPerQuestionForVocab: AttemptResult['perQuestion'] | null = null;
   if (test?.sections.reading && attemptSections.includes('reading')) {
     const scored = scoreSection(test, attemptAnswers, 'reading');
     const { band, estimated } = readingBand(scored.raw, test.module, test.bandTable?.reading);
     sectionBands.reading = band;
     result.reading = { raw: scored.raw, band, bandEstimated: estimated, perPassage: scored.perContainer };
     perQuestion = perQuestion.concat(scored.perQuestion);
-    readingPerQuestionForVocab = scored.perQuestion;
   }
   if (test?.sections.listening && attemptSections.includes('listening')) {
     const scored = scoreSection(test, attemptAnswers, 'listening');
@@ -606,9 +556,11 @@ export async function submitAttempt(attemptId: string, userId: string, reason: s
   // paragrafidan so'z ajratib, foydalanuvchi SRS deka'siga qo'shadi. BU HECH
   // QACHON asosiy submit/baholash oqimini TO'XTATMASLIGI kerak — shuning
   // uchun alohida try/catch, faqat log qiladi (natijaga ta'sir qilmaydi).
-  if (test && readingPerQuestionForVocab) {
+  // Mistake notebook: Listening mistakes count too (answers the user failed
+  // to catch are exactly the words to drill) — src/lib/exam/mistakes.ts.
+  if (test && perQuestion.length) {
     try {
-      const errorWords = extractErrorVocabulary(test, readingPerQuestionForVocab);
+      const errorWords = mistakeVocabulary(test as any, perQuestion);
       if (errorWords.length > 0) {
         await autoAddErrorVocabulary(userId, errorWords);
       }
@@ -875,10 +827,31 @@ export async function getAttemptHistory(userId: string, limit = 20): Promise<Att
       testTitle: titleById.get(String(a.testId)) || '',
       mode: a.mode,
       submittedAt: a.submittedAt ? new Date(a.submittedAt).toISOString() : null,
-      overall: a.result?.overall ?? null,
+      // A single-section drill's "overall" is just that section's band —
+      // showing it as an overall IELTS band misled the dashboard/history.
+      overall: a.mode === 'mock' ? a.result?.overall ?? null : null,
       listening: a.result?.listening?.band ?? null,
       reading: a.result?.reading?.band ?? null,
       writing: a.result?.writing?.band ?? null,
+      speaking: a.result?.speaking?.band ?? null,
     }))
     .reverse(); // eng eskisi birinchi — grafik chapdan o'ngga o'sadi
+}
+
+/** Pure: latest band per skill from newest-first history rows, and an
+ * IELTS-rounded estimate over the skills that have one. */
+export function estimateFromHistory(newestFirst: Pick<AttemptHistoryEntry, 'listening' | 'reading' | 'writing' | 'speaking'>[]): SkillBandEstimate {
+  const bands: SkillBandEstimate['bands'] = { listening: null, reading: null, writing: null, speaking: null };
+  for (const row of newestFirst) {
+    for (const key of ['listening', 'reading', 'writing', 'speaking'] as const) {
+      if (bands[key] == null && row[key] != null) bands[key] = row[key];
+    }
+  }
+  const vals = Object.values(bands).filter((v): v is number => v != null);
+  return { bands, estimate: vals.length ? roundOverall(vals.reduce((a, b) => a + b, 0) / vals.length) : null, skillsCovered: vals.length };
+}
+
+export async function getSkillBandEstimate(userId: string): Promise<SkillBandEstimate> {
+  const history = await getAttemptHistory(userId, 60);
+  return estimateFromHistory([...history].reverse());
 }

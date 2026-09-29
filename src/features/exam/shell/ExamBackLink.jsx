@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 
 // (exam) marshrutlarida AppShell (sidebar/pastki tab bar) yo'q — test tanlash,
 // mashq va natija sahifalaridan ilovaga qaytish uchun yagona chiqish yo'li.
-export default function ExamBackLink({ href = '/app/mashq', label = 'Mashq', width = 'max-w-lg' }) {
+export default function ExamBackLink({ href = '/app/mashq', label = 'All skills', width = 'max-w-lg' }) {
   return (
     <nav aria-label="Orqaga" className={`${width} mx-auto px-4 sm:px-8 pt-3 sm:pt-5 -mb-3 sm:-mb-6`}>
       <Link

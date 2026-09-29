@@ -156,6 +156,11 @@ const UserSchema = new mongoose.Schema({
   // "yangi xabar" bildirishnomasi boradi (barcha suhbatlar uchun standart). User o'zi
   // har bir suhbat uchun alohida yoqib/o'chirib qo'yishi mumkin (Conversation.tgMessageNotifyOn/Off).
   tgMessageNotify: { type: Boolean, default: false },
+  // Daily Telegram mini-test (src/lib/telegramQuiz.js). On by default for
+  // users who linked the bot; every message has a one-tap "turn off".
+  tgDailyPractice: { type: Boolean, default: true },
+  tgDailySentOn: { type: String, default: null }, // 'YYYY-MM-DD' (Tashkent)
+  tgQuiz: { type: mongoose.Schema.Types.Mixed, default: null },
   // Do'stlar bo'limida "oxirgi marta ko'rilgan" uchun — requireChatUser() har /api/chat/*
   // so'rovida (throttled) yangilaydi, src/lib/chatAuth.js.
   lastActiveAt: { type: Date, default: null },
@@ -228,6 +233,15 @@ const UserSchema = new mongoose.Schema({
   subscriptionTier: { type: String, enum: ['free', 'standard', 'premium'], default: 'free' },
   subscriptionSetAt: { type: Date, default: null },
   subscriptionSetBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  // Subscription lifecycle (src/lib/subscription.js): a paid tier runs until
+  // `subscriptionExpiresAt`, then stays open for GRACE_DAYS with daily
+  // warnings, then the EFFECTIVE tier falls back to free (computed on read —
+  // `subscriptionTier` keeps the last paid tier for history). null expiry =
+  // legacy manual grant from before terms existed (stays active).
+  subscriptionStartedAt: { type: Date, default: null },
+  subscriptionExpiresAt: { type: Date, default: null },
+  // Delivered reminder keys ("<expiryISO>:grace-2" …) — makes the sweep idempotent.
+  subscriptionNotices: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -241,6 +255,8 @@ UserSchema.index({ role: 1 });
 UserSchema.index({ chatAccess: 1, chatBanned: 1 });
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ telegramChatId: 1 });
+// Reminder sweep scans only paid users near/after their expiry.
+UserSchema.index({ subscriptionTier: 1, subscriptionExpiresAt: 1 });
 
 export const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
@@ -392,6 +408,8 @@ const MessageMediaSchema = new mongoose.Schema(
     width: { type: Number, default: null },
     height: { type: Number, default: null },
     durationSec: { type: Number, default: null },
+    // Video note (recorded with the in-chat camera) — shown as a circle.
+    round: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -562,6 +580,40 @@ BillingInterestSchema.index({ createdAt: -1 });
 export const BillingInterest =
   mongoose.models.BillingInterest || mongoose.model('BillingInterest', BillingInterestSchema);
 
+// A request to activate a paid plan. Today it is paid manually (card transfer)
+// and the user uploads the receipt; an admin approves it and the plan opens
+// (src/lib/payments/approve.js). Payme/Click, once configured, settle the same
+// document automatically — `method` says which path it took.
+const PaymentRequestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  tier: { type: String, enum: ['standard', 'premium'], required: true },
+  months: { type: Number, enum: [1, 12], required: true },
+  amount: { type: Number, required: true }, // so'm
+  method: { type: String, enum: ['manual', 'payme', 'click'], default: 'manual' },
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'], default: 'pending' },
+  receiptFileId: { type: String, default: null }, // GridFS (paymentReceipts)
+  receiptMime: { type: String, default: null },
+  note: { type: String, default: '', maxlength: 500 },
+  rejectReason: { type: String, default: '' },
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  reviewedAt: { type: Date, default: null },
+  // Provider transaction state (Payme/Click). Unused for manual payments.
+  provider: {
+    txId: { type: String, default: null },
+    state: { type: Number, default: null },
+    createdAt: { type: Date, default: null },
+    performedAt: { type: Date, default: null },
+    cancelledAt: { type: Date, default: null },
+    reason: { type: Number, default: null },
+  },
+  createdAt: { type: Date, default: Date.now },
+});
+PaymentRequestSchema.index({ status: 1, createdAt: -1 });
+PaymentRequestSchema.index({ userId: 1, createdAt: -1 });
+PaymentRequestSchema.index({ 'provider.txId': 1 }, { sparse: true });
+
+export const PaymentRequest = mongoose.models.PaymentRequest || mongoose.model('PaymentRequest', PaymentRequestSchema);
+
 // TZ-vocably-v2.md §D1.6 — soatlik AI generatsiya limiti (src/lib/ai/client.js
 // checkAndIncrementAiRateLimit). RateLimitHit'dan farqli o'laroq bucket kaliti
 // (userId, hourBucket) juftligi — bir soat davomida bitta hujjat, TTL orqali
@@ -587,7 +639,7 @@ export const AiUsage = mongoose.models.AiUsage || mongoose.model('AiUsage', AiUs
 
 const NotificationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['chat_message', 'announcement'], required: true },
+  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment'], required: true },
   title: { type: String, required: true, trim: true },
   body: { type: String, default: '', trim: true },
   // 'chat_message' uchun suhbat ID'si, 'announcement' uchun Announcement ID'si —
@@ -935,6 +987,10 @@ const ExamAttemptSchema = new mongoose.Schema(
     // amalda bo'lgan qat'iy-timer/section-locking xatti-harakatini saqlab
     // qoladi (orqaga moslik — attempts/route.js va attemptServer.ts izohiga q.).
     mockKind: { type: String, enum: ['practice', 'exam', 'secure'], default: 'exam' },
+    // 'mini' = structurally complete mock whose Reading is shorter than the
+    // official word-count window (src/lib/exam/mockPools.js fallback) — the
+    // UI labels it so a Mini mock band isn't mistaken for a full-format one.
+    mockFormat: { type: String, enum: ['full', 'mini'], default: 'full' },
     sections: [{ type: String, enum: ['listening', 'reading', 'writing', 'speaking'] }],
     currentSection: { type: String, enum: ['listening', 'reading', 'writing', 'speaking'], required: true },
     status: { type: String, enum: ['in_progress', 'submitted', 'graded', 'expired', 'abandoned'], default: 'in_progress' },

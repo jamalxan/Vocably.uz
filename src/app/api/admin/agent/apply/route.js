@@ -63,6 +63,7 @@ async function ingestOneTest({ attachment, testEntry, bookTitle, adminId, req, d
       blockers: 0,
       warnings: ["Bu test allaqachon shu fayldan yaratilgan — qayta yaratilmadi."],
       summary: `${existing.title} (allaqachon mavjud)`,
+      existed: true,
       canPublish: !hasBlockingErrors(validateTest(existing)),
     };
   }
@@ -182,6 +183,10 @@ async function handleIngest({ payload, all, admin, req, deadlineAt }) {
       lines.push(`❌ ${r.summary}`);
       continue;
     }
+    if (r.existed) {
+      lines.push(`☑️ **${r.title}** — oldin yaratilgan, o'tkazib yuborildi.`);
+      continue;
+    }
     lines.push(`✅ **${r.title}** qoralama sifatida yaratildi:\n${r.sections.map((s) => `- ${s.label}: ${s.detail}`).join('\n')}`);
     if (r.warnings?.length) lines.push(r.warnings.map((w) => `⚠️ ${w}`).join('\n'));
     if (r.blockers > 0) {
@@ -199,11 +204,16 @@ async function handleIngest({ payload, all, admin, req, deadlineAt }) {
 
   if (remaining.length) {
     lines.push(`⏳ Vaqt chegarasi sababli ${remaining.length} ta test qoldi.`);
+    // `ingest_all` again, not `ingest_test` for the next index: a single-test
+    // continuation dropped every test after it. Re-running is cheap — tests
+    // already created are skipped by ingestOneTest's idempotency check.
     proposals.push({
-      type: 'ingest_test',
-      label: `Qolganini davom ettirish (Test ${remaining[0].index})`,
-      description: 'Keyingi testni joylashtirish',
-      payload: { attachmentId: String(attachment._id), testIndex: remaining[0].index, title: bookTitle },
+      type: 'ingest_all',
+      label: `Qolganini davom ettirish (${remaining.length} ta test)`,
+      description: 'Qolgan testlarni joylashtirish',
+      // Auto-place mode continues on its own (another request, fresh time budget).
+      auto: true,
+      payload: { attachmentId: String(attachment._id), title: bookTitle },
     });
   }
 

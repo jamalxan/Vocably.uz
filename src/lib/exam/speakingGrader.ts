@@ -15,6 +15,7 @@
 import { generateJson, generateJsonWithAudio } from '@/lib/aiJson';
 import { getAudioFileMeta, downloadAudioBuffer } from './audioStorage';
 import type { SpeakingRecording, SpeakingScore, SpeakingSection } from './types';
+import { computeSpeakingMetrics, metricsForPrompt } from './speakingMetrics';
 
 // EX-02 (Sprint 2, VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md) — Gemini's practical
 // inline-data ceiling for a single request; above this we skip audio-based
@@ -159,7 +160,10 @@ async function assessPronunciation(recording: SpeakingRecording): Promise<{ band
 }
 
 export async function gradeSpeaking(section: SpeakingSection, recordings: SpeakingRecording[]): Promise<SpeakingScore> {
-  const transcriptBlock = buildTranscriptBlock(section, recordings);
+  // Objective measures go to the AI as extra evidence (it only sees text, so
+  // speech rate and Part 2 length would otherwise be invisible to it).
+  const metrics = computeSpeakingMetrics(recordings);
+  const transcriptBlock = `${buildTranscriptBlock(section, recordings)}\n\n[MEASURED] ${metricsForPrompt(metrics)}`;
   const data = await generateJson(buildPrompt(transcriptBlock), RESPONSE_SCHEMA);
 
   const fluencyCoherence = { band: clampToHalfBand(data.fluencyCoherence), note: String(data.fluencyCoherenceNote || '') };
@@ -189,5 +193,6 @@ export async function gradeSpeaking(section: SpeakingSection, recordings: Speaki
       ? data.corrections.slice(0, 6).map((c: any) => ({ original: String(c?.original || ''), suggestion: String(c?.suggestion || '') }))
       : [],
     nextStepsUz: Array.isArray(data.nextStepsUz) ? data.nextStepsUz.map(String) : [],
+    metrics,
   };
 }

@@ -37,10 +37,10 @@ export default function YozishAttemptPage() {
             Yangi urinish boshlash
           </Link>
           <Link
-            href="/app/mashq"
+            href="/app/yozish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-muted hover:text-ink font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Mashq bo&apos;limiga
+            Writing sahifasiga
           </Link>
         </div>
       </div>

@@ -20,6 +20,7 @@ const FIELD_LABEL = {
   chatBanned: 'chat bloklangan',
   username: 'username',
   subscriptionTier: 'tarif',
+  subscriptionExpiresAt: 'obuna muddati',
   isPublished: "e'lon qilingan",
   reason: 'sabab',
   messageCount: 'xabarlar soni',

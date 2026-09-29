@@ -1,25 +1,11 @@
 import '@/app/globals.css';
-import { Poppins, IBM_Plex_Mono } from 'next/font/google';
+import { landingFontVariables } from '@/components/landing/fonts';
 import { ThemeProvider, themeInitScript } from '@/context/ThemeContext';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 
-// Butun ilova uchun yagona shrift — Poppins. Sarlavha/matn/logotip/so'z
-// o'zgaruvchilari (--font-display, --font-luxury, --font-word) globals.css'da
-// shu --font-body'ga ulangan, shuning uchun komponentlardagi klasslar o'zgarmaydi.
-const poppins = Poppins({
-  subsets: ['latin', 'latin-ext'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-body',
-  display: 'swap',
-});
-
-// Faqat kod bloklari, ID va JSON maydonlari uchun (font-mono).
-const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-mono',
-  display: 'swap',
-});
+// Type system (self-hosted, src/components/landing/fonts.js): Sora for
+// headings and the word being learned, Inter for text, JetBrains Mono for
+// code/IDs. globals.css maps the app's role variables onto these.
 
 // VOCABLY-TZ.md §17.3 (SEO). `metadataBase` — nisbiy OG-rasm/canonical
 // yo'llarni (masalan opengraph-image.tsx, har sahifadagi alternates.canonical)
@@ -31,8 +17,32 @@ export const metadata = {
     default: "Vocably — Ingliz tili yordamchisi",
     template: '%s',
   },
-  description: "Ingliz tilini o'rganish uchun AI yordamchili shaxsiy lug'at platformasi",
-  keywords: ["ingliz tili so'zlarini yodlash", 'IELTS mock test online', 'ingliz tili darslari onlayn', "ingliz tili so'z boyligi"],
+  description: "Ingliz tili va IELTS tayyorgarlik platformasi: SRS lug'at, Reading/Listening/Writing/Speaking mashqlari, mock imtihon va AI tutor",
+  applicationName: 'Vocably',
+  category: 'education',
+  keywords: [
+    "ingliz tili so'zlarini yodlash",
+    'IELTS mock test online',
+    'IELTS tayyorgarlik',
+    'IELTS Reading Listening Writing Speaking',
+    'ingliz tili darslari onlayn',
+    "ingliz tili so'z boyligi",
+    'IELTS band hisoblash',
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
+  },
+  formatDetection: { telephone: false },
+  // Search Console / Yandex Webmaster / Bing ownership — set the codes in the
+  // environment (Vercel → Settings → Environment Variables); nothing is
+  // emitted while they are empty.
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    yandex: process.env.YANDEX_VERIFICATION || undefined,
+    other: process.env.BING_SITE_VERIFICATION ? { 'msvalidate.01': process.env.BING_SITE_VERIFICATION } : undefined,
+  },
   manifest: '/manifest.webmanifest',
   // Statik OG-rasm (scripts/generate-og-image.mjs) — dinamik next/og ImageResponse
   // shu loyihada Windows'da build vaqtida "Invalid URL" bilan yiqilgani uchun
@@ -40,6 +50,7 @@ export const metadata = {
   openGraph: {
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Vocably' }],
     locale: 'uz_UZ',
+    siteName: 'Vocably',
     type: 'website',
   },
   twitter: {
@@ -73,7 +84,7 @@ export default function RootLayout({ children }) {
     // suppressHydrationWarning: <body> boshidagi bloklovchi skript hydration'dan oldin
     // data-theme atributini o'rnatishi mumkin — bu server/klient farqi kutilgan va
     // zararsiz, React shu haqidagi ogohlantirishni shu yerda bosib qo'ymasa bo'ladi.
-    <html lang="uz" className={`${poppins.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="uz" className={landingFontVariables} suppressHydrationWarning>
       <body className="bg-bg text-ink min-h-dvh antialiased font-body" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>{children}</ThemeProvider>

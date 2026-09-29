@@ -105,8 +105,12 @@ function documentTurn(attachment, analysis) {
       payload: { attachmentId: String(attachment._id), title },
     });
   }
+  // `auto` — the client's auto-place mode applies this one without a click.
+  // Safe: ingestion only ever creates unpublished drafts (apply/route.js),
+  // is idempotent per attachment+test, and publishing stays a manual step.
+  if (proposals[0]) proposals[0].auto = true;
 
-  lines.push('Qaysi birini joylashtiray?');
+  lines.push(withSections > 1 ? 'Hammasini joylashtiraymi yoki bittasini tanlaysizmi?' : 'Joylashtiraymi?');
   return { content: lines.join('\n\n'), proposals };
 }
 
@@ -157,6 +161,9 @@ async function audioTurn(attachment, deadlineAt) {
       type: 'attach_audio',
       label: `${best.testTitle} · Part ${best.partOrder} ga biriktirish`,
       description: `Moslik: ${Math.round(best.score * 100)}%`,
+      // Strong evidence only (answer-key hits in the transcript); apply
+      // re-verifies before attaching and refuses a mismatch.
+      auto: true,
       payload: { attachmentId: String(attachment._id), testId: best.testId, partOrder: best.partOrder },
     });
   } else if (transcript) {
@@ -230,9 +237,12 @@ export async function POST(req) {
       thread = await AgentThread.create({ adminId: admin._id, title: text.slice(0, 60) || 'Fayl tahlili', messages: [] });
     }
 
-    const attachments = attachmentIds.length
-      ? await AgentAttachment.find({ _id: { $in: attachmentIds }, adminId: admin._id })
-      : [];
+    // Documents first: a book and its audio dropped together should read as
+    // "found these tests" before "this audio belongs to Part N".
+    const KIND_ORDER = { document: 0, text: 0, image: 1, audio: 2 };
+    const attachments = (
+      attachmentIds.length ? await AgentAttachment.find({ _id: { $in: attachmentIds }, adminId: admin._id }) : []
+    ).sort((a, b) => (KIND_ORDER[a.kind] ?? 3) - (KIND_ORDER[b.kind] ?? 3));
 
     thread.messages.push({ role: 'user', content: text, attachmentIds: attachments.map((a) => a._id) });
 

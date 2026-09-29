@@ -4,8 +4,7 @@ import { ExamTest, ExamAttempt } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getOrCreateTestVersion } from '@/lib/exam/attemptServer';
 import { normalizeMockKind } from '@/lib/exam/mockKind';
-import { composeMock, composedTitle, MOCK_SECTION_KEYS } from '@/lib/exam/mockComposer';
-import { isSectionMockEligible } from '@/lib/exam/contentValidator';
+import { composeRandomMock } from '@/lib/exam/mockPools';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -43,6 +42,7 @@ async function createMockAttemptForTest(userId, test, mockKind) {
     testVersionId,
     mode: 'mock',
     mockKind,
+    mockFormat: test.mockFormat === 'mini' ? 'mini' : 'full',
     sections,
     currentSection: firstSection,
     status: 'in_progress',
@@ -54,76 +54,6 @@ async function createMockAttemptForTest(userId, test, mockKind) {
     lastQuestion: 0,
   });
   return { attempt };
-}
-
-/** Nashr qilingan testlardan HAR BO'LIM uchun alohida "manba hovuzi"
- * yig'adi. Shart — bo'limning O'ZI mock shakliga mos bo'lishi
- * (`isSectionMockEligible`: Reading 3 passage/40 savol, Listening 4 part x
- * 10 savol + audio, Writing 2 task) — ya'ni butun test mock-eligible
- * bo'lishi SHART EMAS: faqat Reading'i bor mini test ham endi mockka
- * Reading manbasi bo'la oladi. Aynan shu narsa "manbalar aralashsin"
- * talabini haqiqiy qiladi. */
-async function buildMockPools() {
-  const tests = await ExamTest.find({
-    isPublished: true,
-    $or: MOCK_SECTION_KEYS.map((key) => ({ [`sections.${key}`]: { $exists: true } })),
-  })
-    .select('title module sections availability')
-    .lean();
-
-  // Modul (academic/general) bo'yicha ajratamiz — Academic Reading bilan
-  // General Writing'ni aralashtirib yuborish imtihon shaklini buzardi.
-  const byModule = new Map();
-  for (const test of tests) {
-    // `module` nomi ataylab ISHLATILMAYDI (Next.js lint qoidasi: modul
-    // darajasidagi `module` o'zgaruvchisiga yozish bundler'ni chalg'itadi).
-    const moduleKey = test.module || 'academic';
-    if (!byModule.has(moduleKey)) byModule.set(moduleKey, { listening: [], reading: [], writing: [] });
-    const pools = byModule.get(moduleKey);
-    for (const key of MOCK_SECTION_KEYS) {
-      const content = test.sections?.[key];
-      if (!content) continue;
-      // `availability.practice*` — admin bo'limni ataylab yopgan bo'lsa
-      // (masalan sifati past deb) mockka ham tushmasin.
-      const availabilityKey = `practice${key[0].toUpperCase()}${key.slice(1)}`;
-      if (test.availability && test.availability[availabilityKey] === false) continue;
-      if (!isSectionMockEligible(key, content)) continue;
-      pools[key].push({ testId: String(test._id), title: test.title, module: moduleKey, content });
-    }
-  }
-
-  return byModule;
-}
-
-/** To'liq (uchala bo'lim ham bor) hovuzga ega modullardan bittasini
- * tasodifiy tanlab, aralash mock yig'adi. Hech bir modulda to'liq to'plam
- * bo'lmasa `null` — chaqiruvchi 404 qaytaradi (yolg'on "yarim mock"
- * yaratilmaydi). */
-async function composeRandomMock(avoidTestIds) {
-  const byModule = await buildMockPools();
-  const viable = Array.from(byModule.entries()).filter(([, pools]) => MOCK_SECTION_KEYS.every((k) => pools[k].length > 0));
-  if (viable.length === 0) return null;
-
-  const [moduleKey, pools] = viable[Math.floor(Math.random() * viable.length)];
-  const composed = composeMock(pools, { avoidTestIds });
-  if (!composed) return null;
-
-  // `createMockAttemptForTest` uchun "test"ga o'xshash obyekt: `_id`
-  // manba testlardan birininki (attempt real hujjatga bog'langan bo'lib
-  // qolishi uchun), kontent esa aralashma. `getOrCreateTestVersion` shu
-  // kontentni hash bo'yicha muzlatadi — bir xil kombinatsiya uchun
-  // takroriy versiya yaratilmaydi.
-  return {
-    _id: composed.parentTestId,
-    slug: `mixed-${composed.composedFrom.map((c) => c.testId.slice(-4)).join('-')}`,
-    title: composedTitle(composed),
-    module: moduleKey,
-    difficulty: 'medium',
-    sections: composed.sections,
-    bandTable: null,
-    isPublished: true,
-    createdAt: new Date(),
-  };
 }
 
 /** Bitta bo'lim uchun tasodifiy nashr qilingan test — Writing/Speaking

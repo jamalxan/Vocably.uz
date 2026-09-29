@@ -1,12 +1,13 @@
 import { connectToDatabase } from '@/lib/db';
-import { User, ReviewEvent } from '@/lib/models';
+import { User, ReviewEvent, ExamAttempt } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { cardFromStats, localDateWithCutoff, LEECH_THRESHOLD } from '@/lib/srs';
-import { getAttemptHistory } from '@/lib/exam/attemptServer';
+import { getSkillBandEstimate } from '@/lib/exam/attemptServer';
 import { NextResponse } from 'next/server';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MISTAKE_CATEGORY = "Xato asosida qo'shilgan so'zlar";
 const ACTIVITY_WINDOW_DAYS = 30;
 // ReviewEvent'lar UTC bo'yicha vaqt tamg'asiga ega, lekin "kun" chegarasi foydalanuvchi
 // timezone'i + 04:00 kesimiga bog'liq (src/lib/srs.ts). Aniq DST-hisobli UTC oralig'ini
@@ -160,9 +161,33 @@ export async function GET(req) {
     // endpoint o'rniga shu bitta chaqiruvda qo'shiladi. "Current estimate" — eng oddiy
     // oqilona proksi (task ta'rifi bo'yicha): foydalanuvchining ENG SO'NGGI baholangan
     // (graded) urinishining overall band'i — to'liq adaptiv bashorat emas.
-    const [latestGraded] = await getAttemptHistory(userId, 1);
-    const currentEstimate = latestGraded?.overall ?? null;
+    // Estimate = IELTS-rounded mean of the latest band in each skill the user
+    // has actually been graded on (a single Reading drill's band is no longer
+    // presented as an "overall" estimate on its own).
+    const skillEstimate = await getSkillBandEstimate(userId);
+    const currentEstimate = skillEstimate.estimate;
     const daysLeft = user.examDate ? Math.ceil((new Date(user.examDate).getTime() - now.getTime()) / DAY_MS) : null;
+
+    // Daily plan inputs (src/lib/studyPlan.js): which sections were finished
+    // today (in the user's local day) and how many mistake words are due.
+    const recentAttempts = await ExamAttempt.find({
+      userId,
+      status: { $in: ['submitted', 'graded'] },
+      submittedAt: { $gte: new Date(now.getTime() - 30 * 60 * 60 * 1000) },
+    })
+      .select('mode sections submittedAt')
+      .lean();
+    const sectionsDoneToday = [
+      ...new Set(
+        recentAttempts
+          .filter((a) => localDateWithCutoff(a.submittedAt, tz) === today)
+          .flatMap((a) => (a.mode === 'mock' ? ['mock', ...(a.sections || [])] : a.sections || []))
+      ),
+    ];
+    const mistakeCat = (user.categories || []).find((c) => c.name === MISTAKE_CATEGORY);
+    const mistakeWordsDue = (mistakeCat?.words || []).filter(
+      (w) => !w.stats?.nextReview || new Date(w.stats.nextReview).getTime() <= now.getTime()
+    ).length;
 
     return NextResponse.json({
       examPrep: {
@@ -172,8 +197,11 @@ export async function GET(req) {
         currentLevel: user.currentLevel ?? null,
         dailyStudyMinutes: user.dailyStudyMinutes ?? null,
         currentEstimate,
+        skillBands: skillEstimate.bands,
+        skillsCovered: skillEstimate.skillsCovered,
         daysLeft,
       },
+      plan: { sectionsDoneToday, mistakeWordsDue },
       streak: {
         current: user.reviewStreak || 0,
         longest: Math.max(user.longestReviewStreak || 0, user.reviewStreak || 0),

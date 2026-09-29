@@ -42,10 +42,10 @@ export default function AdminContentAiPage() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1 p-1 bg-bg border border-border rounded-xl w-fit max-w-full">
-        <TabButton active={tab === 'agent'} onClick={() => setTab('agent')} icon={Bot} label="AI chat" />
+        <TabButton active={tab === 'agent'} onClick={() => setTab('agent')} icon={Bot} label="Yuklash" />
         <TabButton active={tab === 'settings'} onClick={() => setTab('settings')} icon={Settings} label="Sozlamalar" />
         <TabButton active={tab === 'autopilot'} onClick={() => setTab('autopilot')} icon={Bot} label="Avtopilot" />
-        <TabButton active={tab === 'playground'} onClick={() => setTab('playground')} icon={FlaskConical} label="Sinov" />
+        <TabButton active={tab === 'playground'} onClick={() => setTab('playground')} icon={FlaskConical} label="Sinov (texnik)" />
       </div>
 
       {tab === 'agent' && <AdminAgentChat />}

@@ -22,14 +22,17 @@ export async function GET(req) {
       {
         $project: {
           sessions: {
+            // $ifNull: users created outside the mongoose default path (older
+            // accounts, admin/script inserts) may have no chatSessions/messages
+            // field at all — $map/$size would yield null and crash every page.
             $map: {
-              input: '$chatSessions',
+              input: { $ifNull: ['$chatSessions', []] },
               as: 's',
               in: {
                 _id: '$$s._id',
                 title: '$$s.title',
                 updatedAt: '$$s.updatedAt',
-                messageCount: { $size: '$$s.messages' },
+                messageCount: { $size: { $ifNull: ['$$s.messages', []] } },
               },
             },
           },
@@ -38,7 +41,7 @@ export async function GET(req) {
     ]);
     if (!result) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
 
-    const sessions = result.sessions
+    const sessions = (result.sessions || [])
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       .map((s) => ({ id: String(s._id), title: s.title, updatedAt: s.updatedAt, messageCount: s.messageCount }));
 

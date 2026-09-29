@@ -1,6 +1,7 @@
 import LandingHeader from '@/components/landing/LandingHeader';
 import LandingFooter from '@/components/landing/LandingFooter';
 import PricingTable from '@/components/pricing/PricingTable';
+import { ldGraph, organizationLd, webApplicationLd } from '@/lib/seo/site';
 
 export const metadata = {
   title: 'Narxlar — Vocably',
@@ -18,6 +19,7 @@ export const metadata = {
 export default function NarxlarPage() {
   return (
     <div className="min-h-dvh bg-bg flex flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ldGraph([organizationLd, webApplicationLd()])) }} />
       <LandingHeader />
       <main className="flex-1 px-4 sm:px-6 py-12 sm:py-16">
         <div className="text-center max-w-2xl mx-auto mb-12">
