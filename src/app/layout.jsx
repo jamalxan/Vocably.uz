@@ -31,8 +31,24 @@ export const metadata = {
     default: "Vocably — Ingliz tili yordamchisi",
     template: '%s',
   },
-  description: "Ingliz tilini o'rganish uchun AI yordamchili shaxsiy lug'at platformasi",
-  keywords: ["ingliz tili so'zlarini yodlash", 'IELTS mock test online', 'ingliz tili darslari onlayn', "ingliz tili so'z boyligi"],
+  description: "Ingliz tili va IELTS tayyorgarlik platformasi: SRS lug'at, Reading/Listening/Writing/Speaking mashqlari, mock imtihon va AI tutor",
+  applicationName: 'Vocably',
+  category: 'education',
+  keywords: [
+    "ingliz tili so'zlarini yodlash",
+    'IELTS mock test online',
+    'IELTS tayyorgarlik',
+    'IELTS Reading Listening Writing Speaking',
+    'ingliz tili darslari onlayn',
+    "ingliz tili so'z boyligi",
+    'IELTS band hisoblash',
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
+  },
+  formatDetection: { telephone: false },
   manifest: '/manifest.webmanifest',
   // Statik OG-rasm (scripts/generate-og-image.mjs) — dinamik next/og ImageResponse
   // shu loyihada Windows'da build vaqtida "Invalid URL" bilan yiqilgani uchun
@@ -40,6 +56,7 @@ export const metadata = {
   openGraph: {
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Vocably' }],
     locale: 'uz_UZ',
+    siteName: 'Vocably',
     type: 'website',
   },
   twitter: {

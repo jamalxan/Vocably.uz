@@ -6,27 +6,46 @@ import { useEffect, useRef, useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { registerChatsTap } from '@/lib/adminHiddenChats';
 
-const NAV = [
-  { href: '/admin', label: 'Statistika', icon: BarChart3, exact: true },
-  { href: '/admin/activity', label: 'Faollik', icon: Activity },
-  { href: '/admin/learning', label: "O'quv analitikasi", icon: GraduationCap },
-  { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
-  // `/admin/c/<id>` — bitta suhbatning to'g'ridan-to'g'ri havolasi, ham shu bo'limga tegishli.
-  { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare, also: ['/admin/c/'], secretTap: true },
-  { href: '/admin/reports', label: 'Reportlar', icon: Flag },
-  { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
-  { href: '/admin/stickers', label: 'Stikerlar', icon: Sticker },
-  // 2026-09-24 — AI chat (kontent agenti) endi kontent yuklashning ASOSIY
-  // yo'li: admin faylni chatga tashlaydi, agent uni bo'limlarga ajratib
-  // joylashtiradi. Shuning uchun ro'yxatda kontent bo'limlaridan OLDIN
-  // turadi va nomi "AI sozlamalari" emas ("sozlamalar" endi o'sha
-  // ekranning ichidagi bitta tab, asosiy narsa emas).
-  { href: '/admin/content/ai', label: 'AI chat', icon: Sparkles },
-  { href: '/admin/exam-tests', label: 'IELTS testlar', icon: BookOpen },
-  { href: '/admin/content/books', label: 'Kontent studiyasi', icon: Library },
-  { href: '/admin/content/review', label: 'Tekshiruv navbati', icon: ClipboardCheck },
-  { href: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
+// Grouped so the 13 screens read as four jobs instead of one long list.
+// Content comes first among the working groups' order of daily use:
+// uploading via the AI agent is the main way content gets in.
+const NAV_GROUPS = [
+  {
+    label: 'Umumiy',
+    items: [
+      { href: '/admin', label: 'Statistika', icon: BarChart3, exact: true },
+      { href: '/admin/activity', label: 'Faollik', icon: Activity },
+      { href: '/admin/learning', label: "O'quv analitikasi", icon: GraduationCap },
+    ],
+  },
+  {
+    label: 'Kontent',
+    items: [
+      { href: '/admin/content/ai', label: 'Kontent yuklash (AI)', icon: Sparkles },
+      { href: '/admin/exam-tests', label: 'IELTS testlar', icon: BookOpen },
+      { href: '/admin/content/review', label: 'Tekshiruv navbati', icon: ClipboardCheck },
+      { href: '/admin/content/books', label: 'Kitoblar (fon ishlovi)', icon: Library },
+    ],
+  },
+  {
+    label: 'Foydalanuvchilar',
+    items: [
+      { href: '/admin/users', label: 'Foydalanuvchilar va tariflar', icon: Users },
+      // `/admin/c/<id>` — bitta suhbatning to'g'ridan-to'g'ri havolasi, ham shu bo'limga tegishli.
+      { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare, also: ['/admin/c/'], secretTap: true },
+      { href: '/admin/reports', label: 'Reportlar', icon: Flag },
+    ],
+  },
+  {
+    label: 'Aloqa va tizim',
+    items: [
+      { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
+      { href: '/admin/stickers', label: 'Stikerlar', icon: Sticker },
+      { href: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
+    ],
+  },
 ];
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
 
 // xl (1280px) dan pastda sidebar drawer bo'ladi — planshetda kontent to'liq kenglikda.
 const DESKTOP_QUERY = '(min-width: 1280px)';
@@ -48,7 +67,7 @@ function NavLink({ item, pathname, onClick }) {
         onClick?.();
       }}
       aria-current={active ? 'page' : undefined}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
         active ? 'bg-accent text-on-accent shadow-glow' : 'text-on-primary/60 hover:text-on-primary hover:bg-primary-hover'
       }`}
     >
@@ -133,9 +152,16 @@ export default function AdminShell({ children }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto overscroll-contain">
-          {NAV.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMobileOpen(false)} />
+        <nav className="flex-1 px-4 py-5 space-y-5 overflow-y-auto overscroll-contain">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-on-primary/40">{group.label}</p>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onClick={() => setMobileOpen(false)} />
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 

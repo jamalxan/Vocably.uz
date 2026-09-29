@@ -4,6 +4,7 @@ import LandingHeader from '@/components/landing/LandingHeader';
 export const metadata = {
   title: 'Bepul sinov — Vocably',
   description: "Ro'yxatdan o'tmasdan 10 ta so'zni Vocably kartochka rejimida sinab ko'ring.",
+  alternates: { canonical: '/demo' },
 };
 
 export default function DemoPage() {

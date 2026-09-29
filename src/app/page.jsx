@@ -15,6 +15,7 @@ import ExperienceLoader from '@/components/landing/experience/ExperienceLoader';
 import SmoothScroll from '@/components/landing/experience/SmoothScroll';
 import { FAQS } from '@/components/landing/faqData';
 import { landingFontVariables } from '@/components/landing/fonts';
+import { ldGraph, organizationLd, webApplicationLd, tierOffers, SITE_URL, SITE_NAME, SITE_TAGLINE } from '@/lib/seo/site';
 
 // VOCABLY-TZ.md §3.1 (IA) — '/' ochiq marketing landing (SEO uchun server
 // komponent), login formasi /kirish'da (src/app/kirish).
@@ -27,7 +28,7 @@ import { landingFontVariables } from '@/components/landing/fonts';
 // tokenlari va ularning kombinatsiyalari. Barcha muhim matn HTML'da
 // (canvas faqat bezak), H1/H2 ierarxiyasi, metadata va JSON-LD saqlangan.
 export const metadata = {
-  title: 'Vocably — Ingliz tilini ilmiy asoslangan usulda o\'rganing',
+  title: "Vocably — IELTS va ingliz tili: SRS lug'at, mock imtihon, AI tutor",
   description:
     "Vocably — o'zbek tilida so'zlashuvchilar uchun ingliz tili platformasi. So'z boyligini ilmiy asoslangan takrorlash (SRS) tizimi bilan quring va Reading, Listening, Writing, Speaking, Vocabulary, AI va Mock testlarni bitta tizimga birlashtiradi.",
   alternates: { canonical: '/' },
@@ -40,23 +41,30 @@ export const metadata = {
 };
 
 export default function LandingPage() {
-  const jsonLd = [
+  const jsonLd = ldGraph([
+    organizationLd,
     {
-      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      description: SITE_TAGLINE,
+      inLanguage: 'uz',
+      publisher: { '@id': `${SITE_URL}/#organization` },
+    },
+    webApplicationLd(),
+    {
       '@type': 'Course',
-      name: 'Vocably — Ingliz tili',
-      description: "So'z boyligini SRS tizimi bilan quring, Reading/Listening/Speaking/Writing'da ishlating.",
-      provider: { '@type': 'Organization', name: 'Vocably', sameAs: 'https://vocably.uz' },
+      name: 'Vocably — IELTS va ingliz tili',
+      description: "So'z boyligini SRS tizimi bilan quring, Reading/Listening/Speaking/Writing'da ishlating va haqiqiy IELTS formatidagi mock imtihon topshiring.",
+      inLanguage: 'en',
+      educationalLevel: 'A2–C1',
+      teaches: ['IELTS Reading', 'IELTS Listening', 'IELTS Writing', 'IELTS Speaking', 'English vocabulary'],
+      provider: { '@id': `${SITE_URL}/#organization` },
+      offers: tierOffers(),
+      hasCourseInstance: { '@type': 'CourseInstance', courseMode: 'online', courseWorkload: 'PT30M' },
     },
     {
-      '@context': 'https://schema.org',
-      '@type': 'EducationalOccupationalProgram',
-      name: 'Vocably ingliz tili dasturi',
-      description: "O'zbek tilida so'zlashuvchilar uchun ingliz tili o'rganish dasturi.",
-      provider: { '@type': 'Organization', name: 'Vocably' },
-    },
-    {
-      '@context': 'https://schema.org',
       '@type': 'FAQPage',
       mainEntity: FAQS.map((f) => ({
         '@type': 'Question',
@@ -64,7 +72,7 @@ export default function LandingPage() {
         acceptedAnswer: { '@type': 'Answer', text: f.a },
       })),
     },
-  ];
+  ]);
 
   return (
     // overflow-x-clip (not hidden): hidden would turn this div into a scroll

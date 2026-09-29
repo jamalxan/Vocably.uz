@@ -136,6 +136,11 @@ export default function AdminAgentChat() {
   const [dragging, setDragging] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [threads, setThreads] = useState([]);
+  // Auto-place mode (default on): a dropped file is analysed as soon as it
+  // finishes uploading, and the proposals the server marks `auto` (create
+  // drafts, attach audio with strong evidence, continue a timed-out
+  // ingest) run without a click. Publishing is never automatic.
+  const [autoMode, setAutoMode] = useState(true);
 
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -159,6 +164,21 @@ export default function AdminAgentChat() {
   useEffect(() => {
     loadThreads();
   }, [loadThreads]);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('vocably_agent_auto') === '0') setAutoMode(false);
+    } catch {}
+  }, []);
+
+  const toggleAuto = () => {
+    setAutoMode((v) => {
+      try {
+        localStorage.setItem('vocably_agent_auto', v ? '0' : '1');
+      } catch {}
+      return !v;
+    });
+  };
 
   const openThread = async (id) => {
     setHistoryOpen(false);
@@ -202,9 +222,11 @@ export default function AdminAgentChat() {
     if (list.length === 0) return;
     setError('');
 
-    for (const file of list) {
-      const localId = randomId();
-      setPending((prev) => [...prev, { localId, name: file.name, size: file.size, progress: 0 }]);
+    // All files are listed first, then uploaded one by one — so "every
+    // upload finished" (which triggers auto-send) can't fire between files.
+    const entries = list.map((file) => ({ file, localId: randomId() }));
+    setPending((prev) => [...prev, ...entries.map(({ file, localId }) => ({ localId, name: file.name, size: file.size, progress: 0 }))]);
+    for (const { file, localId } of entries) {
       try {
         const data = await uploadInChunks(file, threadId, (p) =>
           setPending((prev) => prev.map((x) => (x.localId === localId ? { ...x, progress: p } : x)))
@@ -245,33 +267,87 @@ export default function AdminAgentChat() {
     setPending([]);
     requestAnimationFrame(autosize);
 
+    let data;
     try {
-      const res = await fetch('/api/admin/agent/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ threadId, text, attachmentIds: ready.map((p) => p.attachment.id) }),
-      });
-      const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error || 'Javob kelmadi');
-
+      data = await postChat(threadId, text, ready.map((p) => p.attachment.id));
       setThreadId(data.threadId);
       setMessages((prev) => [...prev.filter((m) => m.id !== optimistic.id), ...data.messages]);
       loadThreads();
     } catch (err) {
       setError(err.message || 'Tarmoq xatosi');
+      return;
     } finally {
       setSending(false);
     }
+    if (autoMode) await runAuto(data.messages, data.threadId, ready.map((p) => p.attachment));
   };
 
-  const applyProposal = async (proposal, key) => {
+  async function postChat(tid, text, attachmentIds) {
+    const res = await fetch('/api/admin/agent/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ threadId: tid, text, attachmentIds }),
+    });
+    const data = await readJson(res);
+    if (!res.ok) throw new Error(data.error || 'Javob kelmadi');
+    return data;
+  }
+
+  // Runs every `auto` proposal in the new messages, then in the messages
+  // those produce (e.g. "continue with the remaining tests"), capped so a
+  // server bug can never loop forever. If the same drop held audio that had
+  // nothing to match yet (the book's tests didn't exist when it was
+  // analysed), the audio is re-matched once the drafts are in.
+  async function runAuto(newMessages, tid, sentAttachments = []) {
+    const queue = [...newMessages];
+    let ingested = false;
+    let steps = 0;
+    while (queue.length && steps < 12) {
+      const m = queue.shift();
+      const proposals = m.data?.proposals || [];
+      const idx = proposals.findIndex((p) => p.auto);
+      if (idx === -1) continue;
+      steps++;
+      const out = await applyProposal(proposals[idx], `${m.id}-${idx}`, tid);
+      if (!out) break; // error already shown
+      if (proposals[idx].type.startsWith('ingest')) ingested = true;
+      queue.push(...out);
+    }
+
+    const audioIds = sentAttachments.filter((a) => a.kind === 'audio').map((a) => a.id);
+    const audioAutoMatched = newMessages.some((m) => (m.data?.proposals || []).some((p) => p.auto && p.type === 'attach_audio'));
+    if (ingested && audioIds.length && !audioAutoMatched) {
+      setSending(true);
+      try {
+        const again = await postChat(tid, '', audioIds);
+        setMessages((prev) => [...prev, ...again.messages]);
+        await runAuto(again.messages, tid);
+      } catch (err) {
+        setError(err.message || 'Tarmoq xatosi');
+      } finally {
+        setSending(false);
+      }
+    }
+  }
+
+  // Auto mode: analyse as soon as every dropped file has finished uploading
+  // (only when nothing is typed — a half-written note is never sent).
+  useEffect(() => {
+    if (!autoMode || sending || applying || input.trim()) return;
+    if (pending.length === 0 || !pending.some((p) => p.attachment)) return;
+    if (pending.some((p) => !p.attachment && !p.error)) return;
+    send();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, autoMode]);
+
+  const applyProposal = async (proposal, key, tidOverride) => {
     // `applying` (state) + `appliedKeys` (state) ikkalasi ham React
     // yangilanishi ASINXRON bo'lgani uchun, bitta tugma bir necha marta
     // ketma-ket bosilsa (yoki ikki hodisa bir xil tikda tushsa), ikkalasi
     // ham hali eski qiymatni ko'rishi mumkin. `applyingRef` — SINXRON,
     // darhol yangilanadigan qo'riqchi: shu funksiya ichida ikkinchi
     // chaqiruv HAR DOIM to'xtatiladi, state yangilanishini kutmasdan.
-    if (applyingRef.current || appliedKeys.has(key)) return;
+    if (applyingRef.current || appliedKeys.has(key)) return null;
     applyingRef.current = key;
     setApplying(key);
     setError('');
@@ -279,15 +355,19 @@ export default function AdminAgentChat() {
       const res = await fetch('/api/admin/agent/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ threadId, proposal }),
+        // The thread id from state is stale right after the first message of
+        // a new thread (auto mode applies in the same tick), hence the override.
+        body: JSON.stringify({ threadId: tidOverride || threadId, proposal }),
       });
       const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || 'Bajarilmadi');
       setAppliedKeys((prev) => new Set(prev).add(key));
       setMessages((prev) => [...prev, ...data.messages]);
       loadThreads();
+      return data.messages;
     } catch (err) {
       setError(err.message || 'Tarmoq xatosi');
+      return null;
     } finally {
       applyingRef.current = null;
       setApplying(null);
@@ -340,10 +420,28 @@ export default function AdminAgentChat() {
         </div>
         <button
           type="button"
+          role="switch"
+          aria-checked={autoMode}
+          onClick={toggleAuto}
+          title={autoMode ? "Avtomatik: fayl tahlil qilinib, qoralama sifatida o'zi joylanadi" : "Qo'lda: har bir harakatni tugma bilan tasdiqlaysiz"}
+          className="ml-auto flex items-center gap-2 min-h-11 md:min-h-0 px-2 py-1 rounded-lg text-[11px] font-semibold text-muted hover:text-ink transition-colors"
+        >
+          <span
+            aria-hidden="true"
+            className={`relative flex-shrink-0 w-8 h-[18px] rounded-full transition-colors ${autoMode ? 'bg-accent' : 'bg-border'}`}
+          >
+            <span
+              className={`absolute left-0 top-0.5 w-3.5 h-3.5 rounded-full bg-surface shadow transition-transform ${autoMode ? 'translate-x-4' : 'translate-x-0.5'}`}
+            />
+          </span>
+          <span className="hidden sm:inline">Avto-joylash</span>
+        </button>
+        <button
+          type="button"
           onClick={newThread}
           title="Yangi suhbat"
           aria-label="Yangi suhbat"
-          className="ml-auto min-w-11 min-h-11 md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors"
+          className="min-w-11 min-h-11 md:min-w-0 md:min-h-0 md:p-1.5 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors"
         >
           <Plus size={16} />
         </button>
@@ -394,7 +492,7 @@ export default function AdminAgentChat() {
       </div>
 
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-4 space-y-3">
-        {messages.length === 0 && <EmptyState onPick={() => fileInputRef.current?.click()} />}
+        {messages.length === 0 && <EmptyState autoMode={autoMode} onPick={() => fileInputRef.current?.click()} />}
 
         {messages.map((m, i) => (
           <MessageBubble
@@ -506,7 +604,7 @@ export default function AdminAgentChat() {
   );
 }
 
-function EmptyState({ onPick }) {
+function EmptyState({ onPick, autoMode }) {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-8 px-4">
       <div className="w-12 h-12 rounded-2xl bg-accent-soft flex items-center justify-center">
@@ -519,6 +617,20 @@ function EmptyState({ onPick }) {
           alohida testlar sifatida joylashtiraman. Audio tashlasangiz — qaysi Listening uchun ekanini tekshirib biriktiraman.
         </p>
       </div>
+      <ol className="text-left text-xs text-muted space-y-1 max-w-sm">
+        <li>
+          <span className="font-semibold text-ink">1.</span> Kitob va uning audiolarini birga tashlang.
+        </li>
+        <li>
+          <span className="font-semibold text-ink">2.</span>{' '}
+          {autoMode
+            ? "Testlar qoralama sifatida o'zi yaratiladi, audio mos part'ga o'zi biriktiriladi."
+            : 'Har bir harakatni tugma bilan tasdiqlaysiz.'}
+        </li>
+        <li>
+          <span className="font-semibold text-ink">3.</span> Tayyor testni «nashr qilish» tugmasi bilan o'quvchilarga ochasiz.
+        </li>
+      </ol>
       <button
         type="button"
         onClick={onPick}
