@@ -44,7 +44,7 @@ Key guarantees
 | Feature flag / rollout, tier gating | Done | `access.ts` |
 | Accessibility | Done in new UI (roles, focus, `aria-*`, 44px targets, `motion-safe`) | |
 | Global vocabulary library, admin CRUD, CSV import/export, review workflow (DRAFT/AI_GENERATED→UNDER_REVIEW→APPROVED→PUBLISHED→ARCHIVED), versioning | Done | `library.ts` (sof mantiq + testlar), `server/libraryService.js`, model `VocabularyEntry`, `/api/admin/vocab-library/*` (+audit log), `/api/vocabulary/library` (nashr qilinganlarni qidirish + o'z lug'atiga qo'shish), UI: `/admin/vocab-library`, `/app/lugat/kutubxona`. AI kontent `verifiedByAdmin` bo'lmaguncha PUBLISHED bo'lmaydi; tahrir versiyani oshiradi (oxirgi 20 snapshot); nashr qilingan yozuvni o'chirib bo'lmaydi (avval arxivlash) |
-| Content-factory (PDF/DOCX → AI extraction → review) | **Not done** | Mavjud book pipeline'dan `importEntries({items}, adminId, {aiGenerated:true})` orqali `AI_GENERATED` holatida kutubxonaga kiritish mumkin |
+| Content-factory (TZ §29) | Done | `factory.ts` (bo'laklash, nomzod tanlash, AI chiqishini qat'iy tekshirish), `server/factoryService.js`, model `VocabIngestJob`, `/api/admin/vocab-factory/*`, UI `/admin/vocab-factory`. PDF/DOCX/TXT (4 MB gacha) yoki matn -> bo'laklar (~3500 belgi, maks 120) -> har bo'lakda nomzodlar -> AI (`generateJsonWithMeta` zanjiri) -> tekshiruv (so'z nomzodlarda va matnda bor, misolda so'zning o'zi, CEFR to'g'ri) -> `AI_GENERATED` yozuvlar (`verifiedByAdmin=false`, `sourceType='book'`). Navbat bo'laklar holatida (atomik band qilish, 3 urinish, qotib qolganini qayta olish) — Redis/worker shart emas, sahifa yopilsa davom ettiriladi; AI xarajati: `run` daqiqasiga 30 ta, ish 120 bo'lak bilan cheklangan. Skanerlangan PDF (OCR) qo'llab-quvvatlanmaydi |
 | Reminders (TZ §55) | Done | `reminders.ts` (qaror mantiqi), `server/reminderService.js`, cron `GET /api/internal/vocab/reminders` (vercel.json, 15:00 UTC = 20:00 Toshkent, `CRON_SECRET`), `GET/PATCH /api/vocabulary/reminders`, UI: `ReminderSettings` (O'yinlar sahifasi). Ilova ichidagi bildirishnoma + web push; kuniga ≤1 ta, bugun o'qigan/o'chirgan foydalanuvchiga yuborilmaydi, chastota: har kuni / 2 kunda / haftada. Telegram kunlik mini-test alohida (`/api/internal/telegram/daily`) |
 | Structured monitoring dashboards | Partial | errors go through `serverError`; events in `VocabEvent` |
 
@@ -84,4 +84,7 @@ check each repo's license first (MIT/Apache-2.0 allow reuse with attribution; GP
 
 ## Known gaps / next steps
 
-* Content-factory: PDF/DOCX → AI → `AI_GENERATED` yozuvlar (kutubxona import API tayyor).
+* Content-factory: skanerlangan PDF uchun OCR; 4 MB dan katta fayllar uchun bo'lak-bo'lak yuklash (hozir bo'limlarga bo'lib yuklanadi); faqat so'z ajratish — mashq/javob/izoh generatsiyasi (TZ §29 pipeline'ning keyingi bosqichlari) hali yo'q.
+* Reminder: Telegram kanali va foydalanuvchi vaqt mintaqasiga mos yuborish vaqti (hozir bitta cron soati).
+* Reading popup: imtihon davomida ataylab o'chirilgan; faqat natija ko'rish ekranida.
+* Jonli (brauzer) sinov: popup, belgilash va admin sahifalari avtomatik testlarda emas, qo'lda tekshirilishi kerak.

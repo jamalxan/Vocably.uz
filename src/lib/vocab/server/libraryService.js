@@ -214,7 +214,7 @@ export async function deleteEntry(id) {
 }
 
 /** Ommaviy import (CSV matni yoki JSON ro'yxat). Dublikatlar o'tkazib yuboriladi; xatolar qator raqami bilan qaytadi. */
-export async function importEntries({ csv, items }, adminId, { aiGenerated = false } = {}) {
+export async function importEntries({ csv, items }, adminId, { aiGenerated = false, sourceType } = {}) {
   let rows;
   const notes = [];
   if (typeof csv === 'string' && csv.trim()) {
@@ -252,7 +252,7 @@ export async function importEntries({ csv, items }, adminId, { aiGenerated = fal
         update: {
           $setOnInsert: {
             ...entry,
-            sourceType: aiGenerated ? 'ai' : 'csv',
+            sourceType: sourceType || (aiGenerated ? 'ai' : 'csv'),
             aiGenerated,
             status: aiGenerated ? 'AI_GENERATED' : 'DRAFT',
             createdBy: adminId,

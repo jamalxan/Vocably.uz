@@ -38,6 +38,12 @@ export default function AdminVocabLibrary() {
   const [notice, setNotice] = useState('');
   const fileRef = useRef(null);
 
+  // ?status=AI_GENERATED bilan ochilsa (masalan fabrikadan) filtr oldindan tanlanadi — SSR bilan mos kelishi uchun mount'dan keyin.
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get('status') || '';
+    if (Object.prototype.hasOwnProperty.call(STATUS_LABEL, s)) setStatus(s);
+  }, []);
+
   const load = useCallback(async () => {
     try {
       const sp = new URLSearchParams({ page: String(page), limit: '25' });

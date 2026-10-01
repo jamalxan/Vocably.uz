@@ -1822,3 +1822,41 @@ VocabularyEntrySchema.index({ status: 1, topicTags: 1 });
 VocabularyEntrySchema.index({ status: 1, ieltsRelevance: -1 });
 
 export const VocabularyEntry = mongoose.models.VocabularyEntry || mongoose.model('VocabularyEntry', VocabularyEntrySchema);
+
+
+// AI Content Factory (TZ §29) — hujjatdan lug'at so'zlarini ajratish ishi. Bo'laklar (chunks) alohida holatga ega,
+// shuning uchun ish to'xtatilsa/xato bo'lsa qolgan joyidan davom etadi (Redis/worker shart emas). Natijalar
+// VocabularyEntry'ga AI_GENERATED holatida tushadi va admin ko'rib chiqishidan o'tadi.
+const VocabIngestChunkSchema = new mongoose.Schema(
+  {
+    index: { type: Number, required: true },
+    // Qayta ishlangach matn tozalanadi (xotira/hajm tejash) — faqat natija statistikasi qoladi.
+    text: { type: String, default: '' },
+    status: { type: String, enum: ['pending', 'processing', 'done', 'failed'], default: 'pending' },
+    attempts: { type: Number, default: 0 },
+    claim: { type: String, default: '' },
+    claimedAt: { type: Date, default: null },
+    error: { type: String, default: '' },
+    candidates: { type: Number, default: 0 },
+    created: { type: Number, default: 0 },
+    duplicates: { type: Number, default: 0 },
+    rejected: { type: Number, default: 0 },
+    provider: { type: String, default: '' },
+  },
+  { _id: false }
+);
+const VocabIngestJobSchema = new mongoose.Schema({
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  filename: { type: String, default: '' },
+  format: { type: String, enum: ['pdf', 'docx', 'text'], default: 'text' },
+  charCount: { type: Number, default: 0 },
+  promptVersion: { type: String, default: '' },
+  cancelled: { type: Boolean, default: false },
+  chunks: { type: [VocabIngestChunkSchema], default: [] },
+  rejectedSamples: { type: [String], default: [] },
+  createdAt: { type: Date, default: Date.now },
+});
+VocabIngestJobSchema.index({ createdAt: -1 });
+VocabIngestJobSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 24 * 60 * 60 });
+
+export const VocabIngestJob = mongoose.models.VocabIngestJob || mongoose.model('VocabIngestJob', VocabIngestJobSchema);
