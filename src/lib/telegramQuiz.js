@@ -1,4 +1,5 @@
 import { User } from '@/lib/models';
+import { escapeTelegramHtml } from './telegramHtml';
 import { sendMessage, editMessageText } from '@/lib/telegram';
 import { applyWordReview, logReviewEvent } from '@/lib/wordReview';
 
@@ -55,7 +56,7 @@ export function buildQuiz(categories, { size = QUIZ_SIZE, now = new Date(), rnd 
 export function questionMarkup(quiz) {
   const q = quiz.items[quiz.idx];
   return {
-    text: `🧠 <b>${quiz.idx + 1}/${quiz.items.length}.</b> <b>${q.word}</b> — qaysi tarjima to‘g‘ri?\n\n${q.options.map((o, i) => `${LETTERS[i]}) ${o}`).join('\n')}`,
+    text: `🧠 <b>${quiz.idx + 1}/${quiz.items.length}.</b> <b>${escapeTelegramHtml(q.word)}</b> — qaysi tarjima to‘g‘ri?\n\n${q.options.map((o, i) => `${LETTERS[i]}) ${escapeTelegramHtml(o)}`).join('\n')}`,
     reply_markup: {
       inline_keyboard: [
         q.options.map((_, i) => ({ text: LETTERS[i], callback_data: `tq:${quiz.date}:${quiz.idx}:${i}` })),
@@ -122,7 +123,7 @@ export async function handleQuizCallback(chatId, messageId, data, now = new Date
   }
 
   const verdict = correct ? '✅ To‘g‘ri!' : `❌ To‘g‘ri javob: <b>${item.options[item.correct]}</b>`;
-  await editMessageText(chatId, messageId, `<b>${item.word}</b> — ${verdict}`).catch(() => {});
+  await editMessageText(chatId, messageId, `<b>${escapeTelegramHtml(item.word)}</b> — ${verdict}`).catch(() => {});
 
   if (next.idx < quiz.items.length) {
     const q = questionMarkup(next);

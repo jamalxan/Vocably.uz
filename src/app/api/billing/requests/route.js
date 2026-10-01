@@ -7,6 +7,7 @@ import { saveReceipt, receiptMagicMatches, RECEIPT_MAX_BYTES, RECEIPT_TYPES } fr
 import { paymeCheckoutUrl } from '@/lib/payments/payme';
 import { clickCheckoutUrl } from '@/lib/payments/click';
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
+import { escapeTelegramHtml } from '@/lib/telegramHtml';
 import { TIER_CONFIG } from '@/lib/entitlements';
 import { NextResponse } from 'next/server';
 
@@ -87,7 +88,7 @@ export async function POST(req) {
       const adminChat = process.env.TELEGRAM_ADMIN_CHAT_ID;
       if (adminChat) {
         const user = await User.findById(userId).select('name username phone').lean();
-        const who = user?.username ? `@${user.username}` : user?.name || user?.phone || 'Foydalanuvchi';
+        const who = escapeTelegramHtml(user?.username ? `@${user.username}` : user?.name || user?.phone || 'Foydalanuvchi');
         const appUrl = process.env.APP_URL?.replace(/\/$/, '');
         await sendTelegramMessage(
           adminChat,
