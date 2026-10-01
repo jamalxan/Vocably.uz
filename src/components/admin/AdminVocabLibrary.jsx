@@ -16,7 +16,13 @@ const NEXT = {
   PUBLISHED: ['ARCHIVED', 'UNDER_REVIEW'],
   ARCHIVED: ['DRAFT'],
 };
-const EMPTY = { word: '', pos: 'verb', cefr: 'B2', ieltsRelevance: 0, translationUz: '', shortDefinition: '', ipaUk: '', imageUrl: '', example: '', synonyms: '', topicTags: '' };
+const EMPTY = {
+  word: '', pos: 'verb', cefr: 'B2', ieltsRelevance: 0, translationUz: '', shortDefinition: '', ipaUk: '', imageUrl: '', example: '', synonyms: '', topicTags: '',
+  detailedDefinition: '', usageNotes: '', commonMistakes: '', register: '', exercises: [],
+};
+const REGISTERS = ['', 'formal', 'neutral', 'informal', 'academic'];
+const EX_LABEL = { AI_GENERATED: 'AI yaratgan', APPROVED: 'Tasdiqlangan', REJECTED: 'Rad etilgan' };
+const EX_TONE = { AI_GENERATED: 'info', APPROVED: 'success', REJECTED: 'danger' };
 const inputCls = 'w-full bg-bg-sunken border border-border rounded-xl px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
 
 async function api(url, options) {
@@ -36,7 +42,9 @@ export default function AdminVocabLibrary() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
+  const imageRef = useRef(null);
 
   // ?status=AI_GENERATED bilan ochilsa (masalan fabrikadan) filtr oldindan tanlanadi — SSR bilan mos kelishi uchun mount'dan keyin.
   useEffect(() => {
@@ -89,6 +97,11 @@ export default function AdminVocabLibrary() {
         imageUrl: form.imageUrl,
         synonyms: form.synonyms,
         topicTags: form.topicTags,
+        detailedDefinition: form.detailedDefinition,
+        usageNotes: form.usageNotes,
+        commonMistakes: form.commonMistakes,
+        register: form.register,
+        exercises: form.exercises || [],
         examples: form.example.trim() ? [{ en: form.example.trim() }, ...(form.moreExamples || [])] : form.moreExamples || [],
       };
       if (form.id) await api(`/api/admin/vocab-library/${form.id}`, { method: 'PATCH', body: JSON.stringify(body) });
@@ -111,7 +124,37 @@ export default function AdminVocabLibrary() {
       moreExamples: (e.examples || []).slice(1),
       synonyms: (e.synonyms || []).join('; '),
       topicTags: (e.topicTags || []).join('; '),
+      detailedDefinition: e.detailedDefinition || '',
+      usageNotes: e.usageNotes || '',
+      commonMistakes: (e.commonMistakes || []).join('; '),
+      register: e.register || '',
+      exercises: e.exercises || [],
     });
+
+  // Mashq holatini o'zgartirish / o'chirish (saqlash tugmasi bilan yoziladi).
+  const setExerciseStatus = (i, status) => setForm((f) => ({ ...f, exercises: f.exercises.map((x, j) => (j === i ? { ...x, status } : x)) }));
+  const removeExercise = (i) => setForm((f) => ({ ...f, exercises: f.exercises.filter((_, j) => j !== i) }));
+
+  // Rasm yuklash (GridFS) — qaytgan URL formaga qo'yiladi.
+  const uploadImage = async (ev) => {
+    const file = ev.target.files?.[0];
+    ev.target.value = '';
+    if (!file) return;
+    setError('');
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/admin/vocab-library/image', { method: 'POST', credentials: 'same-origin', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Rasm yuklanmadi');
+      setForm((f) => ({ ...f, imageUrl: data.imageUrl }));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const move = (e, to) => {
     const note = to === 'REJECTED' ? window.prompt('Rad etish sababi (ixtiyoriy):') ?? '' : '';
@@ -263,12 +306,58 @@ export default function AdminVocabLibrary() {
             <label className="block text-xs text-muted">O&apos;zbekcha tarjima *<input value={form.translationUz} onChange={set('translationUz')} className={inputCls} /></label>
             <label className="block text-xs text-muted">Qisqa ta&apos;rif (inglizcha) *<input value={form.shortDefinition} onChange={set('shortDefinition')} className={inputCls} /></label>
             <label className="block text-xs text-muted">Misol gap *<input value={form.example} onChange={set('example')} className={inputCls} /></label>
-            <label className="block text-xs text-muted">Rasm URL (ixtiyoriy — Rasm↔So&apos;z o&apos;yinlari uchun, https:// yoki /)<input value={form.imageUrl} onChange={set('imageUrl')} className={inputCls} placeholder="https://…" /></label>
+            <div>
+              <label className="block text-xs text-muted">Rasm URL (ixtiyoriy — Rasm↔So&apos;z o&apos;yinlari uchun, https:// yoki /)<input value={form.imageUrl} onChange={set('imageUrl')} className={inputCls} placeholder="https://…" /></label>
+              <div className="flex items-center gap-3 mt-1.5">
+                <Button size="sm" variant="secondary" onClick={() => imageRef.current?.click()} disabled={uploading}>
+                  {uploading ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Upload size={14} aria-hidden="true" />} Rasm yuklash
+                </Button>
+                <input ref={imageRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={uploadImage} aria-label="Rasm faylini tanlang" />
+                <span className="text-xs text-muted">PNG · JPEG · WEBP · GIF, 2 MB gacha</span>
+                {form.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={form.imageUrl} alt="Tanlangan rasm" className="h-10 w-10 rounded-lg object-cover border border-border" />
+                )}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-xs text-muted">IPA (UK)<input value={form.ipaUk} onChange={set('ipaUk')} className={inputCls} /></label>
               <label className="block text-xs text-muted">Sinonimlar (; bilan)<input value={form.synonyms} onChange={set('synonyms')} className={inputCls} /></label>
             </div>
             <label className="block text-xs text-muted">Mavzular (; bilan)<input value={form.topicTags} onChange={set('topicTags')} className={inputCls} /></label>
+            <label className="block text-xs text-muted">Batafsil izoh (o&apos;zbekcha)<textarea value={form.detailedDefinition} onChange={set('detailedDefinition')} rows={2} className={inputCls} maxLength={1000} /></label>
+            <label className="block text-xs text-muted">Ishlatish qaydi<input value={form.usageNotes} onChange={set('usageNotes')} className={inputCls} maxLength={500} /></label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block text-xs text-muted">Tipik xatolar (; bilan)<input value={form.commonMistakes} onChange={set('commonMistakes')} className={inputCls} /></label>
+              <label className="block text-xs text-muted">Register
+                <select value={form.register} onChange={set('register')} className={inputCls}>
+                  {REGISTERS.map((r) => <option key={r} value={r}>{r || '—'}</option>)}
+                </select>
+              </label>
+            </div>
+            {(form.exercises || []).length > 0 && (
+              <section aria-label="Mashqlar" className="border border-border rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-ink">Mashqlar ({form.exercises.length}) — tasdiqlang yoki o&apos;chiring</p>
+                <ul className="space-y-2">
+                  {form.exercises.map((x, i) => (
+                    <li key={i} className="bg-bg-sunken rounded-lg p-2.5 text-xs space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted">{x.type}</span>
+                        <Badge tone={EX_TONE[x.status] || 'neutral'}>{EX_LABEL[x.status] || x.status}</Badge>
+                      </div>
+                      <p className="text-ink break-words">{x.prompt}</p>
+                      {x.options?.length > 0 && <p className="text-muted">Variantlar: {x.options.join(' · ')}</p>}
+                      <p className="text-ink">Javob: <strong>{x.answer}</strong></p>
+                      <p className="text-muted break-words">{x.explanationUz}</p>
+                      <div className="flex gap-2 pt-0.5">
+                        <Button size="sm" variant="secondary" onClick={() => setExerciseStatus(i, 'APPROVED')} disabled={x.status === 'APPROVED'}>Tasdiqlash</Button>
+                        <Button size="sm" variant="ghost" onClick={() => removeExercise(i)} aria-label="Mashqni o'chirish"><Trash2 size={13} aria-hidden="true" /></Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setForm(null)}>Bekor qilish</Button>
               <Button onClick={save} disabled={busy || !form.word.trim()}>{busy ? <Loader2 size={14} className="animate-spin" /> : 'Saqlash'}</Button>
