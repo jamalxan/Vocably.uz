@@ -36,11 +36,15 @@ import {
   Trophy,
   GraduationCap,
   BookX,
+  Gamepad2,
+  Crosshair,
+  BookMarked,
 } from 'lucide-react';
 
 // Ko'nikma bo'limlari — /app/mashq menyusida va desktop sidebar'da ishlatiladi.
 export const SKILL_SECTIONS = [
   { key: 'lugat', label: 'Vocabulary', href: '/app/lugat', icon: Layers, matchPrefix: true, description: "So'z boyligi va SRS takrorlash" },
+  { key: 'oyinlar', label: 'Games', href: '/app/oyinlar', icon: Gamepad2, matchPrefix: true, description: "Lug'at o'yinlari, kunlik reja va vazifalar" },
   { key: 'oqish', label: 'Reading', href: '/app/oqish', icon: BookOpenText, matchPrefix: true, description: 'Reading — matn va tushunish savollari' },
   { key: 'tinglash', label: 'Listening', href: '/app/tinglash', icon: Ear, matchPrefix: true, description: 'Listening — audio va tushunish savollari' },
   { key: 'gapirish', label: 'Speaking', href: '/app/gapirish', icon: Mic, matchPrefix: true, description: 'Speaking — ovozli javob va AI baho' },
@@ -99,6 +103,8 @@ export const LUGAT_MODES = [
   { key: 'jumla-qurish', label: 'Sentence builder', href: '/app/lugat/jumla-qurish', icon: Rows, description: "So'zlardan jumla yig'ish" },
   { key: 'mnemonika', label: 'Mnemonics', href: '/app/lugat/mnemonika', icon: Lightbulb, description: "O'z eslab qolish usulingizni yozing" },
   { key: 'antonim', label: 'Antonym battle', href: '/app/lugat/antonim', icon: Swords, description: "Qarama-qarshi so'zni tez topish" },
+  { key: 'zaif-sozlar', label: 'Weak words', href: '/app/lugat/zaif-sozlar', icon: Crosshair, description: "Xato qilingan so'zlar va sabablari" },
+  { key: 'kutubxona', label: 'Library', href: '/app/lugat/kutubxona', icon: BookMarked, description: "Tekshirilgan so'zlar to'plami — lug'atga qo'shing" },
 ];
 
 // href aynan yoki prefiks sifatida (yoki matchAny ro'yxatidagilardan biri prefiks

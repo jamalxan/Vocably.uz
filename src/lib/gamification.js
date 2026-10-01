@@ -1,6 +1,7 @@
 // VOCABLY-TZ.md §13 (Motivatsiya va gamifikatsiya). Streak allaqachon bor edi
 // (src/lib/srs.ts:computeStreakUpdate) — bu yerda XP, darajalar va yutuqlar.
 import { XpEvent } from '@/lib/models';
+import { NEW_ACHIEVEMENT_DEFS } from '@/lib/vocab/achievements';
 
 // "Har amal XP beradi: takrorlash 1, to'g'ri javob 2, yangi so'z 5, mock 100."
 // Takrorlash HAR DOIM 1 beradi (urinish uchun), + to'g'ri bo'lsa yana 2 —
@@ -57,6 +58,9 @@ export const BADGE_DEFS = [
   { key: 'streak_100', label: '100 kunlik afsona', icon: '🌟', check: (s) => s.longestStreak >= 100 },
   { key: 'mock_band_7', label: 'Mock 7.0+', icon: '🎯', check: (s) => (s.bestMockBand || 0) >= 7 },
   { key: 'perfect_session', label: 'Mukammal sessiya', icon: '✨', check: (s) => s.hadPerfectSession },
+  // Gamified Vocabulary Engine (TZ §17) — yangi yutuqlar (src/lib/vocab/achievements.ts).
+  // Eski kalitlar o'zgarmadi; bir xil kalit ikki marta berilmaydi (User.badges.key bo'yicha).
+  ...NEW_ACHIEVEMENT_DEFS.map((d) => ({ key: d.key, label: d.label, icon: d.icon, description: d.description, check: d.check })),
 ];
 
 /** `user` — Mongoose User hujjati (chaqiruvchi keyin `user.save()` qiladi).

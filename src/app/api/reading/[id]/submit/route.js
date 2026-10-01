@@ -3,6 +3,7 @@ import { ReadingAttempt } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
+import { recordAttemptUsage } from '@/lib/vocab/server/signalService';
 
 export async function POST(req, { params }) {
   try {
@@ -37,7 +38,10 @@ export async function POST(req, { params }) {
     attempt.completedAt = new Date();
     await attempt.save();
 
-    return NextResponse.json(buildResult(attempt));
+    // Lug'at signali: to'g'ri javob berilgan savollardagi o'z so'zlari mastery'ga yoziladi (xato tashlamaydi).
+    const result = buildResult(attempt);
+    await recordAttemptUsage({ userId, source: 'reading', questions: result.questions });
+    return NextResponse.json(result);
   } catch (err) {
     return serverError(err, 'reading/submit');
   }

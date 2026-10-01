@@ -5,6 +5,7 @@ import Skeleton from '@/components/ui/Skeleton';
 
 const PERIODS = [
   { key: 'week', label: 'Bu hafta' },
+  { key: 'month', label: 'Oylik' },
   { key: 'all', label: 'Umumiy' },
 ];
 
@@ -18,6 +19,7 @@ export default function ReytingPage() {
   const [period, setPeriod] = useState('week');
   const [rows, setRows] = useState(null);
   const [inactiveRows, setInactiveRows] = useState([]);
+  const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -30,6 +32,7 @@ export default function ReytingPage() {
       if (!res.ok) throw new Error(data?.error || 'Xatolik');
       setRows(data.rows || []);
       setInactiveRows(data.inactiveRows || []);
+      setMe(data.me || null);
     } catch {
       setError(true);
     } finally {
@@ -63,6 +66,18 @@ export default function ReytingPage() {
           </button>
         ))}
       </div>
+
+      {me && !error && (
+        <p className="mb-4 text-sm text-muted bg-surface border border-border rounded-xl px-4 py-2.5" aria-live="polite">
+          {me.rank ? (
+            <>
+              Sizning o'rningiz: <strong className="text-ink">{me.rank}</strong> · <strong className="text-ink tabular-nums">{me.xp} XP</strong>
+            </>
+          ) : (
+            "Bu davrda hali XP to'plamadingiz — bitta o'yin reytingga kiritadi."
+          )}
+        </p>
+      )}
 
       {error && !loading ? (
         <div role="alert" className="bg-danger-soft border border-danger/25 rounded-2xl px-4 py-5 text-center">
@@ -126,9 +141,9 @@ export default function ReytingPage() {
             </div>
           )}
 
-          {period === 'week' && inactiveRows.length > 0 && (
+          {period !== 'all' && inactiveRows.length > 0 && (
             <div className="mt-5">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">Bu hafta faol emas</p>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{period === 'month' ? 'Bu oy faol emas' : 'Bu hafta faol emas'}</p>
               <div className="bg-surface border border-border rounded-2xl divide-y divide-border overflow-hidden opacity-70">
                 {inactiveRows.map((r) => (
                   <div key={r.userId} className={`flex items-center gap-3 px-4 py-3 ${r.isMe ? 'bg-accent-soft' : ''}`}>

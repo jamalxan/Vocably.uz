@@ -9,6 +9,7 @@ import HeroCard from './HeroCard';
 import StreakCard from './StreakCard';
 import ExamPrepCard from './ExamPrepCard';
 import StudyPlanCard from './StudyPlanCard';
+import GamesCard from './GamesCard';
 import KpiRow from './KpiRow';
 import MasteryBreakdown from './MasteryBreakdown';
 import LeechList from './LeechList';
@@ -139,6 +140,8 @@ export default function DashboardHome() {
           <ExamPrepCard examPrep={data.examPrep} />
         </div>
       </div>
+
+      <GamesCard />
 
       <KpiRow today={data.today} deltas={data.deltas} totals={data.totals} />
 

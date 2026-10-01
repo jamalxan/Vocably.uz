@@ -6,6 +6,7 @@ import { aiErrorResponse, checkAndIncrementAiRateLimit, rateLimitMessage } from 
 import { transcribeAudio } from '@/lib/transcribe';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
+import { recordTextUsage } from '@/lib/vocab/server/signalService';
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -122,6 +123,9 @@ export async function POST(req) {
         nextStepsUz: data.nextStepsUz || [],
       },
     });
+
+    // Lug'at signali: foydalanuvchi o'z so'zlarini ishlatgan bo'lsa mastery'ga yoziladi (hech qachon xato tashlamaydi).
+    await recordTextUsage({ userId, source: 'speaking', text: transcript });
 
     return NextResponse.json({ id: attempt._id, transcript, feedback: attempt.feedback });
   } catch (err) {

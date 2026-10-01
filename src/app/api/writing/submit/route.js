@@ -5,6 +5,7 @@ import { generateJson } from '@/lib/aiJson';
 import { aiErrorResponse, checkAndIncrementAiRateLimit, rateLimitMessage } from '@/lib/ai/client';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
+import { recordTextUsage } from '@/lib/vocab/server/signalService';
 
 // VOCABLY-TZ.md §10.2 — AI Grader. Diqqat: bu yerdagi ball AI'ning xom bahosi —
 // TZ o'zi ta'kidlaganidek (§10.2 oxiri) haqiqiy IELTS namunalari bilan kalibrlash
@@ -122,6 +123,9 @@ export async function POST(req) {
         nextStepsUz: data.nextStepsUz || [],
       },
     });
+
+    // Lug'at signali: foydalanuvchi o'z so'zlarini ishlatgan bo'lsa mastery'ga yoziladi (hech qachon xato tashlamaydi).
+    await recordTextUsage({ userId, source: 'writing', text: text });
 
     return NextResponse.json({ id: attempt._id, feedback: attempt.feedback, wordCount: attempt.wordCount, chartSvg: attempt.chartSvg });
   } catch (err) {

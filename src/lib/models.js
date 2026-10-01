@@ -10,6 +10,25 @@ const roleField = {
   set: (v) => normalizeRole(v) || v,
 };
 
+// Mastery ko'nikma hisoblagichlari (TZ §6.2): recall / listening / spelling / context /
+// synonym / writing / speaking — har biri {correct, wrong}.
+const SkillCounterSchema = new mongoose.Schema(
+  { correct: { type: Number, default: 0 }, wrong: { type: Number, default: 0 } },
+  { _id: false }
+);
+const VocabSkillsSchema = new mongoose.Schema(
+  {
+    recall: { type: SkillCounterSchema, default: undefined },
+    listening: { type: SkillCounterSchema, default: undefined },
+    spelling: { type: SkillCounterSchema, default: undefined },
+    context: { type: SkillCounterSchema, default: undefined },
+    synonym: { type: SkillCounterSchema, default: undefined },
+    writing: { type: SkillCounterSchema, default: undefined },
+    speaking: { type: SkillCounterSchema, default: undefined },
+  },
+  { _id: false }
+);
+
 const WordStatsSchema = new mongoose.Schema(
   {
     correct: { type: Number, default: 0 },
@@ -27,6 +46,18 @@ const WordStatsSchema = new mongoose.Schema(
     lapses: { type: Number, default: 0 },
     reps: { type: Number, default: 0 },
     isLeech: { type: Boolean, default: false },
+    // --- Gamified Vocabulary Engine (Vocably_Gamified_Vocabulary_Engine_TZ.md §5/§6) ---
+    // Har bir mastery o'lchovi bo'yicha to'g'ri/xato hisoblagichlari (src/lib/vocab/mastery.ts).
+    // Barchasi ixtiyoriy va default 0 — mavjud foydalanuvchilar/so'zlar uchun migratsiya kerak emas.
+    skills: { type: VocabSkillsSchema, default: () => ({}) },
+    avgResponseMs: { type: Number, default: null },
+    streakCount: { type: Number, default: 0 }, // ketma-ket to'g'ri javoblar
+    mastery: { type: Number, default: 0, min: 0, max: 100 },
+    masteryVersion: { type: String, default: '' },
+    masteredAt: { type: Date, default: null }, // "mastered" holatiga birinchi marta yetgan vaqt (bir martalik XP uchun)
+    lastFormat: { type: String, default: '' },
+    lastWrongAt: { type: Date, default: null },
+    lastSeenAt: { type: Date, default: null },
   },
   { _id: false }
 );
@@ -212,6 +243,25 @@ const UserSchema = new mongoose.Schema({
   // XP o'zgarganda avtomatik to'g'ri chiqadi, ikkalasi sinxronsizlanib qolmaydi.
   xp: { type: Number, default: 0 },
   badges: [{ key: { type: String, required: true }, earnedAt: { type: Date, default: Date.now } }],
+  // Gamified Vocabulary Engine — streak freeze (TZ §15) va o'yin statistikasi (yutuqlar/kvestlar uchun).
+  // Streak hisobi o'zi `reviewStreak`/`lastReviewDate` maydonlarida qoladi (ikkala oqim ham bitta streak'ni oshiradi).
+  streakFreezes: { type: Number, default: 0, min: 0, max: 5 },
+  gameStats: {
+    gamesCompleted: { type: Number, default: 0 },
+    bossCompleted: { type: Number, default: 0 },
+    perfectSessions: { type: Number, default: 0 },
+    listeningCorrect: { type: Number, default: 0 },
+    spellingCorrect: { type: Number, default: 0 },
+    totalGameXp: { type: Number, default: 0 },
+    lastSessionAt: { type: Date, default: null },
+  },
+  // Lug'at onboarding diagnostikasi (TZ §64) — o'tkazib yuborish mumkin.
+  vocabOnboarding: {
+    completedAt: { type: Date, default: null },
+    skippedAt: { type: Date, default: null },
+    estimatedLevel: { type: String, default: '' },
+    estimatedScore: { type: Number, default: null },
+  },
   // EDU-01a (VOCABLY_TZ_FINAL...2026-09-20.md §11 "Onboarding") — IELTS
   // tayyorgarlik profili. Barchasi ixtiyoriy/`default: null` — mavjud
   // foydalanuvchilar buni to'ldirmagan holatda ham hech narsa buzilmaydi
@@ -1102,9 +1152,18 @@ export const ExamAttempt = mongoose.models.ExamAttempt || mongoose.model('ExamAt
 const XpEventSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   amount: { type: Number, required: true },
-  reason: { type: String, required: true }, // 'review' | 'new_word' | 'mock'
+  reason: { type: String, required: true }, // 'review' | 'new_word' | 'mock' | 'game' | 'quest' | 'mastered'
+  // Gamified Vocabulary Engine — XP Transaction Ledger (TZ §13): manba, idempotency va meta.
+  // `idempotencyKey` unique+sparse: kalitsiz eski yozuvlar (review/new_word/mock) ta'sirlanmaydi,
+  // kalitli hodisa (o'yin yakuni, kvest, so'z o'zlashtirilishi) ikki marta XP bera olmaydi.
+  sourceType: { type: String, default: '' },
+  sourceId: { type: String, default: '' },
+  idempotencyKey: { type: String, default: undefined },
+  metadata: { type: mongoose.Schema.Types.Mixed, default: undefined },
   createdAt: { type: Date, default: Date.now },
 });
+XpEventSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
+XpEventSchema.index({ userId: 1, sourceType: 1, createdAt: -1 });
 XpEventSchema.index({ userId: 1, createdAt: -1 });
 XpEventSchema.index({ createdAt: -1 }); // haftalik reyting — barcha userlar bo'yicha
 
@@ -1586,3 +1645,172 @@ const AgentUploadChunkSchema = new mongoose.Schema({
 AgentUploadChunkSchema.index({ uploadId: 1, index: 1 }, { unique: true });
 
 export const AgentUploadChunk = mongoose.models.AgentUploadChunk || mongoose.model('AgentUploadChunk', AgentUploadChunkSchema);
+
+
+// ============================================================================
+// Gamified Vocabulary Engine (Vocably_Gamified_Vocabulary_Engine_TZ.md §11, §16, §35)
+// ============================================================================
+
+// O'yin sessiyasi — savollar (to'g'ri javoblari bilan) FAQAT serverda saqlanadi; klientga
+// javobsiz ko'rinish beriladi. Javoblar sessiya ichida (embedded) — TZ'dagi GameAnswer entity'si.
+const GameAnswerSchema = new mongoose.Schema(
+  {
+    qid: { type: String, required: true },
+    attempt: { type: Number, default: 1 },
+    answer: { type: mongoose.Schema.Types.Mixed, default: null },
+    isCorrect: { type: Boolean, default: false },
+    // Faqat birinchi urinish ball/XP/mastery'ga ta'sir qiladi.
+    counted: { type: Boolean, default: true },
+    correctParts: { type: Number, default: null },
+    totalParts: { type: Number, default: null },
+    responseMs: { type: Number, default: 0 },
+    implausible: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const GameSessionSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  gameKey: { type: String, required: true },
+  difficulty: { type: String, enum: ['easy', 'medium', 'hard', 'expert'], default: 'medium' },
+  status: { type: String, enum: ['active', 'completed', 'abandoned'], default: 'active' },
+  mode: { type: String, default: 'mixed' },
+  categoryId: { type: String, default: '' },
+  // Serverda saqlanadigan to'liq savollar (answer/accepted/answerMap bilan).
+  questions: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  answers: { type: [GameAnswerSchema], default: [] },
+  startedAt: { type: Date, default: Date.now },
+  completedAt: { type: Date, default: null },
+  expiresAt: { type: Date, required: true },
+  questionCount: { type: Number, default: 0 },
+  correctCount: { type: Number, default: 0 },
+  wrongCount: { type: Number, default: 0 },
+  skippedCount: { type: Number, default: 0 },
+  score: { type: Number, default: 0 },
+  maxCombo: { type: Number, default: 0 },
+  xpEarned: { type: Number, default: 0 },
+  avgResponseMs: { type: Number, default: 0 },
+  // Sessiya davomida hisoblangan hodisalar (finalizatsiyada XP/kvestga o'tadi).
+  newWordsLearned: { type: Number, default: 0 },
+  wordsMastered: { type: Number, default: 0 },
+  contextCorrect: { type: Number, default: 0 },
+  flags: { type: [String], default: [] },
+  suspicious: { type: Boolean, default: false },
+  // Finalizatsiya bosqichlari (idempotent qayta urinish uchun).
+  finalized: {
+    xp: { type: Boolean, default: false },
+    streak: { type: Boolean, default: false },
+    stats: { type: Boolean, default: false },
+    quests: { type: Boolean, default: false },
+    result: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  },
+  metadata: { type: mongoose.Schema.Types.Mixed, default: undefined },
+});
+GameSessionSchema.index({ userId: 1, startedAt: -1 });
+GameSessionSchema.index({ userId: 1, gameKey: 1, status: 1, startedAt: -1 });
+GameSessionSchema.index({ status: 1, completedAt: -1 });
+GameSessionSchema.index({ startedAt: -1 });
+// Tugallanmagan eski sessiyalar 30 kundan keyin o'chadi (tugallanganlar analytics uchun saqlanadi).
+GameSessionSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 30 * 24 * 60 * 60, partialFilterExpression: { status: { $in: ['active', 'abandoned'] } } }
+);
+
+export const GameSession = mongoose.models.GameSession || mongoose.model('GameSession', GameSessionSchema);
+
+// Vazifa (quest) progressi — har davr uchun bitta hujjat (userId + questKey + periodKey noyob).
+const UserQuestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  questKey: { type: String, required: true },
+  period: { type: String, enum: ['daily', 'weekly'], required: true },
+  periodKey: { type: String, required: true },
+  progress: { type: Number, default: 0 },
+  target: { type: Number, required: true },
+  completedAt: { type: Date, default: null },
+  rewardClaimedAt: { type: Date, default: null },
+  // Idempotentlik: progress faqat har bir sessiya/hodisa uchun BIR marta qo'shiladi.
+  appliedSources: { type: [String], default: [] },
+  createdAt: { type: Date, default: Date.now },
+});
+UserQuestSchema.index({ userId: 1, questKey: 1, periodKey: 1 }, { unique: true });
+UserQuestSchema.index({ userId: 1, period: 1, periodKey: 1 });
+UserQuestSchema.index({ createdAt: 1 }, { expireAfterSeconds: 120 * 24 * 60 * 60 });
+
+export const UserQuest = mongoose.models.UserQuest || mongoose.model('UserQuest', UserQuestSchema);
+
+// Analytics hodisalari (TZ §35) — schema versiyalangan, 180 kundan keyin avtomatik o'chadi.
+const VocabEventSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true },
+  schemaVersion: { type: Number, default: 1 },
+  payload: { type: mongoose.Schema.Types.Mixed, default: {} },
+  createdAt: { type: Date, default: Date.now },
+});
+VocabEventSchema.index({ userId: 1, createdAt: -1 });
+VocabEventSchema.index({ name: 1, createdAt: -1 });
+VocabEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
+
+export const VocabEvent = mongoose.models.VocabEvent || mongoose.model('VocabEvent', VocabEventSchema);
+
+
+// Global lug'at kutubxonasi (TZ §4, §29–§32) — admin boshqaradi; foydalanuvchilar faqat PUBLISHED yozuvlarni
+// ko'radi va o'z lug'atiga ko'chirib oladi (nusxa: User.categories[].words[]). Versiyalash: har tahrirda
+// `contentVersion` oshadi va oldingi holat `versions` ga (oxirgi 20 ta) saqlanadi.
+const VocabEntryExampleSchema = new mongoose.Schema({ en: { type: String, trim: true }, uz: { type: String, trim: true, default: '' } }, { _id: false });
+const VocabEntryVersionSchema = new mongoose.Schema(
+  {
+    version: { type: Number, required: true },
+    snapshot: { type: mongoose.Schema.Types.Mixed, required: true },
+    status: { type: String, default: '' },
+    savedAt: { type: Date, default: Date.now },
+    savedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  },
+  { _id: false }
+);
+const VocabularyEntrySchema = new mongoose.Schema({
+  word: { type: String, required: true, trim: true },
+  normalizedWord: { type: String, required: true },
+  lemma: { type: String, default: '' },
+  pos: { type: String, default: '' },
+  cefr: { type: String, default: '' },
+  ieltsRelevance: { type: Number, default: 0, min: 0, max: 3 },
+  translationUz: { type: String, default: '' },
+  translationRu: { type: String, default: '' },
+  shortDefinition: { type: String, default: '' },
+  detailedDefinition: { type: String, default: '' },
+  ipaUk: { type: String, default: '' },
+  ipaUs: { type: String, default: '' },
+  audioUk: { type: String, default: '' },
+  audioUs: { type: String, default: '' },
+  imageUrl: { type: String, default: '' },
+  examples: { type: [VocabEntryExampleSchema], default: [] },
+  synonyms: { type: [String], default: [] },
+  antonyms: { type: [String], default: [] },
+  collocations: { type: [String], default: [] },
+  commonMistakes: { type: [String], default: [] },
+  usageNotes: { type: String, default: '' },
+  register: { type: String, default: '' },
+  topicTags: { type: [String], default: [] },
+  source: { type: String, default: '' },
+  sourceType: { type: String, enum: ['manual', 'csv', 'ai', 'book'], default: 'manual' },
+  status: { type: String, enum: ['DRAFT', 'AI_GENERATED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'PUBLISHED', 'ARCHIVED'], default: 'DRAFT' },
+  aiGenerated: { type: Boolean, default: false },
+  verifiedByAdmin: { type: Boolean, default: false },
+  reviewNote: { type: String, default: '' },
+  contentVersion: { type: Number, default: 1 },
+  publishedVersion: { type: Number, default: null },
+  publishedAt: { type: Date, default: null },
+  versions: { type: [VocabEntryVersionSchema], default: [] },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+// Bir xil so'z + turkum ikki marta kirmasin (ARCHIVED ham band qiladi — qayta tiklash mumkin).
+VocabularyEntrySchema.index({ normalizedWord: 1, pos: 1 }, { unique: true });
+VocabularyEntrySchema.index({ status: 1, cefr: 1, normalizedWord: 1 });
+VocabularyEntrySchema.index({ status: 1, topicTags: 1 });
+VocabularyEntrySchema.index({ status: 1, ieltsRelevance: -1 });
+
+export const VocabularyEntry = mongoose.models.VocabularyEntry || mongoose.model('VocabularyEntry', VocabularyEntrySchema);

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker, Wallet, Gauge } from 'lucide-react';
+import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker, Wallet, Gauge, Gamepad2, BookMarked } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { registerChatsTap } from '@/lib/adminHiddenChats';
@@ -16,6 +16,7 @@ const NAV_GROUPS = [
       { href: '/admin', label: 'Statistika', icon: BarChart3, exact: true },
       { href: '/admin/activity', label: 'Faollik', icon: Activity },
       { href: '/admin/learning', label: "O'quv analitikasi", icon: GraduationCap },
+      { href: '/admin/vocab', label: "Lug'at o'yinlari", icon: Gamepad2, exact: true },
     ],
   },
   {
@@ -25,6 +26,7 @@ const NAV_GROUPS = [
       { href: '/admin/exam-tests', label: 'IELTS testlar', icon: BookOpen },
       { href: '/admin/content/review', label: 'Tekshiruv navbati', icon: ClipboardCheck },
       { href: '/admin/content/quality', label: 'Kontent sifati', icon: Gauge },
+      { href: '/admin/vocab-library', label: "Lug'at kutubxonasi", icon: BookMarked },
       { href: '/admin/content/books', label: 'Kitoblar (fon ishlovi)', icon: Library },
     ],
   },
