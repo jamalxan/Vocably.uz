@@ -4,9 +4,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import * as Models from '@/lib/models';
-import { cancelJob, createJob, getJob, runJob } from './factoryService';
+import { cancelJob, completeUpload, createJob, deleteJob, getJob, runJob, storeUploadPart } from './factoryService';
 
 const VocabularyEntry: any = Models.VocabularyEntry;
+const VocabUploadPart: any = Models.VocabUploadPart;
 const VocabIngestJob: any = Models.VocabIngestJob;
 
 const describeDb = process.env.SKIP_DB_INTEGRATION === '1' ? describe.skip : describe;
@@ -58,6 +59,7 @@ describeDb('content factory (integration)', () => {
   beforeEach(async () => {
     await VocabIngestJob.deleteMany({});
     await VocabularyEntry.deleteMany({});
+    await VocabUploadPart.deleteMany({});
   });
 
   it('matndan ish yaratadi, bo‘laklarni ishlaydi va AI_GENERATED yozuvlar yaratadi (gallyutsinatsiya rad etiladi)', async () => {
@@ -150,6 +152,108 @@ describeDb('content factory (integration)', () => {
     const cur = await runJob(job.id, admin, { ai: fakeAi() as any });
     expect(cur.status).toBe('cancelled');
     expect(cur.chunks.done).toBe(0);
+  });
+
+  describe('bo‘laklab yuklash va OCR', () => {
+    const upId = (s: string) => `${s}-12345678`;
+    const put = (adminId: any, uploadId: string, index: number, text: string) =>
+      storeUploadPart({ adminId, uploadId, index, buffer: Buffer.from(text) });
+
+    it('TXT fayl qismlarga bo‘lib yuklanadi, yig‘ilib oddiy ish yaratiladi va qismlar o‘chiriladi', async () => {
+      const id = upId('txt');
+      const third = Math.ceil(TEXT.length / 3);
+      for (let i = 0; i < 3; i++) await put(admin, id, i, TEXT.slice(i * third, (i + 1) * third));
+      const job = await completeUpload({ adminId: admin, uploadId: id, total: 3, filename: 'book.txt' });
+      expect(job).toMatchObject({ ocr: false, format: 'text', charCount: TEXT.trim().length });
+      expect(job.chunks.total).toBeGreaterThanOrEqual(3);
+      expect(await VocabUploadPart.countDocuments({ uploadId: id })).toBe(0);
+    });
+
+    it('yetishmayotgan qism aniq xato beradi va qismlar saqlanib qoladi (qayta yuborish mumkin)', async () => {
+      const id = upId('gap');
+      await put(admin, id, 0, TEXT.slice(0, 100));
+      await put(admin, id, 2, TEXT.slice(100, 200));
+      await expect(completeUpload({ adminId: admin, uploadId: id, total: 3, filename: 'b.txt' })).rejects.toMatchObject({ status: 400, code: 'missing_part' });
+    });
+
+    it('noma‘lum format rad etiladi; boshqa adminning uploadId’siga yozib bo‘lmaydi', async () => {
+      await expect(completeUpload({ adminId: admin, uploadId: upId('fmt'), total: 1, filename: 'x.exe' })).rejects.toMatchObject({ status: 415 });
+      const other = new mongoose.Types.ObjectId();
+      const id = upId('own');
+      await put(admin, id, 0, 'a');
+      await expect(put(other, id, 0, 'evil')).rejects.toMatchObject({ code: 'upload_id_taken' });
+      // boshqa admin complete qilolmaydi ham (o'z qismlari yo'q)
+      await expect(completeUpload({ adminId: other, uploadId: id, total: 1, filename: 'a.txt' })).rejects.toMatchObject({ code: 'missing_part' });
+    });
+
+    it('matn qatlami bor PDF oddiy ishga aylanadi (OCR emas)', async () => {
+      const id = upId('pdftext');
+      await put(admin, id, 0, '%PDF-fake');
+      const extract = async () => ({ hasTextLayer: true, pageCount: 3, fullText: TEXT, pages: [] });
+      const job = await completeUpload({ adminId: admin, uploadId: id, total: 1, filename: 'b.pdf', extract: extract as any });
+      expect(job.ocr).toBe(false);
+      expect(await VocabUploadPart.countDocuments({ uploadId: id })).toBe(0);
+    });
+
+    it('skanerlangan PDF OCR ishiga aylanadi: bo‘lak = 3 sahifa, har chaqiruvda bitta bo‘lak, tugagach qismlar o‘chadi', async () => {
+      const id = upId('scan');
+      await put(admin, id, 0, '%PDF-fake-scan');
+      const extract = async () => ({ hasTextLayer: false, pageCount: 7, fullText: '', pages: [] });
+      const job = await completeUpload({ adminId: admin, uploadId: id, total: 1, filename: 'scan.pdf', extract: extract as any });
+      expect(job).toMatchObject({ ocr: true, pages: 7, format: 'pdf' });
+      expect(job.chunks.total).toBe(3); // 1–3, 4–6, 7
+      expect(await VocabUploadPart.countDocuments({ uploadId: id })).toBe(1); // OCR uchun saqlangan
+
+      const ranges: string[] = [];
+      const ocr = async (pdf: Buffer, from: number, to: number) => {
+        expect(Buffer.isBuffer(pdf)).toBe(true);
+        expect(pdf.toString()).toBe('%PDF-fake-scan'); // saqlangan baytlar aynan qaytadi (Binary -> Buffer)
+        ranges.push(`${from}-${to}`);
+        return para(['mitigate', 'sustain', 'allocate'][ranges.length - 1]).repeat(9);
+      };
+      let cur = await runJob(job.id, admin, { maxChunks: 5, ai: fakeAi() as any, ocr });
+      expect(cur.chunks.done).toBe(1); // OCR ishida har chaqiruvda bitta bo'lak
+      for (let i = 0; i < 5 && cur.chunks.pending + cur.chunks.processing > 0; i++) cur = await runJob(job.id, admin, { ai: fakeAi() as any, ocr });
+      expect(ranges).toEqual(['1-3', '4-6', '7-7']);
+      expect(cur).toMatchObject({ status: 'done', created: 3 });
+      expect((await VocabularyEntry.find().lean()).map((e: any) => e.word).sort()).toEqual(['allocate', 'mitigate', 'sustain']);
+      expect(await VocabUploadPart.countDocuments({ uploadId: id })).toBe(0); // tugagach tozalandi
+    });
+
+    it('OCR xatosi 3 martagacha qayta uriniladi, keyin shu bo‘lak failed (qolganlari davom etadi)', async () => {
+      const id = upId('scanfail');
+      await put(admin, id, 0, '%PDF-fake');
+      const extract = async () => ({ hasTextLayer: false, pageCount: 4, fullText: '', pages: [] });
+      const job = await completeUpload({ adminId: admin, uploadId: id, total: 1, filename: 's.pdf', extract: extract as any });
+      let calls = 0;
+      const ocr = async (_p: Buffer, from: number) => {
+        calls++;
+        if (from === 1) throw new Error("OCR: model sahifalarni o'qiy olmadi");
+        return para('sustain').repeat(9);
+      };
+      let cur = job;
+      for (let i = 0; i < 10 && cur.chunks.pending + cur.chunks.processing > 0; i++) cur = await runJob(job.id, admin, { ai: fakeAi() as any, ocr });
+      expect(cur.chunks).toMatchObject({ failed: 1, done: 1 });
+      expect(cur.errors[0].error).toContain('OCR');
+      expect(calls).toBe(4); // 3 urinish (xato) + 1 muvaffaqiyatli
+    });
+
+    it('juda ko‘p sahifali yoki juda katta skaner rad etiladi, qismlar tozalanadi', async () => {
+      const id = upId('huge');
+      await put(admin, id, 0, '%PDF');
+      const extract = async () => ({ hasTextLayer: false, pageCount: 9999, fullText: '', pages: [] });
+      await expect(completeUpload({ adminId: admin, uploadId: id, total: 1, filename: 'h.pdf', extract: extract as any })).rejects.toMatchObject({ code: 'too_many_pages' });
+      expect(await VocabUploadPart.countDocuments({ uploadId: id })).toBe(0);
+    });
+
+    it('OCR ishi o‘chirilsa manba qismlari ham o‘chadi', async () => {
+      const id = upId('delete');
+      await put(admin, id, 0, '%PDF');
+      const extract = async () => ({ hasTextLayer: false, pageCount: 2, fullText: '', pages: [] });
+      const job = await completeUpload({ adminId: admin, uploadId: id, total: 1, filename: 'd.pdf', extract: extract as any });
+      await deleteJob(job.id);
+      expect(await VocabUploadPart.countDocuments({ uploadId: id })).toBe(0);
+    });
   });
 
   it('juda qisqa/katta matn rad etiladi', async () => {

@@ -146,6 +146,31 @@ export async function generateJsonWithAudio(prompt, schema, audioParts) {
   });
 }
 
+/**
+ * Skanerlangan PDF sahifalarini matnga aylantiradi (OCR) — GEMINI-ONLY (multimodal, PDF'ni inlineData sifatida o'qiydi).
+ * Boshqa provayderlar (Groq/Cerebras/OpenRouter chat) bu yerda PDF qabul qilmaydi. Oddiy MATN qaytaradi (JSON emas).
+ * @param {Buffer} pdfBuffer
+ * @param {string} prompt
+ * @returns {Promise<string>}
+ */
+export async function generateTextFromPdf(pdfBuffer, prompt) {
+  if (!process.env.GEMINI_API_KEY) {
+    const err = new Error("OCR uchun GEMINI_API_KEY kerak (sozlanmagan)");
+    err.status = 401; // withRetry buni "tarmoq xatosi" deb qayta urmasin
+    throw err;
+  }
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+  const data = pdfBuffer.toString('base64');
+  return withRetry(async () => {
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }, { inlineData: { mimeType: 'application/pdf', data } }] }],
+      generationConfig: { temperature: 0 },
+    });
+    return result.response.text();
+  });
+}
+
 const PROVIDER_FNS = {
   groq: (prompt) => viaGroq(prompt),
   gemini: (prompt, schema) => viaGemini(prompt, schema),

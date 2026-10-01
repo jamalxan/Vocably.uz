@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { AlertTriangle, FileText, Loader2, Pause, Play, Trash2, Upload } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import { MAX_UPLOAD_BYTES, splitRanges } from '@/lib/vocab/uploadParts';
 
 const STATUS_TONE = { queued: 'neutral', processing: 'info', done: 'success', cancelled: 'warning' };
 const STATUS_LABEL = { queued: 'Navbatda', processing: 'Ishlanmoqda', done: 'Tugadi', cancelled: 'Bekor qilindi' };
@@ -39,6 +40,7 @@ export default function AdminVocabFactory() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState('');
+  const [progress, setProgress] = useState('');
   const [running, setRunning] = useState(null); // ishlayotgan job id
   const stopRef = useRef(false);
   const fileRef = useRef(null);
@@ -103,13 +105,45 @@ export default function AdminVocabFactory() {
     }
   };
 
-  const onFile = (ev) => {
+  // Fayl 3 MB li qismlarga bo'lib yuboriladi (Vercel so'rov chegarasi), oxirida server yig'adi:
+  // matn qatlami bor hujjat — oddiy ish, skanerlangan PDF — OCR ishi.
+  const onFile = async (ev) => {
     const file = ev.target.files?.[0];
     ev.target.value = '';
     if (!file) return;
-    const form = new FormData();
-    form.append('file', file);
-    create(form);
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(`Fayl juda katta (maks ${MAX_UPLOAD_BYTES / 1024 / 1024} MB).`);
+      return;
+    }
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const uploadId = (crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, '');
+      const ranges = splitRanges(file.size);
+      for (let i = 0; i < ranges.length; i++) {
+        setProgress(`Yuklanmoqda: ${i + 1} / ${ranges.length}`);
+        const form = new FormData();
+        form.append('uploadId', uploadId);
+        form.append('index', String(i));
+        form.append('total', String(ranges.length));
+        form.append('file', file.slice(ranges[i].start, ranges[i].end), `${i}.part`);
+        await api('/api/admin/vocab-factory/upload', { method: 'POST', body: form });
+      }
+      setProgress('Fayl tahlil qilinmoqda…');
+      const { job } = await api('/api/admin/vocab-factory/upload/complete', {
+        method: 'POST',
+        body: JSON.stringify({ uploadId, total: ranges.length, filename: file.name }),
+      });
+      setJobs((cur) => [job, ...(cur || [])]);
+      if (job.ocr) setNotice(`Skanerlangan PDF: ${job.pages} sahifa OCR qilinadi (AI orqali, sekinroq).`);
+      runLoop(job.id);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setProgress('');
+      if (mounted.current) setBusy(false);
+    }
   };
 
   const cancel = async (id) => {
@@ -158,7 +192,9 @@ export default function AdminVocabFactory() {
             {busy ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Upload size={14} aria-hidden="true" />} Fayl yuklash
           </Button>
           <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.md" className="hidden" onChange={onFile} aria-label="PDF, DOCX yoki TXT faylni tanlang" />
-          <span className="text-xs text-muted">PDF · DOCX · TXT, 4 MB gacha (kattasini bo&apos;limlarga bo&apos;ling). Skanerlangan PDF qo&apos;llab-quvvatlanmaydi.</span>
+          <span className="text-xs text-muted" role="status">
+            {progress || 'PDF · DOCX · TXT, 25 MB gacha. Skanerlangan PDF — OCR bilan (14 MB gacha, sekinroq, GEMINI_API_KEY kerak).'}
+          </span>
         </div>
         <label className="block text-xs text-muted">
           Yoki matnni to&apos;g&apos;ridan-to&apos;g&apos;ri qo&apos;ying
@@ -186,13 +222,16 @@ export default function AdminVocabFactory() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-ink break-words">{j.filename || 'Nomsiz'}</p>
-                    <p className="text-xs text-muted">{new Date(j.createdAt).toLocaleString('uz-UZ')} · {j.charCount.toLocaleString('en')} belgi</p>
+                    <p className="text-xs text-muted">
+                      {new Date(j.createdAt).toLocaleString('uz-UZ')} · {j.ocr ? `OCR · ${j.pages} sahifa` : `${j.charCount.toLocaleString('en')} belgi`}
+                    </p>
                   </div>
                   <Badge tone={STATUS_TONE[j.status]}>{STATUS_LABEL[j.status]}</Badge>
                 </div>
                 <Progress job={j} />
                 <p className="text-xs text-muted">
-                  Yangi so&apos;z: <strong className="text-ink">{j.created}</strong> · takror: {j.duplicates} · rad etilgan (AI xatosi): {j.rejected}
+                  Yangi so&apos;z: <strong className="text-ink">{j.created}</strong> · mashq: {j.exercises || 0}
+                  {j.exerciseErrors ? ` (${j.exerciseErrors} bo'lakda mashq xatosi)` : ''} · takror: {j.duplicates} · rad etilgan (AI xatosi): {j.rejected}
                 </p>
                 {j.errors.length > 0 && (
                   <p className="text-xs text-danger break-words">

@@ -1865,9 +1865,24 @@ const VocabIngestChunkSchema = new mongoose.Schema(
     exercises: { type: Number, default: 0 },
     exerciseError: { type: String, default: '' },
     provider: { type: String, default: '' },
+    // Skanerlangan PDF: matn yo'q, sahifa oralig'i — OCR qilinib, so'ng odatdagidek ishlanadi (ocr.ts).
+    ocr: { type: new mongoose.Schema({ from: Number, to: Number }, { _id: false }), default: undefined },
   },
   { _id: false }
 );
+
+// Bo'laklab yuklangan fayl qismlari (Vercel ~4.5 MB so'rov chegarasi) — vaqtincha; OCR ishi ularni qayta o'qiydi.
+const VocabUploadPartSchema = new mongoose.Schema({
+  uploadId: { type: String, required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  index: { type: Number, required: true },
+  size: { type: Number, required: true },
+  data: { type: Buffer, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+VocabUploadPartSchema.index({ uploadId: 1, index: 1 }, { unique: true });
+VocabUploadPartSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
+export const VocabUploadPart = mongoose.models.VocabUploadPart || mongoose.model('VocabUploadPart', VocabUploadPartSchema);
 const VocabIngestJobSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   filename: { type: String, default: '' },
@@ -1875,6 +1890,8 @@ const VocabIngestJobSchema = new mongoose.Schema({
   charCount: { type: Number, default: 0 },
   promptVersion: { type: String, default: '' },
   cancelled: { type: Boolean, default: false },
+  // OCR ishlarida manba PDF qismlari (VocabUploadPart.uploadId); oddiy ishlarda bo'sh.
+  uploadId: { type: String, default: '' },
   chunks: { type: [VocabIngestChunkSchema], default: [] },
   rejectedSamples: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now },
