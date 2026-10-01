@@ -6,7 +6,7 @@
 // and scripts/content/practiceTests.test.ts could not run. The final WAVs are
 // the source of truth for duration, so reading their headers is exact.
 //   node scripts/tts/rebuild-durations.mjs
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { readWavPcm } from './wav-utils.mjs';
@@ -36,6 +36,12 @@ export function wavSeconds(file) {
   return pcm.length / (fmt.sampleRate * fmt.numChannels * (fmt.bitsPerSample / 8));
 }
 
+/** Final MP3 durations (seconds) per slug/part — committed because the audio is MP3 now and
+ * out/ is gitignored. Regenerate on the synth machine after concat-parts.mjs. */
+export function committedDurations(file = path.join(__dirname, 'durations.json')) {
+  return JSON.parse(readFileSync(file, 'utf-8'));
+}
+
 export function durationsFromWavs(parts, audioDir = AUDIO_DIR) {
   const durations = {};
   for (const [slug, byOrder] of Object.entries(parts)) {
@@ -48,10 +54,10 @@ export function durationsFromWavs(parts, audioDir = AUDIO_DIR) {
 }
 
 async function main() {
-  const contents = [];
-  for (let t = 1; t <= 4; t++) contents.push((await import(`../content/practice-test-${t}.mjs`)).default);
+  const { loadAllTests } = await import('../content/index.mjs');
+  const contents = (await loadAllTests()).map((t) => t.content);
   const parts = partsFromContent(contents);
-  const durations = durationsFromWavs(parts);
+  const durations = committedDurations();
   mkdirSync(OUT_DIR, { recursive: true });
   writeFileSync(path.join(OUT_DIR, 'parts.json'), JSON.stringify(parts, null, 2));
   writeFileSync(path.join(OUT_DIR, 'durations.json'), JSON.stringify(durations, null, 2));

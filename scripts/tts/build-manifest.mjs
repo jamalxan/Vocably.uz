@@ -14,32 +14,40 @@
 // A synthetic "Part N. <contextText>" announcer line is prepended per part
 // (TZ-vocably-v2.md §C1 "Audio generatsiyasi": "rasmiy ohangdagi kirish").
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { loadAllTests } from '../content/index.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, 'out');
 const VOICE_FOR_INTRO = 'zira';
+
+// Fayl nomida matn+ovoz xeshi bor: synthesize.ps1 mavjud faylni qayta sintez
+// qilmaydi, shuning uchun yangi test qo'shilganda faqat o'zgargan satrlar
+// sintez qilinadi (48 ta testni har safar qaytadan o'qitish shart emas).
+function lineFile(slug, order, idx, voice, text) {
+  const h = createHash('sha1').update(`${voice}|${text}`).digest('hex').slice(0, 8);
+  return path.join(OUT_DIR, `${slug}-l${order}-${idx}-${h}.wav`);
+}
 
 async function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   const manifest = [];
   const parts = {};
 
-  for (let t = 1; t <= 4; t++) {
-    const mod = await import(`../content/practice-test-${t}.mjs`);
-    const content = mod.default;
+  for (const { content } of await loadAllTests()) {
     parts[content.slug] = {};
 
     for (const part of content.listening.parts) {
       const lineFiles = [];
       const introText = `Part ${part.order}. ${part.contextText.replace(/\.$/, '')}.`;
-      const introFile = path.join(OUT_DIR, `${content.slug}-l${part.order}-intro.wav`);
+      const introFile = lineFile(content.slug, part.order, 'intro', VOICE_FOR_INTRO, introText);
       manifest.push({ voice: VOICE_FOR_INTRO, text: introText, file: introFile });
       lineFiles.push(introFile);
 
       part.transcriptLines.forEach((line, i) => {
-        const file = path.join(OUT_DIR, `${content.slug}-l${part.order}-${String(i).padStart(3, '0')}.wav`);
+        const file = lineFile(content.slug, part.order, String(i).padStart(3, '0'), line.voice, line.text);
         manifest.push({ voice: line.voice, text: line.text, file });
         lineFiles.push(file);
       });

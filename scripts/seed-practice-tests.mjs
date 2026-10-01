@@ -1,4 +1,4 @@
-// Seeds the 4 full-length "Vocably Practice Test" ExamTests (Reading + Listening
+// Seeds all full-length "Vocably Practice Test" ExamTests (Reading + Listening
 // + Writing, 40+40 questions each, 2 Writing tasks) — replaces the single tiny
 // demo test from scripts/seed-exam-test.mjs with real, complete content so
 // Mock/Reading/Listening/Writing can actually be used end to end.
@@ -36,6 +36,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { renderChartSvg } from '../src/lib/chartSvg.js';
+import { loadAllTests } from './content/index.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DURATIONS_PATH = path.join(__dirname, 'tts', 'out', 'durations.json');
@@ -70,7 +71,7 @@ export function buildListeningSection(content, durations, parts) {
     if (!durationSec) throw new Error(`Missing duration for ${content.slug} listening part ${part.order}`);
     return {
       order: part.order,
-      audioUrl: `/audio/exam/${content.slug}-l${part.order}.wav`,
+      audioUrl: `/audio/exam/${content.slug}-l${part.order}.mp3`,
       durationSec,
       transcript,
       contextText: part.contextText,
@@ -101,6 +102,22 @@ export function buildWritingSection(content) {
   };
 }
 
+// src/lib/exam/contentValidator.ts#checkMockEligibility'ning JS nusxasi (bu .mjs
+// skript TS modulni import qila olmaydi) — scripts/content/practiceTests.test.ts
+// ikkalasi har bir test uchun bir xil natija berishini tekshiradi.
+const stripHtml = (html) => String(html || '').replace(/<[^>]+>/g, ' ');
+const countWords = (text) => text.trim().split(/\s+/).filter(Boolean).length;
+const countQs = (groups) => (groups || []).reduce((sum, g) => sum + (g.questions || []).length, 0);
+export function computeMockEligible(sections) {
+  const passages = sections.reading?.passages || [];
+  const words = passages.reduce((sum, p) => sum + countWords((p.paragraphs || []).map((par) => stripHtml(par.html)).join(' ')), 0);
+  const readingOk = passages.length === 3 && passages.reduce((s, p) => s + countQs(p.questionGroups), 0) === 40 && words >= 2150 && words <= 2750;
+  const lParts = sections.listening?.parts || [];
+  const listeningOk = lParts.length === 4 && lParts.every((p) => countQs(p.questionGroups) === 10 && p.audioUrl);
+  const writingOk = (sections.writing?.tasks || []).length === 2;
+  return readingOk && listeningOk && writingOk;
+}
+
 async function main() {
   const mongoUri = process.env.MONGODB_URI;
   if (!mongoUri) throw new Error('MONGODB_URI sozlanmagan (.env.local).');
@@ -120,23 +137,26 @@ async function main() {
     if (!user) throw new Error("'users' kolleksiyasida hech kim topilmadi — avval hisob yarating.");
 
     const results = [];
-    for (let t = 1; t <= 4; t++) {
-      const mod = await import(`./content/practice-test-${t}.mjs`);
-      const content = mod.default;
+    for (const { content } of await loadAllTests()) {
 
+      const docSections = {
+        reading: content.reading,
+        listening: buildListeningSection(content, durations, parts),
+        writing: buildWritingSection(content),
+        ...(speaking[content.slug] ? { speaking: speaking[content.slug] } : {}),
+      };
       const doc = {
         slug: content.slug,
         title: content.title,
         module: 'academic',
         difficulty: content.difficulty,
-        sections: {
-          reading: content.reading,
-          listening: buildListeningSection(content, durations, parts),
-          writing: buildWritingSection(content),
-          ...(speaking[content.slug] ? { speaking: speaking[content.slug] } : {}),
-        },
+        sections: docSections,
         bandTable: null,
         isPublished: true,
+        isMockEligible: computeMockEligible(docSections),
+        // Original kontent (Cambridge formatiga mos tuzilishda, lekin matn/audio
+        // noldan yozilgan) — LEGAL-01 §17 publish gate'idan o'tadi.
+        rights: { sourceType: 'own', publisher: 'Vocably', licence: '', licenceNote: '', rightsVerifiedBy: null, rightsVerifiedAt: null, publishScope: 'public' },
         createdBy: user._id,
         createdAt: new Date(),
       };
@@ -147,7 +167,7 @@ async function main() {
       console.log(`Seeded: ${content.title} -> ${testId}`);
     }
 
-    console.log('\nBarcha 4 ta test tayyor. Mock endi shulardan tasodifiy birini avtomatik tanlaydi.');
+    console.log(`\nBarcha ${results.length} ta test tayyor. Mock endi shulardan tasodifiy birini avtomatik tanlaydi.`);
     return results;
   } finally {
     await client.close();
