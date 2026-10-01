@@ -1,4 +1,4 @@
-# Reja: foydalanuvchi so'zlarini `User` hujjatidan alohida kolleksiyaga ko'chirish
+﻿# Reja: foydalanuvchi so'zlarini `User` hujjatidan alohida kolleksiyaga ko'chirish
 
 **Holat:** REJA — hech narsa bajarilmagan. Production ma'lumotiga tegadi, shuning uchun har bosqich tasdiq talab qiladi.
 **Sabab:** so'zlar `User.categories[].words[]` ichida. O'lchandi (`dashboard.perf.integration.test.ts`): boyitilgan so'z ≈ 865 bayt,
@@ -44,7 +44,7 @@ Embedded — haqiqat manbai. Yozuv xatosi `UserWord` ga bo'lsa log + metrika (fo
 
 **Bosqich 2 — Backfill (idempotent skript, `scripts/migrate-user-words.mts`).** Foydalanuvchilarni `_id` kursori bilan
 partiyalab: har so'zni `updateOne({_id: word._id}, {$setOnInsert/$set}, {upsert:true})`. Dry-run rejimi birinchi.
-Har foydalanuvchi uchun tekshiruv: so'zlar soni va ttarkib xeshi embedded bilan teng. Mos kelmaganlar ro'yxatga olinadi.
+Har foydalanuvchi uchun tekshiruv: so'zlar soni va tarkib xeshi embedded bilan teng. Mos kelmaganlar ro'yxatga olinadi.
 *Qaytarish:* `UserWord` ni o'chirish mumkin (embedded daxlsiz).
 
 **Bosqich 3 — O'qishni almashtirish (flag foydalanuvchi/ulush bo'yicha: `WORDS_READ_FROM_COLLECTION`).**
@@ -90,3 +90,4 @@ hisoblashini `countDocuments` ga o'tkazish, `wordCap.ts` ni qayta ko'rib chiqish
 - Qila olaman: bosqich 0 (xulq o'zgarmaydigan refaktor, testlar bilan), bosqich 1, backfill skripti (dry-run bilan), parity monitor.
 - Qila olmayman: production bazasiga ulanish, snapshot olish, flag'larni production'da yoqish va 100% ga ko'tarish — bular sizning
   muhitingizda sizning nazoratingizda bajariladi.
+
