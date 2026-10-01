@@ -330,15 +330,29 @@ export function AppProvider({ children }) {
   const activeCategory = categories[activeCatIndex] || { name: '', words: [] };
   const displayName = username || phone || 'Foydalanuvchi';
 
+  // Granular endpoint (`POST /api/categories`) — avval butun `categories` massivi (`syncData`) qayta yozilardi:
+  // eskirgan mijoz holati serverdagi so'zlarni o'chirib yuborishi va so'z tavanini (wordCap.ts) aylanib o'tishi mumkin edi.
+  // Yangi kategoriya server bergan `_id` bilan qo'shiladi (so'z qo'shish `_id` talab qiladi), shuning uchun optimistik emas.
   const handleAddCategory = useCallback(
-    (name) => {
-      if (!name.trim()) return;
-      const updated = [...categories, { name: name.trim(), words: [] }];
-      setCategories(updated);
-      setActiveCatIndex(updated.length - 1);
-      syncData(updated);
+    async (name) => {
+      const clean = (name || '').trim();
+      if (!clean) return;
+      try {
+        const res = await fetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: clean }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { category } = await res.json();
+        setCategories((prev) => [...prev, { ...category, words: category.words || [] }]);
+        setActiveCatIndex(categories.length);
+      } catch (err) {
+        console.error("Kategoriya qo'shishda xatolik", err);
+        setNotice("Kategoriya qo'shib bo'lmadi, qayta urinib ko'ring");
+      }
     },
-    [categories, syncData]
+    [categories.length]
   );
 
   const handleRenameCategory = useCallback(

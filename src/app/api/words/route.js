@@ -3,6 +3,7 @@ import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { migrateChatHistoryIfNeeded } from '@/lib/chatMigration';
 import { serverError } from '@/lib/apiError';
+import { MAX_WORDS_PER_USER, WORD_CAP_MESSAGE } from '@/lib/vocab/wordCap';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -63,6 +64,13 @@ export async function POST(req) {
     const { categories } = await req.json();
     if (!Array.isArray(categories)) {
       return NextResponse.json({ error: "Noto'g'ri format" }, { status: 400 });
+    }
+
+    // Eski "butun massivni almashtirish" yo'li: so'z tavanini (wordCap.ts) aylanib o'tmasligi kerak
+    // (mijoz endi buni ishlatmaydi — kategoriya/so'z amallari granular endpointlarda).
+    const total = categories.reduce((n, c) => n + (Array.isArray(c?.words) ? c.words.length : 0), 0);
+    if (total > MAX_WORDS_PER_USER) {
+      return NextResponse.json({ error: WORD_CAP_MESSAGE(), code: 'word_limit', room: 0 }, { status: 409 });
     }
 
     await User.findByIdAndUpdate(userId, { categories });

@@ -9,11 +9,24 @@ bir hujjatda raqobatlashadi; hub har so'rovda butun hujjatni yuklaydi.
 ## 1. Joriy holat (kod o'lchovi)
 
 - `categories`/`words` ga tegadigan joylar: **60 fayl, ~125 murojaat** (`.words` va `categories…words` naqshlari bo'yicha qidiruv).
-- Pozitsion operator bilan **yozadigan** 7 fayl (eng xavfli): `server/libraryService.js`, `api/words/add`, `server/words.js`
-  (statistika: `categories.$[c].words.$[w].stats.*`), `server/signalService.js`, `api/words/route.js` (o'chirish),
-  `api/admin/learning-analytics`, `api/categories`.
-- Hujjat-darajasida o'qiydigan/yozadigan: `api/ai/sessions/[id]/confirm-add` (`user.save()`), `lib/exam/attemptServer.ts`
-  (`autoAddErrorVocabulary`), `lib/telegramQuiz.js`, `lib/reviewChain.js`, `AppContext.jsx` (klient butun `categories` ni kutadi).
+- **Haqiqiy yozuvchilar inventari** (1-bosqichni boshlashda tekshirildi; avvalgi "7 fayl" bahosi past edi, chunki `user.save()` orqali
+  xotirada o'zgartirib saqlaydigan joylar hisobga olinmagan edi):
+  - *Atomik operator bilan:* `api/words/add` (`$push`), `api/words` DELETE (`$pull`), `server/libraryService.addEntriesToUser` (`$push`),
+    `server/words.applyWordUpdates` (`bulkWrite`, SRS/mastery statistikasi; `signalService`, `sessionService` shu orqali yozadi).
+  - *`user.save()` bilan (hujjatni yuklab, `categories[].words[]` ni xotirada o'zgartirib):* `api/words/review`, `api/words/mnemonic`,
+    `api/words/enrich`, `api/words/enrich-batch`, `api/ai/sessions/[id]/confirm-add`, `api/ai/chat` (`aiTools` so'z qo'shadi, kategoriyani `pull`),
+    `lib/telegramQuiz.js` (statistika), `lib/exam/attemptServer.autoAddErrorVocabulary` (so'z qo'shadi), `api/categories` POST/DELETE.
+    **Eng murakkabi:** kategoriya DELETE hozir so'zlarni embedded tarzda o'zi bilan olib ketadi — yangi modelda `UserWord` ni `categoryId`
+    bo'yicha **kaskad o'chirish** kerak.
+  - *Butun massivni almashtirish:* `POST /api/words` (eski yo'l). **Tuzatildi:** mijoz (`handleAddCategory`) endi granular
+    `POST /api/categories` ishlatadi; `POST /api/words` ga so'z tavani tekshiruvi qo'shildi (avval tavanni aylanib o'tardi va eskirgan
+    mijoz holati serverdagi so'zlarni o'chirib yuborishi mumkin edi). E2E: `e2e/categories.spec.ts`.
+- O'qish: `GET /api/words` butun `user.categories` ni (so'zlari bilan) qaytaradi va klient (`AppContext`) shuni kutadi — bu API shakli
+  bosqich 3 gacha saqlanishi kerak (repository so'zlarni kategoriyalarga qo'shib beradi); keyinchalik sahifalash/kategoriya bo'yicha
+  yuklash — alohida yaxshilash.
+- Hujjat-darajasida o'qiydigan: `lib/reviewChain.js`, `lib/aiTools.js`, `lib/ai/dictionaryContext.js`, `server/{profile,session,ai}Service.js` va
+  boshqalar (jami ~60 fayl); ular `user.categories[].words` ni o'qiydi — `hydrateWords(user)` (bosqich 3) ularni o'zgartirmasdan
+  to'ldiradi.
 - Tavan va hisoblash: `server/wordCap.js` (`$size` aggregatsiyasi) — ko'chirgach `countDocuments` bo'ladi.
 - Mavjud himoya: 1314 test (jumladan so'z/SRS/game/XP integratsiya testlari) — regressiyani ushlaydi, lekin ko'pchiligi
   embedded sxemaga yozilgan; repository qatlami kiritilgach ular ikkala backend'da ham yurishi kerak.
