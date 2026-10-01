@@ -212,7 +212,7 @@ export default function AuthForm({ initialMode = 'login' }) {
         localStorage.setItem('vocably_authed', '1');
         localStorage.setItem('username', data.name || '');
         localStorage.setItem('phone', data.phone || phone);
-        router.push(afterAuthPath());
+        router.replace(afterAuthPath()); // replace: /kirish tarixda qolmasin (orqaga bosilsa yana /app ga sakrab, tuzoqqa tushirardi)
       } else {
         setStep('newPassword');
         setInfo('');
@@ -276,7 +276,7 @@ export default function AuthForm({ initialMode = 'login' }) {
       localStorage.setItem('vocably_authed', '1');
       localStorage.setItem('username', data.name || '');
       localStorage.setItem('phone', data.phone || phone);
-      router.push(afterAuthPath());
+      router.replace(afterAuthPath()); // replace: /kirish tarixda qolmasin (orqaga bosilsa yana /app ga sakrab, tuzoqqa tushirardi)
     } catch (err) {
       setError(errorMessage(err));
     } finally {

@@ -1,171 +1,24 @@
 'use client';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { LogOut, Sun, Moon, Monitor, Flame, Trophy, Target, Eye, BarChart3, Send } from 'lucide-react';
+import { LogOut, Flame, Trophy, BarChart3, Settings } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { useTheme } from '@/context/ThemeContext';
 import Button from '@/components/ui/Button';
+import IconButton from '@/components/ui/IconButton';
 import Skeleton from '@/components/ui/Skeleton';
 import MyProfilePhoto from '@/components/avatar/MyProfilePhoto';
 import ProfileStats from '@/components/profile/ProfileStats';
+import ProfileSettings from '@/components/profile/ProfileSettings';
 
-// H-1 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H) — "Oxirgi marta ko'rilgan"/onlayn
-// holatini kim ko'rishi. `/api/chat/settings` bilan mos qiymatlar (src/lib/models.js
-// User.lastSeenVisibility).
-const VISIBILITY_OPTIONS = [
-  { value: 'everyone', label: 'Hamma' },
-  { value: 'friends', label: "Suhbatlashganlar" },
-  { value: 'nobody', label: 'Hech kim' },
-];
-
-// EDU-01a (VOCABLY_TZ_FINAL...2026-09-20.md §11 "Onboarding") — target band
-// 5.0-9.0, 0.5 qadam bilan (TZ shakli).
-const BAND_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9];
-const inputClass =
-  'w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink placeholder:text-muted outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition-colors';
-
-// Ilgari mavjud emas edi — foydalanuvchi haqidagi ma'lumot va "Chiqish" faqat
-// sidebar footer'ida bir necha piksel joyda edi. Endi mobil pastki tab bar
-// (AppShell/navConfig.js) 5-elementi sifatida ("Profil") o'z sahifasiga ega —
-// bu ham UI to'liqligi, ham bottom-nav'ning ishlashi uchun zarur edi.
-const THEME_OPTIONS = [
-  { value: 'light', label: "Yorug'", icon: Sun },
-  { value: 'dark', label: 'Tungi', icon: Moon },
-  { value: 'system', label: 'Tizim', icon: Monitor },
-];
-
+// Profil sahifasi: foydalanuvchi, daraja/XP/nishonlar va statistika. Sozlama xarakteridagi bo'limlar (IELTS tayyorgarlik, Telegram,
+// ko'rinish/mavzu, maxfiylik) "Sozlamalar" oynasiga ko'chirildi (components/profile/ProfileSettings.jsx) — sahifa qisqa, tez ochiladi
+// va sozlamalar faqat kerak bo'lganda yuklanadi. Mobil pastki tab bar (AppShell/navConfig.js) 5-elementi sifatida ("Profil") o'z
+// sahifasiga ega.
 export default function ProfilPage() {
-  const { displayName, chatUsername, phone, logout, reviewStreak, chatAccess } = useApp();
-  const { theme, setTheme } = useTheme();
+  const { displayName, chatUsername, phone, logout, reviewStreak } = useApp();
   const [gami, setGami] = useState(null);
   const [gamiFailed, setGamiFailed] = useState(false);
-
-  // H-1 — faqat chatAccess bo'lgan foydalanuvchida ma'noli (Do'stlar bo'limi
-  // umuman yashirin bo'lganlarda bu sozlama hech narsaga ta'sir qilmaydi).
-  const [lastSeenVisibility, setLastSeenVisibility] = useState('everyone');
-  const [photoVisibility, setPhotoVisibility] = useState('everyone');
-  const [visibilityLoading, setVisibilityLoading] = useState(true);
-  const [visibilitySaving, setVisibilitySaving] = useState(false);
-  const [visibilityError, setVisibilityError] = useState(false);
-
-  useEffect(() => {
-    if (!chatAccess) {
-      setVisibilityLoading(false);
-      return;
-    }
-    let cancelled = false;
-    fetch('/api/chat/settings')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        if (data?.lastSeenVisibility) setLastSeenVisibility(data.lastSeenVisibility);
-        if (data?.photoVisibility) setPhotoVisibility(data.photoVisibility);
-      })
-      .catch(() => {})
-      .finally(() => !cancelled && setVisibilityLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [chatAccess]);
-
-  // `field` — 'lastSeenVisibility' yoki 'photoVisibility' (ikkalasi ham /api/chat/settings).
-  const saveVisibility = async (value, field = 'lastSeenVisibility') => {
-    const [prev, setter] =
-      field === 'photoVisibility' ? [photoVisibility, setPhotoVisibility] : [lastSeenVisibility, setLastSeenVisibility];
-    setter(value);
-    setVisibilitySaving(true);
-    setVisibilityError(false);
-    try {
-      const res = await fetch('/api/chat/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
-      });
-      if (!res.ok) throw new Error();
-    } catch {
-      setter(prev);
-      setVisibilityError(true);
-    } finally {
-      setVisibilitySaving(false);
-    }
-  };
-
-  // EDU-01a — Onboarding/IELTS profil maydonlari. Sahifaning qolgan qismi
-  // hech qanday tahrirlash routega ega emas edi (faqat mavzu/chiqish) —
-  // shuning uchun bu yerda alohida, o'z holatiga ega kichik forma.
-  // Telegram daily mini-test (only meaningful once the bot is linked).
-  const [tg, setTg] = useState(null); // { linked, daily }
-  const toggleTgDaily = async () => {
-    if (!tg) return;
-    const next = !tg.daily;
-    setTg({ ...tg, daily: next });
-    const res = await fetch('/api/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tgDailyPractice: next }),
-    }).catch(() => null);
-    if (!res?.ok) setTg((cur) => ({ ...cur, daily: !next }));
-  };
-
-  const [prepLoading, setPrepLoading] = useState(true);
-  const [prepFailed, setPrepFailed] = useState(false);
-  const [prep, setPrep] = useState({
-    targetBand: '',
-    examType: '',
-    examDate: '',
-    currentLevel: '',
-    dailyStudyMinutes: '',
-  });
-  const [prepSaving, setPrepSaving] = useState(false);
-  const [prepSaved, setPrepSaved] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/profile')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        setPrep({
-          targetBand: data.targetBand ?? '',
-          examType: data.examType ?? '',
-          examDate: data.examDate ? data.examDate.slice(0, 10) : '',
-          currentLevel: data.currentLevel ?? '',
-          dailyStudyMinutes: data.dailyStudyMinutes ?? '',
-        });
-        setTg({ linked: !!data.telegramLinked, daily: data.tgDailyPractice !== false });
-      })
-      .catch(() => !cancelled && setPrepFailed(true))
-      .finally(() => !cancelled && setPrepLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const savePrep = async (e) => {
-    e.preventDefault();
-    setPrepSaving(true);
-    setPrepSaved(false);
-    setPrepFailed(false);
-    try {
-      const res = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetBand: prep.targetBand === '' ? null : Number(prep.targetBand),
-          examType: prep.examType === '' ? null : prep.examType,
-          examDate: prep.examDate === '' ? null : prep.examDate,
-          currentLevel: prep.currentLevel === '' ? null : prep.currentLevel,
-          dailyStudyMinutes: prep.dailyStudyMinutes === '' ? null : Number(prep.dailyStudyMinutes),
-        }),
-      });
-      if (!res.ok) throw new Error();
-      setPrepSaved(true);
-    } catch {
-      setPrepFailed(true);
-    } finally {
-      setPrepSaving(false);
-    }
-  };
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,12 +48,15 @@ export default function ProfilPage() {
           <h1 className="text-lg font-bold text-ink font-display truncate">{displayName}</h1>
           <p className="text-sm text-muted truncate">{chatUsername ? `@${chatUsername}` : phone}</p>
         </div>
-        {!!reviewStreak && (
-          <div className="ml-auto flex items-center gap-1.5 text-warning font-semibold text-sm flex-shrink-0">
-            <Flame size={16} />
-            {reviewStreak}
-          </div>
-        )}
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          {!!reviewStreak && (
+            <div className="flex items-center gap-1.5 text-warning font-semibold text-sm" title="Kunlik seriya">
+              <Flame size={16} />
+              {reviewStreak}
+            </div>
+          )}
+          <IconButton icon={Settings} label="Sozlamalar" onClick={() => setSettingsOpen(true)} aria-haspopup="dialog" />
+        </div>
       </div>
 
       {/* Yuklanish paytida joy band qilinadi — pastdagi bo'limlar sakramasin. */}
@@ -259,201 +115,12 @@ export default function ProfilPage() {
         <ProfileStats />
       </section>
 
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5 flex items-center gap-1.5">
-          <Target size={13} /> IELTS tayyorgarlik
-        </h2>
-        {prepLoading ? (
-          <div className="space-y-2" aria-hidden="true">
-            <Skeleton className="h-11 w-full rounded-xl" />
-            <Skeleton className="h-11 w-full rounded-xl" />
-          </div>
-        ) : (
-          <form onSubmit={savePrep} className="bg-surface border border-border rounded-2xl shadow-card p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="block text-xs font-medium text-muted mb-1.5">Target band</span>
-                <select
-                  className={inputClass}
-                  value={prep.targetBand}
-                  onChange={(e) => setPrep((p) => ({ ...p, targetBand: e.target.value }))}
-                >
-                  <option value="">O'rnatilmagan</option>
-                  {BAND_OPTIONS.map((b) => (
-                    <option key={b} value={b}>
-                      {b.toFixed(1)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="block text-xs font-medium text-muted mb-1.5">Imtihon turi</span>
-                <select
-                  className={inputClass}
-                  value={prep.examType}
-                  onChange={(e) => setPrep((p) => ({ ...p, examType: e.target.value }))}
-                >
-                  <option value="">Tanlanmagan</option>
-                  <option value="academic">Academic</option>
-                  <option value="general">General Training</option>
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="block text-xs font-medium text-muted mb-1.5">Imtihon sanasi</span>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={prep.examDate}
-                  onChange={(e) => setPrep((p) => ({ ...p, examDate: e.target.value }))}
-                />
-              </label>
-
-              <label className="block">
-                <span className="block text-xs font-medium text-muted mb-1.5">Joriy daraja</span>
-                <select
-                  className={inputClass}
-                  value={prep.currentLevel}
-                  onChange={(e) => setPrep((p) => ({ ...p, currentLevel: e.target.value }))}
-                >
-                  <option value="">Tanlanmagan</option>
-                  <option value="beginner">Boshlang'ich</option>
-                  <option value="intermediate">O'rta</option>
-                  <option value="advanced">Yuqori</option>
-                </select>
-              </label>
-
-              <label className="block col-span-2">
-                <span className="block text-xs font-medium text-muted mb-1.5">Kunlik mashg'ulot (daqiqa)</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="1440"
-                  placeholder="masalan, 30"
-                  className={inputClass}
-                  value={prep.dailyStudyMinutes}
-                  onChange={(e) => setPrep((p) => ({ ...p, dailyStudyMinutes: e.target.value }))}
-                />
-              </label>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Button type="submit" disabled={prepSaving}>
-                {prepSaving ? 'Saqlanmoqda...' : 'Saqlash'}
-              </Button>
-              {prepSaved && <span className="text-xs text-accent font-medium">Saqlandi</span>}
-              {prepFailed && <span className="text-xs text-danger font-medium">Saqlanmadi, qayta urinib ko'ring</span>}
-            </div>
-          </form>
-        )}
-      </section>
-
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5">Telegram</h2>
-        <div className="flex items-center gap-3 p-4 bg-surface border border-border rounded-2xl shadow-card mb-6">
-          <Send size={18} className="text-accent flex-shrink-0" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-ink">Kunlik 5 daqiqalik mashq</p>
-            <p className="text-xs text-muted">
-              {tg?.linked
-                ? "Har kuni kechqurun bot lug'atingizdan 5 ta savol yuboradi. Botda /mashq — hozir boshlash."
-                : "Telegram bot hisobingizga ulanmagan."}
-            </p>
-          </div>
-          {tg?.linked && (
-            <button
-              type="button"
-              role="switch"
-              aria-checked={tg.daily}
-              aria-label="Kunlik Telegram mashqi"
-              onClick={toggleTgDaily}
-              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${tg.daily ? 'bg-accent' : 'bg-border'}`}
-            >
-              <span className={`absolute left-0 top-0.5 w-5 h-5 rounded-full bg-surface shadow transition-transform ${tg.daily ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
-            </button>
-          )}
-        </div>
-
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5">Ko'rinish</h2>
-        <div role="group" aria-label="Mavzu" className="flex gap-2 p-1 bg-surface border border-border rounded-xl">
-          {THEME_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setTheme(opt.value)}
-              aria-pressed={theme === opt.value}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
-                theme === opt.value ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
-              }`}
-            >
-              <opt.icon size={15} />
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {chatAccess && (
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5 flex items-center gap-1.5">
-            <Eye size={13} /> Maxfiylik (Do'stlar)
-          </h2>
-          <div className="bg-surface border border-border rounded-2xl shadow-card p-5">
-            <p className="text-sm text-ink font-medium mb-1">Oxirgi marta ko'rilgan / onlayn holatini kim ko'radi</p>
-            <p className="text-xs text-muted mb-3">
-              "Suhbatlashganlar" — sizga xabar yozgan yoki siz yozgan foydalanuvchilar.
-            </p>
-            {visibilityLoading ? (
-              <Skeleton className="h-11 w-full rounded-xl" />
-            ) : (
-              <div role="group" aria-label="Ko'rinish" className="flex flex-col sm:flex-row gap-2 p-1 bg-bg rounded-xl">
-                {VISIBILITY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => saveVisibility(opt.value)}
-                    disabled={visibilitySaving}
-                    aria-pressed={lastSeenVisibility === opt.value}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                      lastSeenVisibility === opt.value ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-            <p className="text-sm text-ink font-medium mt-5 mb-1">Profil rasmimni kim ko'radi</p>
-            <p className="text-xs text-muted mb-3">Siz o'z rasmlaringizni har doim ko'rasiz.</p>
-            {visibilityLoading ? (
-              <Skeleton className="h-11 w-full rounded-xl" />
-            ) : (
-              <div role="group" aria-label="Profil rasmi ko'rinishi" className="flex flex-col sm:flex-row gap-2 p-1 bg-bg rounded-xl">
-                {VISIBILITY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => saveVisibility(opt.value, 'photoVisibility')}
-                    disabled={visibilitySaving}
-                    aria-pressed={photoVisibility === opt.value}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                      photoVisibility === opt.value ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {visibilityError && <p className="text-xs text-danger font-medium mt-2">Saqlanmadi, qayta urinib ko'ring</p>}
-          </div>
-        </section>
-      )}
-
       <Button variant="secondary" onClick={logout} className="w-full">
         <LogOut size={16} />
         Chiqish
       </Button>
+
+      <ProfileSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

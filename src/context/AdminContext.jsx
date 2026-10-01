@@ -23,7 +23,7 @@ export function AdminProvider({ children }) {
         // 401 — umuman login qilinmagan (cookie yo'q/muddati o'tgan): oldingi
         // xatti-harakat bilan bir xil, to'g'ridan-to'g'ri login sahifasiga.
         if (r.status === 401) {
-          router.push('/kirish');
+          router.replace('/kirish'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /kirish ga tushib, tuzoq bo'lardi)
           return null;
         }
         return r.json();

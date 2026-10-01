@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useBackClose } from '@/lib/useBackClose';
 import { X, Search, Trash2, Pencil, AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ConfirmModal from '../ConfirmModal';
@@ -44,6 +45,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
 
+  useBackClose(open, onClose);
   if (!open) return null;
 
   const filtered = chatSessions.filter((s) => s.title.toLowerCase().includes(query.trim().toLowerCase()));

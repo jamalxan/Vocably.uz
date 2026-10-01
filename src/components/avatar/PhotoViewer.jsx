@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useBackClose } from '@/lib/useBackClose';
 import { X, ChevronLeft, ChevronRight, Download, MoreVertical, Star, Trash2, Camera, Loader2 } from 'lucide-react';
 import { avatarUrl } from '@/lib/avatarShared';
 
@@ -30,6 +31,7 @@ export default function PhotoViewer({
   onAddNew,
 }) {
   const titleId = useId();
+  useBackClose(true, onClose); // telefonda orqaga rasm ko'rgichni yopsin
   const closeRef = useRef(null);
   const [index, setIndex] = useState(Math.min(startIndex, Math.max(0, photos.length - 1)));
   const [loaded, setLoaded] = useState({});

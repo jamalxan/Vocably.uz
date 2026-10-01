@@ -3,11 +3,15 @@ import { useEffect, useId, useRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
+import { useBackClose } from '@/lib/useBackClose';
 
 export default function ConfirmModal({ open, title, message, confirmLabel = "O'chirish", onConfirm, onCancel }) {
   const confirmRef = useRef(null);
   const titleId = useId();
   const msgId = useId();
+
+  // Telefonda orqaga avval modalni yopsin (sahifadan chiqib ketmasin).
+  useBackClose(open, onCancel);
 
   // Modal ochilganda asosiy tugmaga fokus beramiz — shunda Enter darrov ishlaydi.
   // Tab modal ichida qoladi, yopilganda fokus ochgan tugmaga qaytadi.

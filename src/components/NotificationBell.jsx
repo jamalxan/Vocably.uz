@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useBackClose } from '@/lib/useBackClose';
 import { Bell, BellRing, MessageCircle, Megaphone, Loader2, CreditCard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { pushSupported, getPushPermissionState, isPushSubscribed, subscribeToPush } from '@/lib/pushClient';
@@ -37,6 +38,7 @@ export default function NotificationBell({ onOpenFriends }) {
   // e'lon ko'z oldida yo'qolib qolmasin (faqat hisoblagich yangilanadi).
   const openRef = useRef(false);
   openRef.current = open;
+  useBackClose(open, () => setOpen(false));
 
   const load = useCallback(async () => {
     try {

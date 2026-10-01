@@ -1,7 +1,8 @@
 // Har bir savol turi (tanlov / yozma / jumla / juftlash) uchun umumiy haydovchi bilan P0 o'yinlarni oxirigacha o'tkazadi.
 // Javoblar ataylab to'g'ri bo'lishi shart emas — tekshiriladigan narsa: UI ishlaydi, sessiya yakunlanadi, natija chiqadi.
 import { expect, test, type Page } from '@playwright/test';
-import { E2E_FREE_PHONE, E2E_PASSWORD, E2E_PHONE } from './global-setup';
+import { E2E_FREE_PHONE, E2E_PHONE } from './global-setup';
+import { loginAs } from './auth';
 
 const GAMES = [
   'fill_gap',
@@ -97,8 +98,7 @@ async function answerCurrent(page: Page, waitMs = 15_000) {
 }
 
 test("free foydalanuvchiga pullik o'yin qulflangan: boshlash tugmasi yo'q, Tariflar havolasi bor", async ({ page }) => {
-  const res = await page.request.post('/api/auth/login', { data: { phone: E2E_FREE_PHONE, password: E2E_PASSWORD } });
-  expect(res.ok(), await res.text()).toBeTruthy();
+  await loginAs(page, E2E_FREE_PHONE);
   await page.goto('/app/oyinlar/sentence_builder');
   await expect(page.getByRole('link', { name: 'Tariflar' })).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole('button', { name: "O'yinni boshlash" })).toHaveCount(0);
@@ -108,8 +108,7 @@ test.describe("P0 o'yinlar (desktop)", () => {
   test.skip(({ isMobile }) => isMobile, 'mobil uchun asosiy oqim vocab-games.spec.ts da');
 
   test.beforeEach(async ({ page }) => {
-    const res = await page.request.post('/api/auth/login', { data: { phone: E2E_PHONE, password: E2E_PASSWORD } });
-    expect(res.ok(), await res.text()).toBeTruthy();
+    await loginAs(page, E2E_PHONE);
   });
 
   for (const game of GAMES) {

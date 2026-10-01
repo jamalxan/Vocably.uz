@@ -1,6 +1,7 @@
 // Admin lug'at sahifalari: fabrika (yuklash), kutubxona (yaratish, rasm yuklash, mashq ko'rib chiqish).
 import { expect, test } from '@playwright/test';
-import { E2E_ADMIN_PHONE, E2E_PASSWORD, E2E_PHONE } from './global-setup';
+import { E2E_ADMIN_PHONE, E2E_PHONE } from './global-setup';
+import { loginAs } from './auth';
 
 // 1x1 shaffof PNG (haqiqiy baytlar — server magic-bytes tekshiradi)
 const PNG_1PX = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
@@ -9,8 +10,7 @@ test.describe('admin: lug‘at sahifalari (desktop)', () => {
   test.skip(({ isMobile }) => isMobile, 'admin sahifalari desktop uchun');
 
   test.beforeEach(async ({ page }) => {
-    const res = await page.request.post('/api/auth/login', { data: { phone: E2E_ADMIN_PHONE, password: E2E_PASSWORD } });
-    expect(res.ok(), await res.text()).toBeTruthy();
+    await loginAs(page, E2E_ADMIN_PHONE);
   });
 
   test('fabrika sahifasi ochiladi, 25 MB gacha yuklash haqida aytadi', async ({ page }) => {
@@ -61,8 +61,7 @@ test.describe('admin: lug‘at sahifalari (desktop)', () => {
 });
 
 test('oddiy foydalanuvchi admin endpointlariga kira olmaydi (403)', async ({ page }) => {
-  const login = await page.request.post('/api/auth/login', { data: { phone: E2E_PHONE, password: E2E_PASSWORD } });
-  expect(login.ok()).toBeTruthy();
+  await loginAs(page, E2E_PHONE);
   const res = await page.request.post('/api/admin/vocab-library/image', {
     multipart: { file: { name: 'a.png', mimeType: 'image/png', buffer: PNG_1PX } },
   });

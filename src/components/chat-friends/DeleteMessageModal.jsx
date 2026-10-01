@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useBackClose } from '@/lib/useBackClose';
 import { Trash2 } from 'lucide-react';
 
 // Telegram uslubidagi ikki bosqichli o'chirish: sukut bo'yicha "faqat men uchun",
@@ -33,6 +34,7 @@ export default function DeleteMessageModal({ open, canDeleteForEveryone, otherUs
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onCancel]);
 
+  useBackClose(open, onCancel);
   if (!open) return null;
 
   return (

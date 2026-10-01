@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useBackClose } from '@/lib/useBackClose';
 import { Loader2, Search, Send, X } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import Avatar from '@/components/avatar/Avatar';
@@ -39,6 +40,7 @@ export default function ForwardMessageModal({ open, message, onClose }) {
     return conversations.filter((c) => (c.otherUser?.nickname || c.otherUser?.username || '').toLowerCase().includes(q));
   }, [conversations, query]);
 
+  useBackClose(open, onClose);
   if (!open) return null;
 
   const handlePick = async (conv) => {

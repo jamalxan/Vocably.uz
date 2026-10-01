@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useBackClose } from '@/lib/useBackClose';
 import { X, Search, Check } from 'lucide-react';
 import IconButton from '../ui/IconButton';
 
@@ -118,6 +119,7 @@ export default function WordPicker({
     });
   }, [words, search, filter]);
 
+  useBackClose(open, onClose);
   if (!open) return null;
 
   const toggle = (id) => {

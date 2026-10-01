@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useBackClose } from '@/lib/useBackClose';
 import { Trash2 } from 'lucide-react';
 
 // DeleteMessageModal bilan bir xil uslub, lekin butun suhbat uchun: xabar
@@ -39,6 +40,7 @@ export default function DeleteConversationModal({ open, otherUsername, onConfirm
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onCancel]);
 
+  useBackClose(open, onCancel);
   if (!open) return null;
 
   return (

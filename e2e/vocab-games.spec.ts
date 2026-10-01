@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { E2E_PASSWORD, E2E_PHONE } from './global-setup';
+import { E2E_PHONE } from './global-setup';
+import { loginAs } from './auth';
 
 test.beforeEach(async ({ page }) => {
   // Kirish: cookie API javobi bilan o'rnatiladi (page.request va brauzer bir xil kontekst).
-  const res = await page.request.post('/api/auth/login', { data: { phone: E2E_PHONE, password: E2E_PASSWORD } });
-  expect(res.ok(), await res.text()).toBeTruthy();
+  await loginAs(page, E2E_PHONE);
 });
 
 test('o\'yinlar markazi ochiladi va o\'yinlar ko\'rinadi', async ({ page }) => {

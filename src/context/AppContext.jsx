@@ -101,7 +101,7 @@ export function AppProvider({ children }) {
     fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     // '/' endi ochiq marketing landing (VOCABLY-TZ.md T3 tuzatildi) — chiqqan
     // foydalanuvchi qayta kirish formasiga to'g'ridan-to'g'ri tushsin.
-    router.push('/kirish');
+    router.replace('/kirish'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /kirish ga tushib, tuzoq bo'lardi)
   }, [router]);
 
   const fetchUserData = useCallback(async () => {

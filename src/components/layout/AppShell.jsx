@@ -10,6 +10,7 @@ import NotificationBell from '@/components/NotificationBell';
 import Avatar from '@/components/avatar/Avatar';
 import AiPanel from './AiPanel';
 import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
+import { decideTabNavigation, readBase, writeBase } from '@/lib/tabHistory';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
 
 // AppShell — VOCABLY-TZ.md 3.2 (navigatsiya modeli) va R1 (planshet layout yo'q)
@@ -52,6 +53,27 @@ export default function AppShell({ children }) {
   useEffect(() => {
     if (onLugat) setLugatOpen(true);
   }, [onLugat]);
+
+  // Mobil pastki tablar: tarix qoidasi (src/lib/tabHistory.js) — "orqaga" doim Bosh sahifaga olib borsin, tasodifiy oldingi tabga emas.
+  const onTabClick = (e, item) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return; // yangi oynada ochish — odatdagidek
+    const r = decideTabNavigation({
+      pathname,
+      targetHref: item.href,
+      tabRoots: visibleBottomNav.map((i) => i.href),
+      base: readBase(),
+      historyLength: window.history.length,
+    });
+    if (r.action === 'noop') {
+      e.preventDefault();
+      return;
+    }
+    writeBase(r.nextBase);
+    if (r.action === 'push') return; // <Link> o'zi push qiladi
+    e.preventDefault();
+    if (r.action === 'replace') router.replace(item.href);
+    else router.back();
+  };
 
   // Planshet rail: sensorli ekranda hover yo'q — yorliqlarni ko'rish uchun
   // aniq "kengaytirish" tugmasi. Sahifa o'zgarganda yoki Escape'da yopiladi.
@@ -214,6 +236,7 @@ export default function AppShell({ children }) {
               key={item.key}
               href={item.href}
               aria-current={active ? 'page' : undefined}
+              onClick={(e) => onTabClick(e, item)}
               className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[44px] text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 active ? 'text-accent font-semibold' : 'text-on-primary/55'
               }`}

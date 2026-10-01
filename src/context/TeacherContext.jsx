@@ -17,7 +17,7 @@ export function TeacherProvider({ children }) {
     fetch('/api/chat/me')
       .then((r) => {
         if (r.status === 401) {
-          router.push('/kirish');
+          router.replace('/kirish'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /kirish ga tushib, tuzoq bo'lardi)
           return null;
         }
         return r.json();

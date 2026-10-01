@@ -1,5 +1,6 @@
 'use client';
 import { useId, useRef } from 'react';
+import { useBackClose } from '@/lib/useBackClose';
 import { BellOff } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
@@ -13,6 +14,7 @@ export default function MuteDurationModal({ open, onSelect, onCancel }) {
   const titleId = useId();
   const dialogRef = useDialogFocus(open, firstRef);
 
+  useBackClose(open, onCancel); // telefonda orqaga avval modalni yopsin
   if (!open) return null;
 
   return (

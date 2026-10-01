@@ -1,5 +1,6 @@
 'use client';
 import { useId, useRef, useState } from 'react';
+import { useBackClose } from '@/lib/useBackClose';
 import { Flag } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
@@ -17,6 +18,7 @@ export default function ReportReasonModal({ open, onSubmit, onCancel }) {
   const titleId = useId();
   const dialogRef = useDialogFocus(open, selectRef);
 
+  useBackClose(open, onCancel);
   if (!open) return null;
 
   const handleSubmit = (e) => {

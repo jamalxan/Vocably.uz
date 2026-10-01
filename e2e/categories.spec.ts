@@ -1,13 +1,13 @@
 // Kategoriya qo'shish granular endpoint orqali (POST /api/categories): serverdagi so'zlarga tegmaydi, _id server beradi.
 import { expect, test } from '@playwright/test';
-import { E2E_PASSWORD, E2E_PHONE } from './global-setup';
+import { E2E_PHONE } from './global-setup';
+import { loginAs } from './auth';
 
 test.describe('kategoriyalar (desktop)', () => {
   test.skip(({ isMobile }) => isMobile, 'kategoriya almashtirgich desktop sidebar/sarlavhasida');
 
   test('yangi kategoriya qo‘shiladi, yangilangandan keyin ham qoladi, mavjud so‘zlar o‘zgarmaydi', async ({ page }) => {
-    const login = await page.request.post('/api/auth/login', { data: { phone: E2E_PHONE, password: E2E_PASSWORD } });
-    expect(login.ok()).toBeTruthy();
+    await loginAs(page, E2E_PHONE);
 
     const wordsBefore = await (await page.request.get('/api/words')).json();
     const countBefore = wordsBefore.categories.reduce((n: number, c: any) => n + c.words.length, 0);

@@ -5,6 +5,7 @@ import { Sparkles, X, Maximize2, Minimize2 } from 'lucide-react';
 import AiChat from '@/components/AiChat';
 import IconButton from '@/components/ui/IconButton';
 import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
+import { useBackClose } from '@/lib/useBackClose';
 
 // VOCABLY-TZ.md §12.1 — AI Tutor endi istalgan sahifadan ⌘K (Ctrl+K) yoki
 // suzuvchi tugma bilan ochiladigan sirg'aluvchi panel (desktop: 420px, mobil:
@@ -55,6 +56,8 @@ export default function AiPanel() {
 
   // Dialog: fokus ichkariga o'tadi, Tab ichida qoladi, yopilganda qaytadi.
   const panelRef = useDialogFocus(open);
+  // Telefonda `orqaga` avval panelni yopsin (sahifadan chiqib ketmasin).
+  useBackClose(open, closePanel);
 
   // Panel ochiq paytda orqadagi sahifa scroll bo'lmasin.
   useEffect(() => {
