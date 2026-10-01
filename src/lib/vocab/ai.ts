@@ -7,7 +7,7 @@ import { findWordInSentence } from './games';
 export const AI_PROMPT_VERSIONS = {
   story: 'vocab_story_v1',
   exercises: 'vocab_exercises_v1',
-  contentFactory: 'vocab_factory_v1',
+  contentFactory: 'vocab_factory_v2',
 };
 
 /** Kunlik AI kvotalari (tarifga qarab; null = tarifdagi umumiy soatlik chegaraga tayanadi). */

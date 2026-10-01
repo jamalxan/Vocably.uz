@@ -64,6 +64,15 @@ describe('validateFactoryOutput', () => {
     expect(r.rejected).toEqual([]);
   });
 
+  it("izoh, xato va ishlatish qaydlarini o'tkazadi; noto'g'ri registerni tashlaydi (yozuvni rad etmaydi)", () => {
+    const rich = { detailedDefinition: "Zararni kamaytirish.", usageNotes: "Ko'pincha 'effects of' bilan.", commonMistakes: ['mitigate to'], register: 'Academic' };
+    const ok = validateFactoryOutput({ words: [good(rich)] }, chunk, cands);
+    expect(ok.entries[0]).toMatchObject({ ...rich, register: 'academic' });
+    const bad = validateFactoryOutput({ words: [good({ register: 'slangy' })] }, chunk, cands);
+    expect(bad.entries).toHaveLength(1);
+    expect(bad.entries[0].register).toBeUndefined();
+  });
+
   it('gallyutsinatsiyalarni rad etadi', () => {
     const r = validateFactoryOutput(
       {

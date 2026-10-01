@@ -4,9 +4,9 @@
 // hech qachon to'g'ridan-to'g'ri nashr qilinmaydi — AI_GENERATED holatida inson ko'rib chiqishiga tushadi.
 import { findWordInSentence } from './games';
 import { lemmaCandidates, normalizeToken, tokenize } from './wordForms';
-import { CEFR_LEVELS, normalizeEntry, type LibraryEntryInput } from './library';
+import { CEFR_LEVELS, REGISTERS, normalizeEntry, type LibraryEntryInput } from './library';
 
-export const FACTORY_PROMPT_VERSION = 'vocab_factory_v1';
+export const FACTORY_PROMPT_VERSION = 'vocab_factory_v2';
 
 export const FACTORY_LIMITS = {
   /** Bitta job uchun maksimal matn (belgi) — katta kitoblar bo'limlarga bo'lib yuklanadi. */
@@ -116,6 +116,10 @@ export const FACTORY_SCHEMA = {
           antonyms: { type: 'array', items: { type: 'string' } },
           collocations: { type: 'array', items: { type: 'string' } },
           topicTags: { type: 'array', items: { type: 'string' } },
+          detailedDefinition: { type: 'string' },
+          usageNotes: { type: 'string' },
+          commonMistakes: { type: 'array', items: { type: 'string' } },
+          register: { type: 'string' },
         },
         required: ['word', 'pos', 'cefr', 'translationUz', 'shortDefinition', 'example'],
       },
@@ -141,6 +145,10 @@ Har bir so'z uchun:
 - example: so'z ishtirok etgan tabiiy misol gap (matndan olingan yoki original; so'zning o'zi gapda bo'lsin)
 - synonyms, antonyms, collocations: 0–4 tadan, bilmasangiz bo'sh
 - topicTags: 1–3 ta mavzu (kichik harf, inglizcha)
+- detailedDefinition: matndagi ma'noni 1–2 gapda o'zbekcha tushuntiring (izoh)
+- usageNotes: so'zni qanday ishlatish haqida qisqa o'zbekcha eslatma (predlog, grammatika), bilmasangiz bo'sh
+- commonMistakes: o'zbek o'quvchilar qiladigan 0–2 ta tipik xato (qisqa, o'zbekcha), bilmasangiz bo'sh
+- register: formal | neutral | informal | academic
 
 NOMZODLAR: ${candidates.join(', ')}
 
@@ -220,6 +228,11 @@ export function validateFactoryOutput(
       antonyms: item.antonyms,
       collocations: item.collocations,
       topicTags: item.topicTags,
+      detailedDefinition: item.detailedDefinition,
+      usageNotes: item.usageNotes,
+      commonMistakes: item.commonMistakes,
+      // Noto'g'ri register butun yozuvni rad etmasin — shunchaki tashlab yuboriladi.
+      register: (REGISTERS as readonly string[]).includes(String(item.register || '').toLowerCase()) ? String(item.register).toLowerCase() : undefined,
       source: opts.sourceName ? `factory: ${opts.sourceName}`.slice(0, 120) : 'factory',
     };
     const { entry, errors } = normalizeEntry(input);
