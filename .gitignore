@@ -22,3 +22,7 @@ scripts/tts/out/
 # scripts/copy-emojibase.mjs tomonidan predev/prebuild paytida yaratiladi.
 public/emojibase/
 .local-scratch/
+
+# Playwright
+/test-results/
+/playwright-report/

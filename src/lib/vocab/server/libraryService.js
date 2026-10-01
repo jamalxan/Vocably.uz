@@ -214,7 +214,7 @@ export async function deleteEntry(id) {
 }
 
 /** Ommaviy import (CSV matni yoki JSON ro'yxat). Dublikatlar o'tkazib yuboriladi; xatolar qator raqami bilan qaytadi. */
-export async function importEntries({ csv, items }, adminId, { aiGenerated = false, sourceType } = {}) {
+export async function importEntries({ csv = undefined, items = undefined }, adminId, { aiGenerated = false, sourceType } = {}) {
   let rows;
   const notes = [];
   if (typeof csv === 'string' && csv.trim()) {
@@ -309,7 +309,7 @@ export async function searchPublished(params, userId) {
 const LIBRARY_CATEGORY = 'Kutubxona';
 
 /** Tanlangan nashr qilingan yozuvlarni foydalanuvchi kategoriyasiga nusxalaydi (mavjud so'zlar o'tkazib yuboriladi). */
-export async function addEntriesToUser(userId, { entryIds, categoryId }) {
+export async function addEntriesToUser(userId, { entryIds, categoryId = undefined }) {
   const ids = [...new Set((Array.isArray(entryIds) ? entryIds : []).map(String).filter(isId))].slice(0, 50);
   if (!ids.length) throw bad("So'z tanlanmagan");
   const entries = await VocabularyEntry.find({ _id: { $in: ids }, status: 'PUBLISHED' }).select('-versions').lean();

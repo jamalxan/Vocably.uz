@@ -19,6 +19,8 @@ import react from '@vitejs/plugin-react';
 // birinchi bo'lib HAQIQIY (runtime) `@/`-import qildi.
 export default defineConfig({
   plugins: [react()],
+  // Integratsiya testlari mongodb-memory-server ishga tushiradi — to'liq suitda parallel yuklamada 5 s standart yetmaydi.
+  test: { exclude: ['**/node_modules/**', 'e2e/**'], testTimeout: 30_000 },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
