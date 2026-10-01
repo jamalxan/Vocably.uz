@@ -1804,6 +1804,23 @@ const VocabularyEntrySchema = new mongoose.Schema({
   usageNotes: { type: String, default: '' },
   register: { type: String, default: '' },
   topicTags: { type: [String], default: [] },
+  // AI/qo'lda tuzilgan mashqlar (TZ §29: exercise/answer/explanation generation). Har biri alohida holatda — admin tasdiqlaydi.
+  exercises: {
+    type: [
+      new mongoose.Schema(
+        {
+          type: { type: String, required: true },
+          prompt: { type: String, required: true },
+          options: { type: [String], default: undefined },
+          answer: { type: String, required: true },
+          explanationUz: { type: String, default: '' },
+          status: { type: String, enum: ['AI_GENERATED', 'APPROVED', 'REJECTED'], default: 'AI_GENERATED' },
+        },
+        { _id: false }
+      ),
+    ],
+    default: [],
+  },
   source: { type: String, default: '' },
   sourceType: { type: String, enum: ['manual', 'csv', 'ai', 'book'], default: 'manual' },
   status: { type: String, enum: ['DRAFT', 'AI_GENERATED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'PUBLISHED', 'ARCHIVED'], default: 'DRAFT' },
@@ -1845,6 +1862,8 @@ const VocabIngestChunkSchema = new mongoose.Schema(
     created: { type: Number, default: 0 },
     duplicates: { type: Number, default: 0 },
     rejected: { type: Number, default: 0 },
+    exercises: { type: Number, default: 0 },
+    exerciseError: { type: String, default: '' },
     provider: { type: String, default: '' },
   },
   { _id: false }

@@ -18,7 +18,22 @@ const para = (word: string) =>
 // 3 ta bo'lak: har birida bittadan o'ziga xos so'z
 const TEXT = ['mitigate', 'sustain', 'allocate'].map((w) => para(w).repeat(9)).join('\n\n');
 
+/** Mashq so'rovi (buildExercisesPrompt) uchun javob: har so'zga bitta yaroqli fill_gap va bitta yaroqsiz (variantsiz MC). */
+const exercisesFor = (prompt: string) => {
+  const words = [...prompt.matchAll(/^- "([^"]+)"/gm)].map((m) => m[1]);
+  return {
+    data: {
+      exercises: words.flatMap((w) => [
+        { word: w, type: 'fill_gap', prompt: `Leaders must _____ resources (${w}).`, answer: w, explanationUz: 'Kontekstga mos.' },
+        { word: w, type: 'multiple_choice', prompt: 'Qaysi?', answer: w, explanationUz: 'x' }, // variantsiz — rad etiladi
+      ]),
+    },
+    provider: 'fake',
+  };
+};
+
 const fakeAi = (log: string[] = []) => async (prompt: string) => {
+  if (prompt.includes('mashq tuz')) return exercisesFor(prompt);
   const m = /NOMZODLAR: ([^\n]*)/.exec(prompt)!;
   const cands = m[1].split(', ');
   log.push(m[1]);
@@ -62,6 +77,36 @@ describeDb('content factory (integration)', () => {
     // matn tozalangan
     const raw: any = await VocabIngestJob.findById(job.id).lean();
     expect(raw.chunks.every((c: any) => c.text === '')).toBe(true);
+  });
+
+  it('yaratilgan yozuvlarga AI mashqlari biriktiriladi (faqat yaroqlilari, AI_GENERATED holatda)', async () => {
+    const job = await createJob({ adminId: admin, filename: 'book.txt', format: 'text', text: TEXT });
+    let cur = job;
+    for (let i = 0; i < 10 && cur.chunks.pending + cur.chunks.processing > 0; i++) cur = await runJob(job.id, admin, { maxChunks: 2, ai: fakeAi() as any });
+    expect(cur.exercises).toBe(3); // 3 so'z x 1 yaroqli (variantsiz MC rad etilgan)
+    expect(cur.exerciseErrors).toBe(0);
+    const entries: any[] = await VocabularyEntry.find().lean();
+    for (const e of entries) {
+      expect(e.exercises).toHaveLength(1);
+      expect(e.exercises[0]).toMatchObject({ type: 'fill_gap', status: 'AI_GENERATED' });
+      expect(e.exercises[0].prompt).toContain('_____');
+    }
+  });
+
+  it('mashq bosqichi xato qilsa bo‘lak muvaffaqiyatli qoladi va so‘zlar saqlanadi', async () => {
+    const job = await createJob({ adminId: admin, filename: 'b.txt', format: 'text', text: TEXT });
+    const base = fakeAi();
+    const flaky = async (prompt: string) => {
+      if (prompt.includes('mashq tuz')) throw new Error('exercise provider down');
+      return base(prompt);
+    };
+    let cur = job;
+    for (let i = 0; i < 10 && cur.chunks.pending + cur.chunks.processing > 0; i++) cur = await runJob(job.id, admin, { maxChunks: 2, ai: flaky as any });
+    expect(cur.chunks.failed).toBe(0);
+    expect(cur.created).toBe(3);
+    expect(cur.exercises).toBe(0);
+    expect(cur.exerciseErrors).toBe(3);
+    expect((await VocabularyEntry.find().lean()).every((e: any) => e.exercises.length === 0)).toBe(true);
   });
 
   it('kutubxonada bor so‘z nomzod bo‘lmaydi (takrorlanmaydi)', async () => {

@@ -1,5 +1,6 @@
 // Global lug'at kutubxonasi (TZ §4, §29–§32): yozuv validatsiyasi, kontent holat mashinasi, CSV import/export,
 // foydalanuvchi so'ziga aylantirish. Sof mantiq (I/O yo'q) — Mongo qatlami `server/libraryService.js` da.
+import { checkExerciseShape } from './ai';
 
 export const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
 export const POS_VALUES = ['noun', 'verb', 'adjective', 'adverb', 'phrase', 'idiom', 'phrasal_verb'] as const;
@@ -52,11 +53,26 @@ export interface LibraryEntryInput {
   register?: string;
   topicTags?: string[];
   source?: string;
+  exercises?: LibraryExercise[];
 }
 
-export interface NormalizedEntry extends Required<Omit<LibraryEntryInput, 'examples'>> {
+export const EXERCISE_STATUSES = ['AI_GENERATED', 'APPROVED', 'REJECTED'] as const;
+export type ExerciseStatus = (typeof EXERCISE_STATUSES)[number];
+
+/** Yozuvga biriktirilgan mashq (word maydoni yo'q — mashq yozuvning o'ziga tegishli). */
+export interface LibraryExercise {
+  type: string;
+  prompt: string;
+  options?: string[];
+  answer: string;
+  explanationUz: string;
+  status: ExerciseStatus;
+}
+
+export interface NormalizedEntry extends Required<Omit<LibraryEntryInput, 'examples' | 'exercises'>> {
   normalizedWord: string;
   examples: LibraryExample[];
+  exercises: LibraryExercise[];
 }
 
 const MAX_LIST = 20;
@@ -95,6 +111,22 @@ function exampleList(v: unknown): LibraryExample[] {
     if (!en) continue;
     out.push({ en, uz: typeof x === 'string' ? '' : str((x as any)?.uz, 300) });
     if (out.length >= 10) break;
+  }
+  return out;
+}
+
+const MAX_EXERCISES = 12;
+
+/** Mashqlar ro'yxatini tozalaydi: yaroqsizlari tashlanadi, holat noma'lum bo'lsa AI_GENERATED (admin tasdiqlamaguncha). */
+function exerciseList(v: unknown): LibraryExercise[] {
+  const arr = Array.isArray(v) ? v : [];
+  const out: LibraryExercise[] = [];
+  for (const x of arr) {
+    const shape = checkExerciseShape(x as any);
+    if (!shape) continue;
+    const status = (EXERCISE_STATUSES as readonly string[]).includes((x as any)?.status) ? ((x as any).status as ExerciseStatus) : 'AI_GENERATED';
+    out.push({ ...shape, status });
+    if (out.length >= MAX_EXERCISES) break;
   }
   return out;
 }
@@ -145,6 +177,7 @@ export function normalizeEntry(input: LibraryEntryInput): { entry: NormalizedEnt
     usageNotes: str(input?.usageNotes, 500),
     register,
     topicTags: strList(input?.topicTags, 40).map((t) => t.toLowerCase()),
+    exercises: exerciseList(input?.exercises),
     source: str(input?.source, 120),
   };
   return { entry, errors };

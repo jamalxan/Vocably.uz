@@ -33,6 +33,31 @@ describe('normalizeEntry', () => {
   });
 });
 
+describe('normalizeEntry — exercises', () => {
+  const gap = { type: 'fill_gap', prompt: 'We must _____ the risk.', answer: 'mitigate', explanationUz: 'Mos.' };
+  it('yaroqli mashqni saqlaydi; holat noma‘lum bo‘lsa AI_GENERATED', () => {
+    const { entry } = normalizeEntry({ word: 'mitigate', exercises: [gap as any, { ...gap, status: 'APPROVED' } as any, { ...gap, status: 'hack' } as any] });
+    expect(entry.exercises.map((e) => e.status)).toEqual(['AI_GENERATED', 'APPROVED', 'AI_GENERATED']);
+  });
+  it('yaroqsizlarini tashlaydi: "_____"siz gap, 4 variantsiz MC, noma‘lum tur, izohsiz', () => {
+    const { entry } = normalizeEntry({
+      word: 'x',
+      exercises: [
+        { ...gap, prompt: 'no blank' },
+        { type: 'multiple_choice', prompt: 'q', answer: 'a', options: ['a', 'b'], explanationUz: 'e' },
+        { ...gap, type: 'riddle' },
+        { ...gap, explanationUz: '' },
+        gap,
+      ] as any,
+    });
+    expect(entry.exercises).toHaveLength(1);
+  });
+  it('12 tadan ko‘pini kesadi; mashqsiz yozuvda bo‘sh ro‘yxat', () => {
+    expect(normalizeEntry({ word: 'x', exercises: Array(20).fill(gap) as any }).entry.exercises).toHaveLength(12);
+    expect(normalizeEntry({ word: 'x' }).entry.exercises).toEqual([]);
+  });
+});
+
 describe('publishProblems', () => {
   const base = { word: 'a', translationUz: 'b', shortDefinition: 'c', examples: [{ en: 'x' }], cefr: 'B1' };
   it('to‘liq yozuv muammosiz', () => expect(publishProblems(base)).toEqual([]));

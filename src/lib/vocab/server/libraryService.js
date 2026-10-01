@@ -60,6 +60,7 @@ export function serializeEntry(e, { full = false } = {}) {
     detailedDefinition: e.detailedDefinition,
     commonMistakes: e.commonMistakes || [],
     usageNotes: e.usageNotes,
+    exercises: e.exercises || [],
     source: e.source,
     sourceType: e.sourceType,
     status: e.status,

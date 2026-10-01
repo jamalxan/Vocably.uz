@@ -7,7 +7,8 @@ import { VocabIngestJob, VocabularyEntry } from '@/lib/models';
 import { generateJsonWithMeta } from '@/lib/aiJson';
 import { logAiError } from '@/lib/ai/client';
 import { extractDocumentText } from '@/lib/contentAgent/documentText';
-import { AI_PROMPT_VERSIONS } from '@/lib/vocab/ai';
+import { AI_PROMPT_VERSIONS, EXERCISES_SCHEMA, buildExercisesPrompt, validateExercises } from '@/lib/vocab/ai';
+import { normalizeWordKey } from '@/lib/vocab/library';
 import {
   FACTORY_LIMITS,
   FACTORY_SCHEMA,
@@ -50,6 +51,8 @@ export function summarizeJob(job) {
     created: chunks.reduce((s, c) => s + (c.created || 0), 0),
     duplicates: chunks.reduce((s, c) => s + (c.duplicates || 0), 0),
     rejected: chunks.reduce((s, c) => s + (c.rejected || 0), 0),
+    exercises: chunks.reduce((s, c) => s + (c.exercises || 0), 0),
+    exerciseErrors: chunks.filter((c) => c.exerciseError).length,
     errors: chunks.filter((c) => c.status === 'failed').slice(0, 5).map((c) => ({ index: c.index, error: c.error })),
     rejectedSamples: job.rejectedSamples || [],
   };
@@ -138,6 +141,42 @@ async function knownWordsFor(candidates) {
   return new Set(rows.map((r) => r.normalizedWord));
 }
 
+/**
+ * TZ §29 "Exercise/Answer/Explanation generation": yangi yaratilgan yozuvlarga AI mashqlarini biriktiradi.
+ * So'zlar allaqachon saqlangan, shuning uchun bu bosqich xato qilsa ham bo'lak muvaffaqiyatsiz bo'lmaydi
+ * (qaytadan urinilsa yozuvlar "dublikat" bo'lardi) — xato `exerciseError` sifatida qaytadi.
+ * Faqat shu manbadan (`source`) yaratilgan va hali mashqsiz AI yozuvlariga yoziladi — admin tahrirlaganiga tegmaydi.
+ * @returns {Promise<{exercises:number, exerciseError:string}>}
+ */
+async function attachExercises(entries, source, ai) {
+  if (!entries.length) return { exercises: 0, exerciseError: '' };
+  try {
+    const words = entries.map((e) => e.word);
+    const list = entries.map((e) => ({ word: e.word, translations: String(e.translationUz || '').split(/[;,]/).map((s) => s.trim()).filter(Boolean) }));
+    const { data } = await ai(buildExercisesPrompt(list, 2), EXERCISES_SCHEMA);
+    const { valid } = validateExercises(data, words);
+    const byWord = new Map();
+    for (const ex of valid) {
+      const k = normalizeWordKey(ex.word);
+      if (!byWord.has(k)) byWord.set(k, []);
+      const { word: _w, ...rest } = ex;
+      byWord.get(k).push(rest);
+    }
+    let attached = 0;
+    for (const [normalizedWord, exercises] of byWord) {
+      const r = await VocabularyEntry.updateOne(
+        { normalizedWord, source, aiGenerated: true, status: 'AI_GENERATED', exercises: { $size: 0 } },
+        { $set: { exercises: exercises.slice(0, 6) } }
+      );
+      if (r.modifiedCount) attached += exercises.slice(0, 6).length;
+    }
+    return { exercises: attached, exerciseError: '' };
+  } catch (err) {
+    logAiError(err, { endpoint: 'vocab-factory/exercises' });
+    return { exercises: 0, exerciseError: String(err?.message || err).slice(0, 200) };
+  }
+}
+
 /** Bitta bo'lakni ishlaydi. Xato bo'lsa MAX_ATTEMPTS gacha qayta uriniladi (pending'ga qaytadi). */
 async function processChunk(job, chunk, adminId, filename, ai) {
   // Nomzodlar: avval kutubxonada borlarini chiqarib tashlaymiz (ikki bosqich: keng ro'yxat -> ma'lumlarni olib tashlash).
@@ -150,12 +189,14 @@ async function processChunk(job, chunk, adminId, filename, ai) {
   const { entries, rejected } = validateFactoryOutput(data, chunk.text, candidates, { sourceName: filename });
   let created = 0;
   let duplicates = 0;
+  let ex = { exercises: 0, exerciseError: '' };
   if (entries.length) {
     const r = await importEntries({ items: entries }, adminId, { aiGenerated: true, sourceType: 'book' });
     created = r.created;
     duplicates = r.duplicates;
+    if (created > 0) ex = await attachExercises(entries, entries[0].source, ai);
   }
-  return { candidates: candidates.length, created, duplicates, rejected, provider };
+  return { candidates: candidates.length, created, duplicates, rejected, provider, ...ex };
 }
 
 /**
@@ -176,7 +217,7 @@ export async function runJob(id, adminId, { maxChunks = 2, now = new Date(), ai 
       await finishChunk(
         id,
         chunk.claim,
-        { status: 'done', text: '', error: '', candidates: out.candidates, created: out.created, duplicates: out.duplicates, rejected: out.rejected.length, provider: out.provider || '' },
+        { status: 'done', text: '', error: '', candidates: out.candidates, created: out.created, duplicates: out.duplicates, rejected: out.rejected.length, provider: out.provider || '', exercises: out.exercises || 0, exerciseError: out.exerciseError || '' },
         out.rejected.length
           ? { $push: { rejectedSamples: { $each: out.rejected.slice(0, 3).map((r) => `${r.word}: ${r.reason}`), $slice: -30 } } }
           : {}

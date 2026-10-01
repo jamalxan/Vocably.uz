@@ -205,6 +205,26 @@ export interface Exercise {
 
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
 
+/** Bitta mashq tuzilmasini tekshiradi (so'z ro'yxatiga bog'lanmagan qism). Yaroqsiz bo'lsa null. */
+export function checkExerciseShape(r: RawExercise | null | undefined): Omit<Exercise, 'word' | 'status'> | null {
+  if (!r || typeof r !== 'object') return null;
+  const type = str(r.type) as ExerciseType;
+  const prompt = str(r.prompt);
+  const answer = str(r.answer);
+  const explanationUz = str(r.explanationUz);
+  if (!prompt || !answer || !explanationUz || !(EXERCISE_TYPES as readonly string[]).includes(type)) return null;
+  const isChoice = type === 'multiple_choice' || type === 'synonym' || type === 'antonym';
+  const isGap = type === 'fill_gap' || type === 'sentence_completion' || type === 'context';
+  let options: string[] | undefined;
+  if (isChoice) {
+    options = Array.isArray(r.options) ? (r.options as unknown[]).map(str).filter(Boolean) : [];
+    const unique = Array.from(new Set(options.map((o) => o.toLowerCase())));
+    if (options.length !== 4 || unique.length !== 4 || !options.some((o) => o.toLowerCase() === answer.toLowerCase())) return null;
+  }
+  if (isGap && !prompt.includes('_____')) return null;
+  return { type, prompt, ...(options ? { options } : {}), answer, explanationUz };
+}
+
 /** AI mashqlarini qat'iy tekshiradi; yaroqsizlarini tashlab yuboradi (tuzatishga urinmaydi). */
 export function validateExercises(raw: unknown, allowedWords: string[]): { valid: Exercise[]; rejected: number } {
   const list = Array.isArray((raw as { exercises?: unknown })?.exercises) ? ((raw as { exercises: RawExercise[] }).exercises) : [];
@@ -212,35 +232,13 @@ export function validateExercises(raw: unknown, allowedWords: string[]): { valid
   const valid: Exercise[] = [];
   let rejected = 0;
   for (const r of list) {
-    if (!r || typeof r !== 'object') {
+    const word = r && typeof r === 'object' ? str(r.word) : '';
+    const shape = checkExerciseShape(r);
+    if (!word || !shape || !allowed.has(word.toLowerCase())) {
       rejected += 1;
       continue;
     }
-    const word = str(r.word);
-    const type = str(r.type) as ExerciseType;
-    const prompt = str(r.prompt);
-    const answer = str(r.answer);
-    const explanationUz = str(r.explanationUz);
-    if (!word || !prompt || !answer || !explanationUz || !(EXERCISE_TYPES as readonly string[]).includes(type) || !allowed.has(word.toLowerCase())) {
-      rejected += 1;
-      continue;
-    }
-    const isChoice = type === 'multiple_choice' || type === 'synonym' || type === 'antonym';
-    const isGap = type === 'fill_gap' || type === 'sentence_completion' || type === 'context';
-    let options: string[] | undefined;
-    if (isChoice) {
-      options = Array.isArray(r.options) ? (r.options as unknown[]).map(str).filter(Boolean) : [];
-      const unique = Array.from(new Set(options.map((o) => o.toLowerCase())));
-      if (options.length !== 4 || unique.length !== 4 || !options.some((o) => o.toLowerCase() === answer.toLowerCase())) {
-        rejected += 1;
-        continue;
-      }
-    }
-    if (isGap && !prompt.includes('_____')) {
-      rejected += 1;
-      continue;
-    }
-    valid.push({ word, type, prompt, ...(options ? { options } : {}), answer, explanationUz, status: 'AI_GENERATED' });
+    valid.push({ word, ...shape, status: 'AI_GENERATED' });
   }
   return { valid, rejected };
 }
