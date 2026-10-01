@@ -78,6 +78,34 @@ SKIP_DB_INTEGRATION=1 npx vitest run    # skip the mongodb-memory-server suite
 `sessions.integration.test.ts` uses `mongodb-memory-server` (downloads a mongod binary on first run) and exercises the real
 flow: start → answers (idempotent) → complete → XP ledger → quests → streak/freeze → achievements.
 
+## Acceptance Criteria tekshiruvi (TZ §59)
+
+"Test" — avtomatik test bor; "kod" — faqat kod o'qib tasdiqlangan (avtomatik testi yo'q); "—" — tasdiqlanmagan.
+
+| Band | Holat | Dalil |
+|---|---|---|
+| User vocabulary state saved | Test | `sessions.integration` "so'z statistikasi yangilanadi: skills, mastery, SRS" |
+| SRS due queue works | Kod | `/api/vocabulary/due`, `selection.ts` (`isDue`) |
+| Weak words detected | Test | `weakness.test.ts` |
+| Mastery updates correctly | Test | `mastery.test.ts`, `sessions.integration` |
+| Review history preserved | Kod | `ReviewEvent` (`wordReview.js`) + `GameSession.answers` |
+| All P0 games on desktop/mobile | — | Jonli brauzer/mobil sinov o'tkazilmagan |
+| Game state survives refresh | Test | `sessions.integration` "faol sessiyani qayta tiklash" |
+| Answers validated server-side | Test | "klientning 'isCorrect'/'xp' maydonlari e'tiborsiz" |
+| Duplicate submissions rejected safely | Test | "takroriy yuborish...", "parallel takroriy yuborish..." |
+| XP server-calculated / idempotent | Test | `idempotencyKey` testlari, "complete ikki marta chaqirilsa" |
+| Level / streak update | Test | `xp.test.ts`, `streak.test.ts`, "ketma-ket kunlar streak" |
+| Achievements unlock once | Test | `engine.test.ts` "faqat yangi yutuqlar" |
+| Leaderboard not manipulable | Kod | faqat `XpEvent` ledger'idan agregatsiya (`leaderboard/route.js`) |
+| AI content reviewable by admin | Test | `library.integration`, `factory.integration` (AI -> AI_GENERATED, `verifiedByAdmin`) |
+| AI endpoints rate-limited | Kod | `aiService.js` (`checkAndIncrementAiRateLimit`, `AI_DAILY_QUOTA`) |
+| AI failure fallback | Kod/Test | `aiService.js` `fallback`, `ai.test.ts` |
+| AI content has source/version/status | Test | `VocabularyEntry.sourceType/status/contentVersion` |
+| Skill signals (Reading/Listening/Writing/Speaking/Mock) | Kod/Test | `signalService.js`, `engine.test.ts` (`recommendFromMock`) |
+| No per-question excessive requests | Kod | javoblar batch (`answerQueue.js`, ko'pi bilan 60 ta/so'rov) |
+| Heavy jobs async | Kod | factory bo'laklari, reminder/health cron |
+| Main dashboard responsive | — | yuklama/performance o'lchovi yo'q |
+
 ## Third-party repository evaluation (TZ §56–57)
 
 No code was copied from external projects (Vocamon, WordSoul, WordDrop, LexiLearn, WordForge, ISTS). Their licenses were **not
