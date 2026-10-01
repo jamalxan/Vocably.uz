@@ -1,11 +1,13 @@
 'use client';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, RotateCcw, Target } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { fetchAttempt, fetchAttemptResult, gradeWriting } from '../state/attemptsApi';
 import ReviewScreen from '../review/ReviewScreen';
-import ResultAnalytics from '../review/ResultAnalytics';
+// recharts (~100 kB) faqat yakuniy natija ekranida kerak — imtihon sahifasining boshlang'ich bundle'iga kirmasin.
+const ResultAnalytics = dynamic(() => import('../review/ResultAnalytics'), { ssr: false, loading: () => <div className="h-40 rounded-2xl bg-border/50 animate-pulse" aria-hidden="true" /> });
 import { recommendNextPractice } from '@/lib/exam/mockRecommendation';
 import type { AttemptResult, AttemptReviewDetail } from '@/lib/exam/types';
 

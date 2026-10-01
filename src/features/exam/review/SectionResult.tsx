@@ -1,11 +1,13 @@
 'use client';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { fetchAttemptResult } from '../state/attemptsApi';
 import ReviewScreen from './ReviewScreen';
-import ResultAnalytics from './ResultAnalytics';
+// recharts (~100 kB) faqat yakuniy natija ekranida kerak — imtihon sahifasining boshlang'ich bundle'iga kirmasin.
+const ResultAnalytics = dynamic(() => import('./ResultAnalytics'), { ssr: false, loading: () => <div className="h-40 rounded-2xl bg-border/50 animate-pulse" aria-hidden="true" /> });
 import type { AttemptResult, AttemptReviewDetail } from '@/lib/exam/types';
 
 // TZ-vocably-v2.md §19 Faza 1 item 9 — "Natija ekrani (oddiy)". Bu ATAYLAB

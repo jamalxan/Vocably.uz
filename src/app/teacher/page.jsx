@@ -52,7 +52,7 @@ export default function TeacherHomePage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-luxury text-2xl text-ink mb-1">Mening sinflarim</h2>
+        <h1 className="font-luxury text-2xl text-ink mb-1">Mening sinflarim</h1>
         <p className="text-sm text-muted">Sinf yarating, o'quvchi qo'shing va topshiriq bering.</p>
       </div>
 
