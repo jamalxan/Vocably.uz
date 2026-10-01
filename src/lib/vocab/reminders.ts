@@ -14,11 +14,20 @@ export const REMINDER_CONFIG = {
   /** Seriya shu kundan kam bo'lsa "seriyani saqlang" xabari yuborilmaydi. */
   minStreakForNudge: 3,
   minGapDays: { daily: 1, every_2_days: 2, weekly: 7 } as Record<ReminderFrequency, number>,
+  /** Foydalanuvchi mahalliy vaqtida eslatma yuboriladigan standart soat (avval bitta cron soati edi: 20:00 Toshkent). */
+  defaultHour: 20,
+  /** Tanlash mumkin bo'lgan oraliq; shundan keyin (tun) hech qachon yuborilmaydi. */
+  minHour: 8,
+  maxHour: 21,
 };
 
 export interface ReminderPrefs {
   enabled?: boolean;
   frequency?: string;
+  /** Telegram'ga ham yuborish (opt-in, standart: yo'q). */
+  telegram?: boolean;
+  /** Mahalliy soat (8–21), shu soatdan boshlab yuboriladi. */
+  sendHour?: number;
   /** Oxirgi YUBORILGAN eslatma sanasi ('YYYY-MM-DD', foydalanuvchi vaqt mintaqasida). */
   lastSentOn?: string | null;
 }
@@ -38,9 +47,46 @@ export interface Reminder {
   url: string;
 }
 
-export function normalizePrefs(p?: ReminderPrefs | null): { enabled: boolean; frequency: ReminderFrequency; lastSentOn: string | null } {
+export function normalizeSendHour(h: unknown): number {
+  const n = Number(h);
+  return Number.isInteger(n) && n >= REMINDER_CONFIG.minHour && n <= REMINDER_CONFIG.maxHour ? n : REMINDER_CONFIG.defaultHour;
+}
+
+export function normalizePrefs(
+  p?: ReminderPrefs | null
+): { enabled: boolean; frequency: ReminderFrequency; telegram: boolean; sendHour: number; lastSentOn: string | null } {
   const frequency = (REMINDER_FREQUENCIES as readonly string[]).includes(p?.frequency || '') ? (p!.frequency as ReminderFrequency) : 'daily';
-  return { enabled: p?.enabled !== false, frequency, lastSentOn: p?.lastSentOn || null };
+  return { enabled: p?.enabled !== false, frequency, telegram: p?.telegram === true, sendHour: normalizeSendHour(p?.sendHour), lastSentOn: p?.lastSentOn || null };
+}
+
+/** Berilgan vaqt mintaqasidagi soat (0–23). Noto'g'ri mintaqada UTC. */
+export function localHour(now: Date, timeZone: string): number {
+  const fmt = (tz: string) => new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: tz }).format(now);
+  try {
+    return Number(fmt(timeZone));
+  } catch {
+    return Number(fmt('UTC'));
+  }
+}
+
+/**
+ * Hozir foydalanuvchining eslatma vaqtimi? Tanlangan soatdan boshlab (cron kechiksa — "yetib oladi"), lekin kechki
+ * soatlardan keyin emas (tunda bezovta qilmaymiz).
+ */
+export function isReminderHour(prefs: ReminderPrefs | null | undefined, now: Date, timeZone: string): boolean {
+  const h = localHour(now, timeZone);
+  return h >= normalizePrefs(prefs).sendHour && h <= 22;
+}
+
+/** Telegram uchun HTML matn (sendMessage parse_mode=HTML). `baseUrl` — ilovaning bosh manzili (oxirida "/" yo'q). */
+export function formatTelegramReminder(r: Reminder, baseUrl: string): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<b>${esc(r.title)}</b>\n${esc(r.body)}\n\n<a href="${baseUrl}${r.url}">Ochish</a>`;
+}
+
+/** Telegram xatosi foydalanuvchi botni bloklagani/o'chirgani bo'lsa true — shunda kanalni o'chirib qo'yamiz. */
+export function isTelegramBlockedError(message: string): boolean {
+  return /blocked by the user|user is deactivated|chat not found|bot was kicked/i.test(message || '');
 }
 
 export function decideReminder(input: ReminderInput): Reminder | null {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideReminder, normalizePrefs } from './reminders';
+import { decideReminder, formatTelegramReminder, isReminderHour, isTelegramBlockedError, localHour, normalizePrefs, normalizeSendHour } from './reminders';
 
 const TZ = 'Asia/Tashkent';
 const NOW = new Date('2026-10-10T15:00:00Z'); // 20:00 Toshkent -> bugun 2026-10-10
@@ -50,7 +50,47 @@ describe('decideReminder', () => {
 
 describe('normalizePrefs', () => {
   it('standart: yoqilgan, daily; noto‘g‘ri chastota daily ga tushadi', () => {
-    expect(normalizePrefs(null)).toEqual({ enabled: true, frequency: 'daily', lastSentOn: null });
+    expect(normalizePrefs(null)).toEqual({ enabled: true, frequency: 'daily', telegram: false, sendHour: 20, lastSentOn: null });
     expect(normalizePrefs({ frequency: 'hourly' }).frequency).toBe('daily');
+  });
+  it('Telegram faqat aniq true bo‘lsa yoqiladi (opt-in)', () => {
+    expect(normalizePrefs({ telegram: true }).telegram).toBe(true);
+    expect(normalizePrefs({ telegram: 'yes' as any }).telegram).toBe(false);
+  });
+});
+
+describe('eslatma soati (mahalliy vaqt)', () => {
+  const at = (iso: string) => new Date(iso);
+  it('sendHour 8–21 oralig‘idan tashqarida yoki noto‘g‘ri bo‘lsa standart 20', () => {
+    expect(normalizeSendHour(9)).toBe(9);
+    for (const bad of [7, 22, -1, 8.5, 'x', null, undefined]) expect(normalizeSendHour(bad)).toBe(20);
+  });
+  it('localHour vaqt mintaqasini hisobga oladi; noto‘g‘ri mintaqada UTC', () => {
+    expect(localHour(at('2026-10-10T15:00:00Z'), 'Asia/Tashkent')).toBe(20);
+    expect(localHour(at('2026-10-10T15:00:00Z'), 'America/New_York')).toBe(11);
+    expect(localHour(at('2026-10-10T15:00:00Z'), 'Not/AZone')).toBe(15);
+  });
+  it('tanlangan soatdan boshlab yuboriladi (kechiksa yetib oladi), tunda emas', () => {
+    const tz = 'Asia/Tashkent';
+    expect(isReminderHour({ sendHour: 20 }, at('2026-10-10T14:59:00Z'), tz)).toBe(false); // 19:59
+    expect(isReminderHour({ sendHour: 20 }, at('2026-10-10T15:00:00Z'), tz)).toBe(true); // 20:00
+    expect(isReminderHour({ sendHour: 20 }, at('2026-10-10T17:30:00Z'), tz)).toBe(true); // 22:30 — hali oraliqda (h=22)
+    expect(isReminderHour({ sendHour: 9 }, at('2026-10-10T18:00:00Z'), tz)).toBe(false); // 23:00 — tun
+    expect(isReminderHour(null, at('2026-10-10T15:00:00Z'), tz)).toBe(true); // standart 20
+  });
+});
+
+describe('Telegram matni', () => {
+  const r = { kind: 'due' as const, title: '🔔 8 ta <so\'z> & ko‘proq', body: 'Qisqa takrorlash', url: '/app/lugat/takrorlash' };
+  it('HTML belgilarni ekranlaydi va to‘liq havola qo‘shadi', () => {
+    const t = formatTelegramReminder(r, 'https://vocably.uz');
+    expect(t).toContain('&lt;so\'z&gt; &amp; ko‘proq');
+    expect(t).toContain('<a href="https://vocably.uz/app/lugat/takrorlash">');
+  });
+  it('faqat bloklash/o‘chirilgan chat xatolarini aniqlaydi', () => {
+    expect(isTelegramBlockedError('Forbidden: bot was blocked by the user')).toBe(true);
+    expect(isTelegramBlockedError('Bad Request: chat not found')).toBe(true);
+    expect(isTelegramBlockedError('Too Many Requests: retry after 5')).toBe(false);
+    expect(isTelegramBlockedError('timeout')).toBe(false);
   });
 });

@@ -260,6 +260,10 @@ const UserSchema = new mongoose.Schema({
   vocabReminders: {
     enabled: { type: Boolean, default: true },
     frequency: { type: String, enum: ['daily', 'every_2_days', 'weekly'], default: 'daily' },
+    // Telegram nusxasi — faqat foydalanuvchi o'zi yoqsa (opt-in) va bot ulangan bo'lsa (telegramChatId).
+    telegram: { type: Boolean, default: false },
+    // Mahalliy soat (8–21): eslatma shu soatdan boshlab (foydalanuvchi vaqt mintaqasida) yuboriladi.
+    sendHour: { type: Number, default: 20, min: 8, max: 21 },
     lastSentOn: { type: String, default: null },
     lastCheckedOn: { type: String, default: null },
   },

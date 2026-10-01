@@ -2,7 +2,8 @@
 import { Notification, User } from '@/lib/models';
 import { sendPushToUser } from '@/lib/webPush';
 import { localDateWithCutoff } from '@/lib/srs';
-import { decideReminder } from '@/lib/vocab/reminders';
+import { sendMessage } from '@/lib/telegram';
+import { decideReminder, formatTelegramReminder, isReminderHour, isTelegramBlockedError, normalizePrefs } from '@/lib/vocab/reminders';
 import { isDue } from '@/lib/vocab/selection';
 import { vocabEngineFlag } from '@/lib/vocab/access';
 import { flattenUserWords } from './words';
@@ -10,9 +11,25 @@ import { trackVocabEvents } from './ledger';
 
 const BATCH = 100;
 
-/** Bitta foydalanuvchi uchun: qaror -> ilova ichidagi bildirishnoma + push. @returns {Promise<'sent'|'skipped'>} */
-export async function processUserReminder(user, now = new Date()) {
+const appUrl = () => (process.env.APP_URL || 'https://vocably.uz').replace(/\/$/, '');
+
+/** Telegram nusxasi (opt-in). Xato eslatmaning o'zini buzmaydi; bot bloklangan bo'lsa kanal o'chiriladi. */
+async function sendTelegramCopy(user, reminder, sendTelegram) {
+  if (!user.telegramChatId || !normalizePrefs(user.vocabReminders).telegram) return false;
+  try {
+    await sendTelegram(user.telegramChatId, formatTelegramReminder(reminder, appUrl()));
+    return true;
+  } catch (err) {
+    if (isTelegramBlockedError(err?.message)) await User.updateOne({ _id: user._id }, { $set: { 'vocabReminders.telegram': false } }).catch(() => {});
+    console.error('[vocab reminder telegram]', user._id, err?.message);
+    return false;
+  }
+}
+
+/** Bitta foydalanuvchi uchun: qaror -> ilova ichidagi bildirishnoma + push (+ ixtiyoriy Telegram). @returns {Promise<'sent'|'skipped'|'deferred'>} 'deferred' — hali foydalanuvchining soati emas (belgilanmaydi, keyingi cron qayta ko'radi) */
+export async function processUserReminder(user, now = new Date(), { sendTelegram = sendMessage } = {}) {
   const tz = user.timezone || 'Asia/Tashkent';
+  if (!isReminderHour(user.vocabReminders, now, tz)) return 'deferred';
   const today = localDateWithCutoff(now, tz);
   const dueCount = flattenUserWords(user, { now }).filter((w) => isDue(w, now)).length;
   const reminder = decideReminder({
@@ -30,48 +47,62 @@ export async function processUserReminder(user, now = new Date()) {
   if (!claimed.modifiedCount || !reminder) return 'skipped';
   await Notification.create({ userId: user._id, type: 'vocab_reminder', title: reminder.title, body: reminder.body, link: reminder.url });
   await sendPushToUser(user._id, { title: reminder.title, body: reminder.body, url: reminder.url });
-  await trackVocabEvents(user._id, [{ name: 'reminder_sent', payload: { kind: reminder.kind, due: dueCount } }]).catch(() => {});
+  const telegram = await sendTelegramCopy(user, reminder, sendTelegram);
+  await trackVocabEvents(user._id, [{ name: 'reminder_sent', payload: { kind: reminder.kind, due: dueCount, telegram } }]).catch(() => {});
   return 'sent';
 }
 
 /**
- * Hali bugun ko'rib chiqilmagan foydalanuvchilarni batch-batch ishlaydi, vaqt byudjeti tugaguncha.
- * @returns {Promise<{scanned:number, sent:number, skipped:number, done:boolean}>}
+ * Foydalanuvchilarni `_id` kursori bilan batch-batch ishlaydi (soatiga ishlaydigan cron: har bir foydalanuvchi o'z
+ * mahalliy soatida, kuniga bir marta). "Bugun"/"soat" foydalanuvchi vaqt mintaqasida — UTC sanasiga tayanilmaydi
+ * (UTC+10…+14 da mahalliy sana UTC'dan oldinda bo'ladi).
+ * @returns {Promise<{scanned:number, sent:number, skipped:number, deferred:number, done:boolean}>}
  */
-export async function runReminderSweep({ now = new Date(), budgetMs = 240_000, flagEnv = process.env } = {}) {
+export async function runReminderSweep({ now = new Date(), budgetMs = 240_000, flagEnv = process.env, sendTelegram = sendMessage } = {}) {
   const started = Date.now();
-  const stats = { scanned: 0, sent: 0, skipped: 0, done: false };
-  // Filtr UTC sanasi bo'yicha (taxminiy); aniq "bugun" processUserReminder ichida foydalanuvchi vaqt mintaqasida.
-  const todayUtc = localDateWithCutoff(now, 'UTC');
+  const stats = { scanned: 0, sent: 0, skipped: 0, deferred: 0, done: false };
+  let after = null;
   for (;;) {
     if (Date.now() - started > budgetMs) return stats;
     const users = await User.find({
+      ...(after ? { _id: { $gt: after } } : {}),
       'vocabReminders.enabled': { $ne: false },
-      'vocabReminders.lastCheckedOn': { $ne: todayUtc },
       chatBanned: { $ne: true },
       lastReviewDate: { $ne: null },
     })
-      .select('categories reviewStreak lastReviewDate longestReviewStreak streakFreezes timezone vocabReminders role')
+      .sort({ _id: 1 })
+      .select('categories reviewStreak lastReviewDate longestReviewStreak streakFreezes timezone vocabReminders role telegramChatId')
       .limit(BATCH);
     if (!users.length) {
       stats.done = true;
       return stats;
     }
+    after = users[users.length - 1]._id;
     for (const u of users) {
       stats.scanned++;
+      const today = localDateWithCutoff(now, u.timezone || 'Asia/Tashkent');
       try {
+        if (u.vocabReminders?.lastCheckedOn === today) {
+          stats.skipped++; // bugun allaqachon ko'rib chiqilgan (og'ir hisob-kitobsiz)
+          continue;
+        }
+        if (!isReminderHour(u.vocabReminders, now, u.timezone || 'Asia/Tashkent')) {
+          stats.deferred++; // hali o'z soati emas — belgilanmaydi, keyingi cron qayta ko'radi
+          continue;
+        }
         if (!vocabEngineFlag(String(u._id), u.role, flagEnv).enabled) {
-          await User.updateOne({ _id: u._id }, { $set: { 'vocabReminders.lastCheckedOn': todayUtc } });
+          await User.updateOne({ _id: u._id }, { $set: { 'vocabReminders.lastCheckedOn': today } });
           stats.skipped++;
           continue;
         }
-        if ((await processUserReminder(u, now)) === 'sent') stats.sent++;
+        const res = await processUserReminder(u, now, { sendTelegram });
+        if (res === 'sent') stats.sent++;
         else stats.skipped++;
       } catch (err) {
         stats.skipped++;
         console.error('[vocab reminder]', u._id, err?.message);
-        // Xato bo'lgan foydalanuvchi keyingi iteratsiyada qayta tanlanib, siklga tushmasligi uchun belgilab qo'yamiz.
-        await User.updateOne({ _id: u._id }, { $set: { 'vocabReminders.lastCheckedOn': todayUtc } }).catch(() => {});
+        // Xato bo'lgan foydalanuvchi shu kunda qayta urinilib, har soat xato bermasligi uchun belgilab qo'yamiz.
+        await User.updateOne({ _id: u._id }, { $set: { 'vocabReminders.lastCheckedOn': today } }).catch(() => {});
       }
     }
   }

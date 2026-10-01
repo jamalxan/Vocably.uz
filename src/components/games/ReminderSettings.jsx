@@ -69,6 +69,36 @@ export default function ReminderSettings() {
           ))}
         </div>
       )}
+      {prefs.enabled && (
+        <div className="flex items-center justify-between gap-3 mt-3">
+          <label htmlFor="reminder-hour" className="text-sm font-semibold text-ink">
+            Eslatma vaqti <span className="font-normal text-muted">({prefs.timezone})</span>
+          </label>
+          <select
+            id="reminder-hour"
+            value={prefs.sendHour}
+            onChange={(e) => update({ sendHour: Number(e.target.value) })}
+            className="px-3 py-2 min-h-11 md:min-h-0 border border-border rounded-lg text-sm bg-surface text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+          >
+            {Array.from({ length: 14 }, (_, i) => 8 + i).map((h) => (
+              <option key={h} value={h}>
+                {String(h).padStart(2, '0')}:00
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {prefs.enabled && (
+        <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-border">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ink">Telegram&apos;ga ham yuborish</p>
+            <p className="text-xs text-muted mt-0.5">
+              {prefs.telegramLinked ? 'Eslatma botdagi chatingizga ham keladi.' : "Telegram bot ulanmagan — ro'yxatdan o'tishda ishlatilgan bot orqali ulanadi."}
+            </p>
+          </div>
+          <Switch checked={!!prefs.telegram} disabled={!prefs.telegramLinked} onChange={(v) => update({ telegram: v })} aria-label="Telegram eslatmalarini yoqish" />
+        </div>
+      )}
       {error && (
         <p role="alert" className="text-xs text-danger mt-2">
           {error}

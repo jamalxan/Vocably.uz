@@ -75,6 +75,74 @@ describeDb('vocab reminders (integration)', () => {
     expect((await runReminderSweep({ now: NOW })).sent).toBe(0);
   });
 
+  describe('mahalliy soat', () => {
+    it('foydalanuvchining soati kelmaguncha kechiktiriladi (belgilanmaydi), keyin yuboriladi', async () => {
+      const u = await mk({ timezone: 'Asia/Tokyo' }); // NOW da Tokioda 00:00
+      const r1 = await runReminderSweep({ now: NOW });
+      expect(r1).toMatchObject({ sent: 0, deferred: 1, done: true });
+      expect((await User.findById(u._id).lean()).vocabReminders.lastCheckedOn).toBeFalsy();
+      const r2 = await runReminderSweep({ now: new Date('2026-10-10T11:00:00Z') }); // Tokioda 20:00
+      expect(r2.sent).toBe(1);
+    });
+
+    it('sendHour sozlamasi hurmat qilinadi: erta soat tanlansa kechqurun yetib oladi, tunda yubormaydi', async () => {
+      await mk({ vocabReminders: { sendHour: 9 } });
+      expect((await runReminderSweep({ now: new Date('2026-10-10T18:00:00Z') })).deferred).toBe(1); // Toshkentda 23:00
+      expect((await runReminderSweep({ now: NOW })).sent).toBe(1); // 20:00 >= 9
+    });
+
+    it('UTC+14 foydalanuvchi har kuni qabul qiladi (UTC sanasidan oldinda bo‘lgan mahalliy sana)', async () => {
+      const u = await mk({ timezone: 'Pacific/Kiritimati', vocabReminders: { sendHour: 8 } });
+      const day1 = new Date('2026-10-09T18:30:00Z'); // Kiritimatida 10-oktabr 08:30
+      const day2 = new Date('2026-10-10T18:30:00Z'); // 11-oktabr 08:30 (UTC sanasi = 1-kun mahalliy sanasi)
+      expect((await runReminderSweep({ now: day1 })).sent).toBe(1);
+      expect((await runReminderSweep({ now: day1 })).sent).toBe(0); // takroriy yo'q
+      expect((await runReminderSweep({ now: day2 })).sent).toBe(1); // ertasi kuni yana yuboriladi
+      expect(await Notification.countDocuments({ userId: u._id })).toBe(2);
+    });
+  });
+
+  describe('Telegram kanali', () => {
+    it('opt-in va bot ulangan bo‘lsa yuboradi; takroriy ishga tushirishda ikkinchi marta yubormaydi', async () => {
+      await mk({ telegramChatId: 777, vocabReminders: { telegram: true } });
+      const calls: Array<[number, string]> = [];
+      const sendTelegram = async (id: number, text: string) => void calls.push([id, text]);
+      expect((await runReminderSweep({ now: NOW, sendTelegram })).sent).toBe(1);
+      expect(calls).toHaveLength(1);
+      expect(calls[0][0]).toBe(777);
+      expect(calls[0][1]).toContain('<b>');
+      await runReminderSweep({ now: NOW, sendTelegram });
+      expect(calls).toHaveLength(1);
+    });
+
+    it('standart holatda (opt-in qilinmagan) yoki bot ulanmagan bo‘lsa Telegram’ga yubormaydi, ilova ichidagi eslatma baribir ketadi', async () => {
+      await mk({ telegramChatId: 777 }); // telegram: false (standart)
+      await mk({ vocabReminders: { telegram: true } }); // chat id yo'q
+      const sendTelegram = async () => {
+        throw new Error('chaqirilmasligi kerak');
+      };
+      const r = await runReminderSweep({ now: NOW, sendTelegram });
+      expect(r.sent).toBe(2);
+      expect(await Notification.countDocuments()).toBe(2);
+    });
+
+    it('Telegram xatosi eslatmani buzmaydi; bot bloklangan bo‘lsa kanal o‘chiriladi', async () => {
+      const u = await mk({ telegramChatId: 777, vocabReminders: { telegram: true } });
+      const sendTelegram = async () => {
+        throw new Error('Forbidden: bot was blocked by the user');
+      };
+      expect((await runReminderSweep({ now: NOW, sendTelegram })).sent).toBe(1);
+      expect(await Notification.countDocuments({ userId: u._id })).toBe(1);
+      expect((await User.findById(u._id).lean()).vocabReminders.telegram).toBe(false);
+    });
+
+    it('vaqtinchalik xatoda (tarmoq) kanal o‘chirilmaydi', async () => {
+      const u = await mk({ telegramChatId: 777, vocabReminders: { telegram: true } });
+      await runReminderSweep({ now: NOW, sendTelegram: async () => { throw new Error('timeout'); } });
+      expect((await User.findById(u._id).lean()).vocabReminders.telegram).toBe(true);
+    });
+  });
+
   it('feature flag o‘chiq bo‘lsa yubormaydi', async () => {
     await mk();
     const r = await runReminderSweep({ now: NOW, flagEnv: { VOCAB_ENGINE_ENABLED: 'false' } as any });
