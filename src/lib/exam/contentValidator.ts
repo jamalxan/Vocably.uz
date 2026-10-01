@@ -30,16 +30,23 @@ function checkContiguousNumbering(sectionLabel: string, questions: Question[], i
     }
     seen.add(n);
   }
-  for (let i = 0; i < numbers.length; i++) {
-    const expected = i + 1;
-    if (numbers[i] !== expected) {
+  // "Choose TWO letters" (Q21-22): dvigatel butun to'plamni BITTA savol deb baholaydi
+  // (`isSetCorrect`), uning raqami — to'plamning birinchi raqami, qolgan raqamlar
+  // (22) ataylab yo'q. Shuning uchun `selectCount` ta raqam "band" hisoblanadi.
+  const selectCountByNumber = new Map(questions.map((q) => [q.number, q.selectCount || 1] as const));
+  let expected = 1;
+  for (const n of numbers) {
+    if (n !== expected) {
       issues.push({
         severity: 'error',
         path: sectionLabel,
-        message: `Savol raqamlari uzilishsiz emas — ${expected} kutilgan edi, ${numbers[i]} topildi`,
+        message: `Savol raqamlari uzilishsiz emas — ${expected} kutilgan edi, ${n} topildi`,
       });
       break; // birinchi uzilishdan keyin qolganlari ham "noto'g'ri" bo'ladi — bitta xabar yetarli
     }
+    const sc = selectCountByNumber.get(n) || 1;
+    // Faqat keyingi raqam haqiqatan ham to'plam o'lchamicha tashlab ketilgan bo'lsa.
+    expected = sc > 1 && !seen.has(n + 1) && seen.has(n + sc) ? n + sc : n + 1;
   }
 }
 

@@ -62,6 +62,24 @@ describe('validateTest', () => {
     expect(issues.some((i) => i.message.includes('uzilishsiz emas'))).toBe(true);
   });
 
+  it('accepts a "choose TWO" set occupying two numbers (Q2-3 as one question)', () => {
+    const test = baseTest();
+    const g = tfngGroup([1, 2, 4]);
+    g.questions[1].selectCount = 2; // Q2 qamrab oladi 2-3; 3 ataylab yo'q
+    g.questions[2].number = 4;
+    test.sections!.reading!.passages[0].questionGroups = [g];
+    // 3 raqami "band" — uzilish emas, lekin 3 haqiqatan mavjud bo'lmasligi shart
+    expect(validateTest(test).some((i) => i.message.includes('uzilishsiz emas'))).toBe(false);
+  });
+
+  it('still flags a real gap next to a selectCount>1 question', () => {
+    const test = baseTest();
+    const g = tfngGroup([1, 2, 5]);
+    g.questions[1].selectCount = 2;
+    test.sections!.reading!.passages[0].questionGroups = [g];
+    expect(validateTest(test).some((i) => i.message.includes('uzilishsiz emas'))).toBe(true);
+  });
+
   it('flags duplicate question numbers', () => {
     const test = baseTest();
     test.sections!.reading!.passages[0].questionGroups = [tfngGroup([1, 2, 2])];
