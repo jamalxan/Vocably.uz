@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
+import { WORD_CAP_MESSAGE, wordRoom } from '@/lib/vocab/wordCap';
 import { NextResponse } from 'next/server';
 
 export async function POST(req, { params }) {
@@ -34,6 +35,10 @@ export async function POST(req, { params }) {
     if (cleanWords.length === 0) {
       return NextResponse.json({ error: "Qo'shish uchun so'z topilmadi" }, { status: 400 });
     }
+
+    const totalNow = user.categories.reduce((n, c) => n + (c.words?.length || 0), 0);
+    const cap = wordRoom(totalNow, cleanWords.length);
+    if (!cap.fits) return NextResponse.json({ error: WORD_CAP_MESSAGE(), code: 'word_limit', room: cap.room }, { status: 409 });
 
     category.words.push(...cleanWords);
 

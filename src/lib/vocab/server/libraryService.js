@@ -13,6 +13,7 @@ import {
   toUserWord,
 } from '@/lib/vocab/library';
 import { ServiceError } from './sessionService';
+import { assertWordRoom } from './wordCap';
 
 const MAX_VERSIONS = 20;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -323,6 +324,7 @@ export async function addEntriesToUser(userId, { entryIds, categoryId = undefine
   const skipped = entries.length - fresh.length;
   if (!fresh.length) return { added: 0, skipped, categoryId: null };
 
+  await assertWordRoom(userId, fresh.length);
   const words = fresh.map((e) => toUserWord(e));
   let target = null;
   if (categoryId) {

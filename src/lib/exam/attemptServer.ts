@@ -5,6 +5,7 @@
 // bilan ishlaydi (`@/lib/models`) — eski `ExamSession`ga TEGMAYDI.
 import crypto from 'crypto';
 import { ExamAttempt as ExamAttemptModel, ExamTest as ExamTestModel, ExamTestVersion as ExamTestVersionModel, User as UserModel } from '@/lib/models';
+import { wordRoom } from '@/lib/vocab/wordCap';
 import { isCorrect, isSetCorrect, listeningBand, readingBand, officialStyleOverallBand, roundOverall } from './scoring';
 import { sanitizeForExam } from './sanitize';
 import { mistakeVocabulary } from './mistakes';
@@ -438,7 +439,9 @@ async function autoAddErrorVocabulary(userId: string, items: { word: string; ski
       if (w?.word) existing.add(String(w.word).trim().toLowerCase());
     }
   }
-  const toAdd = wanted.filter((w) => !existing.has(w));
+  // So'z tavani (wordCap.ts): bu avtomatik qo'shish — sig'magani jimgina tashlanadi (imtihon oqimi buzilmasin).
+  const total = (user.categories || []).reduce((n: number, c: any) => n + (c.words?.length || 0), 0);
+  const toAdd = wanted.filter((w) => !existing.has(w)).slice(0, wordRoom(total, 0).room);
   if (toAdd.length === 0) return;
 
   let category = (user.categories || []).find((c: any) => c.name === ERROR_VOCAB_CATEGORY_NAME);

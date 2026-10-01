@@ -3,6 +3,8 @@ import { User, XpEvent } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { XP } from '@/lib/gamification';
 import { serverError } from '@/lib/apiError';
+import { WORD_CAP_MESSAGE } from '@/lib/vocab/wordCap';
+import { checkWordRoom } from '@/lib/vocab/server/wordCap';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
@@ -28,6 +30,9 @@ export async function POST(req) {
     if (cleanWords.length === 0) {
       return NextResponse.json({ error: "Qo'shish uchun so'z topilmadi" }, { status: 400 });
     }
+
+    const cap = await checkWordRoom(userId, cleanWords.length);
+    if (!cap.fits) return NextResponse.json({ error: WORD_CAP_MESSAGE(), code: 'word_limit', room: cap.room }, { status: 409 });
 
     const result = await User.updateOne(
       { _id: userId, 'categories._id': categoryId },

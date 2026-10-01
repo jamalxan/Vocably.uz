@@ -13,6 +13,7 @@ import {
   transitionEntry,
   updateEntry,
 } from './libraryService';
+import { countUserWords } from './wordCap';
 
 const User: any = Models.User;
 const VocabularyEntry: any = Models.VocabularyEntry;
@@ -127,6 +128,28 @@ describeDb('vocabulary library (integration)', () => {
     expect(u.categories[0].words[0].enrichment.cefr).toBe('B2');
     expect((await searchPublished({ q: 'sign' }, String(user._id))).items[0].owned).toBe(true);
   });
+
+  it('so‘z tavani (8 000): kutubxonadan qo‘shish tavanda 409 word_limit, hech narsa yozilmaydi', async () => {
+    const mk = async (n: number) => {
+      const e = await createEntry(full(`cap${n}`), admin);
+      await transitionEntry(e.id, 'APPROVED', admin);
+      await transitionEntry(e.id, 'PUBLISHED', admin);
+      return e.id;
+    };
+    const [e1, e2] = [await mk(1), await mk(2)];
+    const bulk = (n: number) => Array.from({ length: n }, (_, i) => ({ word: `bulk${i}`, syns: ['t'] }));
+
+    // 7 999 ta bor -> 1 ta sig'adi
+    const user = await User.create({ phone: '+998901112233', name: 'T', password: 'x', categories: [{ name: 'c', words: bulk(7999) }] });
+    expect(await countUserWords(String(user._id))).toBe(7999);
+    await expect(addEntriesToUser(String(user._id), { entryIds: [e1, e2] })).rejects.toMatchObject({ status: 409, code: 'word_limit', extra: { room: 1 } });
+    expect(await countUserWords(String(user._id))).toBe(7999); // qisman qo'shilmadi
+
+    const ok = await addEntriesToUser(String(user._id), { entryIds: [e1] });
+    expect(ok).toMatchObject({ added: 1 });
+    expect(await countUserWords(String(user._id))).toBe(8000);
+    await expect(addEntriesToUser(String(user._id), { entryIds: [e2] })).rejects.toMatchObject({ code: 'word_limit' });
+  }, 60_000);
 
   it('export CSV barcha yozuvlarni beradi', async () => {
     await createEntry(full('one'), admin);
