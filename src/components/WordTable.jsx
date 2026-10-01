@@ -120,9 +120,9 @@ export default function WordTable() {
     setAddError('');
     setAdding(true);
     try {
-      const ok = await handleAddWord(newWord, newSyns);
+      const { ok, error } = await handleAddWord(newWord, newSyns);
       if (!ok) {
-        setAddError("So'z saqlanmadi, qayta urinib ko'ring");
+        setAddError(error || "So'z saqlanmadi, qayta urinib ko'ring");
         return;
       }
       setNewWord('');

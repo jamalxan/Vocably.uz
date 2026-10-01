@@ -121,7 +121,13 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
         method: 'POST',
         body: JSON.stringify({ categoryId, words: [{ word, syns }] }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        // So'z tavani (409 word_limit) — sababini ko'rsatamiz; qolgan xatolar umumiy xabar bilan.
+        const data = await res.json().catch(() => null);
+        setError(data?.code === 'word_limit' && data.error ? data.error : "Qo'shib bo'lmadi, qayta urinib ko'ring");
+        setSubmitting(false);
+        return;
+      }
       setDone(true);
       onAdded?.();
       setTimeout(onClose, 900);

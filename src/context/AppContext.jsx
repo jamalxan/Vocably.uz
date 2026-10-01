@@ -411,16 +411,17 @@ export function AppProvider({ children }) {
   // qayta yozardi (`syncData`) — katta hujjatni har safar to'liq yuborish/saqlash, va ikkita
   // ochiq tab bir vaqtda yozsa biri ikkinchisini "yutib" ketishi mumkin edi. Endi allaqachon
   // mavjud, indekslangan `$push` endpointidan (`/api/words/add`, AI oqimi ham shuni ishlatadi)
-  // foydalanadi — atomik, faqat qo'shilayotgan so'zni yozadi. `false` — bo'sh maydon YOKI
-  // saqlash muvaffaqiyatsiz bo'ldi (chaqiruvchi formani tozalamasligi kerak).
+  // foydalanadi — atomik, faqat qo'shilayotgan so'zni yozadi. `{ ok: false }` — bo'sh maydon YOKI
+  // saqlash muvaffaqiyatsiz bo'ldi (chaqiruvchi formani tozalamasligi kerak); `error` — foydalanuvchiga
+  // ko'rsatish mumkin bo'lgan server xabari (masalan, so'z tavani: 409 word_limit), bo'lmasa umumiy xato.
   const handleAddWord = useCallback(
     async (word, synsStr) => {
       const cleanWord = (word || '').trim();
       const synsArray = (synsStr || '').split(',').map((s) => s.trim()).filter(Boolean);
-      if (!cleanWord || synsArray.length === 0) return false;
+      if (!cleanWord || synsArray.length === 0) return { ok: false };
 
       const cat = categories[activeCatIndex];
-      if (!cat?._id) return false;
+      if (!cat?._id) return { ok: false };
 
       try {
         const res = await fetch('/api/words/add', {
@@ -428,14 +429,17 @@ export function AppProvider({ children }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ categoryId: cat._id, words: [{ word: cleanWord, syns: synsArray }] }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          return { ok: false, error: data?.code === 'word_limit' ? data.error : undefined };
+        }
       } catch (err) {
         console.error("So'z qo'shishda xatolik", err);
-        return false;
+        return { ok: false };
       } finally {
         await refreshCategories();
       }
-      return true;
+      return { ok: true };
     },
     [categories, activeCatIndex, refreshCategories]
   );
