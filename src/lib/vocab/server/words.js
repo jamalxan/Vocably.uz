@@ -50,6 +50,7 @@ export function toSelectableWord(word, category, now = new Date()) {
     collocations: (e.collocations || []).filter(Boolean),
     pos: e.pos || '',
     cefr: e.cefr || '',
+    imageUrl: e.imageUrl || '',
     // SRS / tanlov signallari
     nextReview: stats.nextReview || null,
     srsState: stats.srsState || 'new',

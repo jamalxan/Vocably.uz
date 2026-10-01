@@ -151,8 +151,9 @@ export function ChoiceQuestion({ question, result, locked, onAnswer }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [question, choose]);
 
+  const imageOptions = (question.options || []).some((o) => o.imageUrl);
   return (
-    <div role="radiogroup" aria-label="Javob variantlari" className="grid gap-2.5">
+    <div role="radiogroup" aria-label="Javob variantlari" className={imageOptions ? 'grid grid-cols-2 gap-2.5' : 'grid gap-2.5'}>
       {(question.options || []).map((opt, i) => {
         const isCorrectOpt = !!result && opt.text === result.correctDisplay;
         const isSelected = picked === opt.id;
@@ -170,7 +171,12 @@ export function ChoiceQuestion({ question, result, locked, onAnswer }) {
             <span aria-hidden="true" className="w-6 h-6 rounded-md border border-border text-xs font-semibold flex items-center justify-center text-muted flex-shrink-0">
               {i + 1}
             </span>
-            <span className="flex-1 min-w-0 break-words">{opt.text}</span>
+            {opt.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={opt.imageUrl} alt={opt.text} loading="lazy" className="flex-1 min-w-0 h-28 object-contain rounded-lg" />
+            ) : (
+              <span className="flex-1 min-w-0 break-words">{opt.text}</span>
+            )}
             {result && isCorrectOpt && <Check size={16} aria-label="To'g'ri javob" />}
             {result && isSelected && !isCorrectOpt && <X size={16} aria-label="Sizning javobingiz" />}
           </button>

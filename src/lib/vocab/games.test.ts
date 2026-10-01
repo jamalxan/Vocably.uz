@@ -113,6 +113,37 @@ describe('savol generatsiyasi', () => {
     }
   });
 
+  it("image_to_word: savolda rasm bor, variantlar so'z, to'g'ri variant so'zning o'zi", () => {
+    const s = build('image_to_word');
+    expect(s.questions.length).toBeGreaterThan(0);
+    for (const q of s.questions) {
+      const w = SAMPLE_WORDS.find((x) => x.wordId === q.wordId)!;
+      expect(q.kind).toBe('image_word');
+      expect(q.imageUrl).toBe(w.imageUrl);
+      expect(q.options!.find((o) => o.id === q.answer)!.text).toBe(w.word);
+    }
+  });
+
+  it("word_to_image: variantlar rasm, to'g'ri variant so'zning rasmi, rasmlar noyob", () => {
+    const s = build('word_to_image');
+    expect(s.questions.length).toBeGreaterThan(0);
+    for (const q of s.questions) {
+      const w = SAMPLE_WORDS.find((x) => x.wordId === q.wordId)!;
+      expect(q.kind).toBe('word_image');
+      const urls = q.options!.map((o) => o.imageUrl);
+      expect(new Set(urls).size).toBe(urls.length);
+      expect(q.options!.find((o) => o.id === q.answer)!.imageUrl).toBe(w.imageUrl);
+      expect(q.options!.find((o) => o.id === q.answer)!.text).toBe(q.correctDisplay);
+    }
+  });
+
+  it("rasm o'yinlari: kamida 4 ta rasmli so'z talab qilinadi", () => {
+    expect(availabilityFor(getGame('image_to_word')!, SAMPLE_WORDS).available).toBe(true);
+    expect(availabilityFor(getGame('word_to_image')!, BARE_WORDS).available).toBe(false);
+    const three = SAMPLE_WORDS.map((w, i) => (i < 3 ? w : { ...w, imageUrl: '' }));
+    expect(availabilityFor(getGame('image_to_word')!, three).available).toBe(false);
+  });
+
   it("mc_meaning: to'g'ri javob so'zning o'z tarjimalaridan, distraktorlar boshqa so'zlarniki", () => {
     const s = build('multiple_choice', 'hard');
     for (const q of s.questions.filter((x) => x.kind === 'mc_meaning')) {

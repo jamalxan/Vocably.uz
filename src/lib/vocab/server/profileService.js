@@ -10,7 +10,7 @@ import { buildDailyPlan, normalizeMinutes } from '@/lib/vocab/dailyPlan';
 import { WEAK_REASON_LABELS, analyzeWeakness, buildSkillProfile } from '@/lib/vocab/weakness';
 import { levelInfo } from '@/lib/vocab/xp';
 import { isDue, isNewWord, overdueDays } from '@/lib/vocab/selection';
-import { estimateVocabularyCefr } from '@/lib/vocab/recommendations';
+import { buildCefrPath, estimateVocabularyCefr, IELTS_PATH } from '@/lib/vocab/recommendations';
 import { flattenUserWords, statsToInput } from './words';
 import { getQuestViews } from './questService';
 import { tierOf } from './sessionService';
@@ -119,6 +119,8 @@ export async function buildGamificationProfile(user, { now = new Date() } = {}) 
     skillProfile: profile,
     plan,
     vocabularyCefr: estimateVocabularyCefr(words.map((w) => ({ cefr: w.cefr, mastery: w.mastery }))),
+    cefrPath: buildCefrPath(words.map((w) => ({ cefr: w.cefr, mastery: w.mastery }))),
+    ieltsPath: IELTS_PATH,
     targetBand: user.targetBand || null,
     gameStats: {
       gamesCompleted: user.gameStats?.gamesCompleted || 0,

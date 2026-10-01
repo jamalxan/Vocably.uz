@@ -69,6 +69,34 @@ export function labelOf(skill: IeltsSkill): string {
 export const CEFR_PATH = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
 export const IELTS_PATH = [4.0, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0] as const;
 
+export interface CefrStep {
+  level: (typeof CEFR_PATH)[number];
+  total: number;
+  /** mastery >= 40 (estimateVocabularyCefr bilan bir xil chegara). */
+  learned: number;
+  status: 'reached' | 'current' | 'upcoming';
+}
+
+/**
+ * CEFR yo'li (TZ §46): har daraja bo'yicha so'zlar soni va o'zlashtirilgani. `current` — baholangan daraja
+ * (`estimateVocabularyCefr`); undan pastlari `reached`, yuqorilari `upcoming`. Baholash uchun ma'lumot kam bo'lsa
+ * hech biri `current` emas. IELTS band bilan ARALASHTIRILMAYDI — ular alohida ko'rsatkich.
+ */
+export function buildCefrPath(words: Array<{ cefr?: string; mastery?: number }>): { steps: CefrStep[]; current: string | null; unlabeled: number } {
+  const current = estimateVocabularyCefr(words);
+  const curIdx = current ? CEFR_PATH.indexOf(current as (typeof CEFR_PATH)[number]) : -1;
+  const steps: CefrStep[] = CEFR_PATH.map((level, i) => {
+    const inLevel = words.filter((w) => w.cefr === level);
+    return {
+      level,
+      total: inLevel.length,
+      learned: inLevel.filter((w) => (w.mastery || 0) >= 40).length,
+      status: curIdx < 0 ? 'upcoming' : i < curIdx ? 'reached' : i === curIdx ? 'current' : 'upcoming',
+    };
+  });
+  return { steps, current, unlabeled: words.filter((w) => !CEFR_PATH.includes(w.cefr as (typeof CEFR_PATH)[number])).length };
+}
+
 /** So'zlarning CEFR taqsimotidan foydalanuvchining lug'at darajasini baholaydi (kamida 10 ta so'z). */
 export function estimateVocabularyCefr(words: Array<{ cefr?: string; mastery?: number }>): string | null {
   const rated = words.filter((w) => w.cefr && (w.mastery || 0) >= 40);

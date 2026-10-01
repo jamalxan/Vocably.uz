@@ -8,7 +8,7 @@ const W = (
   extra: Partial<GameWord> = {}
 ): GameWord => ({ wordId: `w${i}`, categoryId: 'c1', word, translations, ...extra });
 
-export const SAMPLE_WORDS: GameWord[] = [
+const BASE_WORDS: GameWord[] = [
   W(1, 'maintain', ['saqlab qolmoq', "qo'llab-quvvatlamoq"], {
     definitionEn: 'to keep something in good condition',
     examples: [{ en: 'You must maintain a healthy diet every day.', uz: "Har kuni sog'lom ovqatlanishni davom ettirishingiz kerak." }],
@@ -82,6 +82,9 @@ export const SAMPLE_WORDS: GameWord[] = [
     antonyms: ['dull'],
   }),
 ];
+
+/** Rasm o'yinlari uchun har so'zga alohida rasm manzili beriladi. */
+export const SAMPLE_WORDS: GameWord[] = BASE_WORDS.map((w) => ({ ...w, imageUrl: `/img/${w.word}.png` }));
 
 /** Faqat tarjima — boyitilmagan so'zlar (ta'rif/misol/sinonimsiz). */
 export const BARE_WORDS: GameWord[] = ['apple', 'river', 'window', 'garden', 'bridge', 'candle'].map((w, i) =>

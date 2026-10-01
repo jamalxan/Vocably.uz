@@ -8,7 +8,7 @@ import { buildSections, summarizeSections, slugify, uniqueSlug, attachAudioToPar
 import { listListeningCandidates } from '@/lib/contentAgent/agent/candidates';
 import { scoreTranscriptAgainstPart, buildAudioVerifyPrompt, decideAudioAttachment, AUDIO_VERIFY_SCHEMA } from '@/lib/contentAgent/agent/audioMatch';
 import { validateTest, hasBlockingErrors, isMockEligible } from '@/lib/exam/contentValidator';
-import { syncValidationIssuesToReviewQueue } from '@/lib/exam/reviewSync';
+import { syncValidationIssuesToReviewQueue, syncParseReviewToQueue } from '@/lib/exam/reviewSync';
 import { buildImageUrl } from '@/lib/exam/imageStorage';
 import { NextResponse } from 'next/server';
 
@@ -125,6 +125,9 @@ async function ingestOneTest({ attachment, testEntry, bookTitle, adminId, req, d
   });
 
   await syncValidationIssuesToReviewQueue(String(test._id), issues);
+  // Parse bosqichidagi "noaniq" guruhlar (noma'lum tur, javob kaliti yo'q) —
+  // avval faqat ogohlantirish matnida qolardi, navbatga tushmasdi.
+  await syncParseReviewToQueue(String(test._id), needsReview);
   await writeAuditLog(req, adminId, 'agent.test.create', 'ExamTest', test._id, { slug, title, fromAttachment: String(attachment._id) });
 
   const blockers = issues.filter((i) => i.severity === 'error').length;

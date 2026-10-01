@@ -12,6 +12,8 @@ import {
   Gamepad2,
   Grid,
   Headphones,
+  Image as ImageIcon,
+  Images,
   Link2,
   ListChecks,
   Lock,
@@ -29,11 +31,12 @@ import Badge from '@/components/ui/Badge';
 import Button, { buttonClasses } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import CoachCard from './CoachCard';
+import CefrPathCard from './CefrPathCard';
 import DiagnosticCard from './DiagnosticCard';
 import ReminderSettings from './ReminderSettings';
 import { getGames, getGamificationProfile, savePlanMinutes } from './api';
 
-const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown };
+const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown, Image: ImageIcon, Images };
 const PLAN_ICON = { review: ListChecks, weak: Target, new: Sparkles, game: Gamepad2, listening: Ear, writing: PenSquare, speaking: Headphones };
 const MINUTE_OPTIONS = [5, 10, 20, 30, 45];
 const STATUS_LABELS = { new: 'Yangi', learning: "O'rganilmoqda", familiar: 'Tanish', strong: 'Kuchli', advanced: "Ilg'or", mastered: "O'zlashtirilgan" };
@@ -229,6 +232,8 @@ export default function GamesHub() {
           ))}
         </dl>
       </section>
+
+      <CefrPathCard cefrPath={profile.cefrPath} ieltsPath={profile.ieltsPath} targetBand={profile.targetBand} />
 
       {/* --- Bugungi reja --- */}
       <section className="bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card" aria-labelledby="hub-plan">

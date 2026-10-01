@@ -169,6 +169,8 @@ export const GAME_SKILL: Record<string, keyof SkillProfile> = {
   word_drop: 'spelling',
   fill_gap: 'context',
   sentence_builder: 'context',
+  image_to_word: 'recall',
+  word_to_image: 'recall',
   vocabulary_boss: 'recall',
 };
 

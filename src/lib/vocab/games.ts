@@ -25,6 +25,8 @@ export interface GameWord {
   collocations?: string[];
   pos?: string;
   cefr?: string;
+  /** Kutubxonadagi rasm (faqat image_to_word / word_to_image uchun). */
+  imageUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,6 +44,8 @@ export type GameKey =
   | 'definition_challenge'
   | 'synonym_antonym'
   | 'speed_challenge'
+  | 'image_to_word'
+  | 'word_to_image'
   | 'vocabulary_boss';
 
 export type Priority = 'P0' | 'P1' | 'P2';
@@ -246,6 +250,36 @@ export const GAME_CATALOG: GameDefinition[] = [
     needsAudio: false,
   },
   {
+    key: 'image_to_word',
+    title: "Rasm → so'z",
+    description: "Rasmga mos inglizcha so'zni toping",
+    priority: 'P2',
+    minTier: 'standard',
+    icon: 'Image',
+    skill: 'recall',
+    minWords: 4,
+    questionCount: cnt(6, 8, 10, 12),
+    timePerQuestionSec: tm(null, null, 20, 12),
+    lives: null,
+    instantFeedback: true,
+    needsAudio: false,
+  },
+  {
+    key: 'word_to_image',
+    title: "So'z → rasm",
+    description: "So'zga mos rasmni tanlang",
+    priority: 'P2',
+    minTier: 'standard',
+    icon: 'Images',
+    skill: 'recall',
+    minWords: 4,
+    questionCount: cnt(6, 8, 10, 12),
+    timePerQuestionSec: tm(null, null, 20, 12),
+    lives: null,
+    instantFeedback: true,
+    needsAudio: false,
+  },
+  {
     key: 'vocabulary_boss',
     title: 'Vocabulary Boss',
     description: "Haftalik keng qamrovli sinov: ma'no, tinglash, imlo, kontekst, sinonim",
@@ -287,13 +321,17 @@ export type QuestionKind =
   | 'sentence_build'
   | 'match_pairs'
   | 'memory_pairs'
-  | 'spell_drop';
+  | 'spell_drop'
+  | 'image_word'
+  | 'word_image';
 
 export type InputType = 'choice' | 'typed' | 'arrange' | 'match';
 
 export interface QuestionOption {
   id: string;
   text: string;
+  /** word_image: variant rasm (matn o'rniga). */
+  imageUrl?: string;
 }
 
 export interface GameQuestion {
@@ -308,6 +346,8 @@ export interface GameQuestion {
   /** Tahlil/xatolar ro'yxati uchun (klientga ham beriladi). */
   word: string;
   prompt: string;
+  /** image_word: savol rasmi. */
+  imageUrl?: string;
   /** TTS orqali o'qiladigan matn (audio savollar). */
   audioText?: string;
   hint?: string;
@@ -504,6 +544,49 @@ function genMcWord(ctx: Ctx): GameQuestion | null {
     options,
     answer: answerId,
     correctDisplay: word.word,
+  };
+}
+
+/** Rasm -> so'z: rasm ko'rsatiladi, to'g'ri inglizcha so'zni tanlash kerak. */
+function genImageToWord(ctx: Ctx): GameQuestion | null {
+  const { word, pool, rand, difficulty } = ctx;
+  const img = (word.imageUrl || '').trim();
+  if (!img) return null;
+  const others = pool.filter((p) => p.wordId !== word.wordId).map((p) => p.word);
+  const dis = pickDistractors([word.word], others, optionCountFor(difficulty) - 1, rand, difficulty === 'hard' || difficulty === 'expert', word.word);
+  if (dis.length < 2) return null;
+  const { options, answerId } = optionsFrom(word.word, dis, rand);
+  return {
+    ...base(ctx, 'image_word', 'choice', 'recall'),
+    prompt: "Bu rasm qaysi so'zni bildiradi?",
+    imageUrl: img,
+    options,
+    answer: answerId,
+    correctDisplay: word.word,
+  };
+}
+
+/** So'z -> rasm: variantlar rasm. Variant matni ("Rasm N") ekran o'qish dasturlari uchun va to'g'ri javobni ko'rsatish uchun. */
+function genWordToImage(ctx: Ctx): GameQuestion | null {
+  const { word, pool, rand, difficulty } = ctx;
+  const img = (word.imageUrl || '').trim();
+  if (!img) return null;
+  const cands = uniqueBy(
+    pool.filter((p) => p.wordId !== word.wordId && (p.imageUrl || '').trim() && (p.imageUrl || '').trim() !== img),
+    (p) => (p.imageUrl || '').trim()
+  );
+  if (cands.length < 2) return null;
+  const dis = sample(cands, Math.min(optionCountFor(difficulty) - 1, cands.length), rand);
+  const all = shuffle([{ url: img, ok: true }, ...dis.map((d) => ({ url: (d.imageUrl || '').trim(), ok: false }))], rand);
+  const options = all.map((o, i) => ({ id: `o${i + 1}`, text: `Rasm ${i + 1}`, imageUrl: o.url }));
+  const correct = options[all.findIndex((o) => o.ok)];
+  return {
+    ...base(ctx, 'word_image', 'choice', 'recall'),
+    prompt: word.word,
+    audioText: word.word,
+    options,
+    answer: correct.id,
+    correctDisplay: correct.text,
   };
 }
 
@@ -709,6 +792,8 @@ const SIMPLE_GENERATORS: Record<string, Generator[]> = {
   listen_type: [genListenType],
   word_drop: [genSpellDrop],
   sentence_builder: [genSentenceBuild],
+  image_to_word: [genImageToWord],
+  word_to_image: [genWordToImage],
 };
 
 /** multiple_choice: easy → "so'zni tanlang" (mc_word), keyin ma'noni tanlash (TZ §8). */
@@ -844,6 +929,10 @@ export function availabilityFor(def: GameDefinition, words: GameWord[]): Availab
   }
   if (def.key === 'synonym_antonym' && words.filter((w) => (w.synonymsEn?.length || 0) + (w.antonyms?.length || 0) > 0).length < 4) {
     return { available: false, reason: "Kamida 4 ta so'zda sinonim/antonim bo'lishi kerak (AI bilan boyiting)" };
+  }
+  if (def.key === 'image_to_word' || def.key === 'word_to_image') {
+    const distinct = new Set(words.filter((w) => (w.imageUrl || '').trim()).map((w) => (w.imageUrl || '').trim()));
+    if (distinct.size < 4) return { available: false, reason: "Kamida 4 ta so'zda rasm bo'lishi kerak (kutubxonadagi rasmli so'zlarni qo'shing)" };
   }
   if (def.key === 'sentence_builder' && words.filter((w) => (w.examples || []).some((e) => tokenizeSentence(e.en || '').length >= 4)).length < 3) {
     return { available: false, reason: "Kamida 3 ta so'zda misol gap bo'lishi kerak" };

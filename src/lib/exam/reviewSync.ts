@@ -30,6 +30,63 @@ function sectionKeyFromPath(path: string): 'listening' | 'reading' | 'writing' |
   return first && SECTION_KEYS.has(first) ? (first as 'listening' | 'reading' | 'writing' | 'speaking') : 'reading';
 }
 
+/** `parseTestSections` natijasidagi `needsReview` yozuvi (TZ §50.4/§50.7:
+ * noma'lum tur, javob kaliti yo'q, tuzilma to'liq emas). Reading'da
+ * `passageOrder`, Listening'da `partOrder` bo'ladi. */
+export interface ParseNeedsReview {
+  section: string;
+  passageOrder?: number;
+  partOrder?: number;
+  groupId?: string;
+  type?: string;
+  reason?: string;
+}
+
+/** Sof mapper: parse `needsReview` -> ReviewItem maydonlari. DB'siz, shuning
+ * uchun testlanadi. Noma'lum bo'lim tashlab ketiladi (schema enum'i). */
+export function reviewItemsFromParse(testId: string, list: ParseNeedsReview[]) {
+  return list
+    .filter((r) => SECTION_KEYS.has(r.section))
+    .map((r) => {
+      const order = r.section === 'listening' ? r.partOrder : r.passageOrder;
+      return {
+        bookId: null,
+        testId,
+        target: {
+          sectionKey: r.section as 'listening' | 'reading',
+          partIndex: typeof order === 'number' ? order : null,
+          groupId: r.groupId ?? null,
+        },
+        reason: /javob|answer/i.test(r.reason || '') ? 'missing_answer' : 'low_confidence',
+        severity: 'warning' as const,
+        evidence: { rawText: `${r.type || '?'}: ${r.reason || 'AI bu guruhni aniq emas deb belgiladi.'}` },
+        status: 'open' as const,
+      };
+    });
+}
+
+/** Idempotent: bir xil (test, section, group, matn) uchun ochiq element qayta yaratilmaydi. */
+export async function syncParseReviewToQueue(testId: string, list: ParseNeedsReview[]): Promise<number> {
+  const items = reviewItemsFromParse(testId, list);
+  let created = 0;
+  await Promise.all(
+    items.map(async (item) => {
+      const existing = await ReviewItemModel.findOne({
+        testId,
+        reason: item.reason,
+        'target.sectionKey': item.target.sectionKey,
+        'target.groupId': item.target.groupId,
+        'evidence.rawText': item.evidence.rawText,
+        status: 'open',
+      });
+      if (existing) return;
+      await ReviewItemModel.create(item);
+      created++;
+    })
+  );
+  return created;
+}
+
 /** Upserts one OPEN `ReviewItem` per `validateTest()` issue for a manually-
  * created test (`bookId: null`, `reason: 'content_validator_warning'`).
  * Idempotent — re-validating the same test does not create duplicate open

@@ -16,7 +16,7 @@ const NEXT = {
   PUBLISHED: ['ARCHIVED', 'UNDER_REVIEW'],
   ARCHIVED: ['DRAFT'],
 };
-const EMPTY = { word: '', pos: 'verb', cefr: 'B2', ieltsRelevance: 0, translationUz: '', shortDefinition: '', ipaUk: '', example: '', synonyms: '', topicTags: '' };
+const EMPTY = { word: '', pos: 'verb', cefr: 'B2', ieltsRelevance: 0, translationUz: '', shortDefinition: '', ipaUk: '', imageUrl: '', example: '', synonyms: '', topicTags: '' };
 const inputCls = 'w-full bg-bg-sunken border border-border rounded-xl px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
 
 async function api(url, options) {
@@ -86,6 +86,7 @@ export default function AdminVocabLibrary() {
         translationUz: form.translationUz,
         shortDefinition: form.shortDefinition,
         ipaUk: form.ipaUk,
+        imageUrl: form.imageUrl,
         synonyms: form.synonyms,
         topicTags: form.topicTags,
         examples: form.example.trim() ? [{ en: form.example.trim() }, ...(form.moreExamples || [])] : form.moreExamples || [],
@@ -105,6 +106,7 @@ export default function AdminVocabLibrary() {
       translationUz: e.translationUz || '',
       shortDefinition: e.shortDefinition || '',
       ipaUk: e.ipaUk || '',
+      imageUrl: e.imageUrl || '',
       example: e.examples?.[0]?.en || '',
       moreExamples: (e.examples || []).slice(1),
       synonyms: (e.synonyms || []).join('; '),
@@ -261,6 +263,7 @@ export default function AdminVocabLibrary() {
             <label className="block text-xs text-muted">O&apos;zbekcha tarjima *<input value={form.translationUz} onChange={set('translationUz')} className={inputCls} /></label>
             <label className="block text-xs text-muted">Qisqa ta&apos;rif (inglizcha) *<input value={form.shortDefinition} onChange={set('shortDefinition')} className={inputCls} /></label>
             <label className="block text-xs text-muted">Misol gap *<input value={form.example} onChange={set('example')} className={inputCls} /></label>
+            <label className="block text-xs text-muted">Rasm URL (ixtiyoriy — Rasm↔So&apos;z o&apos;yinlari uchun, https:// yoki /)<input value={form.imageUrl} onChange={set('imageUrl')} className={inputCls} placeholder="https://…" /></label>
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-xs text-muted">IPA (UK)<input value={form.ipaUk} onChange={set('ipaUk')} className={inputCls} /></label>
               <label className="block text-xs text-muted">Sinonimlar (; bilan)<input value={form.synonyms} onChange={set('synonyms')} className={inputCls} /></label>

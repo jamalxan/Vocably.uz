@@ -14,6 +14,8 @@ const GAME_LABEL = {
   definition_challenge: "Ta'rif → so'z",
   synonym_antonym: 'Sinonim / Antonim',
   speed_challenge: 'Tezlik sinovi',
+  image_to_word: "Rasm → so'z",
+  word_to_image: "So'z → rasm",
   vocabulary_boss: 'Vocabulary Boss',
 };
 

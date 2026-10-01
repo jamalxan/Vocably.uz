@@ -40,6 +40,8 @@ const KIND_TITLES = {
   match_pairs: "Juftliklarni toping",
   memory_pairs: 'Xotira kartalari',
   spell_drop: "Inglizchasini yozing",
+  image_word: "Rasmga mos so'zni toping",
+  word_image: "So'zga mos rasmni tanlang",
 };
 
 function usePrefersReducedMotion() {
@@ -468,8 +470,7 @@ export default function GamePlayer({ gameKey }) {
   if (!session || !q) return null;
   const total = session.questions.length;
   const progressPct = Math.round((index / total) * 100);
-  const showAudio = !!q.audioText && (q.kind === 'listen_choose' || q.kind === 'listen_type');
-  const questionAnswered = !!result;
+  const showAudio = !!q.audioText && (q.kind === 'listen_choose' || q.kind === 'listen_type');  const questionAnswered = !!result;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -554,6 +555,10 @@ export default function GamePlayer({ gameKey }) {
           <h2 className="text-xl sm:text-2xl font-bold text-ink font-display mb-4 break-words">{q.prompt}</h2>
         )}
         {q.inputType === 'match' && <h2 className="text-lg font-bold text-ink font-display mb-4">{q.prompt}</h2>}
+        {q.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={q.imageUrl} alt="Savol rasmi" loading="lazy" className="mb-4 max-h-64 w-full rounded-xl border border-border object-contain bg-bg-sunken" />
+        )}
         {showAudio && (
           <div className="mb-4">
             <AudioPlayer key={q.qid} text={q.audioText} />

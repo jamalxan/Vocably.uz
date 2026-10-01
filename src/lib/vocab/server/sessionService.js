@@ -1,7 +1,8 @@
 // O'yin sessiyasi hayot sikli: start -> answer (batch, idempotent) -> complete (idempotent).
 // Barcha ball/XP/mastery hisobi SERVERda; klient faqat xom javob va vaqt yuboradi.
 import mongoose from 'mongoose';
-import { GameSession, User } from '@/lib/models';
+import { GameSession, User, VocabularyEntry } from '@/lib/models';
+import { normalizeWordKey } from '@/lib/vocab/library';
 import { localDateWithCutoff } from '@/lib/srs';
 import { ANTI_CHEAT } from '@/lib/vocab/config';
 import { applyStreakActivity } from '@/lib/vocab/streak';
@@ -36,6 +37,29 @@ export class ServiceError extends Error {
 export const tierOf = (user) => (user.role === 'admin' ? 'premium' : user.subscriptionTier || 'free');
 
 const oid = (v) => new mongoose.Types.ObjectId(String(v));
+
+const IMAGE_GAMES = new Set(['image_to_word', 'word_to_image']);
+
+/**
+ * Rasm o'yinlari: foydalanuvchi so'zida rasm bo'lmasa, nashr qilingan kutubxona yozuvidan (so'z bo'yicha)
+ * olinadi. `words` joyida o'zgartiriladi. Faqat PUBLISHED va rasmi bor yozuvlar so'raladi.
+ */
+export async function attachLibraryImages(words) {
+  const missing = words.filter((w) => !(w.imageUrl || '').trim());
+  if (!missing.length) return words;
+  const keys = [...new Set(missing.map((w) => normalizeWordKey(w.word)).filter(Boolean))];
+  if (!keys.length) return words;
+  const entries = await VocabularyEntry.find(
+    { normalizedWord: { $in: keys }, status: 'PUBLISHED', imageUrl: { $ne: '' } },
+    { normalizedWord: 1, imageUrl: 1 }
+  ).lean();
+  const byKey = new Map(entries.map((e) => [e.normalizedWord, e.imageUrl]));
+  for (const w of missing) {
+    const url = byKey.get(normalizeWordKey(w.word));
+    if (url) w.imageUrl = url;
+  }
+  return words;
+}
 
 function dayStartGuess(now) {
   return new Date(now.getTime() - 36 * 3600 * 1000);
@@ -105,6 +129,7 @@ export async function startGameSession({ user, gameKey, difficulty = 'auto', cat
 
   // --- so'zlar va mavjudlik ---
   const words = flattenUserWords(user, { categoryId, now });
+  if (IMAGE_GAMES.has(gameKey)) await attachLibraryImages(words);
   const avail = availabilityFor(def, words);
   if (!avail.available) throw new ServiceError(422, avail.reason, 'not_enough_words');
 

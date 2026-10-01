@@ -14,7 +14,7 @@ import {
 import { buildDailyPlan, normalizeMinutes, rankGames } from './dailyPlan';
 import { checkGameAccess, rolloutBucket, vocabEngineFlag } from './access';
 import { buildEvent, sanitizePayload } from './events';
-import { CEFR_PATH, estimateVocabularyCefr, recommendFromMock } from './recommendations';
+import { CEFR_PATH, buildCefrPath, estimateVocabularyCefr, recommendFromMock } from './recommendations';
 import { evaluateAchievements } from './achievements';
 import { seededRandom } from './rng';
 import { SAMPLE_WORDS } from './fixtures';
@@ -290,6 +290,22 @@ describe('recommendations (TZ §26, §46)', () => {
       { cefr: 'C1', mastery: 90 },
     ];
     expect(estimateVocabularyCefr(words)).toBe('B2');
+  });
+  it("buildCefrPath: har daraja bo'yicha son va holat; IELTS bilan aralashmaydi", () => {
+    const words = [
+      ...Array.from({ length: 10 }, () => ({ cefr: 'A2', mastery: 80 })),
+      ...Array.from({ length: 8 }, () => ({ cefr: 'B1', mastery: 70 })),
+      ...Array.from({ length: 6 }, () => ({ cefr: 'B2', mastery: 60 })),
+      { cefr: 'C1', mastery: 10 },
+      { mastery: 50 },
+    ];
+    const p = buildCefrPath(words);
+    expect(p.current).toBe('B2');
+    expect(p.steps.map((s) => s.status)).toEqual(['reached', 'reached', 'reached', 'current', 'upcoming', 'upcoming']);
+    expect(p.steps.find((s) => s.level === 'C1')).toMatchObject({ total: 1, learned: 0 });
+    expect(p.unlabeled).toBe(1);
+    expect(buildCefrPath([]).current).toBeNull();
+    expect(buildCefrPath([]).steps.every((s) => s.status === 'upcoming')).toBe(true);
   });
 });
 
