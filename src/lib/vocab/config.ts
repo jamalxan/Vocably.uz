@@ -195,5 +195,6 @@ export const EVENT_NAMES = [
   'word_added_from_listening',
   'writing_word_used',
   'speaking_word_used',
+  'reminder_sent',
 ] as const;
 export type EventName = (typeof EVENT_NAMES)[number];

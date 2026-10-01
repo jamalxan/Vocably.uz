@@ -30,6 +30,7 @@ import Button, { buttonClasses } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import CoachCard from './CoachCard';
 import DiagnosticCard from './DiagnosticCard';
+import ReminderSettings from './ReminderSettings';
 import { getGames, getGamificationProfile, savePlanMinutes } from './api';
 
 const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown };
@@ -381,6 +382,8 @@ export default function GamesHub() {
           })}
         </ul>
       </section>
+
+      <ReminderSettings />
     </div>
   );
 }

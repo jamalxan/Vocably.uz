@@ -45,7 +45,7 @@ Key guarantees
 | Accessibility | Done in new UI (roles, focus, `aria-*`, 44px targets, `motion-safe`) | |
 | Global vocabulary library, admin CRUD, CSV import/export, review workflow (DRAFT/AI_GENERATED→UNDER_REVIEW→APPROVED→PUBLISHED→ARCHIVED), versioning | Done | `library.ts` (sof mantiq + testlar), `server/libraryService.js`, model `VocabularyEntry`, `/api/admin/vocab-library/*` (+audit log), `/api/vocabulary/library` (nashr qilinganlarni qidirish + o'z lug'atiga qo'shish), UI: `/admin/vocab-library`, `/app/lugat/kutubxona`. AI kontent `verifiedByAdmin` bo'lmaguncha PUBLISHED bo'lmaydi; tahrir versiyani oshiradi (oxirgi 20 snapshot); nashr qilingan yozuvni o'chirib bo'lmaydi (avval arxivlash) |
 | Content-factory (PDF/DOCX → AI extraction → review) | **Not done** | Mavjud book pipeline'dan `importEntries({items}, adminId, {aiGenerated:true})` orqali `AI_GENERATED` holatida kutubxonaga kiritish mumkin |
-| Push/email reminders driven by engine state | **Not done** | Repoda scheduler (cron) yo'q; `/api/vocabulary/coach` xabarini `Notification`/`webPush` ga yuboruvchi kunlik job + foydalanuvchi sozlamasi (chastota, jim soatlar) kerak |
+| Reminders (TZ §55) | Done | `reminders.ts` (qaror mantiqi), `server/reminderService.js`, cron `GET /api/internal/vocab/reminders` (vercel.json, 15:00 UTC = 20:00 Toshkent, `CRON_SECRET`), `GET/PATCH /api/vocabulary/reminders`, UI: `ReminderSettings` (O'yinlar sahifasi). Ilova ichidagi bildirishnoma + web push; kuniga ≤1 ta, bugun o'qigan/o'chirgan foydalanuvchiga yuborilmaydi, chastota: har kuni / 2 kunda / haftada. Telegram kunlik mini-test alohida (`/api/internal/telegram/daily`) |
 | Structured monitoring dashboards | Partial | errors go through `serverError`; events in `VocabEvent` |
 
 ## Configuration
@@ -86,4 +86,3 @@ check each repo's license first (MIT/Apache-2.0 allow reuse with attribution; GP
 
 * Reading matnida interaktiv so'z (bosilganda ta'rif/qo'shish) UI — `word_added_from_reading` hodisasi va signal API tayyor.
 * Content-factory: PDF/DOCX → AI → `AI_GENERATED` yozuvlar (kutubxona import API tayyor).
-* Reminder notifications using the coach message (respecting user notification preferences).

@@ -255,6 +255,14 @@ const UserSchema = new mongoose.Schema({
     totalGameXp: { type: Number, default: 0 },
     lastSessionAt: { type: Date, default: null },
   },
+  // Lug'at eslatmalari (TZ §55) — src/lib/vocab/reminders.ts. Standart: yoqilgan, kuniga ko'pi bilan 1 ta.
+  // lastCheckedOn — cron shu kuni foydalanuvchini ko'rib chiqqan (yuborilmagan bo'lsa ham), qayta skanerlamaslik uchun.
+  vocabReminders: {
+    enabled: { type: Boolean, default: true },
+    frequency: { type: String, enum: ['daily', 'every_2_days', 'weekly'], default: 'daily' },
+    lastSentOn: { type: String, default: null },
+    lastCheckedOn: { type: String, default: null },
+  },
   // Lug'at onboarding diagnostikasi (TZ §64) — o'tkazib yuborish mumkin.
   vocabOnboarding: {
     completedAt: { type: Date, default: null },
@@ -689,7 +697,7 @@ export const AiUsage = mongoose.models.AiUsage || mongoose.model('AiUsage', AiUs
 
 const NotificationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment'], required: true },
+  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment', 'vocab_reminder'], required: true },
   title: { type: String, required: true, trim: true },
   body: { type: String, default: '', trim: true },
   // 'chat_message' uchun suhbat ID'si, 'announcement' uchun Announcement ID'si —

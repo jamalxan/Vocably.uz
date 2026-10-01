@@ -145,7 +145,7 @@ export default function NotificationBell({ onOpenFriends }) {
     if (n.type === 'chat_message') {
       setOpen(false);
       onOpenFriends?.();
-    } else if (n.type === 'subscription' && n.link) {
+    } else if ((n.type === 'subscription' || n.type === 'vocab_reminder') && n.link) {
       setOpen(false);
       router.push(n.link);
     } else {
@@ -239,7 +239,7 @@ export default function NotificationBell({ onOpenFriends }) {
                 }`}
               >
                 <div className="w-7 h-7 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {n.type === 'chat_message' ? <MessageCircle size={13} /> : n.type === 'subscription' ? <CreditCard size={13} /> : <Megaphone size={13} />}
+                  {n.type === 'chat_message' ? <MessageCircle size={13} /> : n.type === 'subscription' ? <CreditCard size={13} /> : n.type === 'vocab_reminder' ? <BellRing size={13} /> : <Megaphone size={13} />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className={`text-xs break-words ${n.read ? 'text-ink/80' : 'text-ink font-semibold'}`}>
