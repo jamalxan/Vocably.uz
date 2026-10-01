@@ -31,9 +31,11 @@ export interface AddWordModalProps {
   word: string;
   context?: string;
   onClose: () => void;
+  /** So'z muvaffaqiyatli qo'shilgach (indeksni yangilash / analytics uchun). */
+  onAdded?: () => void;
 }
 
-export default function AddWordModal({ word, context, onClose }: AddWordModalProps) {
+export default function AddWordModal({ word, context, onClose, onAdded }: AddWordModalProps) {
   const [categories, setCategories] = useState<Category[] | null>(null);
   const [categoriesError, setCategoriesError] = useState(false);
   const [categoriesReload, setCategoriesReload] = useState(0);
@@ -121,6 +123,7 @@ export default function AddWordModal({ word, context, onClose }: AddWordModalPro
       });
       if (!res.ok) throw new Error();
       setDone(true);
+      onAdded?.();
       setTimeout(onClose, 900);
     } catch {
       setError("Qo'shib bo'lmadi, qayta urinib ko'ring");

@@ -35,7 +35,7 @@ Key guarantees
 | Daily/weekly quests, achievements | Done | `quests.ts`, `achievements.ts`, `server/questService.js` |
 | Leaderboard (week/month/all, own rank) | Done | `/api/gamification/leaderboard` |
 | Daily plan & personalization | Done | `dailyPlan.ts`, `/api/vocabulary/plan` |
-| Skill integrations | Done: Writing, Speaking (matndagi so'zlar), Reading, Listening (to'g'ri javob berilgan savoldagi so'zlar — faqat ijobiy signal), Mock (`recommendFromMock` + `POST /api/vocabulary/signal`) | `signalService.js` (`recordTextUsage`, `recordAttemptUsage`), `recommendations.ts`. Reading matnidagi interaktiv so'z-popup UI hali yo'q |
+| Skill integrations | Done: Writing, Speaking (matndagi so'zlar), Reading, Listening (to'g'ri javob berilgan savoldagi so'zlar — faqat ijobiy signal), Mock (`recommendFromMock` + `POST /api/vocabulary/signal`) | `signalService.js` (`recordTextUsage`, `recordAttemptUsage`), `recommendations.ts`. Reading/Listening natija ekranida (imtihon davomida emas) interaktiv so'z-popup: `WordSelectionCatcher` + `WordPopupCard`, `GET /api/vocabulary/reading-index` (belgilash uchun yengil lug'at), `GET /api/vocabulary/lookup` (kutubxona), `wordForms.ts` (shakllar). Lug'at so'zlari CSS Custom Highlight bilan belgilanadi (zaiflari alohida) |
 | AI: coach (rule-based), story, exercises | Done | `ai.ts`, `server/aiService.js`, `/api/vocabulary/{coach,story,exercises}` — story/exercises are Premium, rate-limited, daily quota 30, always `AI_GENERATED` |
 | Onboarding diagnostic | Done (A2–C1 bank, 24 words) | `diagnostic.ts`, `/api/vocabulary/diagnostic`, `DiagnosticCard` |
 | Search & filters | Done for the user's own words | `search.ts`, `/api/vocabulary/search` |
@@ -84,5 +84,4 @@ check each repo's license first (MIT/Apache-2.0 allow reuse with attribution; GP
 
 ## Known gaps / next steps
 
-* Reading matnida interaktiv so'z (bosilganda ta'rif/qo'shish) UI — `word_added_from_reading` hodisasi va signal API tayyor.
 * Content-factory: PDF/DOCX → AI → `AI_GENERATED` yozuvlar (kutubxona import API tayyor).

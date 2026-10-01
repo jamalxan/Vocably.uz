@@ -50,7 +50,8 @@ export async function applySkillSignals({ userId, source, items, now = new Date(
     }
     const id = String(hit.w._id);
     const entry = grouped.get(id) || { hit, results: [] };
-    entry.results.push({ skill, isCorrect: !!it.correct, responseMs: null });
+    // `correct` berilmagan (faqat 'qo'shildi' hodisasi) bo'lsa mastery natijasi yozilmaydi — qo'shish bilish degani emas.
+    if (typeof it.correct === 'boolean') entry.results.push({ skill, isCorrect: it.correct, responseMs: null });
     grouped.set(id, entry);
     if (source === 'writing') events.push({ name: 'writing_word_used', payload: { word: hit.w.word, correct: !!it.correct } });
     if (source === 'speaking') events.push({ name: 'speaking_word_used', payload: { word: hit.w.word, correct: !!it.correct } });
@@ -61,6 +62,7 @@ export async function applySkillSignals({ userId, source, items, now = new Date(
   const updates = [];
   let mastered = 0;
   for (const [wordId, { hit, results }] of grouped) {
+    if (!results.length) continue;
     const out = computeWordUpdate(hit.w.stats || {}, results, now);
     updates.push({ categoryId: String(hit.cat._id), wordId, set: out.set });
     if (out.newlyMastered) {

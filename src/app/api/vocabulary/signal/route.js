@@ -16,7 +16,7 @@ export async function POST(req) {
     const items = body.items.map((i) => ({
       wordId: typeof i?.wordId === 'string' ? i.wordId : undefined,
       word: typeof i?.word === 'string' ? i.word.slice(0, 80) : undefined,
-      correct: !!i?.correct,
+      correct: typeof i?.correct === 'boolean' ? i.correct : undefined,
       added: !!i?.added,
     }));
     return NextResponse.json(await applySkillSignals({ userId, source: body.source, items }));

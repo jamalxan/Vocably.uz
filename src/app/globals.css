@@ -619,3 +619,13 @@ html.lenis, html.lenis body { height: auto; }
   background-color: #fde68a;
   color: #1f1f1f;
 }
+
+/* Reading/Listening natija ekrani: matndagi lug'at so'zlari (CSS Custom Highlight API, DOM o'zgarmaydi).
+   Zaif so'zlar issiq fon bilan, qolganlari nuqtali tagchiziq bilan — rang yagona belgi bo'lib qolmasin. */
+::highlight(vocab-weak) {
+  background-color: rgba(245, 158, 11, 0.3);
+  text-decoration: underline wavy rgba(217, 119, 6, 0.9);
+}
+::highlight(vocab-known) {
+  text-decoration: underline dotted rgba(99, 102, 241, 0.8);
+}

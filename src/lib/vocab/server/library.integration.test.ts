@@ -157,4 +157,18 @@ describeDb('vocabulary library (integration)', () => {
     expect(sig.stats.skills.context.correct).toBe(1);
     expect(aba.stats?.skills?.context).toBeUndefined();
   });
+  it("faqat 'qo'shildi' signali mastery'ga tegmaydi, 'bildim/qiyin' tegadi", async () => {
+    const { applySkillSignals } = await import('./signalService');
+    const user = await User.create({ phone: '+998909999999', name: 'S', password: 'x', categories: [{ name: 'c', words: [{ word: 'maintain', syns: ['saqlamoq'] }] }] });
+    const id = String(user._id);
+    const r1 = await applySkillSignals({ userId: id, source: 'reading', items: [{ word: 'maintain', added: true }] });
+    expect(r1.applied).toBe(0);
+    let u: any = await User.findById(id).lean();
+    expect(u.categories[0].words[0].stats?.skills?.context).toBeUndefined();
+    const r2 = await applySkillSignals({ userId: id, source: 'reading', items: [{ word: 'maintain', correct: false }] });
+    expect(r2.applied).toBe(1);
+    u = await User.findById(id).lean();
+    expect(u.categories[0].words[0].stats.skills.context.wrong).toBe(1);
+  });
+
 });
