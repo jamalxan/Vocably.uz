@@ -123,7 +123,14 @@ test.describe("P0 o'yinlar (desktop)", () => {
       const start = page.getByRole('button', { name: "O'yinni boshlash" });
       await expect(start).toBeVisible({ timeout: 45_000 });
       test.skip(await start.isDisabled(), `${game}: seed ma'lumotlari bilan mavjud emas`);
-      await start.click();
+      // Ilovaning "juda tez-tez o'yin boshlayapsiz" himoyasi (anti-abuse): ketma-ket ko'p o'yin bir daqiqada boshlansa — kutib, qayta urinamiz.
+      const tooFast = page.getByRole('alert').filter({ hasText: /Juda tez-tez/ });
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await start.click();
+        const started = await page.getByText(/Savol \d+ \/ \d+/).first().waitFor({ timeout: 8000 }).then(() => true, () => false);
+        if (started || !(await tooFast.isVisible())) break;
+        await page.waitForTimeout(20_000);
+      }
 
       const counter = page.getByText(/Savol \d+ \/ \d+/);
       await expect(counter).toBeVisible({ timeout: 15_000 });

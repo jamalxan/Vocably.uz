@@ -18,7 +18,7 @@ Hamma tuzatish alohida commit'larda; `tsc` 0 xato, lint toza, `vitest` 92 fayl /
 
 ## 2. Xavfsizlik topilmalari
 
-### Tuzatilgan (commit `98f40a0`, `…`)
+### Tuzatilgan (commit'lar `98f40a0`, `87ef9d9`)
 | # | Jiddiylik | Topilma | Tuzatish |
 |---|---|---|---|
 | S1 | **Yuqori** | `verify-code`: urinishlar hisoblagichi atomik emas edi (o'qib → `+= 1` → `save`). Parallel so'rovlar hammasi `attempts = 0` ni ko'rib, 5 urinish chegarasini aylanib o'tardi → 6 xonali OTP ni batch bilan taxmin qilish mumkin edi | `findOneAndUpdate` bilan atomik "sarflash", qat'iy format (6 raqam), kod/imzo `timingSafeEqual`, sessiya bir martalik; IP bo'yicha 30/daq |
