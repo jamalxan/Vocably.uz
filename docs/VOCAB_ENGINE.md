@@ -1,4 +1,4 @@
-# Vocabulary Engine — implementation guide
+﻿# Vocabulary Engine — implementation guide
 
 Implements `Vocably_Gamified_Vocabulary_Engine_TZ.md`. This file maps the TZ to code, lists flags/env, and records
 what is intentionally **not** done yet.
@@ -45,7 +45,7 @@ Key guarantees
 | Accessibility | Done in new UI (roles, focus, `aria-*`, 44px targets, `motion-safe`) | |
 | Global vocabulary library, admin CRUD, CSV import/export, review workflow (DRAFT/AI_GENERATED→UNDER_REVIEW→APPROVED→PUBLISHED→ARCHIVED), versioning | Done | `library.ts` (sof mantiq + testlar), `server/libraryService.js`, model `VocabularyEntry`, `/api/admin/vocab-library/*` (+audit log), `/api/vocabulary/library` (nashr qilinganlarni qidirish + o'z lug'atiga qo'shish), UI: `/admin/vocab-library`, `/app/lugat/kutubxona`. AI kontent `verifiedByAdmin` bo'lmaguncha PUBLISHED bo'lmaydi; tahrir versiyani oshiradi (oxirgi 20 snapshot); nashr qilingan yozuvni o'chirib bo'lmaydi (avval arxivlash) |
 | Content-factory (TZ §29) | Done | `factory.ts` (bo'laklash, nomzod tanlash, AI chiqishini qat'iy tekshirish), `server/factoryService.js`, model `VocabIngestJob`, `/api/admin/vocab-factory/*`, UI `/admin/vocab-factory`. PDF/DOCX/TXT (4 MB gacha) yoki matn -> bo'laklar (~3500 belgi, maks 120) -> har bo'lakda nomzodlar -> AI (`generateJsonWithMeta` zanjiri) -> tekshiruv (so'z nomzodlarda va matnda bor, misolda so'zning o'zi, CEFR to'g'ri) -> `AI_GENERATED` yozuvlar (`verifiedByAdmin=false`, `sourceType='book'`). Navbat bo'laklar holatida (atomik band qilish, 3 urinish, qotib qolganini qayta olish) — Redis/worker shart emas, sahifa yopilsa davom ettiriladi; AI xarajati: `run` daqiqasiga 30 ta, ish 120 bo'lak bilan cheklangan. Skanerlangan PDF (OCR) qo'llab-quvvatlanmaydi |
-| Reminders (TZ §55) | Done | `reminders.ts` (qaror mantiqi), `server/reminderService.js`, cron `GET /api/internal/vocab/reminders` (vercel.json, 15:00 UTC = 20:00 Toshkent, `CRON_SECRET`), `GET/PATCH /api/vocabulary/reminders`, UI: `ReminderSettings` (O'yinlar sahifasi). Ilova ichidagi bildirishnoma + web push; kuniga ≤1 ta, bugun o'qigan/o'chirgan foydalanuvchiga yuborilmaydi, chastota: har kuni / 2 kunda / haftada. Telegram kunlik mini-test alohida (`/api/internal/telegram/daily`) |
+| Reminders (TZ §55) | Done | `reminders.ts` (qaror mantiqi), `server/reminderService.js`, cron `GET /api/internal/vocab/reminders` (vercel.json, soatiga `0 * * * *`: har foydalanuvchiga o'z mahalliy soatida (8–21, standart 20:00) yuboriladi, `CRON_SECRET`), `GET/PATCH /api/vocabulary/reminders`, UI: `ReminderSettings` (O'yinlar sahifasi). Ilova ichidagi bildirishnoma + web push; kuniga ≤1 ta, bugun o'qigan/o'chirgan foydalanuvchiga yuborilmaydi, chastota: har kuni / 2 kunda / haftada. Telegram kunlik mini-test alohida (`/api/internal/telegram/daily`) |
 | CEFR path (TZ §46) | Done | `buildCefrPath` (`recommendations.ts`), profilda `cefrPath`/`ieltsPath`, UI `CefrPathCard` — CEFR va IELTS band alohida ko'rsatiladi |
 | Offline/reconnect (TZ §38) | Done (to'liq offline mode emas) | `answerQueue.js` (sessionStorage navbat, idempotent qayta yuborish), `/api/games/[key]/active` sessiyani tiklaydi |
 | Monitoring alertlari (TZ §62) | Done (cheklangan) | `health.ts` + cron `/api/internal/vocab/health` (har 6 soat): past tugatish ulushi, shubhali sessiyalar, XP anomaliyasi -> `[vocab-alert]` log. AI xato ulushi, API latency, sekin so'rovlar alertlari yo'q — APM/log drain kerak |
@@ -89,7 +89,7 @@ flow: start → answers (idempotent) → complete → XP ledger → quests → s
 | Weak words detected | Test | `weakness.test.ts` |
 | Mastery updates correctly | Test | `mastery.test.ts`, `sessions.integration` |
 | Review history preserved | Kod | `ReviewEvent` (`wordReview.js`) + `GameSession.answers` |
-| All P0 games on desktop/mobile | — | Jonli brauzer/mobil sinov o'tkazilmagan |
+| All P0 games on desktop/mobile | Qisman | E2E: 14 o'yindan 13 tasi desktopda (faqat `vocabulary_boss` yo'q), `multiple_choice` mobilda |
 | Game state survives refresh | Test | `sessions.integration` "faol sessiyani qayta tiklash" |
 | Answers validated server-side | Test | "klientning 'isCorrect'/'xp' maydonlari e'tiborsiz" |
 | Duplicate submissions rejected safely | Test | "takroriy yuborish...", "parallel takroriy yuborish..." |
@@ -104,7 +104,7 @@ flow: start → answers (idempotent) → complete → XP ledger → quests → s
 | Skill signals (Reading/Listening/Writing/Speaking/Mock) | Kod/Test | `signalService.js`, `engine.test.ts` (`recommendFromMock`) |
 | No per-question excessive requests | Kod | javoblar batch (`answerQueue.js`, ko'pi bilan 60 ta/so'rov) |
 | Heavy jobs async | Kod | factory bo'laklari, reminder/health cron |
-| Main dashboard responsive | — | yuklama/performance o'lchovi yo'q |
+| Main dashboard responsive | Qisman (server) | `dashboard.perf.integration.test.ts`: 5k so'zda profil ~195 ms + o'qish ~133 ms, katalog ~57 ms; 10k so'zda ~225/231/100 ms (lokal, mongodb-memory-server; test byudjeti 4 s / 6 s — to'liq suit yuki uchun keng). Brauzerdagi render, tarmoq va ko'p foydalanuvchili yuklama o'lchanmagan |
 
 ## Third-party repository evaluation (TZ §56–57)
 
@@ -114,9 +114,12 @@ check each repo's license first (MIT/Apache-2.0 allow reuse with attribution; GP
 
 ## Known gaps / next steps
 
-* Content-factory: skanerlangan PDF uchun OCR; 4 MB dan katta fayllar uchun bo'lak-bo'lak yuklash (hozir bo'limlarga bo'lib yuklanadi); faqat so'z ajratish — mashq/javob/izoh generatsiyasi (TZ §29 pipeline'ning keyingi bosqichlari) hali yo'q.
-* Reminder: Telegram kanali va foydalanuvchi vaqt mintaqasiga mos yuborish vaqti (hozir bitta cron soati).
+* **Hajm chegarasi (arxitektura):** foydalanuvchi so'zlari `User` hujjati ichida (`categories[].words[]`). O'lchandi: 20 000 boyitilgan so'z = 17.3 MB > MongoDB 16 MB chegarasi (yozib bo'lmadi); chegara ~19k boyitilgan so'zda (~865 bayt/so'z). Oddiy foydalanuvchida yuzlab so'z — xavf yo'q, lekin ommaviy import/AI fabrika bilan ulkan lug'at yig'adigan foydalanuvchida `User` yozuvi to'satdan xato beradi. Yechim: so'zlarni alohida kolleksiyaga ko'chirish (katta migratsiya) yoki tarif bo'yicha so'z limiti (`TIER_VOCAB_LIMITS`) borligini va u shu chegaradan past ekanini tekshirish.
+
+* Content-factory: skanerlangan PDF uchun OCR; 4 MB dan katta fayllar uchun bo'lak-bo'lak yuklash (hozir bo'limlarga bo'lib yuklanadi); fabrika (`vocab_factory_v2`) endi so'z ajratish bilan birga izoh (`detailedDefinition`), ishlatish qaydi, tipik xatolar va register'ni ham yaratadi; mashq generatsiyasi alohida `ai.ts` orqali (admin ko'rib chiqadi), fabrika pipeline'iga hali ulanmagan.
+* Reminder: Telegram kanali qo'shildi (opt-in `vocabReminders.telegram`, bot ulangan foydalanuvchiga; bot bloklangan bo'lsa avtomatik o'chadi; Sozlamalar kartasida switch). Haqiqiy Telegram API bilan jonli yuborish sinalmagan (testlarda `sendTelegram` almashtirilgan). Yuborish soati foydalanuvchi vaqt mintaqasida (`vocabReminders.sendHour`, 8–21; cron soatiga ishlaydi, kechiksa 22:59 gacha "yetib oladi"). Eslatma: har soatlik sweep barcha yoqilgan foydalanuvchilarni skanerlaydi (bugun tekshirilganlar og'ir hisobsiz o'tkaziladi); foydalanuvchilar ko'payganda `timezone` bo'yicha prefiltr kerak bo'lishi mumkin. Vercel tarifi soatlik cron'ni qo'llab-quvvatlashi kerak (health cron allaqachon 6 soatda).
 * Reading popup: imtihon davomida ataylab o'chirilgan; faqat natija ko'rish ekranida.
-* E2E (TZ §58): Playwright o'rnatilmagan, vocab/o'yin E2E testlari yo'q (faqat vitest unit + mongodb-memory-server integratsiya).
+* E2E (TZ §58): Playwright qo'shildi (`npm run test:e2e`, `e2e/`): o'yinlar markazi, `multiple_choice` to'liq sessiya, sahifani yangilab sessiyani tiklash — desktop va mobil (Pixel 7). Alohida bo'sh baza kerak: `E2E_MONGODB_URI=mongodb://127.0.0.1:27017/vocably_e2e`. `e2e/all-games.spec.ts` (desktop): `fill_gap`, `listen_type`, `sentence_builder`, `word_match`, `definition_challenge`, `synonym_antonym`, `speed_challenge` to'liq sessiya + free foydalanuvchida pullik o'yin qulfi. Testlar ketma-ket yuradi (`workers: 1`, umumiy test foydalanuvchi). Desktopda 13 o'yin (`memory`, `word_drop`, `listen_choose`, rasm o'yinlari ham). Qoplanmagan: `vocabulary_boss`; mobilda faqat `multiple_choice`; javoblar ataylab ixtiyoriy — XP/mastery to'g'riligi E2E'da emas (integratsiya testlarida); admin sahifalari va reading popup E2E'da yo'q. Bu yugurish topgan xato: hub'da mavjud bo'lmagan `Images` ikonkasi (tuzatildi).
 * Rasm o'yinlari: rasm yuklash/saqlash yo'q — faqat tashqi URL; rasmli so'zlar kutubxonasi admin tomonidan to'ldirilishi kerak.
 * Jonli (brauzer) sinov: popup, belgilash va admin sahifalari avtomatik testlarda emas, qo'lda tekshirilishi kerak.
+
