@@ -20,7 +20,8 @@ export function normalizePhone(raw) {
   // Agar 998 bilan boshlanmasa-yu 12 xonadan kam bo'lsa - baribir davom etamiz,
   // chunki xalqaro raqamlar ham bo'lishi mumkin.
 
-  if (digits.length < 9) return null;
+  // E.164: raqam 15 xonadan oshmaydi — juda uzun kiritma (kalit/log/indeks shishishi) rad etiladi.
+  if (digits.length < 9 || digits.length > 15) return null;
 
   return '+' + digits;
 }

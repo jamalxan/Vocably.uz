@@ -16,7 +16,12 @@ export async function GET(req, { params }) {
 
     await connectToDatabase();
 
-    const key = (params.key || []).join('/');
+    const segments = params.key || [];
+    // Chuqur himoya: "." / ".." / bo'sh segmentlar (yo'l normallashtirishda boshqa suhbat kaliti bilan chalkashtirish) rad etiladi.
+    if (segments.some((s) => !s || s === '.' || s === '..' || /[\\\0]/.test(s))) {
+      return NextResponse.json({ error: "Noto'g'ri manzil" }, { status: 400 });
+    }
+    const key = segments.join('/');
     const match = key.match(/^conversations\/([a-f0-9]{24})\//);
     if (!match) return NextResponse.json({ error: "Noto'g'ri manzil" }, { status: 400 });
 

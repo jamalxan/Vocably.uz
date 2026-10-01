@@ -1,4 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
+import { bearerMatches } from '@/lib/safeEqual';
 import { User, Notification } from '@/lib/models';
 import { serverError } from '@/lib/apiError';
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
@@ -19,7 +20,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 function authorized(req) {
   const secret = process.env.CRON_SECRET;
-  return Boolean(secret) && req.headers.get('authorization') === `Bearer ${secret}`;
+  return bearerMatches(req.headers.get('authorization'), secret);
 }
 
 async function deliver(user, notice) {

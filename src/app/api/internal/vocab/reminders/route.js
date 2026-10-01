@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { bearerMatches } from '@/lib/safeEqual';
 import { connectToDatabase } from '@/lib/db';
 import { runReminderSweep } from '@/lib/vocab/server/reminderService';
 
@@ -9,7 +10,7 @@ export const maxDuration = 300;
 
 export async function GET(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!bearerMatches(req.headers.get('authorization'), secret)) {
     return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
   }
   await connectToDatabase();

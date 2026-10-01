@@ -5,6 +5,7 @@ import { serverError } from '@/lib/apiError';
 import { generateSessionToken } from '@/lib/otp';
 import { getTelegramDeepLink, getBotUsername } from '@/lib/telegram';
 import { checkRateLimit } from '@/lib/chatAuth';
+import { clientIp } from '@/lib/clientIp';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
@@ -19,7 +20,7 @@ export async function POST(req) {
 
     // register-init bilan bir xil audit topilmasi: "hisob topilmadi" javobi
     // orqali enumeration + cheksiz OtpSession yaratish xavfi.
-    if (!(await checkRateLimit(phone, 'reset-init', 5))) {
+    if (!(await checkRateLimit(phone, 'reset-init', 5)) || !(await checkRateLimit(clientIp(req), 'reset-init-ip', 20))) {
       return NextResponse.json({ error: "Juda ko'p urinish. Biroz kuting." }, { status: 429 });
     }
     if (!getBotUsername()) {

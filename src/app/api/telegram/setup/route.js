@@ -1,4 +1,5 @@
 import { setWebhook } from '@/lib/telegram';
+import { safeEqual } from '@/lib/safeEqual';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -7,7 +8,7 @@ import { NextResponse } from 'next/server';
 export async function GET(req) {
   try {
     const secret = req.nextUrl.searchParams.get('secret');
-    if (!process.env.ADMIN_SETUP_SECRET || secret !== process.env.ADMIN_SETUP_SECRET) {
+    if (!process.env.ADMIN_SETUP_SECRET || !safeEqual(secret, process.env.ADMIN_SETUP_SECRET)) {
       return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     }
     if (!process.env.APP_URL) {

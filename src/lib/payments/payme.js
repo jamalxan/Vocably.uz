@@ -1,4 +1,5 @@
 import { PaymentRequest } from '@/lib/models';
+import { safeEqual } from '@/lib/safeEqual';
 import { paymeConfig } from './config';
 import { approvePayment } from './approve';
 
@@ -35,7 +36,7 @@ export function paymeAuthorized(header, key) {
   if (!header?.startsWith('Basic ')) return false;
   const decoded = Buffer.from(header.slice(6), 'base64').toString();
   const [login, pass] = [decoded.slice(0, decoded.indexOf(':')), decoded.slice(decoded.indexOf(':') + 1)];
-  return login === 'Paycom' && pass === key;
+  return safeEqual(login, 'Paycom') && safeEqual(pass, key);
 }
 
 function txView(r) {

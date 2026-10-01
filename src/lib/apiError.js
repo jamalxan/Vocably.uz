@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import './safeRequest'; // Request.json() tozalagichi (NoSQL operator inyeksiyasi)
 
 // Kutilmagan xatoliklarni mijozga UMUMIY matn bilan qaytaradi.
 // Ilgari `err.message` to'g'ridan-to'g'ri qaytarilardi va bu ichki tafsilotlarni

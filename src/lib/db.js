@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+// Side-effect: Request.json() NoSQL operator inyeksiyasidan tozalanadi (src/lib/safeRequest.js) — DB'ga tegadigan har bir yo'l shu modulni yuklaydi.
+import './safeRequest';
 
 let cached = global.mongoose;
 if (!cached) {
@@ -24,7 +26,14 @@ export async function connectToDatabase() {
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI).then((m) => m);
+    cached.promise = mongoose.connect(MONGODB_URI).catch(async (err) => {
+      // Ba'zi Windows/provayder DNS'lari `mongodb+srv` SRV so'rovini rad etadi (querySrv ECONNREFUSED) —
+      // butun sayt (chat ham) 500 beradi. Faqat shu xatoda ommaviy DNS'ga o'tib, bir marta qayta urinamiz.
+      if (err?.syscall !== 'querySrv' || !MONGODB_URI.startsWith('mongodb+srv://')) throw err;
+      const dns = await import('node:dns');
+      dns.setServers(['8.8.8.8', '1.1.1.1']);
+      return mongoose.connect(MONGODB_URI);
+    });
   }
 
   try {

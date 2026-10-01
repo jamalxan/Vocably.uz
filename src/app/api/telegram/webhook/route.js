@@ -1,4 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
+import { safeEqual } from '@/lib/safeEqual';
 import { OtpSession, User, Conversation, Message, AdminAuditLog } from '@/lib/models';
 import { phonesMatch, normalizePhone, formatPhoneDisplay } from '@/lib/phone';
 import { generateCode } from '@/lib/otp';
@@ -221,7 +222,7 @@ export async function POST(req) {
     // bu yerga (masalan /admin buyruqlari ishlaydigan) soxta so'rov (haqiqiy Telegram'dan
     // emas) yuborish imkonini berardi.
     const secret = req.headers.get('x-telegram-bot-api-secret-token');
-    if (!process.env.TELEGRAM_WEBHOOK_SECRET || secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+    if (!process.env.TELEGRAM_WEBHOOK_SECRET || !safeEqual(secret, process.env.TELEGRAM_WEBHOOK_SECRET)) {
       return NextResponse.json({ ok: false }, { status: 401 });
     }
 

@@ -1,4 +1,5 @@
 import LandingHeader from '@/components/landing/LandingHeader';
+import { serializeJsonLd } from '@/lib/jsonLd';
 import LandingFooter from '@/components/landing/LandingFooter';
 import Hero from '@/components/landing/Hero';
 import Marquee from '@/components/landing/Marquee';
@@ -80,7 +81,7 @@ export default function LandingPage() {
     // container and silently break the sticky header and GSAP pins.
     <div className={`${landingFontVariables} relative isolate min-h-dvh overflow-x-clip bg-bg font-landing-body`}>
       {/* eslint-disable-next-line react/no-danger */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       <ExperienceLoader />
       <SmoothScroll />

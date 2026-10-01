@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { safeEqual } from '@/lib/safeEqual';
 import { PaymentRequest } from '@/lib/models';
 import { clickConfig } from './config';
 import { approvePayment } from './approve';
@@ -39,7 +40,7 @@ export async function handleClick(stage, p) {
   if (!cfg) return reply(p, { error: -8, error_note: 'Click not configured' });
   const complete = stage === 'complete';
   if (String(p.action) !== (complete ? '1' : '0')) return reply(p, { error: -3, error_note: 'Action not found' });
-  if (clickSign(p, cfg.secretKey, complete) !== String(p.sign_string)) return reply(p, { error: -1, error_note: 'SIGN CHECK FAILED!' });
+  if (!safeEqual(clickSign(p, cfg.secretKey, complete), String(p.sign_string))) return reply(p, { error: -1, error_note: 'SIGN CHECK FAILED!' });
 
   const id = String(p.merchant_trans_id || '');
   const r = /^[a-f0-9]{24}$/i.test(id) ? await PaymentRequest.findById(id) : null;

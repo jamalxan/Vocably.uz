@@ -1,4 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
+import { bearerMatches } from '@/lib/safeEqual';
 import { User } from '@/lib/models';
 import { sendDailyPractice, tashkentDate } from '@/lib/telegramQuiz';
 import { NextResponse } from 'next/server';
@@ -14,7 +15,7 @@ const BATCH = 400;
 
 export async function GET(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!bearerMatches(req.headers.get('authorization'), secret)) {
     return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
   }
   await connectToDatabase();

@@ -1,4 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
+import { safeEqual } from '@/lib/safeEqual';
 import { serverError } from '@/lib/apiError';
 import { User } from '@/lib/models';
 import { normalizePhone } from '@/lib/phone';
@@ -21,7 +22,7 @@ export async function POST(req) {
     }
 
     const { secret, phone, username } = await req.json();
-    if (!process.env.ADMIN_SETUP_SECRET || secret !== process.env.ADMIN_SETUP_SECRET) {
+    if (!process.env.ADMIN_SETUP_SECRET || !safeEqual(secret, process.env.ADMIN_SETUP_SECRET)) {
       return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     }
     if (!phone || !username) {

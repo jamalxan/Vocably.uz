@@ -1,4 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
+import { safeEqual } from '@/lib/safeEqual';
 import { serverError } from '@/lib/apiError';
 import { Conversation, User } from '@/lib/models';
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
@@ -15,7 +16,7 @@ import { NextResponse } from 'next/server';
 export async function POST(req) {
   try {
     const secret = req.headers.get('x-internal-secret');
-    if (!process.env.REALTIME_SHARED_SECRET || secret !== process.env.REALTIME_SHARED_SECRET) {
+    if (!process.env.REALTIME_SHARED_SECRET || !safeEqual(secret, process.env.REALTIME_SHARED_SECRET)) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 

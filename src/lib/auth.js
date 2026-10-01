@@ -1,4 +1,7 @@
 import jwt from 'jsonwebtoken';
+// Side-effect: Request.json() natijasini NoSQL operator inyeksiyasidan tozalaydi (src/lib/safeRequest.js).
+// auth.js deyarli har bir himoyalangan API yo'li tomonidan import qilinadi.
+import './safeRequest';
 
 // TZ-vocably-v2.md BUG-030 / AUTH_MIGRATION_MAP.md (2026-09-17) — MIGRATSIYA
 // TUGALLANDI: hech qanday client kodi endi tokenni `localStorage`da
@@ -26,7 +29,8 @@ export function getUserIdFromRequest(req) {
   if (!token) return null;
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // `algorithms` aniq cheklanadi (alg-confusion/"none" hujumlariga qarshi); sign() ham HS256 (standart).
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
     // socket-ticket (src/app/api/chat/socket-ticket/route.js) — 60s, faqat
     // realtime-server handshake uchun. Shu yerda rad etiladi, shunda uni
     // Authorization header sifatida oddiy API'larga yuborish ishlamaydi.

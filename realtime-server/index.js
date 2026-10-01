@@ -8,6 +8,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 4001;
@@ -26,7 +27,19 @@ const app = express();
 app.use(express.json());
 
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+// CORS: REALTIME_ALLOWED_ORIGINS (vergul bilan) berilsa — faqat shu originlar. Berilmasa orqaga moslik uchun '*' (autentifikatsiya
+// baribir qisqa umrli tiket bilan, lekin production'da origin ro'yxatini sozlash tavsiya etiladi).
+const ALLOWED_ORIGINS = (process.env.REALTIME_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+if (!ALLOWED_ORIGINS.length) console.warn("[realtime] REALTIME_ALLOWED_ORIGINS sozlanmagan — CORS '*' (tavsiya: ilova originini ko'rsating)");
+const io = new Server(server, { cors: { origin: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : '*' }, maxHttpBufferSize: 1e5 });
+
+// Sirlarni vaqt bo'yicha yon kanalsiz solishtirish (=== birinchi farqda to'xtaydi).
+function safeEqual(a, b) {
+  const ha = crypto.createHash('sha256').update(String(a || '')).digest();
+  const hb = crypto.createHash('sha256').update(String(b || '')).digest();
+  return crypto.timingSafeEqual(ha, hb) && String(a || '').length === String(b || '').length;
+}
+const OBJECT_ID_RE = /^[a-f0-9]{24}$/;
 
 // userId -> shu foydalanuvchining ochiq socket ulanishlari soni (bir nechta tab/qurilma
 // bo'lishi mumkin) — presence "onlayn"ligini socket sonidan aniqlaymiz.
@@ -35,7 +48,9 @@ const onlineCounts = new Map();
 io.use((socket, next) => {
   try {
     const token = socket.handshake.auth?.token;
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+    // Faqat 60 soniyalik realtime-tiket (src/app/api/chat/socket-ticket) — 30 kunlik sessiya tokeni bilan ulanib bo'lmaydi.
+    if (decoded.scope !== 'realtime') throw new Error('bad scope');
     socket.userId = String(decoded.userId);
     next();
   } catch {
@@ -85,7 +100,7 @@ io.on('connection', (socket) => {
   // to'g'ri holatni ko'rsatish uchun (src/context/ChatContext.jsx queryPresenceForKnownUsers).
   socket.on('presence:query', (userIds, cb) => {
     if (typeof cb !== 'function') return;
-    const ids = Array.isArray(userIds) ? userIds : [];
+    const ids = Array.isArray(userIds) ? userIds.slice(0, 200) : []; // cheksiz massiv — DoS
     const result = {};
     ids.forEach((id) => {
       result[String(id)] = onlineCounts.has(String(id));
@@ -97,7 +112,7 @@ io.on('connection', (socket) => {
   // narsa saqlanmaydi, faqat qabul qiluvchining shaxsiy xonasiga forward qilinadi
   // (kim yozayotganini bilish uchun boshqa hech kim shart emas).
   socket.on('typing', ({ recipientId, conversationId, kind } = {}) => {
-    if (!recipientId || !conversationId) return;
+    if (!OBJECT_ID_RE.test(String(recipientId)) || !OBJECT_ID_RE.test(String(conversationId))) return; // ixtiyoriy matn bilan begona xonalarga spam qilmaslik
     io.to(`user:${recipientId}`).emit('typing', { conversationId, userId: socket.userId, kind: kind || 'text' });
   });
 
@@ -113,7 +128,7 @@ io.on('connection', (socket) => {
 });
 
 function requireInternalSecret(req, res, next) {
-  if (req.headers['x-internal-secret'] !== INTERNAL_SECRET) {
+  if (!safeEqual(req.headers['x-internal-secret'], INTERNAL_SECRET)) {
     return res.status(401).json({ error: 'unauthorized' });
   }
   next();

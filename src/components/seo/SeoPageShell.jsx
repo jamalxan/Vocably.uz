@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { serializeJsonLd } from '@/lib/jsonLd';
 import { ChevronRight, Sparkles } from 'lucide-react';
 import LandingHeader from '@/components/landing/LandingHeader';
 import LandingFooter from '@/components/landing/LandingFooter';
@@ -8,7 +9,7 @@ import LandingFooter from '@/components/landing/LandingFooter';
 export default function SeoPageShell({ crumbs, jsonLd, children, cta = true }) {
   return (
     <div className="min-h-dvh bg-bg flex flex-col">
-      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
+      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />}
       <LandingHeader />
       <main className="flex-1 px-4 sm:px-6 pt-2 pb-12 w-full max-w-3xl mx-auto">
         {crumbs && (

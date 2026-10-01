@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { serializeJsonLd } from '@/lib/jsonLd';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Clock, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -101,7 +102,7 @@ export default function BlogPostPage({ params }) {
   return (
     <div className="min-h-dvh bg-bg">
       {/* eslint-disable-next-line react/no-danger */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       <LandingHeader />
 

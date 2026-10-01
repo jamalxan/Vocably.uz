@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { serializeJsonLd } from '@/lib/jsonLd';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { SEO_WORDS, getSeoWord } from '@/lib/seoWords';
@@ -46,7 +47,7 @@ export default function SeoWordPage({ params }) {
   return (
     <div className="min-h-dvh bg-bg">
       {/* eslint-disable-next-line react/no-danger */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       <LandingHeader />
 

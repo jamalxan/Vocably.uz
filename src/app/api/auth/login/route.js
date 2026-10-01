@@ -4,6 +4,8 @@ import { normalizePhone } from '@/lib/phone';
 import { serverError } from '@/lib/apiError';
 import { checkRateLimit } from '@/lib/chatAuth';
 import { setAuthCookie } from '@/lib/auth';
+import { clientIp } from '@/lib/clientIp';
+import { PASSWORD_MAX } from '@/lib/passwordPolicy';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
@@ -11,7 +13,9 @@ import { NextResponse } from 'next/server';
 export async function POST(req) {
   try {
     await connectToDatabase();
-    const { phone: rawPhone, password } = await req.json();
+    const body = await req.json();
+    const rawPhone = body?.phone;
+    const password = typeof body?.password === 'string' ? body.password : '';
 
     const phone = normalizePhone(rawPhone);
     if (!phone) {
@@ -19,6 +23,15 @@ export async function POST(req) {
     }
     if (!password) {
       return NextResponse.json({ error: 'Parolni kiriting' }, { status: 400 });
+    }
+    // Juda uzun parol bcrypt'ni foydasiz ishlatadi (faqat 72 bayt hisobga olinadi) va ish vaqtini oshiradi.
+    if (password.length > PASSWORD_MAX) {
+      return NextResponse.json({ error: "Parol noto'g'ri" }, { status: 400 });
+    }
+    // IP bo'yicha umumiy chegara: faqat raqam bo'yicha cheklash bitta IP'dan ko'p raqamni navbat bilan taxmin qilishga
+    // (credential stuffing) to'sqinlik qilmaydi.
+    if (!(await checkRateLimit(clientIp(req), 'login-ip', 40))) {
+      return NextResponse.json({ error: "Juda ko'p urinish. Biroz kuting." }, { status: 429 });
     }
     if (!process.env.JWT_SECRET) {
       return NextResponse.json({ error: "Server sozlanmagan (JWT_SECRET yo'q)" }, { status: 500 });
