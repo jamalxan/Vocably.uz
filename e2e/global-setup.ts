@@ -9,6 +9,8 @@ export const E2E_PHONE = '+998901234567';
 export const E2E_FREE_PHONE = '+998901234568';
 /** Admin — kontent (lug'at kutubxonasi, fabrika) sahifalari uchun. */
 export const E2E_ADMIN_PHONE = '+998901234569';
+/** O'qituvchi — /teacher sahifalari uchun. */
+export const E2E_TEACHER_PHONE = '+998901234570';
 
 /** Test foydalanuvchilarni (so'zlar bilan) E2E bazasiga yozadi. Har safar yangidan yaratiladi. */
 export default async function globalSetup() {
@@ -42,6 +44,7 @@ export default async function globalSetup() {
       [E2E_PHONE, 'premium', 'user'],
       [E2E_FREE_PHONE, 'free', 'user'],
       [E2E_ADMIN_PHONE, 'premium', 'admin'],
+      [E2E_TEACHER_PHONE, 'premium', 'teacher'],
     ]) {
       await users.deleteOne({ phone });
       await users.insertOne({ phone, name: 'E2E', password, subscriptionTier, role, timezone: 'Asia/Tashkent', createdAt: now, updatedAt: now, categories: categories() });

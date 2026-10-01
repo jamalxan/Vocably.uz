@@ -14,14 +14,14 @@ tezlik va xavfsizlikni oshirish, mobil "orqaga" tugmasini tuzatish, profildagi b
 
 | # | Bosqich | Tarkib | Holat |
 |---|---|---|---|
-| 1 | Baza holati | `tsc`, lint, vitest, `next build` (hajmlar), `npm audit` | ☐ |
-| 2 | Xavfsizlik | barcha 186 API yo'lini avtomatik skanerlash (auth/rol/rate-limit/validatsiya), cookie/JWT, sarlavhalar/CSP, yuklashlar, SSRF, sirlar, bog'liqliklar | ☐ |
-| 3 | Tezlik | bundle/birinchi yuklash, og'ir sahifalar, DB so'rovlari/indekslar, keshlash, rasm/shrift | ☐ |
-| 4 | Mobil "orqaga" | tarix (history) xatti-harakatini tekshirish va tuzatish (push/replace, modal, tab, redirect) | ☐ |
-| 5 | Profil → Sozlamalar | profil bo'limlarini xaritalash, "Sozlamalar" oynasiga jamlash | ☐ |
-| 6 | Keraksiz kod | foydalanilmagan fayl/eksport/bog'liqlik/API yo'li/hujjatlar; chiqindi fayllar | ☐ |
-| 7 | To'liq sayt testi | barcha sahifalar × (desktop, mobil) × (user, admin, teacher): konsol xatolari, 4xx/5xx, gorizontal skroll, a11y asoslari | ☐ |
-| 8 | Haqiqiy akkaunt tekshiruvi | berilgan login bilan jonli sayt (faqat o'qish) — mavjud muammolarni ko'rish | ☐ |
-| 9 | Yakun | qayta to'liq test, hujjat (`FULL_AUDIT_REPORT.md`), tartibga solish | ☐ |
+| 1 | Baza holati | `tsc`, lint, vitest, `next build` (hajmlar), `npm audit` | ✅ |
+| 2 | Xavfsizlik | barcha 186 API yo'lini avtomatik skanerlash (auth/rol/rate-limit/validatsiya), cookie/JWT, sarlavhalar/CSP, yuklashlar, SSRF, sirlar, bog'liqliklar | ✅ |
+| 3 | Tezlik | bundle/birinchi yuklash, og'ir sahifalar, DB so'rovlari/indekslar, keshlash, rasm/shrift | ✅ |
+| 4 | Mobil "orqaga" | tarix (history) xatti-harakatini tekshirish va tuzatish (push/replace, modal, tab, redirect) | ✅ |
+| 5 | Profil → Sozlamalar | profil bo'limlarini xaritalash, "Sozlamalar" oynasiga jamlash | ✅ |
+| 6 | Keraksiz kod | foydalanilmagan fayl/eksport/bog'liqlik/API yo'li/hujjatlar; chiqindi fayllar | ◐ (3 fayl o'chirildi; 5 eski API yo'li — ruxsat kutilmoqda) |
+| 7 | To'liq sayt testi | barcha sahifalar × (desktop, mobil) × (user, admin, teacher): konsol xatolari, 4xx/5xx, gorizontal skroll, a11y asoslari | ✅ |
+| 8 | Haqiqiy akkaunt tekshiruvi | berilgan login bilan jonli sayt (faqat o'qish) — mavjud muammolarni ko'rish | ⛔ brauzerda parol kiritish taqiqlangan (hisobotga q.) |
+| 9 | Yakun | qayta to'liq test, hujjat (`FULL_AUDIT_REPORT.md`), tartibga solish | ✅ |
 
 Hisobot va topilmalar jurnali: `docs/FULL_AUDIT_REPORT.md` (bosqich davomida to'ldiriladi).
