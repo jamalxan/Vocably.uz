@@ -16,8 +16,9 @@ const GAMES = [
   'word_drop',
   'image_to_word',
   'word_to_image',
+  'vocabulary_boss', // premium: aralash savol turlari, 25+ savol
 ];
-const TIMED = new Set(['speed_challenge', 'word_drop']);
+const TIMED = new Set(['speed_challenge', 'word_drop', 'vocabulary_boss']);
 
 // Xotira kartalari DOM'da faqat ochilganda matn ko'rsatadi; juftlik xaritasi esa sessiya javobida (`memoryMap`).
 // Javobni tinglab, juft matnlarini (chap<->o'ng) yig'amiz va oddiy o'yinchidek: ochilganini eslab qolib, juftini ochamiz.
@@ -113,7 +114,7 @@ test.describe("P0 o'yinlar (desktop)", () => {
 
   for (const game of GAMES) {
     test(`${game} oxirigacha o'tadi`, async ({ page }) => {
-      if (TIMED.has(game) || game === 'memory') test.setTimeout(150_000); // taymer / karta aylanishi o'yinni uzaytiradi
+      if (TIMED.has(game) || game === 'memory') test.setTimeout(game === 'vocabulary_boss' ? 300_000 : 150_000); // taymer / karta aylanishi o'yinni uzaytiradi
       memoryPartner.clear();
       page.on('response', async (r) => {
         if (r.request().method() !== 'POST' || !r.url().includes('/api/games')) return;
