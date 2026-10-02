@@ -14,6 +14,8 @@ import mongoose from 'mongoose';
 const LIMIT = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PERIODS = { week: 7 * DAY_MS, month: 30 * DAY_MS };
+const TOP_CACHE_MS = 30_000;
+const topCache = new Map(); // period -> { at, rows } (jarayon xotirasi; serverless'da har instansiyada alohida — zarar yo'q)
 
 export async function GET(req) {
   try {
@@ -32,16 +34,23 @@ export async function GET(req) {
     let inactiveRows = [];
     if (period !== 'all') {
       const since = new Date(Date.now() - PERIODS[period]);
-      rows = await XpEvent.aggregate([
-        { $match: { createdAt: { $gte: since } } },
-        { $group: { _id: '$userId', xp: { $sum: '$amount' } } },
-        { $match: { xp: { $gt: 0 } } },
-        { $sort: { xp: -1 } },
-        { $limit: LIMIT },
-        { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
-        { $unwind: '$user' },
-        { $project: { _id: 0, userId: '$_id', xp: 1, username: '$user.username', name: '$user.name' } },
-      ]);
+      // TOP-20 barcha foydalanuvchilar uchun bir xil — og'ir aggregatsiya 30 s keshlanadi (so'rov yuki ~ foydalanuvchi soniga bog'liq bo'lmasin).
+      const cached = topCache.get(period);
+      if (cached && Date.now() - cached.at < TOP_CACHE_MS) {
+        rows = cached.rows;
+      } else {
+        rows = await XpEvent.aggregate([
+          { $match: { createdAt: { $gte: since } } },
+          { $group: { _id: '$userId', xp: { $sum: '$amount' } } },
+          { $match: { xp: { $gt: 0 } } },
+          { $sort: { xp: -1 } },
+          { $limit: LIMIT },
+          { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+          { $unwind: '$user' },
+          { $project: { _id: 0, userId: '$_id', xp: 1, username: '$user.username', name: '$user.name' } },
+        ]);
+        topCache.set(period, { at: Date.now(), rows });
+      }
 
       // O'z o'rnim (TOP'dan tashqarida bo'lsa ham)
       const mine = await XpEvent.aggregate([

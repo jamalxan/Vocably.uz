@@ -1,6 +1,8 @@
 import { connectToDatabase } from '@/lib/db';
 import { PushSubscription } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/chatAuth';
+import { isAllowedPushEndpoint, isValidPushKey, MAX_PUSH_SUBSCRIPTIONS_PER_USER } from '@/lib/pushEndpoint';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
@@ -14,12 +16,19 @@ export async function POST(req) {
 
     await connectToDatabase();
 
-    const { subscription } = await req.json();
+    const { subscription } = await req.json().catch(() => ({}));
     const endpoint = subscription?.endpoint;
     const keys = subscription?.keys;
-    if (!endpoint || !keys?.p256dh || !keys?.auth) {
+    // Server shu URLga so'rov yuboradi — faqat haqiqiy brauzer push xizmatlari (SSRF himoyasi, src/lib/pushEndpoint.js).
+    if (!isAllowedPushEndpoint(endpoint) || !isValidPushKey(keys?.p256dh) || !isValidPushKey(keys?.auth)) {
       return NextResponse.json({ error: "Noto'g'ri obuna ma'lumoti" }, { status: 400 });
     }
+    if (!(await checkRateLimit(userId, 'push-subscribe', 20))) {
+      return NextResponse.json({ error: "Juda ko'p so'rov. Biroz kuting." }, { status: 429 });
+    }
+    // Bitta akkaunt cheksiz obuna yozib bazani to'ldirmasin: eng eskilarini siqib chiqaramiz.
+    const existing = await PushSubscription.find({ userId, endpoint: { $ne: endpoint } }).sort({ _id: -1 }).skip(MAX_PUSH_SUBSCRIPTIONS_PER_USER - 1).select('_id').lean();
+    if (existing.length) await PushSubscription.deleteMany({ _id: { $in: existing.map((e) => e._id) } });
 
     await PushSubscription.findOneAndUpdate(
       { endpoint },

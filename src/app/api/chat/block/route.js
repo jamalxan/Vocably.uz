@@ -1,5 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
-import { requireChatUser } from '@/lib/chatAuth';
+import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Block, User } from '@/lib/models';
 import { NextResponse } from 'next/server';
@@ -10,6 +10,10 @@ export async function POST(req) {
     if (error) return NextResponse.json({ error }, { status });
 
     await connectToDatabase();
+
+    if (!(await checkRateLimit(user._id, 'chat-block', 30))) {
+      return NextResponse.json({ error: "Juda ko'p so'rov. Biroz kuting." }, { status: 429 });
+    }
 
     const { userId } = await req.json();
     if (!userId || String(userId) === String(user._id)) {

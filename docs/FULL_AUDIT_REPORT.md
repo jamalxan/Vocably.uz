@@ -43,6 +43,10 @@ Tekshirilgan va **to'g'ri** topilganlar: barcha 186 yo'lda himoya xaritasi (faqa
 - **XP suiiste'moli:** review (90/daq, 20 s/so'z, 400 XP/24 s), so'z qo'shish (250 XP/24 s).
 - **Qoralama test:** aniq `testId` bilan nashr qilinmagan testni boshlash mumkin edi → `isPublished` sharti; urinish yaratishga limit (20/daq).
 - **Admin o'z rolini o'zgartira olmaydi** (oxirgi admin qulflanishi), imtihon ro'yxati DB projection bilan (javob/matnlar yuklanmaydi), `X-Powered-By` o'chirildi, COOP, service worker URL/kesh tozalash.
+- **SSRF (push):** `push/subscribe` ixtiyoriy `endpoint`ni saqlardi, `web-push` esa server nomidan shu URLga POST yuboradi → faqat haqiqiy push xizmatlari (FCM, Mozilla, WNS, Apple), https, kalitlar base64url, 10 obuna/akkaunt, limit (`src/lib/pushEndpoint.js` + 18 test).
+- `content/assets` oddiy foydalanuvchiga manba PDF/DOCX/audio berardi → faqat `image`/`page_render`; `billing/interest` anonim cheksiz yozuv → IP limit (5/daq); `chat/block` limit (30/daq).
+- Tezlik: `User.xp` indeksi (umumiy reyting to'liq skaner), haftalik/oylik TOP-20 aggregatsiyasi 30 s keshlandi.
+- Ko'rib chiqildi, o'zgarish shart emas: `words/enrich`, `words/mnemonic`, `dashboard`, `notifications/*`, `chat/report`, leaderboard maxfiyligi (telefon chiqmaydi).
 - **E2E:** `e2e/exam-security.spec.ts` (18 tekshiruv: desktop+mobil) — javob kaliti sizmasligi, qoralama test, chegaralar, HTML→415, XP, so'z sahifasi, noto'g'ri JSON/NoSQL → 400.
 - Qo'lda tekshirildi: 264 commit tarixida sir yo'q; SSRF/command-injection yo'q; ochiq-redirect yo'q.
 

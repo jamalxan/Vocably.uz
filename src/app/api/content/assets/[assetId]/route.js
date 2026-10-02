@@ -24,7 +24,8 @@ export async function GET(req, { params }) {
 
     await connectToDatabase();
     const asset = await ContentAsset.findById(params.assetId).lean();
-    if (!asset) return NextResponse.json({ error: 'Fayl topilmadi' }, { status: 404 });
+    // Faqat test rasmlari; manba PDF/DOCX/audio (admin yuklagan xom kitoblar) oddiy foydalanuvchiga berilmaydi.
+    if (!asset || !['image', 'page_render'].includes(asset.kind)) return NextResponse.json({ error: 'Fayl topilmadi' }, { status: 404 });
 
     const url = await presignSourceDownload(asset.storage.key);
     return NextResponse.redirect(url);

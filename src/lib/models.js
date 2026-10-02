@@ -319,6 +319,7 @@ UserSchema.index({ createdAt: -1 });
 UserSchema.index({ telegramChatId: 1 });
 // Reminder sweep scans only paid users near/after their expiry.
 UserSchema.index({ subscriptionTier: 1, subscriptionExpiresAt: 1 });
+UserSchema.index({ xp: -1 }); // umumiy reyting: TOP-N va "mendan yuqorida" hisobi to'liq skanersiz
 
 export const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
