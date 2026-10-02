@@ -32,7 +32,15 @@ export async function GET(req, { params }) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
+      // setInterval ichida ushlanmagan rad etish (masalan DB uzilishi yoki noto'g'ri id → CastError) butun Node jarayonini yiqitishi mumkin.
       const tick = async () => {
+        try {
+          await tickInner();
+        } catch {
+          send({ error: 'Holatni o\'qib bo\'lmadi' });
+        }
+      };
+      const tickInner = async () => {
         if (closed) return;
         const book = await ContentBook.findById(bookId).select('status progress').lean();
         if (!book) {

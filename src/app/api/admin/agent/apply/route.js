@@ -142,7 +142,8 @@ async function ingestOneTest({ attachment, testEntry, bookTitle, adminId, req, d
     blockers,
     warnings: [...warnings, ...(needsReview.length ? [`${needsReview.length} ta savol guruhi tekshiruv navbatiga tushdi.`] : [])],
     summary: `${title} — ${summaryParts.map((s) => `${s.label} (${s.detail})`).join(', ')}`,
-    canPublish: !hasBlockingErrors(issues),
+    // Agent qoralamalari `private` — chat "nashr qilish" tugmasini taklif qilmaydi (handlePublish baribir rad etadi).
+    canPublish: draft.rights.publishScope === 'public' && !hasBlockingErrors(issues),
   };
 }
 
@@ -361,6 +362,16 @@ async function handleAttachImage({ payload, admin, req }) {
 async function handlePublish({ payload, admin, req }) {
   const test = await ExamTest.findById(payload.testId);
   if (!test) return { content: 'Test topilmadi.', proposals: [] };
+
+  // `private`/`organization` doirali test (agent yaratganlari — uchinchi tomon materiali) bir tugma bilan hammaga ochilmasin:
+  // nashr doirasini admin test sahifasida ongli ravishda o'zgartiradi (LEGAL-01).
+  const scope = test.rights?.publishScope || 'public';
+  if (scope !== 'public') {
+    return {
+      content: `⚠️ **${test.title}** nashr doirasi \`${scope}\` — chat orqali nashr qilmadim (uchinchi tomon materiali ommaga chiqib ketmasligi uchun). Huquqni tasdiqlab, \`/admin/exam-tests\` sahifasida nashr doirasini o'zgartiring va u yerdan nashr qiling.`,
+      proposals: [],
+    };
+  }
 
   const issues = validateTest(test.toObject());
   if (hasBlockingErrors(issues)) {
