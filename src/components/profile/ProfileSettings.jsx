@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
-import { Eye, Monitor, Moon, Send, Sun, Target, X } from 'lucide-react';
+import { Eye, LogOut, Monitor, Moon, Send, ShieldCheck, Sun, Target, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import Button from '@/components/ui/Button';
@@ -30,7 +30,9 @@ const inputClass =
 const sectionTitle = 'text-xs font-semibold uppercase tracking-wide text-muted mb-2.5 flex items-center gap-1.5';
 
 export default function ProfileSettings({ open, onClose }) {
-  const { chatAccess } = useApp();
+  const { chatAccess, logout } = useApp();
+  const [confirmAll, setConfirmAll] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const { theme, setTheme } = useTheme();
   const titleId = useId();
   const closeRef = useRef(null);
@@ -165,6 +167,17 @@ export default function ProfileSettings({ open, onClose }) {
     } finally {
       setVisibilitySaving(false);
     }
+  };
+
+  const signOutEverywhere = async () => {
+    setSigningOut(true);
+    // Server barcha sessiyalarni bekor qiladi; so'rov muvaffaqiyatsiz bo'lsa ham mahalliy chiqish baribir bajariladi.
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ allDevices: true }),
+    }).catch(() => {});
+    logout();
   };
 
   if (!open) return null;
@@ -325,6 +338,30 @@ export default function ProfileSettings({ open, onClose }) {
                   {opt.label}
                 </button>
               ))}
+            </div>
+          </section>
+
+          <section>
+            <h3 className={sectionTitle}>
+              <ShieldCheck size={13} aria-hidden="true" /> Xavfsizlik
+            </h3>
+            <div className="bg-surface border border-border rounded-2xl shadow-card p-5">
+              <p className="text-sm text-ink font-medium mb-1">Barcha qurilmalardan chiqish</p>
+              <p className="text-xs text-muted mb-3">Telefoningiz yo&apos;qolgan yoki begona qurilmada kirgan bo&apos;lsangiz — barcha sessiyalar bekor qilinadi.</p>
+              {confirmAll ? (
+                <div className="flex items-center gap-2">
+                  <Button variant="danger" onClick={signOutEverywhere} disabled={signingOut}>
+                    {signingOut ? 'Bajarilmoqda...' : 'Ha, hammasidan chiqish'}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setConfirmAll(false)} disabled={signingOut}>
+                    Bekor qilish
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="ghost" onClick={() => setConfirmAll(true)}>
+                  <LogOut size={16} aria-hidden="true" /> Barcha qurilmalardan chiqish
+                </Button>
+              )}
             </div>
           </section>
 

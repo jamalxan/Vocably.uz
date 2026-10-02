@@ -11,7 +11,7 @@ const OBJECT_ID = /^[a-f0-9]{24}$/;
 // Telegram'dagi "Asosiy rasm qilish" — tanlangan rasm 0-o'ringa ko'chiriladi.
 export async function PATCH(req, { params }) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     if (!OBJECT_ID.test(params.photoId)) return NextResponse.json({ error: "Noto'g'ri format" }, { status: 400 });
 
@@ -38,7 +38,7 @@ export async function PATCH(req, { params }) {
 // (Telegram'dagidek). S3 fayllari ham o'chiriladi.
 export async function DELETE(req, { params }) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     if (!OBJECT_ID.test(params.photoId)) return NextResponse.json({ error: "Noto'g'ri format" }, { status: 400 });
 

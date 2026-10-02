@@ -15,7 +15,7 @@ const DEFAULT_SELECT = 'role subscriptionTier timezone categories xp badges revi
  * `select` — qaysi maydonlar kerak (categories katta bo'lishi mumkin, keraksiz bo'lsa so'ramang).
  */
 export async function requireVocabUser(req, { select = DEFAULT_SELECT, ignoreFlag = false } = {}) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getUserIdFromRequest(req);
   if (!userId) return { error: NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 }) };
   await connectToDatabase();
   const user = await User.findById(userId).select(select).lean();

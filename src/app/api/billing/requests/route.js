@@ -28,7 +28,7 @@ function requestOut(r) {
 
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     await connectToDatabase();
     const list = await PaymentRequest.find({ userId }).sort({ createdAt: -1 }).limit(10).lean();
@@ -42,7 +42,7 @@ export async function GET(req) {
 // method } → returns the provider checkout URL for the created request.
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     await connectToDatabase();
 

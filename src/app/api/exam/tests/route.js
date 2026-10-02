@@ -13,7 +13,7 @@ import { NextResponse } from 'next/server';
 // (src/lib/exam/testSummary.js) — to'liq testlar o'qilmaydi.
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();

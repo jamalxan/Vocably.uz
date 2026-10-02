@@ -64,7 +64,7 @@ Shu so'z uchun o'quv lug'ati yozuvini tayyorla (JSON sxemaga qat'iy mos):
 
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     const { categoryId, wordId } = await req.json();

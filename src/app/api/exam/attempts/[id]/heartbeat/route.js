@@ -18,7 +18,7 @@ import { NextResponse } from 'next/server';
 // `partIndex` `playedParts`ga qo'shiladi va keyingi partga o'tkaziladi.
 export async function POST(req, { params }) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();

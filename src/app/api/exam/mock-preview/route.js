@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 // (N-05: the intro used to hardcode "Listening 30 daq" regardless of content).
 export async function GET(req) {
   try {
-    if (!getUserIdFromRequest(req)) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
+    if (!await getUserIdFromRequest(req)) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     await connectToDatabase();
     return NextResponse.json(await mockPreview());
   } catch (err) {

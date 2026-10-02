@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 // `/attempts/[id]` bilan to'qnashmaydi — Next.js avval aniq yo'lni tekshiradi).
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();

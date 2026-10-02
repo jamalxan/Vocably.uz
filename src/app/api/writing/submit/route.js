@@ -79,7 +79,7 @@ JAVOBNI FAQAT JSON qaytar (sxemaga qat'iy mos).`;
 
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     const { task, prompt, text, chart, chartSvg } = await req.json();

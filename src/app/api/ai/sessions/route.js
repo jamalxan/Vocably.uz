@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
 
     await connectToDatabase();
@@ -54,7 +54,7 @@ export async function GET(req) {
 // Barcha suhbatlarni o'chirish (foydalanuvchi interfeysida ikki bosqichli tasdiq bilan himoyalangan).
 export async function DELETE(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
 
     await connectToDatabase();
@@ -72,7 +72,7 @@ export async function DELETE(req) {
 
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
 
     await connectToDatabase();

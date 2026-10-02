@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 // O'chirilgan stiker ham beriladi — eski xabarlarda ko'rinishi uchun.
 export async function GET(req, { params }) {
   try {
-    if (!getUserIdFromRequest(req)) return new NextResponse(null, { status: 401 });
+    if (!await getUserIdFromRequest(req)) return new NextResponse(null, { status: 401 });
     if (!OBJECT_ID.test(params.stickerId)) return new NextResponse(null, { status: 400 });
 
     await connectToDatabase();

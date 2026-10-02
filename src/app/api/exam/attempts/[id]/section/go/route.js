@@ -13,7 +13,7 @@ const VALID_SECTIONS = ['listening', 'reading', 'writing'];
 // qat'iy tekshiradi, 403 boshqa mockKind'lar uchun).
 export async function POST(req, { params }) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     const { targetSection } = await req.json().catch(() => ({}));

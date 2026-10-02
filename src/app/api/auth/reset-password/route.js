@@ -29,7 +29,8 @@ export async function POST(req) {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await User.findByIdAndUpdate(session.userId, { password: hashedPassword });
+    // Parol o'zgargach eski sessiyalar (ehtimol o'g'irlangan token) darhol bekor qilinadi.
+    await User.findByIdAndUpdate(session.userId, { password: hashedPassword, tokensValidAfter: new Date() });
 
     return NextResponse.json({ success: true });
   } catch (err) {

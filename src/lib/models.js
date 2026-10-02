@@ -164,6 +164,8 @@ const UserSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true, trim: true, index: true },
   name: { type: String, trim: true, default: '' },
   password: { type: String, required: true },
+  // Shu paytdan OLDIN berilgan sessiya tokenlari (JWT `iat`) yaroqsiz — parol tiklanganda yoki "hamma qurilmadan chiqish"da yangilanadi (src/lib/auth.js).
+  tokensValidAfter: { type: Date, default: null },
   telegramChatId: { type: Number, default: null },
   // --- Do'stlar (foydalanuvchilararo chat) uchun, docs/ (chat plani) ---
   // `role` admin panelga kirishni, `chatAccess` esa Do'stlar bo'limining butunlay

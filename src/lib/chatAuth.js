@@ -12,7 +12,7 @@ import { LAST_ACTIVE_THROTTLE_MS } from '@/lib/chatConstants';
 // foydalanuvchinigina o'tkazadi. Har bir /api/chat/* route shu bilan boshlanadi —
 // frontendda yashirish himoya emas, bu yerda haqiqiy tekshiruv.
 export async function requireChatUser(req) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getUserIdFromRequest(req);
   if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
 
   // Bu yerda o'zi ulanadi — chaqiruvchi route'lar odatda bundan keyin ham
@@ -41,7 +41,7 @@ export async function requireChatUser(req) {
 
 // /api/admin/* route'lar uchun: faqat role === 'admin'.
 export async function requireAdminUser(req) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getUserIdFromRequest(req);
   if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
 
   await connectToDatabase();
@@ -57,7 +57,7 @@ export async function requireAdminUser(req) {
 // `requireAdminUser`ning aynan o'zi bilan bir xil shakl (401/403, `user`
 // select'i) — admin/teacher endpoint'lar bir xil chaqiruv naqshini kutadi.
 export async function requireTeacherUser(req) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getUserIdFromRequest(req);
   if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
 
   await connectToDatabase();

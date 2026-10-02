@@ -6,6 +6,9 @@ import './safeRequest'; // Request.json() tozalagichi (NoSQL operator inyeksiyas
 // (MongoDB host nomi, topologiya, stack ma'lumotlari) tashqariga chiqarardi.
 // Haqiqiy xato faqat server loglariga yoziladi.
 export function serverError(err, context = '') {
+  // Next'ning ichki signali (qurish vaqtida "bu yo'l dinamik — request.headers ishlatadi"): yutib yuborilmasin, aks holda
+  // `next build` har bir GET yo'li uchun soxta "[API xatoligi]" yozadi. Qayta otilsa Next yo'lni dinamik deb to'g'ri belgilaydi.
+  if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
   // Yaroqsiz identifikator (masalan /api/.../abc — ObjectId emas) Mongoose'da CastError beradi: bu mijoz xatosi (400), server
   // xatosi emas — 500 qaytarib, log/monitoringni ortiqcha "xato" bilan to'ldirmaymiz.
   if (err?.name === 'CastError') {

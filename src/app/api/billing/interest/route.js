@@ -21,7 +21,7 @@ export async function POST(req) {
     }
 
     await connectToDatabase();
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     // Login talab qilinmaydi — anonim spam bazani to'ldirmasin: IP (kirgan bo'lsa foydalanuvchi) bo'yicha limit.
     if (!(await checkRateLimit(userId || `ip:${clientIp(req)}`, 'billing-interest', 5))) {
       return NextResponse.json({ error: "Juda ko'p so'rov. Biroz kuting." }, { status: 429 });

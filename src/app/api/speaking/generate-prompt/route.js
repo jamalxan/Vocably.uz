@@ -14,7 +14,7 @@ const TOPICS = ['travel', 'technology', 'education', 'family', 'work', 'hobbies'
 
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     const rl = await checkAndIncrementAiRateLimit(userId);

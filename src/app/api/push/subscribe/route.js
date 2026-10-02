@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 // o'chirilib, yangisiga qayta yoziladi (upsert).
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();

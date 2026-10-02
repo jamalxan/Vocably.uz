@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 // profilga faqat 2-qadamda (POST /api/profile/photos) tekshiruvdan keyin qo'shiladi.
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();

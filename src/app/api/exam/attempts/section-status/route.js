@@ -14,7 +14,7 @@ const VALID_SECTIONS = ['listening', 'reading', 'writing', 'speaking'];
 // kutilmagan (masalan darhol "0 band") natija ko'rib qolishi mumkin edi.
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);

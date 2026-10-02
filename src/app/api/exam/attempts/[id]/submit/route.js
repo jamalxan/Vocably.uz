@@ -17,7 +17,7 @@ import { NextResponse } from 'next/server';
 // eskirgan/keraksiz bo'lib qoladi — natija shu avtomatik yakunlashdan qaytadi.
 export async function POST(req, { params }) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();

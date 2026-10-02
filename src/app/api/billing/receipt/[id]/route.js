@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 // Receipt file — only its owner and admins may see it.
 export async function GET(req, { params }) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     await connectToDatabase();
     const pr = await PaymentRequest.findById(params.id).select('userId receiptFileId').lean();

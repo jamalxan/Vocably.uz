@@ -19,7 +19,7 @@ const topCache = new Map(); // period -> { at, rows } (jarayon xotirasi; serverl
 
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     const raw = new URL(req.url).searchParams.get('period');

@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server';
 // uchun xuddi grade-writing/grade-speaking kabi rate-limit'ga tortiladi.
 export async function POST(req, { params }) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();

@@ -14,7 +14,7 @@ const EDITABLE_FIELDS = ['targetBand', 'examType', 'examDate', 'currentLevel', '
 
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();
@@ -46,7 +46,7 @@ export async function GET(req) {
 
 export async function PATCH(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();

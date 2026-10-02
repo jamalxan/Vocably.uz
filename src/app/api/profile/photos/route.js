@@ -11,7 +11,7 @@ const OBJECT_ID = /^[a-f0-9]{24}$/;
 // O'z rasmlarim ro'yxati (0-element — asosiy) va maxfiylik sozlamasi.
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();
@@ -33,7 +33,7 @@ export async function GET(req) {
 // tekshirib, rasmni ASOSIY sifatida (0-o'ringa) qo'shadi.
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();

@@ -98,7 +98,7 @@ async function pickRandomTestForSection(section, avoidTestIds) {
 // davom ettiriladi, qayta tasodifiy tanlanmaydi.
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     const { testId, mode = 'section', section, abandonExisting, mockKind: mockKindInput } = await req.json().catch(() => ({}));

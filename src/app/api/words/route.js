@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Sessiya muddati tugagan, qayta kiring" }, { status: 401 });
 
     await connectToDatabase();
@@ -56,7 +56,7 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
 
     await connectToDatabase();
@@ -82,7 +82,7 @@ export async function POST(req) {
 
 export async function DELETE(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });
 
     await connectToDatabase();

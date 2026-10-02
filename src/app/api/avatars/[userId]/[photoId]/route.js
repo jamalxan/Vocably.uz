@@ -15,7 +15,7 @@ const OBJECT_ID = /^[a-f0-9]{24}$/;
 // `photoId` URL'da bo'lgani uchun javob keshlanadi (rasm almashsa URL ham almashadi).
 export async function GET(req, { params }) {
   try {
-    const viewerId = getUserIdFromRequest(req);
+    const viewerId = await getUserIdFromRequest(req);
     if (!viewerId) return new NextResponse(null, { status: 401 });
 
     const { userId, photoId } = params;

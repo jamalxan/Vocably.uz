@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 // `/result` endpointi ishi, Faza 3).
 export async function GET(req, { params }) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();
