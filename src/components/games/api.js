@@ -46,5 +46,6 @@ export const getCoach = () => jsonFetch('/api/vocabulary/coach');
 export const getDiagnostic = () => jsonFetch('/api/vocabulary/diagnostic');
 export const submitDiagnostic = (answers) => jsonFetch('/api/vocabulary/diagnostic', { method: 'POST', body: JSON.stringify({ answers }) });
 export const skipDiagnostic = () => jsonFetch('/api/vocabulary/diagnostic', { method: 'POST', body: JSON.stringify({ skip: true }) });
+export const generateStory = (wordIds) => jsonFetch('/api/vocabulary/story', { method: 'POST', body: JSON.stringify(wordIds?.length ? { wordIds } : {}) });
 export const getReminderPrefs = () => jsonFetch('/api/vocabulary/reminders');
 export const saveReminderPrefs = (patch) => jsonFetch('/api/vocabulary/reminders', { method: 'PATCH', body: JSON.stringify(patch) });

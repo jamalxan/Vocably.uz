@@ -34,6 +34,7 @@ import CoachCard from './CoachCard';
 import CefrPathCard from './CefrPathCard';
 import DiagnosticCard from './DiagnosticCard';
 import ReminderSettings from './ReminderSettings';
+import StoryCard from './StoryCard';
 import { getGames, getGamificationProfile, savePlanMinutes } from './api';
 
 const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown, Image: ImageIcon, Images: GalleryHorizontal };
@@ -175,6 +176,7 @@ export default function GamesHub() {
     <div className="grid gap-6">
       <CoachCard />
       <DiagnosticCard />
+      <StoryCard />
       {/* --- Hero --- */}
       <section className="bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card" aria-labelledby="hub-hero">
         <h1 id="hub-hero" className="text-2xl font-bold text-ink font-display mb-4">
