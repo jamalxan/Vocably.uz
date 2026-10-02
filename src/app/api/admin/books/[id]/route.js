@@ -5,7 +5,8 @@ import { ContentBook, ContentAsset, IngestJob } from '@/lib/models';
 import { deleteSourceObject } from '@/lib/storage/r2';
 import { NextResponse } from 'next/server';
 
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -27,7 +28,8 @@ export async function GET(req, { params }) {
   }
 }
 
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -67,7 +69,8 @@ export async function PATCH(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

@@ -4,7 +4,8 @@ import { startGameSession } from '@/lib/vocab/server/sessionService';
 
 // POST /api/games/:key/start — { difficulty?: 'auto'|'easy'|..., categoryId?, mode? }
 // Barcha savollar BIR so'rovda qaytadi (javobsiz); to'g'ri javoblar serverda saqlanadi (TZ §37, §39).
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { user, error } = await requireVocabUser(req);
     if (error) return error;

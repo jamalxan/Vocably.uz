@@ -4,7 +4,8 @@ import { serverError } from '@/lib/apiError';
 import { Report } from '@/lib/models';
 import { NextResponse } from 'next/server';
 
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

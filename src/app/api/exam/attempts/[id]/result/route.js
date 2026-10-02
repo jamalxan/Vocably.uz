@@ -8,7 +8,8 @@ import { NextResponse } from 'next/server';
 // izohlar — faqat status === 'graded' bo'lsa". Bu YAGONA joy javob kaliti/
 // izoh/transkript ochiq chiqadigan (GET /attempts/:id — §4.1 — hech qachon
 // bularni bermaydi).
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

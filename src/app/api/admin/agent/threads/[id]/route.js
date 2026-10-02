@@ -6,7 +6,8 @@ import { NextResponse } from 'next/server';
 
 // Bitta suhbatni to'liq ochish (xabarlar + ularga biriktirilgan fayllar
 // metadatasi) va o'chirish.
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -41,7 +42,8 @@ export async function GET(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

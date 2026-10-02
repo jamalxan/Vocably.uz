@@ -23,7 +23,7 @@ export interface QuestionTypeProps {
   onChange: (value: AnswerValue) => void;
 }
 
-const PER_QUESTION_RENDERERS: Partial<Record<SanitizedQuestionGroup['type'], (props: QuestionTypeProps) => JSX.Element>> = {
+const PER_QUESTION_RENDERERS: Partial<Record<SanitizedQuestionGroup['type'], (props: QuestionTypeProps) => React.JSX.Element>> = {
   true_false_notgiven: TrueFalseNotGiven,
   yes_no_notgiven: YesNoNotGiven,
   multiple_choice_single: MultipleChoice,

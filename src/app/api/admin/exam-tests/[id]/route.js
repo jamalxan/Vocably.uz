@@ -6,7 +6,8 @@ import { syncValidationIssuesToReviewQueue } from '@/lib/exam/reviewSync';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -25,7 +26,8 @@ export async function GET(req, { params }) {
 // (qayta import qilib) YOKI faqat `isPublished`ni almashtirish uchun
 // ishlatiladi — ikkalasi ham shu bitta PATCH, chunki ikkalasi ham "mavjud
 // hujjatni yangilash" (alohida endpoint qilish ortiqcha bo'lardi).
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -84,7 +86,8 @@ export async function PATCH(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

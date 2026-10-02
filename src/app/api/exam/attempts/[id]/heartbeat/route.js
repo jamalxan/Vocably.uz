@@ -16,7 +16,8 @@ import { NextResponse } from 'next/server';
 // sanalmagan, lekin `Attempt.audio.playedParts` maydoni shu maqsadda,
 // TZ §3.7 — shu yerdan boshqa yozadigan joy yo'q). `partEnded: true` kelsa
 // `partIndex` `playedParts`ga qo'shiladi va keyingi partga o'tkaziladi.
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

@@ -38,7 +38,8 @@ async function setTgMessageNotify(req, params, enabled) {
   return NextResponse.json({ success: true, tgMessageNotify: enabled });
 }
 
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     return await setTgMessageNotify(req, params, true);
   } catch (err) {
@@ -46,7 +47,8 @@ export async function POST(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     return await setTgMessageNotify(req, params, false);
   } catch (err) {

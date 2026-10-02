@@ -14,7 +14,8 @@ export function generateStaticParams() {
   return SEO_WORDS.map((w) => ({ word: w.slug }));
 }
 
-export function generateMetadata({ params }) {
+export async function generateMetadata(props) {
+  const params = await props.params;
   const w = getSeoWord(params.word);
   if (!w) return {};
   const title = `${w.word} — tarjimasi, talaffuzi, misollar | Vocably`;
@@ -32,7 +33,8 @@ export function generateMetadata({ params }) {
   };
 }
 
-export default function SeoWordPage({ params }) {
+export default async function SeoWordPage(props) {
+  const params = await props.params;
   const w = getSeoWord(params.word);
   if (!w) notFound();
 

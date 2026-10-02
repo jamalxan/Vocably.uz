@@ -19,7 +19,8 @@ function uniqueSlug(baseSlug, existingSlugs) {
   return candidate;
 }
 
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

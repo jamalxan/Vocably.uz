@@ -9,7 +9,8 @@ import { NextResponse } from 'next/server';
 // bo'lsa ham — haqiqiy S3 obyekt hech qachon o'chirilmaydi, faqat Message
 // hujjatidagi bayroqlar). Jiddiy maxfiylik chegarasi bo'lgani uchun har bir
 // ko'rish AdminAuditLog'ga yoziladi (ConversationViewer'dagi suhbat ko'rish audit'i bilan bir xil naqsh).
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

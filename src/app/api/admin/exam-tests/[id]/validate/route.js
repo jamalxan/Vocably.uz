@@ -12,7 +12,8 @@ import { NextResponse } from 'next/server';
 // nashr qiladi); bu endpoint esa HECH NARSANI o'zgartirmasdan, faqat joriy
 // holatni tekshirib ko'rish uchun — admin "Nashr qilish"ni bosishdan oldin
 // blocker/warning sonini oldindan bilmoqchi bo'lsa ishlatiladi.
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { error, status } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

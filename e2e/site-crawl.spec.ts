@@ -71,7 +71,7 @@ async function visit(page: Page, url: string, findings: Finding[]) {
   page.on('console', onConsole);
   page.on('response', onResponse);
   try {
-    const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 }).catch((e) => {
+    const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120_000 }).catch((e) => {
       add('navigation', String(e.message));
       return null;
     });

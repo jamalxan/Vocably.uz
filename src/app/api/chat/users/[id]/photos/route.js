@@ -9,7 +9,8 @@ import { NextResponse } from 'next/server';
 // Boshqa foydalanuvchining barcha profil rasmlari (Telegram'da avatarga bosib
 // varaqlash) — maxfiylik sozlamasi va bloklar hisobga olinadi. Ko'rish mumkin
 // bo'lmasa xato emas, bo'sh ro'yxat qaytadi (rasm borligi ham oshkor bo'lmasin).
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });

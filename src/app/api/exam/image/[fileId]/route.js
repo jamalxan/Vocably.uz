@@ -12,7 +12,8 @@ import { NextResponse } from 'next/server';
 //
 // Auth talab qilinadi (barcha /api/exam/* kabi) — kontent ochiq internetga
 // hotlink qilinmasin.
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

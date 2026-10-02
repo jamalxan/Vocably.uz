@@ -12,7 +12,8 @@ import { NextResponse } from 'next/server';
 // `Range` tiklash uchun; eski engine oddiy matn saqlaydi, bu yerda YETARLI
 // EMAS edi — chunki bir xil matn bir paragrafda bir necha marta uchrashi
 // mumkin).
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

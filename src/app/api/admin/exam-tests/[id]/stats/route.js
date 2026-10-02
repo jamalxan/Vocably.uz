@@ -10,7 +10,8 @@ import { NextResponse } from 'next/server';
 // bo'ylab bu sessiyada allaqachon qabul qilingan pragmatik yondashuv
 // (masalan attemptServer.ts#getAttemptHistory), chunki hozircha bitta
 // testning urinishlar soni katta emas.
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

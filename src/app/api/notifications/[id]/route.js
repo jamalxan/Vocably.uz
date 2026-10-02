@@ -7,7 +7,8 @@ import { NextResponse } from 'next/server';
 // Bitta bildirishnomani o'qilgan deb belgilaydi (bosilganda chaqiriladi) — ro'yxat doim
 // faqat yangi/o'qilmagan bildirishnomalar bilan "toza" qolishi uchun o'qilgani zahoti
 // bazadan butunlay o'chirib tashlanadi (read:true qilib saqlanmaydi).
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

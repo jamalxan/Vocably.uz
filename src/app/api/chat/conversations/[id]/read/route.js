@@ -16,7 +16,8 @@ async function loadConversationForUser(conversationId, userId) {
 // (src/lib/chatRead.js) — bu endpoint faqat socket ulangan holda (poll o'chiq bo'lganda,
 // src/context/ChatContext.jsx) suhbat OCHIQ turgan paytda jonli xabar kelganini shu
 // zahoti "o'qildi" deb belgilash uchun, to'liq GET so'rovini qaytadan yubormasdan.
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });

@@ -19,7 +19,8 @@ import { NextResponse } from 'next/server';
 //   action: 'presign' — { mimeType, size } -> { stickerId, uploadUrl } (brauzer S3'ga PUT qiladi)
 //   action: 'commit'  — { stickerId, mimeType, label } -> fayl S3'da borligi, hajmi va
 //                        haqiqiy formati tekshirilib, to'plamga qo'shiladi.
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

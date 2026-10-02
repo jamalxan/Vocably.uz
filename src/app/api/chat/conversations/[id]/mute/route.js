@@ -18,7 +18,8 @@ const MAX_MUTE_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 kun — cheksiz o's
 
 // Faqat so'rovchi userga tegishli — boshqa tomon bu holatni ko'rmaydi va undan
 // hech qanday bildirishnoma/belgi olmaydi (jimgina bildirishnomani o'chirish).
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -54,7 +55,8 @@ export async function POST(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });

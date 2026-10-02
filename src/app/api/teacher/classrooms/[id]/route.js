@@ -11,7 +11,8 @@ import { NextResponse } from 'next/server';
 // yaratilmagan bo'lsa ham, o'quvchilar ro'yxati/boshqaruvi ko'rinishi kerak
 // (GET .../assignments faqat assignment mavjud bo'lganda student ro'yxatini
 // qaytaradi).
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: teacher } = await requireTeacherUser(req);
     if (error) return NextResponse.json({ error }, { status });

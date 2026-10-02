@@ -11,7 +11,8 @@ import { NextResponse } from 'next/server';
 // ULANGANDA `target` (sectionKey/partIndex/groupId/questionNumber) orqali
 // aniq joyni topib bajaradi — hozircha bu yerda faqat `ReviewItem`ning
 // o'zi yangilanadi (holat + admin qaysi qiymatni tanlaganini saqlaydi).
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

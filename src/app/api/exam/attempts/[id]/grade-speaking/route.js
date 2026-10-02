@@ -9,7 +9,8 @@ import { NextResponse } from 'next/server';
 // naqsh (q. o'sha yerdagi izoh: sinxron AI chaqiruv, navbat infratuzilmasi
 // yo'q). Client Speaking bo'limining oxirgi javobini yuborib "Yakunlash"
 // bosgach (submit'dan keyin) DARHOL shu endpointni chaqiradi.
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

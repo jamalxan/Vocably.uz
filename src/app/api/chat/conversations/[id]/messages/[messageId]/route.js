@@ -48,7 +48,8 @@ async function loadOwnMessage(conversationId, messageId, userId) {
 // Faqat o'zining matnli xabarini tahrirlaydi. `originalText` faqat BIRINCHI tahrirda
 // yoziladi — shu tufayli admin panel qancha marta qayta tahrirlansa ham asl matnni
 // ko'ra oladi (Telegram foydalanuvchi tarafida ko'rsatmaydi, faqat "tahrirlangan" belgisi).
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -102,7 +103,8 @@ export async function PATCH(req, { params }) {
 // yashiradi (hujjat o'chirilmaydi, `deletedForEveryone` bilan belgilanadi). Aks holda
 // (yoki forEveryone berilmasa) — faqat so'rovchi uchun (`deletedFor`ga qo'shiladi),
 // boshqa tomon xabarni odatdagidek ko'raveradi.
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });

@@ -17,7 +17,8 @@ import { NextResponse } from 'next/server';
 // oqim/Range-so'rov muammosi bu yerda YO'Q (bitta butun fayl, bir martalik
 // GET — src/lib/useAuthedMedia.js'dagi izohga q., u YERDA redirect aynan
 // shu sabab bilan RAD ETILGAN edi, lekin sabab audio/video'ga xos edi).
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

@@ -3,7 +3,8 @@ import { requireVocabUser, handleRouteError } from '@/lib/vocab/server/route';
 import { completeSession } from '@/lib/vocab/server/sessionService';
 
 // POST /api/games/sessions/:id/complete — idempotent: qayta chaqirilsa XP qayta berilmaydi (TZ §51).
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { userId, error } = await requireVocabUser(req, { select: 'role' });
     if (error) return error;

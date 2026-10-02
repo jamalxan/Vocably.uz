@@ -13,7 +13,8 @@ import { ContentBook, IngestJob } from '@/lib/models';
 const POLL_MS = 3000;
 const MAX_DURATION_MS = 4 * 60 * 1000;
 
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   const { error, status } = await requireAdminUser(req);
   if (error) return new Response(JSON.stringify({ error }), { status, headers: { 'Content-Type': 'application/json' } });
 

@@ -11,7 +11,8 @@ const MAX_EVENTS = 200; // urinish boshiga — halollik logi cheksiz o'smasin (T
 // switch, fullscreen exit, paste". Faqat LOGLAYDI, hech narsani bloklamaydi
 // yoki taqiqlamaydi (TZ §14: "maqsad — tasodifiy aldashni qiyinlashtirish,
 // professional aldovni to'xtatish emas").
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

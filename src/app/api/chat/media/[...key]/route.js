@@ -9,7 +9,8 @@ import { NextResponse } from 'next/server';
 // buildObjectKey) — shu tufayli a'zolikni URL'ning o'zidan tekshirish mumkin,
 // alohida Message so'rovi shart emas. Faqat shu suhbat ishtirokchisi signed
 // GET URL ola oladi; boshqa hamma uchun 403.
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });

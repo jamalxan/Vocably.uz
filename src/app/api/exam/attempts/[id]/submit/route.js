@@ -15,7 +15,8 @@ import { NextResponse } from 'next/server';
 // (javoblar allaqachon saqlangan holicha, `timeSpentSec` `endsAt`da to'xtatilib)
 // avtomatik yakunlaydi va bu yerdagi `submitAttempt` chaqiruvi shunchaki
 // eskirgan/keraksiz bo'lib qoladi — natija shu avtomatik yakunlashdan qaytadi.
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
