@@ -2,6 +2,18 @@
 
 Kodni o'qib tuzilgan reja (2026-10-02). Ikkalasi ham bir necha kunlik emas, haftalik ish — shuning uchun avtonom bir yo'la emas, bosqichma-bosqich.
 
+## Holat (2026-10-02)
+
+- **B2 — TAYYOR.** `POST /api/words/review/batch`, IndexedDB navbati, "Offline takrorlash" kartasi (Mashq sahifasi). Qaror: offline javoblar XP bermaydi.
+- **B1 — karkas va birinchi yuzalar tayyor.** `src/lib/i18n` (uz asos + ru), `LocaleProvider`, til tanlash (Sozlamalar va kirish sahifasi).
+  Tarjima qilingan: kirish/ro'yxat/parol tiklash, Mashq, Offline karta, AI hikoya kartasi, Sozlamalar. Ruscha matnlar AI tomonidan yozilgan (vaqtincha, vaqt o'tib ona tilida so'zlashuvchi ko'rib chiqsin).
+- **Keyingi bosqich (hali qilinmagan): o'yinlar markazi, dashboard, lug'at, imtihon, landing.** Asosiy to'siq — **serverdan keladigan matnlar**
+  (daraja nomlari, o'yin/vazifa/yutuq sarlavhalari va tavsiflari, kunlik reja sabablari, murabbiy xabarlari, API xato xabarlari): ular konfiguratsiya fayllarida o'zbekcha.
+  To'g'ri yo'l: (1) har bir server matniga barqaror **kalit** berish (`games.multiple_choice.title`), API kalitni (+ o'zgaruvchilarni) qaytaradi yoki mijoz `key` bo'yicha `t()` qiladi;
+  (2) raqamli shablonlar (`"{n} ta so'z"`) uchun ruscha ko'plik shakllari (`Intl.PluralRules('ru')`) — hozirgi oddiy `{n}` almashtirish yetarli emas;
+  (3) API xato xabarlarini `code` + mijozda tarjima. Tavsiya: avval `/api/games` va `/api/gamification/profile` kalitlarga o'tkaziladi (eng ko'p ko'rinadigan), keyin qolganlari.
+  Shu vaqtgacha `t()` ishlatilmagan joylar o'zbekcha qoladi (aralash til; Sozlamalarda ogohlantirish bor: `lang.hint`).
+
 ## B2. Offline-first takrorlash
 
 **Hozirgi holat.** `public/sw.js` faqat app-shell keshlaydi (HTML network-first, `/_next/static` cache-first); `/api/*` ataylab SW'dan o'tmaydi.
