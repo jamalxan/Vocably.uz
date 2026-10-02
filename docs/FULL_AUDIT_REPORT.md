@@ -46,6 +46,9 @@ Tekshirilgan va **to'g'ri** topilganlar: barcha 186 yo'lda himoya xaritasi (faqa
 - **SSRF (push):** `push/subscribe` ixtiyoriy `endpoint`ni saqlardi, `web-push` esa server nomidan shu URLga POST yuboradi → faqat haqiqiy push xizmatlari (FCM, Mozilla, WNS, Apple), https, kalitlar base64url, 10 obuna/akkaunt, limit (`src/lib/pushEndpoint.js` + 18 test).
 - `content/assets` oddiy foydalanuvchiga manba PDF/DOCX/audio berardi → faqat `image`/`page_render`; `billing/interest` anonim cheksiz yozuv → IP limit (5/daq); `chat/block` limit (30/daq).
 - Tezlik: `User.xp` indeksi (umumiy reyting to'liq skaner), haftalik/oylik TOP-20 aggregatsiyasi 30 s keshlandi.
+- **Mualliflik huquqi (LEGAL-01):** `publishScope: private` hech qayerda majburlanmaydi edi → admin AI chatidagi bir tugmali `publish_test` private/uchinchi tomon testni ham hammaga ochardi; endi chat orqali nashr faqat `public` doirada (qo'lda nashr o'zgarmadi). SSE `stream` ichidagi ushlanmagan xato jarayonni yiqitishi mumkin edi — o'raldi.
+- `chat/report`: xabarga shikoyat faqat suhbat a'zosidan; ID formati va mavjudlik tekshiriladi, o'ziga shikoyat yo'q.
+- Worker: tashqi `fetch` yo'q, faqat shell'siz `ffmpeg`/`ffprobe` (`execFile`). Ichki parse/assemble mantig'i satrma-satr o'qilmadi (halol cheklov).
 - Ko'rib chiqildi, o'zgarish shart emas: `words/enrich`, `words/mnemonic`, `dashboard`, `notifications/*`, `chat/report`, leaderboard maxfiyligi (telefon chiqmaydi).
 - **E2E:** `e2e/exam-security.spec.ts` (18 tekshiruv: desktop+mobil) — javob kaliti sizmasligi, qoralama test, chegaralar, HTML→415, XP, so'z sahifasi, noto'g'ri JSON/NoSQL → 400.
 - Qo'lda tekshirildi: 264 commit tarixida sir yo'q; SSRF/command-injection yo'q; ochiq-redirect yo'q.
