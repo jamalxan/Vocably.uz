@@ -106,6 +106,8 @@ export function AppProvider({ children }) {
     } catch {
       // Cache API yo'q (eski brauzer / private rejim) — e'tiborsiz
     }
+    // Offline takrorlash navbati va yuborilmagan javoblar umumiy qurilmada keyingi foydalanuvchiga qolmasin.
+    import('@/lib/offlineReview').then((m) => m.clearOfflineData()).catch(() => {});
     try {
       sessionStorage.removeItem('vocably.tabBase');
     } catch {

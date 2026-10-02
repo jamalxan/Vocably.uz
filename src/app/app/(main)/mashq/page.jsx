@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SKILL_SECTIONS } from '@/components/layout/navConfig';
+import OfflineReviewCard from '@/components/practice/OfflineReviewCard';
 
 // Mobil pastki tab-bar'ning "Mashq" tugmasi ochadigan to'liq ekranli menyu
 // (VOCABLY-TZ.md 3.2) — barcha ko'nikma bo'limlari (Lug'at/Oqish/Tinglash/
@@ -28,6 +29,7 @@ export default function MashqPage() {
           </Link>
         ))}
       </div>
+      <OfflineReviewCard />
     </div>
   );
 }

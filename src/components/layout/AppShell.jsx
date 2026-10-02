@@ -251,7 +251,7 @@ export default function AppShell({ children }) {
       {/* ============ Kontent ============ */}
       {/* Header `fixed`: ota konteyner aniq h-dvh bo'lgani uchun `sticky` birinchi
           ekrandan keyin sahifa bilan birga chiqib ketardi. Joyi pt-16 bilan saqlanadi. */}
-      <div className={`md:pl-[72px] xl:pl-64 ${chatOpen ? 'md:pt-16' : 'pt-16'} pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 h-dvh flex flex-col`}>
+      <div className={`md:pl-[72px] xl:pl-64 ${chatOpen ? 'md:pt-16' : 'pt-16'} pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 ${chatOpen ? 'h-dvh' : 'min-h-dvh md:h-dvh'} flex flex-col`}>
         <header className={`${chatOpen ? 'hidden md:flex' : 'flex'} fixed top-0 right-0 left-0 md:left-[72px] xl:left-64 h-16 z-20 items-center justify-between md:justify-end gap-2 px-4 sm:px-6 bg-bg/90 backdrop-blur-md border-b border-border`}>
           <Link
             href="/app"
