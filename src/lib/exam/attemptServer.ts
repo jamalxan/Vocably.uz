@@ -161,21 +161,56 @@ export interface AttemptAnswersPatch {
  * (qaysi maydon qaysi nuqta-notatsiyali kalitga aylanishi) alohida, sinash
  * mumkin bo'lgan joyda. `now` — faqat testlar uchun (deterministik
  * `updatedAt`), real chaqiruvda berilmaydi. */
+const ANSWER_KEY_RE = /^[A-Za-z0-9_-]{1,32}$/;
+const MAX_ANSWER_KEYS_PER_PATCH = 200;
+const MAX_ANSWER_CHARS = 1000;
+const MAX_ANSWER_ITEMS = 20;
+const MAX_QUESTION_NUMBER = 999;
+const MAX_FLAGGED = 200;
+/** IELTS insho ~250–400 so'z; 20 000 belgi (≈3 000 so'z) — haqiqiy foydalanuvchi uchun juda keng zaxira. */
+export const MAX_ESSAY_CHARS = 20_000;
+
+/** `AnswerValue` (matn | matnlar massivi | null) — boshqa tur yoki katta qiymat `undefined` (tashlanadi). */
+function sanitizeAnswerValue(value: unknown): AnswerValue | undefined {
+  if (value === null) return null;
+  if (typeof value === 'string') return value.slice(0, MAX_ANSWER_CHARS);
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === 'string').slice(0, MAX_ANSWER_ITEMS).map((v) => v.slice(0, MAX_ANSWER_CHARS));
+  }
+  return undefined;
+}
+
 export function buildAnswersPatchSetOps(patch: AttemptAnswersPatch, now: Date = new Date()): Record<string, unknown> {
   const setOps: Record<string, unknown> = {};
 
-  if (patch.answers && typeof patch.answers === 'object') {
+  // Kirish chegaralari (xavfsizlik): mijoz yuborgan kalit MongoDB `$set` yo'liga qo'yiladi, qiymat `Mixed` — chegarasiz bo'lsa
+  // nuqtali kalit ("a.b.c") bilan ichma-ich yo'l yozish, minglab kalit va megabaytli matn bilan o'z urinish hujjatini shishirish
+  // (16 MB chegara) hamda Writing AI baholashiga ulkan matn yuborish (xarajat) mumkin edi.
+  if (patch.answers && typeof patch.answers === 'object' && !Array.isArray(patch.answers)) {
+    let count = 0;
     for (const [key, value] of Object.entries(patch.answers)) {
-      setOps[`answers.${key}`] = value;
+      if (!ANSWER_KEY_RE.test(key)) continue; // savol raqami/identifikatori emas — tashlanadi
+      if (++count > MAX_ANSWER_KEYS_PER_PATCH) break;
+      const clean = sanitizeAnswerValue(value);
+      if (clean !== undefined) setOps[`answers.${key}`] = clean;
     }
   }
-  if (Array.isArray(patch.flagged)) setOps.flagged = patch.flagged;
-  if (typeof patch.lastQuestion === 'number') setOps.lastQuestion = patch.lastQuestion;
+  if (Array.isArray(patch.flagged)) {
+    setOps.flagged = patch.flagged.filter((n) => Number.isInteger(n) && n >= 0 && n <= MAX_QUESTION_NUMBER).slice(0, MAX_FLAGGED);
+  }
+  if (typeof patch.lastQuestion === 'number' && Number.isInteger(patch.lastQuestion) && patch.lastQuestion >= 0 && patch.lastQuestion <= MAX_QUESTION_NUMBER) {
+    setOps.lastQuestion = patch.lastQuestion;
+  }
   if (patch.essays && typeof patch.essays === 'object') {
     for (const key of ['task1', 'task2'] as const) {
       const incoming = patch.essays[key];
       if (incoming && typeof incoming.text === 'string') {
-        setOps[`essays.${key}`] = { text: incoming.text, wordCount: Number(incoming.wordCount) || 0, updatedAt: now };
+        const wc = Number(incoming.wordCount);
+        setOps[`essays.${key}`] = {
+          text: incoming.text.slice(0, MAX_ESSAY_CHARS),
+          wordCount: Number.isFinite(wc) ? Math.max(0, Math.min(MAX_ESSAY_CHARS, Math.round(wc))) : 0,
+          updatedAt: now,
+        };
       }
     }
   }

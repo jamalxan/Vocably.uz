@@ -43,6 +43,60 @@ describe('buildAnswersPatchSetOps', () => {
     expect(setOps).toEqual({});
   });
 
+  describe('kirish chegaralari (xavfsizlik)', () => {
+    it('nuqtali/operator/uzun kalitlarni tashlaydi (ichma-ich yo‘l yozish mumkin emas)', () => {
+      const setOps = buildAnswersPatchSetOps({
+        answers: { '1': 'A', 'a.b': 'x', '$set': 'x', '': 'x', ['k'.repeat(33)]: 'x', 'x y': 'x', '../z': 'x' } as any,
+      });
+      expect(setOps).toEqual({ 'answers.1': 'A' });
+    });
+
+    it('200 tadan ortiq kalitni kesadi', () => {
+      const answers = Object.fromEntries(Array.from({ length: 500 }, (_, i) => [String(i + 1), 'A']));
+      expect(Object.keys(buildAnswersPatchSetOps({ answers }))).toHaveLength(200);
+    });
+
+    it('qiymat turi/hajmi: matn ≤1000, massiv ≤20 matn; obyekt/raqam/mantiqiy tashlanadi; null saqlanadi', () => {
+      const setOps = buildAnswersPatchSetOps({
+        answers: {
+          s: 'x'.repeat(5000),
+          arr: Array.from({ length: 50 }, () => 'y'.repeat(2000)),
+          mixed: ['a', 1, null, { $ne: 1 }, 'b'] as any,
+          obj: { a: 1 } as any,
+          num: 5 as any,
+          nul: null,
+        },
+      });
+      expect((setOps['answers.s'] as string).length).toBe(1000);
+      expect(setOps['answers.arr']).toHaveLength(20);
+      expect((setOps['answers.arr'] as string[])[0].length).toBe(1000);
+      expect(setOps['answers.mixed']).toEqual(['a', 'b']);
+      expect(setOps).not.toHaveProperty('answers.obj');
+      expect(setOps).not.toHaveProperty('answers.num');
+      expect(setOps['answers.nul']).toBeNull();
+    });
+
+    it('massiv ko‘rinishidagi answers rad etiladi', () => {
+      expect(buildAnswersPatchSetOps({ answers: ['A', 'B'] as any })).toEqual({});
+    });
+
+    it('flagged/lastQuestion: faqat 0..999 butun sonlar', () => {
+      expect(buildAnswersPatchSetOps({ flagged: [1, 2.5, -1, 1000, 'x', 7] as any, lastQuestion: 5000 })).toEqual({ flagged: [1, 7] });
+      expect(buildAnswersPatchSetOps({ lastQuestion: 3.5 })).toEqual({});
+      expect(Array.isArray(buildAnswersPatchSetOps({ flagged: Array.from({ length: 999 }, (_, i) => i) }).flagged)).toBe(true);
+      expect((buildAnswersPatchSetOps({ flagged: Array.from({ length: 999 }, (_, i) => i) }).flagged as number[]).length).toBe(200);
+    });
+
+    it('insho matni 20 000 belgiga kesiladi; wordCount chegaralanadi (NaN/manfiy/ulkan)', () => {
+      const now = new Date();
+      const big = buildAnswersPatchSetOps({ essays: { task1: { text: 'w'.repeat(1_000_000), wordCount: 9e12 } } }, now)['essays.task1'] as any;
+      expect(big.text.length).toBe(20_000);
+      expect(big.wordCount).toBe(20_000);
+      expect((buildAnswersPatchSetOps({ essays: { task2: { text: 'x', wordCount: -5 } } }, now)['essays.task2'] as any).wordCount).toBe(0);
+      expect((buildAnswersPatchSetOps({ essays: { task2: { text: 'x', wordCount: NaN } } }, now)['essays.task2'] as any).wordCount).toBe(0);
+    });
+  });
+
   it('returns an empty object when nothing in the patch is actually settable', () => {
     expect(buildAnswersPatchSetOps({})).toEqual({});
     expect(buildAnswersPatchSetOps({ answers: {} })).toEqual({});
