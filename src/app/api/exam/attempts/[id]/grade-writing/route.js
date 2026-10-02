@@ -13,7 +13,8 @@ import { NextResponse } from 'next/server';
 // holda) qaytaradi. Kelajakda haqiqiy navbat qo'shilsa, o'zgaradigan yagona
 // joy shu route + gradeWritingAttempt() — klient kontrakti (submit qilingach
 // shu endpointni chaqirish, natija qaytishi) o'zgarmaydi.
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

@@ -11,7 +11,8 @@ export function generateStaticParams() {
   return IELTS_GUIDES.map((g) => ({ slug: g.slug }));
 }
 
-export function generateMetadata({ params }) {
+export async function generateMetadata(props) {
+  const params = await props.params;
   const g = getIeltsGuide(params.slug);
   if (!g) return {};
   const url = `/ielts/${g.slug}`;
@@ -23,7 +24,8 @@ export function generateMetadata({ params }) {
   };
 }
 
-export default function IeltsGuidePage({ params }) {
+export default async function IeltsGuidePage(props) {
+  const params = await props.params;
   const g = getIeltsGuide(params.slug);
   if (!g) notFound();
   const path = `/ielts/${g.slug}`;

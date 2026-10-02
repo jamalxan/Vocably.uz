@@ -6,7 +6,8 @@ import { redirect } from 'next/navigation';
 // eski bookmark/push-bildirishnoma havolalarini (masalan avval yuborilgan Telegram
 // xabarlaridagi /dashboard/friends/... havolalari) yangi joyga yo'naltiradi —
 // hech narsa buzilmasligi uchun o'chirilmadi.
-export default function LegacyDashboardRedirect({ params }) {
+export default async function LegacyDashboardRedirect(props) {
+  const params = await props.params;
   const list = params?.segments || [];
 
   if (list[0] === 'friends') {

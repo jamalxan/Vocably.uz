@@ -16,7 +16,8 @@ import { NextResponse } from 'next/server';
 // bittagina PATCH /answers bor); insho matni ham xuddi shu "batch saqlash"
 // yo'lidan, `{task1?: {text, wordCount}, task2?: {text, wordCount}}` sifatida
 // keladi (examStore.ts#syncNow "task1"/"task2" dirty kalitlari orqali).
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

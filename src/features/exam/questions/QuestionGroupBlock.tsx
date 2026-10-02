@@ -54,7 +54,7 @@ export default function QuestionGroupBlock({ group, answers, onAnswerChange, par
   const isMatchingBank = MATCHING_BANK_TYPES.has(group.type);
   const isImageHotspot = IMAGE_HOTSPOT_TYPES.has(group.type);
 
-  let body: JSX.Element;
+  let body: React.JSX.Element;
   if (isStemBased) {
     body = <GroupGapFill group={group} answers={answers} onAnswerChange={onAnswerChange} />;
   } else if (isMatchingHeadings) {

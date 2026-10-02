@@ -29,7 +29,8 @@ async function loadConversationForUser(conversationId, userId) {
 // yashiriladi/belgilanadi, shuning uchun keyinroq (qidiruv orqali qayta yozilsa yoki
 // yangi xabar kelsa) hiddenFor'dan olib tashlanib, suhbat qaytadan ko'rinadi (admin
 // panelda esa filtrlanmasdan, to'liq holda hamon ko'rinadi).
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });

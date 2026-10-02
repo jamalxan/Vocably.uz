@@ -5,7 +5,8 @@ import { submitAnswers } from '@/lib/vocab/server/sessionService';
 // POST /api/games/sessions/:id/answer — { answers: [{ qid, answer, responseMs, attempt? }] }
 // Batch + idempotent: bir (qid, attempt) ikki marta sanalmaydi. Klient "isCorrect"/XP yubormaydi —
 // to'g'rilik SERVERda xom javobdan hisoblanadi (TZ §12.2, §39).
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { userId, error } = await requireVocabUser(req, { select: 'role' });
     if (error) return error;

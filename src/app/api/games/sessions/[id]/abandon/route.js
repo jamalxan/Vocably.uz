@@ -3,7 +3,8 @@ import { requireVocabUser, handleRouteError } from '@/lib/vocab/server/route';
 import { abandonSession } from '@/lib/vocab/server/sessionService';
 
 // POST /api/games/sessions/:id/abandon — foydalanuvchi o'yinni tark etdi (XP berilmaydi).
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { userId, error } = await requireVocabUser(req, { select: 'role' });
     if (error) return error;

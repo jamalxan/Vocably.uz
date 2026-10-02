@@ -5,7 +5,8 @@ import { serverError } from '@/lib/apiError';
 import { WORD_CAP_MESSAGE, wordRoom } from '@/lib/vocab/wordCap';
 import { NextResponse } from 'next/server';
 
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: "Ruxsat berilmagan" }, { status: 401 });

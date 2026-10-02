@@ -11,7 +11,8 @@ const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 // Admin bitta userga: Do'stlar bo'limiga ruxsat berish/olib tashlash, username
 // belgilash, chatBanned (vaqtincha to'xtatish), yoki role (admin) o'zgartirish.
 // Har bir o'zgarish AdminAuditLog'ga yoziladi (docs/ chat plani §9.1).
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

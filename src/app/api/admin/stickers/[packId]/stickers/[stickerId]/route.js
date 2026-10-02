@@ -9,7 +9,8 @@ function findLiveSticker(pack, stickerId) {
 }
 
 // Stiker nomi (tanlash oynasida hover/qidiruv yorlig'i).
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -37,7 +38,8 @@ export async function PATCH(req, { params }) {
 
 // Yumshoq o'chirish — ilgari yuborilgan xabarlarda stiker ko'rinishda qoladi.
 // Oxirgi stiker o'chirilsa, to'plam avtomatik yashiriladi (bo'sh to'plam ko'rinmasin).
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

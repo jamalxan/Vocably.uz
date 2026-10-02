@@ -13,6 +13,9 @@
 // qilinmadi — mavjud sahifalarni sinovsiz buzish xavfi bor edi). Shunga qaramay
 // pastdagi `connect-src`/`frame-ancestors`/`object-src` cheklovlari haqiqiy
 // himoya qatlamini beradi (token exfiltration va clickjacking'ga qarshi).
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 function buildConnectSrc() {
   const extra = [];
   for (const raw of [process.env.NEXT_PUBLIC_REALTIME_URL, process.env.S3_ENDPOINT]) {
@@ -78,8 +81,12 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Uy papkasidagi begona package-lock.json workspace ildizi deb adashtirmasin (Next 15 ogohlantirishi).
+  outputFileTracingRoot: path.dirname(fileURLToPath(import.meta.url)),
   // "X-Powered-By: Next.js" sarlavhasi texnologiya/versiyani oshkor qiladi — hujumchiga foyda, foydalanuvchiga foyda yo'q.
   poweredByHeader: false,
+  // Next 15 dev-indikatori (pastki-chap "N" belgisi) mobil pastki tab-bar'ning birinchi tugmasini yopib qo'yadi (E2E va qo'lda sinov); production'ga ta'siri yo'q.
+  devIndicators: false,
   async headers() {
     return [
       {

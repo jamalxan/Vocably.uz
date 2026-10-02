@@ -7,7 +7,8 @@ import { NextResponse } from 'next/server';
 
 // To'plamni tahrirlash: `name`, `active` (foydalanuvchilarga ko'rinishi), `move`
 // ('up' | 'down' — ro'yxatdagi tartib, qo'shni to'plam bilan o'rin almashadi).
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -59,7 +60,8 @@ export async function PATCH(req, { params }) {
 
 // Yumshoq o'chirish — to'plam tanlash oynasidan yo'qoladi, lekin allaqachon yuborilgan
 // stiker xabarlar ko'rinishda qoladi (S3 fayllari o'chirilmaydi).
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

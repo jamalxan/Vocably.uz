@@ -12,7 +12,8 @@ import { NextResponse } from 'next/server';
 // (masalan Listening'ning audio+final-check tugashi) tabiiy ravishda
 // bo'limni "tugatgan" paytda ishlatiladi — bo'lim vaqti hali tugamagan bo'lsa
 // ham, o'sha bo'limning o'z mazmuni allaqachon tugagan (audio tugadi).
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

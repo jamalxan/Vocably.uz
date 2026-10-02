@@ -12,7 +12,8 @@ import { NextResponse } from 'next/server';
 // turgan vaqtni ham "yeb qo'yardi"), shuning uchun `/attempts/:id` orqali olib
 // bo'lmaydi. Faqat son/vaqt — javob kalitlari bazadan umuman o'qilmaydi
 // (proyeksiya: src/lib/exam/testSummary.js).
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

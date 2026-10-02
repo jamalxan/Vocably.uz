@@ -6,7 +6,8 @@ import { NextResponse } from 'next/server';
 
 // Studentni sinfdan olib tashlash — User hujjatining o'ziga TEGMAYDI, faqat
 // shu classroom'ning `studentIds`idan chiqaradi.
-export async function DELETE(req, { params }) {
+export async function DELETE(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: teacher } = await requireTeacherUser(req);
     if (error) return NextResponse.json({ error }, { status });

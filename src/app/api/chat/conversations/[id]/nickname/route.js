@@ -10,7 +10,8 @@ const MAX_NICKNAME_LEN = 60;
 // qo'yadi — boshqa tomon buni bilmaydi/ko'rmaydi (Conversation.nicknames — har bir
 // tomon o'z kalitiga ega Map, src/lib/models.js). Bo'sh matn yuborilsa taxallus
 // o'chiriladi va haqiqiy username'ga qaytadi.
-export async function PATCH(req, { params }) {
+export async function PATCH(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });

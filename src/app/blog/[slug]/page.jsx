@@ -13,7 +13,8 @@ export function generateStaticParams() {
   return BLOG_POSTS.map((p) => ({ slug: p.slug }));
 }
 
-export function generateMetadata({ params }) {
+export async function generateMetadata(props) {
+  const params = await props.params;
   const post = getBlogPost(params.slug);
   if (!post) return {};
   return {
@@ -73,7 +74,8 @@ const MD_COMPONENTS = {
   },
 };
 
-export default function BlogPostPage({ params }) {
+export default async function BlogPostPage(props) {
+  const params = await props.params;
   const post = getBlogPost(params.slug);
   if (!post) notFound();
 

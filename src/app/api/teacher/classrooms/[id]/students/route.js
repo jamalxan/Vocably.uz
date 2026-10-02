@@ -7,7 +7,8 @@ import { NextResponse } from 'next/server';
 
 // TCH-01/02 — student username orqali qo'shiladi (o'zi Vocably'da allaqachon
 // ro'yxatdan o'tgan bo'lishi kerak — teacher yangi hisob YARATMAYDI).
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: teacher } = await requireTeacherUser(req);
     if (error) return NextResponse.json({ error }, { status });

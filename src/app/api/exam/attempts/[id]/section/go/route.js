@@ -11,7 +11,8 @@ const VALID_SECTIONS = ['listening', 'reading', 'writing'];
 // bu istalgan bo'limga, oldinga HAM orqaga HAM sakraydi, faqat
 // `mockKind:'practice'`da ishlaydi — goToMockSection() server-side buni
 // qat'iy tekshiradi, 403 boshqa mockKind'lar uchun).
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

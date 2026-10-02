@@ -12,7 +12,8 @@ import { NextResponse } from 'next/server';
 // baholash keyinroq, "Yakunlash" bosilgach, faqat matn bilan ishlaydi — audio
 // bilan qayta gaplashmaydi). Transkripsiya AI chaqiruvi (Whisper) bo'lgani
 // uchun xuddi grade-writing/grade-speaking kabi rate-limit'ga tortiladi.
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

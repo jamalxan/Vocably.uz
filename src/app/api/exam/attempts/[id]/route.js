@@ -9,7 +9,8 @@ import { NextResponse } from 'next/server';
 // HECH QACHON chiqmaydi — `sanitizedTestFor` (sanitize.ts) doim ishlatiladi,
 // hatto urinish submit qilingan bo'lsa ham (izohli/to'liq ko'rinish alohida
 // `/result` endpointi ishi, Faza 3).
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });

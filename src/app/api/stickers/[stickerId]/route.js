@@ -9,9 +9,10 @@ import { NextResponse } from 'next/server';
 // Admin yuklagan stiker rasmi — <img src> sifatida to'g'ridan-to'g'ri ishlatiladi
 // (cookie bilan autentifikatsiya, so'ng S3'ning keshlanadigan imzolangan URL'iga 302).
 // O'chirilgan stiker ham beriladi — eski xabarlarda ko'rinishi uchun.
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
-    if (!await getUserIdFromRequest(req)) return new NextResponse(null, { status: 401 });
+    if (!(await getUserIdFromRequest(req))) return new NextResponse(null, { status: 401 });
     if (!OBJECT_ID.test(params.stickerId)) return new NextResponse(null, { status: 400 });
 
     await connectToDatabase();

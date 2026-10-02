@@ -13,7 +13,8 @@ const OBJECT_ID = /^[a-f0-9]{24}$/;
 // imzolangan URL'iga 302. Chat media'dagi (JSON qaytaradigan) naqshdan farqli —
 // avatar har bir ro'yxat qatorida chiqadi, qo'shimcha JSON so'rovisiz ishlashi kerak.
 // `photoId` URL'da bo'lgani uchun javob keshlanadi (rasm almashsa URL ham almashadi).
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const viewerId = await getUserIdFromRequest(req);
     if (!viewerId) return new NextResponse(null, { status: 401 });

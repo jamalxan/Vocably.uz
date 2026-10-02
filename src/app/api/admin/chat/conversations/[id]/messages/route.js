@@ -7,7 +7,8 @@ import { NextResponse } from 'next/server';
 // Foydalanuvchi shikoyat qilganda yoki nazorat uchun admin bitta suhbatning
 // to'liq xabar tarixini ko'radi. Bu — jiddiy maxfiylik chegarasi, shuning uchun
 // har bir ko'rish AdminAuditLog'ga yoziladi ("kim, qachon, qaysi suhbatni ko'rdi").
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: admin } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });

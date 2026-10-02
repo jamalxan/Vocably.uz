@@ -11,7 +11,8 @@ const SECTION_KEYS = ['listening', 'reading', 'writing', 'speaking', 'mock'];
 // Assignment MAVJUD, NASHR QILINGAN ExamTest'ga ishora qiladi — yangi
 // kontent-yaratish bu bosqichda ataylab yo'q (TZ scope: "assignments reuse
 // EXISTING published tests").
-export async function POST(req, { params }) {
+export async function POST(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: teacher } = await requireTeacherUser(req);
     if (error) return NextResponse.json({ error }, { status });
@@ -64,7 +65,8 @@ export async function POST(req, { params }) {
 // yetarli. Assignment/student ko'paytmasi bitta classroom uchun odatda
 // kichik bo'lgani uchun, har assignment uchun alohida ExamAttempt so'rovi
 // (N so'rov) soddalik uchun ATAYLAB tanlangan — premature optimizatsiya yo'q.
-export async function GET(req, { params }) {
+export async function GET(req, props) {
+  const params = await props.params;
   try {
     const { error, status, user: teacher } = await requireTeacherUser(req);
     if (error) return NextResponse.json({ error }, { status });
