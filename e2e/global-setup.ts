@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { SAMPLE_WORDS } from '../src/lib/vocab/fixtures';
@@ -9,6 +11,8 @@ export const E2E_PHONE = '+998901234567';
 export const E2E_FREE_PHONE = '+998901234568';
 /** Admin — kontent (lug'at kutubxonasi, fabrika) sahifalari uchun. */
 export const E2E_ADMIN_PHONE = '+998901234569';
+export const E2E_TEST_SLUG = 'e2e-published-test';
+export const E2E_DRAFT_SLUG = 'e2e-draft-test';
 /** O'qituvchi — /teacher sahifalari uchun. */
 export const E2E_TEACHER_PHONE = '+998901234570';
 
@@ -51,6 +55,20 @@ export default async function globalSetup() {
     }
     // Admin kutubxona testi uchun toza holat (oldingi yugurishdan qolgan yozuvlar).
     await mongoose.connection.collection('vocabularyentries').deleteMany({ normalizedWord: 'e2eword' });
+
+    // Imtihon testlari: bitta CHOP ETILGAN (Reading + Writing) va bitta qoralama (isPublished: false) — kontent original practice-test-1.
+    const { default: content } = await import(pathToFileURL(path.resolve('scripts/content/practice-test-1.mjs')).href);
+    const { buildWritingSection } = await import(pathToFileURL(path.resolve('scripts/seed-practice-tests.mjs')).href);
+    const admin = await users.findOne({ phone: E2E_ADMIN_PHONE });
+    const sections = { reading: content.reading, writing: buildWritingSection(content) };
+    const examtests = mongoose.connection.collection('examtests');
+    await examtests.deleteMany({ slug: { $in: [E2E_TEST_SLUG, E2E_DRAFT_SLUG] } });
+    for (const [slug, title, isPublished] of [
+      [E2E_TEST_SLUG, 'E2E Published Test', true],
+      [E2E_DRAFT_SLUG, 'E2E Draft Test', false],
+    ] as const) {
+      await examtests.insertOne({ slug, title, module: 'academic', difficulty: 'medium', sections, bandTable: null, isPublished, createdBy: admin!._id, createdAt: now });
+    }
   } finally {
     await mongoose.disconnect();
   }

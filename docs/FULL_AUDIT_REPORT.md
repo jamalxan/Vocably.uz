@@ -35,7 +35,19 @@ Hamma tuzatish alohida commit'larda; `tsc` 0 xato, lint toza, `vitest` 92 fayl /
 
 Tekshirilgan va **to'g'ri** topilganlar: barcha 186 yo'lda himoya xaritasi (faqat 7 ta ochiq yo'l — hammasi auth oqimi); `/api/admin/*` va `/api/teacher/*` rol tekshiruvi to'liq; to'lovlar atomik (`pending→approved`); chek yuklash (magic-bytes, hajm, egasi/admin); avatar maxfiyligi; chat mediada a'zolik tekshiruvi; server `fetch`lari faqat qat'iy hostlarga (SSRF yo'q); `dangerouslySetInnerHTML` ma'lumotlari importda ekranlanadi (`sanitize.ts`); cookie `httpOnly`/`SameSite=Lax`/prod'da `Secure`; CSP, HSTS, X-Frame-Options.
 
+### Ikkinchi o'tish (to'liq audit) — qo'shimcha tuzatilganlar
+- **Saqlangan XSS:** "audio" sifatida yuklangan HTML/SVG (speaking yozuvi va `speaking/submit`) o'z domenimizda ochilardi → magic-bytes tekshiruvi (415), xavfsiz `Content-Type`, `nosniff`, `CSP: sandbox` (`src/lib/mediaSafety.ts`).
+- **Imtihon javoblari:** kalit/qiymat/hajm cheklari (nuqtali kalit, 200 kalit, 1000 belgi, insho 20 000 belgi) — urinish hujjatini shishirish va AI baholashga ulkan matn yuborish yopildi.
+- **AI chat:** sessiya tarixi/rasm/xabar hajmi cheklandi (User hujjati 16 MB chegarasiga yetmasligi uchun), eski sessiyalar kesiladi.
+- **Telegram OTP:** `contact.user_id` yo'q kontakt qabul qilinardi (qo'lda yasalgan kontakt → parol tiklash orqali akkaunt egallash) — endi yopiq (fail-closed).
+- **XP suiiste'moli:** review (90/daq, 20 s/so'z, 400 XP/24 s), so'z qo'shish (250 XP/24 s).
+- **Qoralama test:** aniq `testId` bilan nashr qilinmagan testni boshlash mumkin edi → `isPublished` sharti; urinish yaratishga limit (20/daq).
+- **Admin o'z rolini o'zgartira olmaydi** (oxirgi admin qulflanishi), imtihon ro'yxati DB projection bilan (javob/matnlar yuklanmaydi), `X-Powered-By` o'chirildi, COOP, service worker URL/kesh tozalash.
+- **E2E:** `e2e/exam-security.spec.ts` (18 tekshiruv: desktop+mobil) — javob kaliti sizmasligi, qoralama test, chegaralar, HTML→415, XP, so'z sahifasi, noto'g'ri JSON/NoSQL → 400.
+- Qo'lda tekshirildi: 264 commit tarixida sir yo'q; SSRF/command-injection yo'q; ochiq-redirect yo'q.
+
 ### Ochiq qoldirilgan (qaror/hajm kerak)
+0. **5 ta eski API yo'li** (`api/reading`, `api/listening`, `api/speaking/generate-prompt`) ishlatilmaydi — o'chirish uchun: `git rm -r src/app/api/reading src/app/api/listening src/app/api/speaking/generate-prompt` (men o'chira olmadim — ruxsat rad etildi).
 1. **Next.js 14.2.35 zaifliklari** (`npm audit`: 1 critical + 5 high). Tuzatish faqat Next 15.5.24+/16 da. Ta'sir tahlili: ilova **server actions, `next/image`, middleware, rewrites, i18n** ishlatmaydi va Vercel'da (Linux) joylashgan — advisories'ning ko'pchiligi (RCE Windows'da, Image Optimizer, Server Actions SSRF, rewrites) bu holatda qo'llanmaydi; qolgani RSC so'rovlarida DoS. Yangilash katta: `@react-three/fiber` v8 / `drei` v9 React 18 ga bog'liq (Next 15 App Router React 19). **Tavsiya:** alohida filialda Next 15.5.x + React 19 + fiber v9 ga o'tish (taxminan 1–2 hafta, E2E bilan).
 2. **JWT bekor qilinmaydi:** parol tiklangandan keyin eski sessiya tokenlari 30 kun amal qiladi, "hamma qurilmadan chiqish" yo'q. Tuzatish: `User.tokenVersion` + har so'rovda tekshirish (hozir `getUserIdFromRequest` sinxron, DB'siz — katta refaktor). Qisqa muddat + yangilash tokeni ham variant.
 3. `admin/bootstrap` birinchi admin tayinlangandan keyin ham ochiq (sir + IP limit bilan himoyalangan). Tavsiya: admin mavjud bo'lsa o'chirish yoki env bayrog'i.

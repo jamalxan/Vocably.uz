@@ -78,7 +78,8 @@ async function visit(page: Page, url: string, findings: Finding[]) {
     if (resp && resp.status() >= 500) add('http5xx', `${resp.status()} (sahifa)`);
     await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => add('slow', 'networkidle 20 s ichida kelmadi'));
     await page.waitForTimeout(400);
-    const info = await page.evaluate(() => {
+    // dev'dagi Fast Refresh / kech redirect sahifani qayta yuklashi mumkin ("Execution context was destroyed") — bir marta kutib qayta uriniladi.
+    const evalInfo = () => page.evaluate(() => {
       const de = document.documentElement;
       const text = document.body?.innerText || '';
       return {
@@ -91,6 +92,11 @@ async function visit(page: Page, url: string, findings: Finding[]) {
         btnNoName: [...document.querySelectorAll('button')].filter((b) => !(b.textContent || '').trim() && !b.getAttribute('aria-label') && !b.getAttribute('title') && !b.querySelector('img[alt]')).length,
         path: location.pathname,
       };
+    });
+    const info = await evalInfo().catch(async () => {
+      await page.waitForLoadState('load', { timeout: 20_000 }).catch(() => {});
+      await page.waitForTimeout(800);
+      return evalInfo();
     });
     if (info.appError) add('errorScreen', 'xato/404 matni ko\'rinadi');
     if (info.overflowX > 1) add('overflowX', `scrollWidth - innerWidth = ${info.overflowX}`);

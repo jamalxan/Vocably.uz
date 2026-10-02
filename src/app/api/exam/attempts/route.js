@@ -6,6 +6,7 @@ import { getOrCreateTestVersion } from '@/lib/exam/attemptServer';
 import { normalizeMockKind } from '@/lib/exam/mockKind';
 import { composeRandomMock } from '@/lib/exam/mockPools';
 import { serverError } from '@/lib/apiError';
+import { checkRateLimit } from '@/lib/chatAuth';
 import { NextResponse } from 'next/server';
 
 const VALID_SECTIONS = ['listening', 'reading', 'writing', 'speaking'];
@@ -122,6 +123,11 @@ export async function POST(req) {
 
     await connectToDatabase();
 
+    // Urinish yaratish tezligi cheklanadi (har biri ExamAttempt hujjati va test snapshoti: DB o'sishi).
+    if (!(await checkRateLimit(userId, 'exam-attempt-create', 20))) {
+      return NextResponse.json({ error: "Juda ko'p urinish boshlayapsiz. Biroz kuting." }, { status: 429 });
+    }
+
     if (mode === 'mock') {
       if (!testId) {
         const existing = await ExamAttempt.findOne({ userId, mode: 'mock', status: 'in_progress' });
@@ -167,7 +173,8 @@ export async function POST(req) {
         return NextResponse.json({ attemptId: String(attempt._id) });
       }
 
-      const test = await ExamTest.findById(testId).lean();
+      // Faqat CHOP ETILGAN test (qoralama/nashr qilinmagan kontent ID bilan ochilmasin).
+      const test = await ExamTest.findOne({ _id: testId, isPublished: true }).lean();
       if (!test) return NextResponse.json({ error: 'Test topilmadi' }, { status: 404 });
       // AUDIT EX-06/N-06 (Sprint 1) — explicit testId path must respect the
       // same gate as the random-selection path above.
@@ -192,7 +199,7 @@ export async function POST(req) {
     // oxirgi urinishlari chetlab o'tiladi.
     let test;
     if (testId) {
-      test = await ExamTest.findById(testId).lean();
+      test = await ExamTest.findOne({ _id: testId, isPublished: true }).lean(); // qoralama testlar ochilmasin
     } else {
       const recent = await ExamAttempt.find({ userId, currentSection: section })
         .select('testId')

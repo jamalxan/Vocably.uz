@@ -46,7 +46,8 @@ function buildMediaImgSrc() {
 
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // `next dev` (react-refresh/HMR) eval ishlatadi — faqat dev'da ruxsat; production CSP o'zgarmaydi.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src ${buildMediaImgSrc()}`,
   `media-src ${buildMediaImgSrc()}`,
@@ -71,10 +72,14 @@ const securityHeaders = [
   // berish" bo'lsa ham) — foydalanuvchi uchun tuzatib bo'lmaydigan xato.
   { key: 'Permissions-Policy', value: 'microphone=(self), camera=(self), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  // Boshqa originning oynasi `window.opener` orqali bu sahifaga tegolmasin (popup-ga ruxsat saqlanadi: to'lov/tashqi havolalar).
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
 ];
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // "X-Powered-By: Next.js" sarlavhasi texnologiya/versiyani oshkor qiladi — hujumchiga foyda, foydalanuvchiga foyda yo'q.
+  poweredByHeader: false,
   async headers() {
     return [
       {
