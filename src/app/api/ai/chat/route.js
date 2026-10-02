@@ -18,6 +18,7 @@ import {
 import { buildDictionaryContext, formatDictionaryContextForPrompt } from '@/lib/ai/dictionaryContext';
 import { chooseReplyLanguage, replyLanguageInstruction } from '@/lib/ai/replyLanguage';
 import { NextResponse } from 'next/server';
+import { validateChatInput, pruneOldSessions, trimSessionHistory } from '@/lib/ai/chatLimits';
 
 const SYSTEM_INSTRUCTION = `Siz Vocably — ingliz tili o'rganish platformasidagi yordamchisiz. Sizning vazifangiz FAQAT ingliz tilini o'rganayotgan o'zbek foydalanuvchilarga yordam berish:
 - ingliz tili grammatikasi, qoidalari va mashqlari bo'yicha tushuntirish berish;
@@ -46,7 +47,6 @@ Mashq rejimlari (foydalanuvchi "Writing/Reading/Speaking/Listening mashqini bosh
 - Speaking: erkin suhbat uchun mavzu taklif qiling va foydalanuvchi bilan qisqa dialog qiling (u ovozli yoki matnli javob berishi mumkin), suhbat oxirida uning ingliz tilidagi javoblari bo'yicha qisqa fikr-mulohaza bering.`;
 
 const MAX_FUNCTION_ITERATIONS = 5;
-const MAX_IMAGES = 10;
 
 // Provayderlar navbat bilan sinaladi: Groq (matn uchun eng yuqori bepul RPM) -> Cerebras
 // -> OpenRouter (zaxira, rasm uchun ham) -> Gemini (oxirgi zaxira, doim ishlaydigan asosiy
@@ -286,8 +286,13 @@ export async function POST(req) {
 
     await connectToDatabase();
 
-    const { sessionId, message, imagesBase64, context, wordContext } = await req.json();
-    const images = Array.isArray(imagesBase64) ? imagesBase64.slice(0, MAX_IMAGES) : [];
+    const body = await req.json();
+    const sessionId = typeof body?.sessionId === 'string' ? body.sessionId : null;
+    const { context, wordContext } = body || {};
+    // Kirish tekshiruvi (matn turi/uzunligi, rasm formati va hajmi): src/lib/ai/chatLimits.js
+    const checked = validateChatInput(body?.message, body?.imagesBase64);
+    if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: checked.status });
+    const { message, images } = checked;
     if ((!message || !message.trim()) && images.length === 0) {
       return NextResponse.json({ error: "Xabar bo'sh bo'lmasin" }, { status: 400 });
     }
@@ -323,6 +328,7 @@ export async function POST(req) {
 
     let session = sessionId ? user.chatSessions.id(sessionId) : null;
     if (!session) {
+      pruneOldSessions(user); // sessiyalar soni cheklangan (hujjat hajmi)
       user.chatSessions.push({ title: 'Yangi suhbat', messages: [] });
       session = user.chatSessions[user.chatSessions.length - 1];
     }
@@ -348,6 +354,7 @@ export async function POST(req) {
       parts: [{ text: message && message.trim() ? message : '(rasm yuborildi)' }],
       imageUrls: images,
     });
+    trimSessionHistory(session); // tarix va eski rasmlar cheklanadi (16 MB hujjat chegarasi)
 
     const hasImages = images.length > 0;
     // Faqat AI'ga yuboriladigan matn — chatda saqlanadigan/ko'rsatiladigan `message`dan
