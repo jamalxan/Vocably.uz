@@ -2,6 +2,7 @@ import { Readable } from 'node:stream';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getAudioFileMeta, openAudioDownloadStream } from '@/lib/exam/audioStorage';
 import { serverError } from '@/lib/apiError';
+import { mediaResponseHeaders, safeServedContentType } from '@/lib/mediaSafety';
 import { NextResponse } from 'next/server';
 
 // TZ-vocably-v2.md §23 — audio GridFS'da (audioStorage.ts). Bu route shu
@@ -36,8 +37,9 @@ export async function GET(req, { params }) {
     const nodeStream = await openAudioDownloadStream(params.fileId, range || undefined);
     const webStream = Readable.toWeb(nodeStream);
 
+    // Saqlangan tur ishonchsiz (foydalanuvchi yuklagan yozuvlar ham shu yerda): ro'yxatdan o'tkaziladi, nosniff + sandbox CSP.
     const headers = {
-      'Content-Type': meta.contentType,
+      ...mediaResponseHeaders(safeServedContentType(meta.contentType, 'audio')),
       'Accept-Ranges': 'bytes',
       'Cache-Control': 'private, max-age=31536000, immutable',
     };

@@ -5,6 +5,7 @@ import { generateJson } from '@/lib/aiJson';
 import { aiErrorResponse, checkAndIncrementAiRateLimit, rateLimitMessage } from '@/lib/ai/client';
 import { transcribeAudio } from '@/lib/transcribe';
 import { serverError } from '@/lib/apiError';
+import { AUDIO_UPLOAD_MAX_BYTES, AUDIO_UPLOAD_MIN_BYTES, detectAudioType } from '@/lib/mediaSafety';
 import { NextResponse } from 'next/server';
 import { recordTextUsage } from '@/lib/vocab/server/signalService';
 
@@ -75,9 +76,16 @@ export async function POST(req) {
       return NextResponse.json({ error: "Noto'g'ri format" }, { status: 400 });
     }
 
+    if (audio.size > AUDIO_UPLOAD_MAX_BYTES) {
+      return NextResponse.json({ error: `Yozuv juda katta (maks ${AUDIO_UPLOAD_MAX_BYTES / 1024 / 1024} MB)` }, { status: 413 });
+    }
     const buffer = Buffer.from(await audio.arrayBuffer());
-    if (buffer.length < 2000) {
+    if (buffer.length < AUDIO_UPLOAD_MIN_BYTES) {
       return NextResponse.json({ error: 'Yozuv juda qisqa — qaytadan urinib ko\'ring' }, { status: 400 });
+    }
+    const detected = detectAudioType(buffer);
+    if (!detected) {
+      return NextResponse.json({ error: 'Fayl audio emas yoki format qo‘llab-quvvatlanmaydi' }, { status: 415 });
     }
 
     // BILL-01/02: 'grading' — FREE tarif uchun oylik AI baholash chegarasi ham
@@ -89,7 +97,7 @@ export async function POST(req) {
 
     let transcript;
     try {
-      transcript = await transcribeAudio(buffer, audio.name, audio.type);
+      transcript = await transcribeAudio(buffer, `speaking.${detected.split('/')[1] === 'mpeg' ? 'mp3' : detected.split('/')[1]}`, detected);
     } catch (err) {
       return aiErrorResponse(err, { endpoint: 'speaking/submit:transcribe', userId });
     }

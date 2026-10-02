@@ -2,6 +2,7 @@ import { Readable } from 'node:stream';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getImageFileMeta, openImageDownloadStream } from '@/lib/exam/imageStorage';
 import { serverError } from '@/lib/apiError';
+import { mediaResponseHeaders, safeServedContentType } from '@/lib/mediaSafety';
 import { NextResponse } from 'next/server';
 
 // Kontent rasmlari (Writing Task 1 grafigi va h.k.) GridFS'da — bu route
@@ -23,7 +24,7 @@ export async function GET(req, { params }) {
     return new NextResponse(Readable.toWeb(nodeStream), {
       status: 200,
       headers: {
-        'Content-Type': meta.contentType,
+        ...mediaResponseHeaders(safeServedContentType(meta.contentType, 'image')),
         'Content-Length': String(meta.length),
         'Cache-Control': 'private, max-age=31536000, immutable',
       },
