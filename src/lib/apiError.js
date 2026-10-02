@@ -11,6 +11,10 @@ export function serverError(err, context = '') {
   if (err?.name === 'CastError') {
     return NextResponse.json({ error: "Noto'g'ri identifikator" }, { status: 400 });
   }
+  // Yaroqsiz JSON tana (`await req.json()` SyntaxError) — mijoz xatosi.
+  if (err instanceof SyntaxError && /JSON/i.test(String(err.message))) {
+    return NextResponse.json({ error: "So'rov tanasi noto'g'ri (JSON)" }, { status: 400 });
+  }
   console.error(`[API xatoligi]${context ? ` ${context}` : ''}`, err);
   return NextResponse.json({ error: 'Server xatoligi. Keyinroq qayta urinib ko\'ring.' }, { status: 500 });
 }

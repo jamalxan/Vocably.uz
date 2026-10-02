@@ -99,6 +99,18 @@ export function AppProvider({ children }) {
     // httpOnly cookie client JS'dan o'chirilmaydi, shuning uchun serverdan
     // tozalanadi. Fire-and-forget — natijasi kutilmaydi, chiqishni sekinlashtirmaydi.
     fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    // Service worker keshi (public/sw.js) navigatsiya HTML'ini saqlaydi — umumiy qurilmada chiqishdan keyin offlayn
+    // rejimda oldingi foydalanuvchi sahifalari ko'rinib qolmasin.
+    try {
+      window.caches?.keys().then((keys) => keys.forEach((k) => window.caches.delete(k))).catch(() => {});
+    } catch {
+      // Cache API yo'q (eski brauzer / private rejim) — e'tiborsiz
+    }
+    try {
+      sessionStorage.removeItem('vocably.tabBase');
+    } catch {
+      // sessionStorage yopiq
+    }
     // '/' endi ochiq marketing landing (VOCABLY-TZ.md T3 tuzatildi) — chiqqan
     // foydalanuvchi qayta kirish formasiga to'g'ridan-to'g'ri tushsin.
     router.replace('/kirish'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /kirish ga tushib, tuzoq bo'lardi)

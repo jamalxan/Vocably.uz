@@ -2,5 +2,14 @@
   "extends": "next/core-web-vitals",
   "rules": {
     "react/no-unescaped-entities": "off"
-  }
+  },
+  "overrides": [
+    {
+      // Oddiy JS/JSX'da aniqlanmagan identifikator (masalan unutilgan import) faqat ish vaqtida — foydalanuvchi so'rovida —
+      // ReferenceError beradi; TypeScript JS'ni tekshirmaydi. TS fayllarni tsc o'zi tekshiradi.
+      "files": ["*.js", "*.jsx", "*.mjs"],
+      "env": { "browser": true, "node": true, "es2022": true },
+      "rules": { "no-undef": "error" }
+    }
+  ]
 }

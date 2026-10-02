@@ -121,7 +121,14 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || '/app';
+  // Faqat shu origin ichidagi yo'l (open redirect himoyasi).
+  let url = '/app';
+  try {
+    const target = new URL(event.notification.data?.url || '/app', self.location.origin);
+    if (target.origin === self.location.origin) url = target.pathname + target.search + target.hash;
+  } catch {
+    // noto'g'ri URL — /app
+  }
 
   event.waitUntil(
     (async () => {
