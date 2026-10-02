@@ -7,9 +7,8 @@ import {
   CheckCircle2, ExternalLink, Sparkles, Eye, EyeOff, KeyRound,
 } from 'lucide-react';
 import { normalizePhone } from '@/lib/phone';
-
-// Tarmoq uzilishi yoki JSON bo'lmagan javob (502/HTML) foydalanuvchiga xom inglizcha xato bo'lib chiqmasin
-const NETWORK_ERROR = "Server bilan aloqa yo'q, qayta urinib ko'ring";
+import { useT } from '@/context/LocaleContext';
+import { LOCALES, LOCALE_LABELS } from '@/lib/i18n';
 
 // Where to go after login/registration: `?next=/app/...` (e.g. from the
 // pricing page's "Sotib olish") — only in-app paths, never another origin.
@@ -27,18 +26,20 @@ async function readJson(res) {
   }
 }
 
-const errorMessage = (err) => (err instanceof TypeError || !err?.message ? NETWORK_ERROR : err.message);
+// Tarmoq uzilishi yoki JSON bo'lmagan javob (502/HTML) foydalanuvchiga xom inglizcha xato bo'lib chiqmasin.
+// Server xabarlari (`err.message`) hozircha o'zbekcha keladi — faqat mijoz xabarlari tarjima qilinadi.
+const errorMessage = (err, t) => (err instanceof TypeError || !err?.message ? t('auth.networkError') : err.message);
 
-// Brauzerning inglizcha validatsiya pufakchasi o'rniga o'zbekcha xabarlar
-function validatePhone(phone) {
-  if (!phone.trim()) return 'Telefon raqamni kiriting';
-  if (!normalizePhone(phone)) return "Telefon raqam noto'g'ri";
+// Brauzerning inglizcha validatsiya pufakchasi o'rniga o'zimizning xabarlar (uz/ru)
+function validatePhone(phone, t) {
+  if (!phone.trim()) return t('auth.phoneRequired');
+  if (!normalizePhone(phone)) return t('auth.phoneInvalid');
   return '';
 }
 
-function validatePassword(password) {
-  if (!password) return 'Parolni kiriting';
-  if (password.length < 6) return 'Parol kamida 6 belgidan iborat bo\'lishi kerak';
+function validatePassword(password, t) {
+  if (!password) return t('auth.passwordRequired');
+  if (password.length < 6) return t('auth.passwordShort');
   return '';
 }
 
@@ -52,6 +53,7 @@ function validatePassword(password) {
 // register/forgot ichidagi bosqichlar: 'form' -> 'telegram' -> 'code' -> (forgot uchun) 'newPassword'
 export default function AuthForm({ initialMode = 'login' }) {
   const router = useRouter();
+  const { t, locale, setLocale } = useT();
   const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'forgot'
   const [step, setStep] = useState('form');
 
@@ -114,12 +116,12 @@ export default function AuthForm({ initialMode = 'login' }) {
         if (data.status === 'code_sent') {
           clearInterval(pollRef.current);
           setStep('code');
-          setInfo('Kod Telegram orqali yuborildi. Pastga kiriting.');
+          setInfo(t('auth.codeSent'));
         } else if (data.status === 'expired') {
           clearInterval(pollRef.current);
           setStep('form');
           setInfo('');
-          setError("Sessiya muddati tugadi. Iltimos, qaytadan boshlang.");
+          setError(t('auth.sessionExpired'));
         }
       } catch {
         // keyingi urinishda davom etamiz
@@ -130,13 +132,13 @@ export default function AuthForm({ initialMode = 'login' }) {
   const handleRegisterInit = async (e) => {
     e.preventDefault();
     setError('');
-    const invalid = validatePhone(phone) || validatePassword(password);
+    const invalid = validatePhone(phone, t) || validatePassword(password, t);
     if (invalid) {
       setError(invalid);
       return;
     }
     if (password !== confirmPassword) {
-      setError('Parollar mos kelmadi');
+      setError(t('auth.passwordsMismatch'));
       return;
     }
     setLoading(true);
@@ -147,7 +149,7 @@ export default function AuthForm({ initialMode = 'login' }) {
         body: JSON.stringify({ phone, password, name }),
       });
       const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
+      if (!res.ok) throw new Error(data.error || t('auth.genericError'));
 
       setSessionToken(data.sessionToken);
       setTelegramLink(data.telegramLink);
@@ -155,7 +157,7 @@ export default function AuthForm({ initialMode = 'login' }) {
       setStep('telegram');
       startPolling(data.sessionToken);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(errorMessage(err, t));
     } finally {
       setLoading(false);
     }
@@ -164,7 +166,7 @@ export default function AuthForm({ initialMode = 'login' }) {
   const handleForgotInit = async (e) => {
     e.preventDefault();
     setError('');
-    const invalid = validatePhone(phone);
+    const invalid = validatePhone(phone, t);
     if (invalid) {
       setError(invalid);
       return;
@@ -177,7 +179,7 @@ export default function AuthForm({ initialMode = 'login' }) {
         body: JSON.stringify({ phone }),
       });
       const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
+      if (!res.ok) throw new Error(data.error || t('auth.genericError'));
 
       setSessionToken(data.sessionToken);
       setTelegramLink(data.telegramLink);
@@ -185,7 +187,7 @@ export default function AuthForm({ initialMode = 'login' }) {
       setStep('telegram');
       startPolling(data.sessionToken);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(errorMessage(err, t));
     } finally {
       setLoading(false);
     }
@@ -195,7 +197,7 @@ export default function AuthForm({ initialMode = 'login' }) {
     e.preventDefault();
     setError('');
     if (code.length !== 6) {
-      setError('6 xonali kodni kiriting');
+      setError(t('auth.codeLength'));
       return;
     }
     setLoading(true);
@@ -206,7 +208,7 @@ export default function AuthForm({ initialMode = 'login' }) {
         body: JSON.stringify({ sessionToken, code }),
       });
       const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
+      if (!res.ok) throw new Error(data.error || t('auth.genericError'));
 
       if (mode === 'register') {
         localStorage.setItem('vocably_authed', '1');
@@ -218,7 +220,7 @@ export default function AuthForm({ initialMode = 'login' }) {
         setInfo('');
       }
     } catch (err) {
-      setError(errorMessage(err));
+      setError(errorMessage(err, t));
     } finally {
       setLoading(false);
     }
@@ -227,13 +229,13 @@ export default function AuthForm({ initialMode = 'login' }) {
   const handleSetNewPassword = async (e) => {
     e.preventDefault();
     setError('');
-    const invalid = validatePassword(password);
+    const invalid = validatePassword(password, t);
     if (invalid) {
       setError(invalid);
       return;
     }
     if (password !== confirmPassword) {
-      setError('Parollar mos kelmadi');
+      setError(t('auth.passwordsMismatch'));
       return;
     }
     setLoading(true);
@@ -244,12 +246,12 @@ export default function AuthForm({ initialMode = 'login' }) {
         body: JSON.stringify({ sessionToken, newPassword: password }),
       });
       const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
+      if (!res.ok) throw new Error(data.error || t('auth.genericError'));
 
       resetFlow('login');
-      setInfo("Parol muvaffaqiyatli yangilandi. Endi tizimga kiring.");
+      setInfo(t('auth.passwordUpdated'));
     } catch (err) {
-      setError(errorMessage(err));
+      setError(errorMessage(err, t));
     } finally {
       setLoading(false);
     }
@@ -258,7 +260,7 @@ export default function AuthForm({ initialMode = 'login' }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    const invalid = validatePhone(phone) || (!password ? 'Parolni kiriting' : '');
+    const invalid = validatePhone(phone, t) || (!password ? t('auth.passwordRequired') : '');
     if (invalid) {
       setError(invalid);
       return;
@@ -271,23 +273,23 @@ export default function AuthForm({ initialMode = 'login' }) {
         body: JSON.stringify({ phone, password }),
       });
       const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi');
+      if (!res.ok) throw new Error(data.error || t('auth.genericError'));
 
       localStorage.setItem('vocably_authed', '1');
       localStorage.setItem('username', data.name || '');
       localStorage.setItem('phone', data.phone || phone);
       router.replace(afterAuthPath()); // replace: /kirish tarixda qolmasin (orqaga bosilsa yana /app ga sakrab, tuzoqqa tushirardi)
     } catch (err) {
-      setError(errorMessage(err));
+      setError(errorMessage(err, t));
     } finally {
       setLoading(false);
     }
   };
 
   const titleMap = {
-    login: 'Tizimga kirish',
-    register: "Ro'yxatdan o'tish",
-    forgot: 'Parolni tiklash',
+    login: t('auth.titleLogin'),
+    register: t('auth.titleRegister'),
+    forgot: t('auth.titleForgot'),
   };
 
   const stepLabels = ['form', 'telegram', 'code', ...(mode === 'forgot' ? ['newPassword'] : [])];
@@ -304,6 +306,24 @@ export default function AuthForm({ initialMode = 'login' }) {
       </div>
 
       <div className="relative w-full max-w-md">
+        {/* Til tanlash — tizimga kirmasdan ham ishlaydi (cookie `vocably_lang`) */}
+        <div role="group" aria-label={t('lang.title')} className="flex justify-end gap-1 mb-3">
+          {LOCALES.map((l) => (
+            <button
+              key={l}
+              type="button"
+              lang={l}
+              onClick={() => setLocale(l)}
+              aria-pressed={locale === l}
+              className={`px-3 min-h-9 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                locale === l ? 'bg-accent text-on-accent' : 'text-muted hover:bg-bg-sunken'
+              }`}
+            >
+              {LOCALE_LABELS[l]}
+            </button>
+          ))}
+        </div>
+
         {/* Brend */}
         <Link href="/" className="flex flex-col items-center w-fit mx-auto mb-6 sm:mb-8 rounded-2xl">
           <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-on-accent shadow-glow mb-4">
@@ -312,7 +332,7 @@ export default function AuthForm({ initialMode = 'login' }) {
           <h1 className="font-luxury text-3xl font-bold text-ink tracking-tight">
             Voc<span className="text-accent">ably</span>
           </h1>
-          <p className="text-xs text-muted mt-1">Ingliz tili yordamchisi</p>
+          <p className="text-xs text-muted mt-1">{t('auth.tagline')}</p>
         </Link>
 
         {/* Karta */}
@@ -322,9 +342,9 @@ export default function AuthForm({ initialMode = 'login' }) {
         >
           <div className="mb-6">
             <h2 className="font-display text-xl font-bold text-ink">{titleMap[mode]}</h2>
-            {mode === 'login' && <p className="text-xs text-muted mt-1">Davom etish uchun tizimga kiring</p>}
-            {mode === 'register' && step === 'form' && <p className="text-xs text-muted mt-1">Telefon raqamingiz Telegram orqali tasdiqlanadi</p>}
-            {mode === 'forgot' && step === 'form' && <p className="text-xs text-muted mt-1">Parolni tiklash uchun raqamingizni kiriting</p>}
+            {mode === 'login' && <p className="text-xs text-muted mt-1">{t('auth.subLogin')}</p>}
+            {mode === 'register' && step === 'form' && <p className="text-xs text-muted mt-1">{t('auth.subRegister')}</p>}
+            {mode === 'forgot' && step === 'form' && <p className="text-xs text-muted mt-1">{t('auth.subForgot')}</p>}
           </div>
 
           {showStepper && (
@@ -354,7 +374,7 @@ export default function AuthForm({ initialMode = 'login' }) {
           {/* ---------- LOGIN ---------- */}
           {mode === 'login' && (
             <form onSubmit={handleLogin} noValidate className="space-y-4">
-              <Field label="Telefon raqam">
+              <Field label={t('auth.phone')}>
                 <input
                   type="tel"
                   autoComplete="tel"
@@ -365,7 +385,7 @@ export default function AuthForm({ initialMode = 'login' }) {
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </Field>
-              <Field label="Parol">
+              <Field label={t('auth.password')}>
                 <PasswordInput value={password} onChange={setPassword} show={showPassword} setShow={setShowPassword} />
               </Field>
               <div className="flex justify-end">
@@ -374,27 +394,27 @@ export default function AuthForm({ initialMode = 'login' }) {
                   onClick={() => resetFlow('forgot')}
                   className="text-xs text-accent hover:text-accent-hover font-medium py-3.5 -my-3.5 px-2 -mx-2"
                 >
-                  Parolni unutdingizmi?
+                  {t('auth.forgotLink')}
                 </button>
               </div>
-              <SubmitButton loading={loading}>Kirish</SubmitButton>
+              <SubmitButton loading={loading}>{t('auth.login')}</SubmitButton>
             </form>
           )}
 
           {/* ---------- REGISTER: form ---------- */}
           {mode === 'register' && step === 'form' && (
             <form onSubmit={handleRegisterInit} noValidate className="space-y-4">
-              <Field label="Ismingiz (ixtiyoriy)">
+              <Field label={t('auth.nameOptional')}>
                 <input
                   type="text"
                   autoComplete="name"
-                  placeholder="Masalan: Jamshid"
+                  placeholder={t('auth.namePlaceholder')}
                   className={inputClass}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </Field>
-              <Field label="Telefon raqam">
+              <Field label={t('auth.phone')}>
                 <input
                   type="tel"
                   autoComplete="tel"
@@ -405,10 +425,10 @@ export default function AuthForm({ initialMode = 'login' }) {
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </Field>
-              <Field label="Parol">
+              <Field label={t('auth.password')}>
                 <PasswordInput value={password} onChange={setPassword} show={showPassword} setShow={setShowPassword} minLength={6} autoComplete="new-password" />
               </Field>
-              <Field label="Parolni tasdiqlang">
+              <Field label={t('auth.confirmPassword')}>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -419,14 +439,14 @@ export default function AuthForm({ initialMode = 'login' }) {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </Field>
-              <SubmitButton loading={loading}>Davom etish</SubmitButton>
+              <SubmitButton loading={loading}>{t('auth.continue')}</SubmitButton>
             </form>
           )}
 
           {/* ---------- FORGOT: form ---------- */}
           {mode === 'forgot' && step === 'form' && (
             <form onSubmit={handleForgotInit} noValidate className="space-y-4">
-              <Field label="Telefon raqam">
+              <Field label={t('auth.phone')}>
                 <input
                   type="tel"
                   autoComplete="tel"
@@ -437,7 +457,7 @@ export default function AuthForm({ initialMode = 'login' }) {
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </Field>
-              <SubmitButton loading={loading}>Kodni olish</SubmitButton>
+              <SubmitButton loading={loading}>{t('auth.getCode')}</SubmitButton>
             </form>
           )}
 
@@ -447,11 +467,11 @@ export default function AuthForm({ initialMode = 'login' }) {
               <div className="w-16 h-16 rounded-2xl bg-primary-soft border border-primary/15 flex items-center justify-center mb-4">
                 <Send size={26} className="text-ink" />
               </div>
-              <p className="text-sm text-ink font-medium mb-1.5">Telegram botga o'ting</p>
+              <p className="text-sm text-ink font-medium mb-1.5">{t('auth.tgGo')}</p>
               <p className="text-xs text-muted mb-6 leading-relaxed">
-                Pastdagi tugma orqali botni oching va telefon raqamingizni ulashing.
-                Raqam siz kiritgan <span className="text-ink font-semibold">{phone}</span> bilan mos bo'lishi kerak.
-                Tasdiqlangach, kod avtomatik shu yerga o'tkaziladi.
+                {t('auth.tgText', { phone: '\u0001' })
+                  .split('\u0001')
+                  .flatMap((part, i, arr) => (i < arr.length - 1 ? [part, <span key={i} className="text-ink font-semibold">{phone}</span>] : [part]))}
               </p>
               <a
                 href={telegramLink}
@@ -459,17 +479,17 @@ export default function AuthForm({ initialMode = 'login' }) {
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-3 rounded-xl text-sm transition-all shadow-glow"
               >
-                @{botUsername} ni ochish <ExternalLink size={15} />
+                {t('auth.openBot', { bot: botUsername })} <ExternalLink size={15} />
               </a>
               <div className="flex items-center gap-2 mt-5 text-xs text-muted">
-                <Loader2 size={13} className="animate-spin" /> Tasdiqlanishi kutilmoqda...
+                <Loader2 size={13} className="animate-spin" /> {t('auth.waiting')}
               </div>
               <button
                 type="button"
                 onClick={() => { clearInterval(pollRef.current); setStep('form'); setError(''); setInfo(''); }}
                 className="mt-2 min-h-11 px-3 text-xs text-muted hover:text-ink flex items-center gap-1"
               >
-                <ArrowLeft size={12} /> Orqaga
+                <ArrowLeft size={12} /> {t('auth.back')}
               </button>
             </div>
           )}
@@ -481,7 +501,7 @@ export default function AuthForm({ initialMode = 'login' }) {
                 <div className="w-14 h-14 rounded-2xl bg-accent-soft border border-accent/20 flex items-center justify-center mb-3">
                   <ShieldCheck size={24} className="text-accent" />
                 </div>
-                <p className="text-xs text-muted">Telegram'da yuborilgan 6 xonali kodni kiriting</p>
+                <p className="text-xs text-muted">{t('auth.codePrompt')}</p>
               </div>
               <input
                 type="text"
@@ -490,18 +510,18 @@ export default function AuthForm({ initialMode = 'login' }) {
                 required
                 autoFocus
                 autoComplete="one-time-code"
-                aria-label="6 xonali tasdiqlash kodi"
+                aria-label={t('auth.codeAria')}
                 className={`${inputClass} text-center text-2xl tracking-[0.5em] indent-[0.5em] font-bold py-3`}
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
               />
-              <SubmitButton loading={loading}>Tasdiqlash</SubmitButton>
+              <SubmitButton loading={loading}>{t('auth.verify')}</SubmitButton>
               <button
                 type="button"
                 onClick={() => { setStep('telegram'); setError(''); setInfo(''); startPolling(sessionToken); }}
                 className="w-full min-h-11 text-xs text-muted hover:text-ink flex items-center justify-center gap-1"
               >
-                <ArrowLeft size={12} /> Telegramga qaytish
+                <ArrowLeft size={12} /> {t('auth.backToTelegram')}
               </button>
             </form>
           )}
@@ -513,12 +533,12 @@ export default function AuthForm({ initialMode = 'login' }) {
                 <div className="w-14 h-14 rounded-2xl bg-primary-soft border border-primary/15 flex items-center justify-center mb-3">
                   <KeyRound size={24} className="text-ink" />
                 </div>
-                <p className="text-xs text-muted">Raqam tasdiqlandi. Endi yangi parol o'rnating</p>
+                <p className="text-xs text-muted">{t('auth.verifiedSetNew')}</p>
               </div>
-              <Field label="Yangi parol">
+              <Field label={t('auth.newPassword')}>
                 <PasswordInput value={password} onChange={setPassword} show={showPassword} setShow={setShowPassword} minLength={6} autoComplete="new-password" />
               </Field>
-              <Field label="Yangi parolni tasdiqlang">
+              <Field label={t('auth.confirmNewPassword')}>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -529,7 +549,7 @@ export default function AuthForm({ initialMode = 'login' }) {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </Field>
-              <SubmitButton loading={loading}>Parolni saqlash</SubmitButton>
+              <SubmitButton loading={loading}>{t('auth.savePassword')}</SubmitButton>
             </form>
           )}
 
@@ -539,23 +559,23 @@ export default function AuthForm({ initialMode = 'login' }) {
             <p className="text-center text-xs text-muted mt-6">
               {mode === 'login' && (
                 <>
-                  Hisobingiz yo'qmi?{' '}
+                  {t('auth.noAccount')}{' '}
                   <Link href="/royxat" className="py-3 text-accent font-semibold hover:text-accent-hover">
-                    Ro'yxatdan o'ting
+                    {t('auth.signUpLink')}
                   </Link>
                 </>
               )}
               {mode === 'register' && (
                 <>
-                  Hisobingiz bormi?{' '}
+                  {t('auth.haveAccount')}{' '}
                   <Link href="/kirish" className="py-3 text-accent font-semibold hover:text-accent-hover">
-                    Kirish oynasiga o'ting
+                    {t('auth.toLogin')}
                   </Link>
                 </>
               )}
               {mode === 'forgot' && (
                 <button type="button" onClick={() => resetFlow('login')} className="min-h-11 px-3 -my-3 text-accent font-semibold hover:text-accent-hover flex items-center gap-1 mx-auto">
-                  <ArrowLeft size={12} /> Kirish oynasiga qaytish
+                  <ArrowLeft size={12} /> {t('auth.backToLogin')}
                 </button>
               )}
             </p>
@@ -563,7 +583,7 @@ export default function AuthForm({ initialMode = 'login' }) {
         </div>
 
         <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted mt-6">
-          <Sparkles size={12} /> Sun'iy intellekt asosida ishlaydi
+          <Sparkles size={12} /> {t('auth.aiPowered')}
         </p>
       </div>
     </div>
@@ -584,6 +604,7 @@ function Field({ label, children }) {
 }
 
 function PasswordInput({ id, value, onChange, show, setShow, minLength = 6, autoComplete = 'current-password' }) {
+  const { t } = useT();
   return (
     <div className="relative">
       <input
@@ -599,7 +620,7 @@ function PasswordInput({ id, value, onChange, show, setShow, minLength = 6, auto
       <button
         type="button"
         onClick={() => setShow(!show)}
-        aria-label={show ? 'Parolni yashirish' : "Parolni ko'rsatish"}
+        aria-label={show ? t('auth.hidePassword') : t('auth.showPassword')}
         aria-pressed={show}
         className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-lg text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
