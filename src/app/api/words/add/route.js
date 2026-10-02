@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/db';
 import { User, XpEvent } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
@@ -6,6 +7,8 @@ import { serverError } from '@/lib/apiError';
 import { WORD_CAP_MESSAGE } from '@/lib/vocab/wordCap';
 import { checkWordRoom } from '@/lib/vocab/server/wordCap';
 import { NextResponse } from 'next/server';
+
+const NEW_WORD_XP_DAILY_CAP = 250; // ≈ 50 so'z/kun
 
 export async function POST(req) {
   try {
@@ -47,11 +50,18 @@ export async function POST(req) {
     // qayta yuklamaslik uchun (yuqoridagi updateOne allaqachon yengil) to'g'ridan-to'g'ri
     // $inc + XpEvent — src/lib/gamification.js:awardXp shu ikkalasini bitta hujjat
     // ustida qiladi, bu yerda esa hujjat umuman yuklanmaydi.
-    const xpAmount = cleanWords.length * XP.NEW_WORD;
-    await Promise.all([
-      User.updateOne({ _id: userId }, { $inc: { xp: xpAmount } }),
-      XpEvent.create({ userId, amount: xpAmount, reason: 'new_word' }),
+    // XP suiiste'moliga qarshi: so'zni qo'shib-o'chirib qayta qo'shish bilan cheksiz XP olinmasin — 24 soatda new_word XP chegarasi.
+    const [used] = await XpEvent.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(String(userId)), reason: 'new_word', createdAt: { $gte: new Date(Date.now() - 24 * 3600 * 1000) } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
+    const xpAmount = Math.min(cleanWords.length * XP.NEW_WORD, Math.max(0, NEW_WORD_XP_DAILY_CAP - (used?.total || 0)));
+    if (xpAmount > 0) {
+      await Promise.all([
+        User.updateOne({ _id: userId }, { $inc: { xp: xpAmount } }),
+        XpEvent.create({ userId, amount: xpAmount, reason: 'new_word' }),
+      ]);
+    }
 
     return NextResponse.json({ success: true, added: cleanWords.length });
   } catch (err) {

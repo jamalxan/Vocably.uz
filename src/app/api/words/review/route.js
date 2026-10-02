@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db';
-import { User } from '@/lib/models';
+import { User, XpEvent } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { ratingFromOutcome } from '@/lib/srs';
 import { applyWordReview, logReviewEvent } from '@/lib/wordReview';
@@ -14,12 +15,21 @@ import { XP_TABLE } from '@/lib/vocab/config';
 import { idempotencyKeys } from '@/lib/vocab/xp';
 import { NextResponse } from 'next/server';
 
+// XP suiiste'moliga qarshi (mijoz correct ni o'zi aytadi — server javobni tekshira olmaydi): so'rovlar tezligi, bir so'zga takroriy XP va
+// kunlik takrorlash-XP chegarasi. SRS/seriya hisobi o'zgarmaydi — faqat XP (reyting) cheklanadi.
+const REVIEW_XP_COOLDOWN_MS = 20_000;
+const REVIEW_XP_DAILY_CAP = 400;
+
 export async function PATCH(req) {
   try {
     const userId = getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
 
     await connectToDatabase();
+
+    if (!(await checkRateLimit(userId, 'word-review', 90))) {
+      return NextResponse.json({ error: 'Juda tez takrorlayapsiz. Biroz kuting.' }, { status: 429 });
+    }
 
     const { categoryId, wordId, correct, rating: ratingInput, mode, responseMs } = await req.json();
     if (!categoryId || !wordId || typeof correct !== 'boolean') {
@@ -36,6 +46,7 @@ export async function PATCH(req) {
     if (!word) return NextResponse.json({ error: "So'z topilmadi" }, { status: 404 });
 
     const now = new Date();
+    const lastReviewedMs = word.stats?.lastReviewed ? new Date(word.stats.lastReviewed).getTime() : 0; // applyWordReview o'zgartirishidan OLDIN
     // Gamified Vocabulary Engine: javobdan OLDINGI holat (eski umumiy hisoblagichlar recall'ga
     // yo'qolmasdan ko'chishi va "yangi so'z o'rganildi" hodisasi uchun).
     const engineBefore = statsToInput(word.stats);
@@ -86,7 +97,10 @@ export async function PATCH(req) {
 
     // FAZA 5 — gamifikatsiya (VOCABLY-TZ.md §13). Yutuqlar so'z holatini yangilagandan
     // KEYIN tekshiriladi — "mastered so'zlar soni" aynan shu javobdan keyingi holatni aks ettirsin.
-    await awardXp(user, xpForReview(correct), 'review');
+    // XP faqat: shu so'z yaqinda takrorlanmagan va oxirgi 24 soatda takrorlash-XP chegarasi to'lmagan bo'lsa.
+    const xpCooledDown = now.getTime() - lastReviewedMs >= REVIEW_XP_COOLDOWN_MS;
+    const xpUnderCap = xpCooledDown && (await XpEvent.countDocuments({ userId: user._id, reason: 'review', createdAt: { $gte: new Date(now.getTime() - 24 * 3600 * 1000) } })) < REVIEW_XP_DAILY_CAP;
+    if (xpUnderCap) await awardXp(user, xpForReview(correct), 'review');
     const newBadges = checkAndAwardBadges(user, {
       masteredWords: countMasteredWords(user),
       longestStreak: user.longestReviewStreak,
