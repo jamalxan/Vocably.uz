@@ -1768,6 +1768,17 @@ VocabEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 6
 
 export const VocabEvent = mongoose.models.VocabEvent || mongoose.model('VocabEvent', VocabEventSchema);
 
+// Offline takrorlash paketlari uchun idempotentlik: bir (userId, clientSeq) ikki marta qo'llanmaydi (tarmoq qayta urinishlari xavfsiz).
+const OfflineReviewReceiptSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  key: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+OfflineReviewReceiptSchema.index({ userId: 1, key: 1 }, { unique: true });
+OfflineReviewReceiptSchema.index({ createdAt: 1 }, { expireAfterSeconds: 14 * 24 * 60 * 60 });
+
+export const OfflineReviewReceipt = mongoose.models.OfflineReviewReceipt || mongoose.model('OfflineReviewReceipt', OfflineReviewReceiptSchema);
+
 
 // Global lug'at kutubxonasi (TZ §4, §29–§32) — admin boshqaradi; foydalanuvchilar faqat PUBLISHED yozuvlarni
 // ko'radi va o'z lug'atiga ko'chirib oladi (nusxa: User.categories[].words[]). Versiyalash: har tahrirda
