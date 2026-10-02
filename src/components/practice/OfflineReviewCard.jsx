@@ -3,12 +3,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CloudOff, DownloadCloud, RefreshCw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import { downloadDueQueue, isOfflineReviewSupported, listPending, loadDueQueue, recordAnswer, syncPending } from '@/lib/offlineReview';
 
 // Offline takrorlash (B2): metro/avtobusda internetsiz. Bugungi navbat oldindan yuklanadi, javoblar qurilmada saqlanadi va
 // ulanganda yuboriladi. Offline javoblar XP BERMAYDI (faqat so'z holati va seriya) — server shunday hal qiladi.
 export default function OfflineReviewCard() {
   const { phone } = useApp();
+  const { t } = useT();
   const userKey = phone || '';
   const [supported, setSupported] = useState(false);
   const [online, setOnline] = useState(true);
@@ -36,8 +38,8 @@ export default function OfflineReviewCard() {
       syncingRef.current = true;
       try {
         const out = await syncPending(userKey);
-        if (!quiet && out.sent) setMessage(`${out.sent} ta javob yuborildi.`);
-        if (out.error && !quiet) setMessage('Yuborib bo‘lmadi — keyinroq qayta uriniladi.');
+        if (!quiet && out.sent) setMessage(t('offline.sent', { n: out.sent }));
+        if (out.error && !quiet) setMessage(t('offline.sendFailed'));
       } catch {
         // keyingi urinishda
       } finally {
@@ -45,7 +47,7 @@ export default function OfflineReviewCard() {
         refresh();
       }
     },
-    [userKey, refresh]
+    [userKey, refresh, t]
   );
 
   useEffect(() => {
@@ -75,9 +77,9 @@ export default function OfflineReviewCard() {
     setMessage('');
     try {
       const { saved, total } = await downloadDueQueue(userKey, 50);
-      setMessage(saved ? `${saved} ta so‘z offline uchun yuklandi${total > saved ? ` (jami ${total} ta navbatda)` : ''}.` : 'Hozir takrorlanadigan so‘z yo‘q.');
+      setMessage(saved ? (total > saved ? t('offline.downloadedMore', { n: saved, total }) : t('offline.downloaded', { n: saved })) : t('offline.noneDue'));
     } catch (e) {
-      setMessage(e.message === 'unauthorized' ? 'Qayta kiring.' : 'Yuklab bo‘lmadi. Internetni tekshiring.');
+      setMessage(e.message === 'unauthorized' ? t('offline.relogin') : t('offline.downloadFailed'));
     } finally {
       setBusy(false);
       refresh();
@@ -91,7 +93,7 @@ export default function OfflineReviewCard() {
     try {
       await recordAnswer(userKey, { wordId: w.wordId, categoryId: w.categoryId, correct, responseMs: Date.now() - session.shownAt });
     } catch {
-      setMessage('Javobni saqlab bo‘lmadi.');
+      setMessage(t('offline.saveFailed'));
       return;
     }
     const next = session.index + 1;
@@ -115,30 +117,34 @@ export default function OfflineReviewCard() {
         </div>
         <div className="min-w-0 flex-1">
           <h3 id="offline-title" className="text-sm font-semibold text-ink">
-            Offline takrorlash
+            {t('offline.title')}
           </h3>
-          <p className="text-xs text-muted mt-0.5">Navbatni oldindan yuklab oling — internetsiz ham takrorlaysiz. Offline javoblar XP bermaydi, lekin so‘z holati va seriyani yangilaydi.</p>
+          <p className="text-xs text-muted mt-0.5">{t('offline.intro')}</p>
         </div>
       </div>
 
       {!session && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={download} disabled={busy || !online}>
-            <DownloadCloud size={16} aria-hidden="true" /> {busy ? 'Yuklanmoqda...' : 'Navbatni yuklash'}
+            <DownloadCloud size={16} aria-hidden="true" /> {busy ? t('offline.downloading') : t('offline.download')}
           </Button>
           <Button onClick={start} disabled={queue.words.length === 0}>
-            Boshlash ({queue.words.length})
+            {t('offline.start', { n: queue.words.length })}
           </Button>
           {pending > 0 && (
             <Button variant="ghost" onClick={() => sync(false)} disabled={!online}>
-              <RefreshCw size={16} aria-hidden="true" /> Yuborish ({pending})
+              <RefreshCw size={16} aria-hidden="true" /> {t('offline.send', { n: pending })}
             </Button>
           )}
         </div>
       )}
 
-      {!session && queue.stale && queue.words.length > 0 && <p className="mt-2 text-xs text-warning">Navbat 24 soatdan eski — onlayn bo‘lganda qayta yuklang.</p>}
-      {!session && !online && <p className="mt-2 text-xs text-muted" role="status">Hozir offlaynsiz. Javoblar qurilmada saqlanadi.</p>}
+      {!session && queue.stale && queue.words.length > 0 && <p className="mt-2 text-xs text-warning">{t('offline.stale')}</p>}
+      {!session && !online && (
+        <p className="mt-2 text-xs text-muted" role="status">
+          {t('offline.offlineNow')}
+        </p>
+      )}
 
       {w && (
         <div className="mt-4 border-t border-border pt-4" aria-live="polite">
@@ -151,14 +157,14 @@ export default function OfflineReviewCard() {
               <p className="text-sm text-ink mb-3">{w.translations.join(', ') || '—'}</p>
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={() => answer(false)}>
-                  Bilmadim
+                  {t('offline.dontKnow')}
                 </Button>
-                <Button onClick={() => answer(true)}>Bilaman</Button>
+                <Button onClick={() => answer(true)}>{t('offline.know')}</Button>
               </div>
             </>
           ) : (
             <Button variant="secondary" onClick={() => setSession({ ...session, revealed: true })}>
-              Javobni ko‘rsat
+              {t('offline.reveal')}
             </Button>
           )}
         </div>
@@ -166,9 +172,11 @@ export default function OfflineReviewCard() {
 
       {session?.done && (
         <div className="mt-4 border-t border-border pt-4" role="status">
-          <p className="text-sm text-ink">{session.answered} ta javob saqlandi. {online ? 'Yuborilmoqda...' : 'Ulanganda avtomatik yuboriladi.'}</p>
+          <p className="text-sm text-ink">
+            {t('offline.saved', { n: session.answered })} {online ? t('offline.sendingNow') : t('offline.sendLater')}
+          </p>
           <Button className="mt-3" variant="secondary" onClick={() => setSession(null)}>
-            Yopish
+            {t('offline.close')}
           </Button>
         </div>
       )}

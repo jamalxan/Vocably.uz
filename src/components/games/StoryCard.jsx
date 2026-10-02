@@ -3,12 +3,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { BookText, Sparkles } from 'lucide-react';
 import Button, { buttonClasses } from '@/components/ui/Button';
+import { useT } from '@/context/LocaleContext';
 import { splitByWords } from '@/lib/vocab/highlight';
 import { generateStory } from './api';
 
 // AI mini hikoya (TZ §27.3): o'rganilayotgan (avvalo zaif) so'zlardan qisqa matn — so'zlar kontekstda yodlanadi.
-// Premium; backend kvota va limitni o'zi tekshiradi, bu yerda faqat sababini ko'rsatamiz.
+// Premium; backend kvota va limitni o'zi tekshiradi, bu yerda faqat sababini ko'rsatamiz (server xabari — o'zbekcha).
 export default function StoryCard() {
+  const { t } = useT();
   const [story, setStory] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null); // { message, upgrade }
@@ -19,7 +21,7 @@ export default function StoryCard() {
     try {
       setStory(await generateStory());
     } catch (e) {
-      setError({ message: e.message || 'Xatolik yuz berdi', upgrade: e.status === 403 });
+      setError({ message: e.message || t('story.error'), upgrade: e.status === 403 });
     } finally {
       setLoading(false);
     }
@@ -35,12 +37,12 @@ export default function StoryCard() {
         </div>
         <div className="min-w-0 flex-1">
           <h2 id="story-title" className="text-sm font-semibold text-ink">
-            AI hikoya
+            {t('story.title')}
           </h2>
-          <p className="text-xs text-muted mt-0.5">Zaif so&apos;zlaringizdan qisqa hikoya — kontekstda yodlash osonroq.</p>
+          <p className="text-xs text-muted mt-0.5">{t('story.intro')}</p>
         </div>
         <Button onClick={run} disabled={loading} size="md">
-          <Sparkles size={16} aria-hidden="true" /> {loading ? 'Yozilmoqda...' : story ? 'Yangisi' : 'Hikoya yaratish'}
+          <Sparkles size={16} aria-hidden="true" /> {loading ? t('story.writing') : story ? t('story.another') : t('story.create')}
         </Button>
       </div>
 
@@ -49,7 +51,7 @@ export default function StoryCard() {
           <span>{error.message}</span>
           {error.upgrade && (
             <Link href="/narxlar" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
-              Tariflar
+              {t('story.plans')}
             </Link>
           )}
         </div>
@@ -72,12 +74,12 @@ export default function StoryCard() {
           {story.summaryUz && <p className="text-xs text-muted mt-3">{story.summaryUz}</p>}
           {story.question && (
             <p className="text-sm text-ink mt-3">
-              <span className="font-semibold">Savol: </span>
+              <span className="font-semibold">{t('story.question')}</span>
               {story.question}
             </p>
           )}
-          {story.missingWords?.length > 0 && <p className="text-xs text-warning mt-3">Hikoyada ishlatilmagan so&apos;zlar: {story.missingWords.join(', ')}</p>}
-          <p className="text-[11px] text-muted mt-3">{story.fallback ? "AI hozir band — so'zlaringizning o'z misol gaplari ko'rsatildi." : 'AI tomonidan yaratilgan — xato bo‘lishi mumkin.'}</p>
+          {story.missingWords?.length > 0 && <p className="text-xs text-warning mt-3">{t('story.missing', { words: story.missingWords.join(', ') })}</p>}
+          <p className="text-[11px] text-muted mt-3">{story.fallback ? t('story.fallback') : t('story.aiNote')}</p>
         </article>
       )}
     </section>

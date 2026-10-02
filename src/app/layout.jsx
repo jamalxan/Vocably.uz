@@ -2,6 +2,7 @@ import '@/app/globals.css';
 import { landingFontVariables } from '@/components/landing/fonts';
 import { ThemeProvider, themeInitScript } from '@/context/ThemeContext';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+import { LocaleProvider } from '@/context/LocaleContext';
 
 // Type system (self-hosted, src/components/landing/fonts.js): Sora for
 // headings and the word being learned, Inter for text, JetBrains Mono for
@@ -87,7 +88,9 @@ export default function RootLayout({ children }) {
     <html lang="uz" className={landingFontVariables} suppressHydrationWarning>
       <body className="bg-bg text-ink min-h-dvh antialiased font-body" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <LocaleProvider>{children}</LocaleProvider>
+        </ThemeProvider>
         <ServiceWorkerRegister />
       </body>
     </html>

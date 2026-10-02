@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { LogOut, Flame, Trophy, BarChart3, Settings } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import Button from '@/components/ui/Button';
 import IconButton from '@/components/ui/IconButton';
 import Skeleton from '@/components/ui/Skeleton';
@@ -16,6 +17,7 @@ import ProfileSettings from '@/components/profile/ProfileSettings';
 // sahifasiga ega.
 export default function ProfilPage() {
   const { displayName, chatUsername, phone, logout, reviewStreak } = useApp();
+  const { t } = useT();
   const [gami, setGami] = useState(null);
   const [gamiFailed, setGamiFailed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -55,7 +57,7 @@ export default function ProfilPage() {
               {reviewStreak}
             </div>
           )}
-          <IconButton icon={Settings} label="Sozlamalar" onClick={() => setSettingsOpen(true)} aria-haspopup="dialog" />
+          <IconButton icon={Settings} label={t('settings.title')} onClick={() => setSettingsOpen(true)} aria-haspopup="dialog" />
         </div>
       </div>
 

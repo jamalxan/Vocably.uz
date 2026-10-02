@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
-import { Eye, LogOut, Monitor, Moon, Send, ShieldCheck, Sun, Target, X } from 'lucide-react';
+import { Eye, Globe, LogOut, Monitor, Moon, Send, ShieldCheck, Sun, Target, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useT } from '@/context/LocaleContext';
+import { LOCALES, LOCALE_LABELS } from '@/lib/i18n';
 import Button from '@/components/ui/Button';
 import IconButton from '@/components/ui/IconButton';
 import Skeleton from '@/components/ui/Skeleton';
@@ -12,18 +14,18 @@ import { useBackClose } from '@/lib/useBackClose';
 // Profil sahifasidagi "sozlama"ga o'xshash bo'limlar (IELTS tayyorgarlik, Telegram, Ko'rinish, Maxfiylik) bitta "Sozlamalar" oynasiga
 // jamlandi — sahifa endi faqat profil, daraja va statistikani ko'rsatadi. Ma'lumotlar (/api/profile, /api/chat/settings) faqat oyna
 // birinchi marta ochilganda yuklanadi (sahifa ochilishida ikkita so'rov kamaydi). Mobilda to'liq ekran varag'i; "orqaga" avval
-// oynani yopadi (useBackClose).
+// oynani yopadi (useBackClose). Matnlar i18n orqali (uz/ru) — src/lib/i18n/messages.
 
 const VISIBILITY_OPTIONS = [
-  { value: 'everyone', label: 'Hamma' },
-  { value: 'friends', label: 'Suhbatlashganlar' },
-  { value: 'nobody', label: 'Hech kim' },
+  { value: 'everyone', labelKey: 'settings.visEveryone' },
+  { value: 'friends', labelKey: 'settings.visFriends' },
+  { value: 'nobody', labelKey: 'settings.visNobody' },
 ];
 const BAND_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9];
 const THEME_OPTIONS = [
-  { value: 'light', label: "Yorug'", icon: Sun },
-  { value: 'dark', label: 'Tungi', icon: Moon },
-  { value: 'system', label: 'Tizim', icon: Monitor },
+  { value: 'light', labelKey: 'settings.themeLight', icon: Sun },
+  { value: 'dark', labelKey: 'settings.themeDark', icon: Moon },
+  { value: 'system', labelKey: 'settings.themeSystem', icon: Monitor },
 ];
 const inputClass =
   'w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm text-ink placeholder:text-muted outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition-colors';
@@ -31,6 +33,7 @@ const sectionTitle = 'text-xs font-semibold uppercase tracking-wide text-muted m
 
 export default function ProfileSettings({ open, onClose }) {
   const { chatAccess, logout } = useApp();
+  const { t, locale, setLocale } = useT();
   const [confirmAll, setConfirmAll] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -195,7 +198,7 @@ export default function ProfileSettings({ open, onClose }) {
             current === opt.value ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
           }`}
         >
-          {opt.label}
+          {t(opt.labelKey)}
         </button>
       ))}
     </div>
@@ -218,15 +221,38 @@ export default function ProfileSettings({ open, onClose }) {
       >
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border flex-shrink-0">
           <h2 id={titleId} className="text-lg font-bold text-ink font-display">
-            Sozlamalar
+            {t('settings.title')}
           </h2>
-          <IconButton ref={closeRef} icon={X} label="Yopish" onClick={onClose} />
+          <IconButton ref={closeRef} icon={X} label={t('settings.close')} onClick={onClose} />
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-5 space-y-7">
           <section>
             <h3 className={sectionTitle}>
-              <Target size={13} aria-hidden="true" /> IELTS tayyorgarlik
+              <Globe size={13} aria-hidden="true" /> {t('lang.title')}
+            </h3>
+            <div role="group" aria-label={t('lang.title')} className="flex gap-2 p-1 bg-surface border border-border rounded-xl">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  lang={l}
+                  onClick={() => setLocale(l)}
+                  aria-pressed={locale === l}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                    locale === l ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
+                  }`}
+                >
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted mt-2">{t('lang.hint')}</p>
+          </section>
+
+          <section>
+            <h3 className={sectionTitle}>
+              <Target size={13} aria-hidden="true" /> {t('settings.prep')}
             </h3>
             {prepLoading ? (
               <div className="space-y-2" aria-hidden="true">
@@ -237,9 +263,9 @@ export default function ProfileSettings({ open, onClose }) {
               <form onSubmit={savePrep} className="bg-surface border border-border rounded-2xl shadow-card p-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="block">
-                    <span className="block text-xs font-medium text-muted mb-1.5">Target band</span>
+                    <span className="block text-xs font-medium text-muted mb-1.5">{t('settings.targetBand')}</span>
                     <select className={inputClass} value={prep.targetBand} onChange={(e) => setPrep((p) => ({ ...p, targetBand: e.target.value }))}>
-                      <option value="">O&apos;rnatilmagan</option>
+                      <option value="">{t('settings.notSet')}</option>
                       {BAND_OPTIONS.map((b) => (
                         <option key={b} value={b}>
                           {b.toFixed(1)}
@@ -248,33 +274,33 @@ export default function ProfileSettings({ open, onClose }) {
                     </select>
                   </label>
                   <label className="block">
-                    <span className="block text-xs font-medium text-muted mb-1.5">Imtihon turi</span>
+                    <span className="block text-xs font-medium text-muted mb-1.5">{t('settings.examType')}</span>
                     <select className={inputClass} value={prep.examType} onChange={(e) => setPrep((p) => ({ ...p, examType: e.target.value }))}>
-                      <option value="">Tanlanmagan</option>
+                      <option value="">{t('settings.notChosen')}</option>
                       <option value="academic">Academic</option>
                       <option value="general">General Training</option>
                     </select>
                   </label>
                   <label className="block">
-                    <span className="block text-xs font-medium text-muted mb-1.5">Imtihon sanasi</span>
+                    <span className="block text-xs font-medium text-muted mb-1.5">{t('settings.examDate')}</span>
                     <input type="date" className={inputClass} value={prep.examDate} onChange={(e) => setPrep((p) => ({ ...p, examDate: e.target.value }))} />
                   </label>
                   <label className="block">
-                    <span className="block text-xs font-medium text-muted mb-1.5">Joriy daraja</span>
+                    <span className="block text-xs font-medium text-muted mb-1.5">{t('settings.level')}</span>
                     <select className={inputClass} value={prep.currentLevel} onChange={(e) => setPrep((p) => ({ ...p, currentLevel: e.target.value }))}>
-                      <option value="">Tanlanmagan</option>
-                      <option value="beginner">Boshlang&apos;ich</option>
-                      <option value="intermediate">O&apos;rta</option>
-                      <option value="advanced">Yuqori</option>
+                      <option value="">{t('settings.notChosen')}</option>
+                      <option value="beginner">{t('settings.levelBeginner')}</option>
+                      <option value="intermediate">{t('settings.levelIntermediate')}</option>
+                      <option value="advanced">{t('settings.levelAdvanced')}</option>
                     </select>
                   </label>
                   <label className="block sm:col-span-2">
-                    <span className="block text-xs font-medium text-muted mb-1.5">Kunlik mashg&apos;ulot (daqiqa)</span>
+                    <span className="block text-xs font-medium text-muted mb-1.5">{t('settings.dailyMinutes')}</span>
                     <input
                       type="number"
                       min="0"
                       max="1440"
-                      placeholder="masalan, 30"
+                      placeholder={t('settings.dailyMinutesPlaceholder')}
                       className={inputClass}
                       value={prep.dailyStudyMinutes}
                       onChange={(e) => setPrep((p) => ({ ...p, dailyStudyMinutes: e.target.value }))}
@@ -283,10 +309,10 @@ export default function ProfileSettings({ open, onClose }) {
                 </div>
                 <div className="flex items-center gap-3">
                   <Button type="submit" disabled={prepSaving}>
-                    {prepSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+                    {prepSaving ? t('settings.saving') : t('settings.save')}
                   </Button>
-                  {prepSaved && <span className="text-xs text-accent font-medium">Saqlandi</span>}
-                  {prepFailed && <span className="text-xs text-danger font-medium">Saqlanmadi, qayta urinib ko&apos;ring</span>}
+                  {prepSaved && <span className="text-xs text-accent font-medium">{t('settings.saved')}</span>}
+                  {prepFailed && <span className="text-xs text-danger font-medium">{t('settings.saveFailed')}</span>}
                 </div>
               </form>
             )}
@@ -294,24 +320,20 @@ export default function ProfileSettings({ open, onClose }) {
 
           <section>
             <h3 className={sectionTitle}>
-              <Send size={13} aria-hidden="true" /> Telegram
+              <Send size={13} aria-hidden="true" /> {t('settings.telegram')}
             </h3>
             <div className="flex items-center gap-3 p-4 bg-surface border border-border rounded-2xl shadow-card">
               <Send size={18} className="text-accent flex-shrink-0" aria-hidden="true" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-ink">Kunlik 5 daqiqalik mashq</p>
-                <p className="text-xs text-muted">
-                  {tg?.linked
-                    ? "Har kuni kechqurun bot lug'atingizdan 5 ta savol yuboradi. Botda /mashq — hozir boshlash."
-                    : 'Telegram bot hisobingizga ulanmagan.'}
-                </p>
+                <p className="text-sm font-semibold text-ink">{t('settings.tgDaily')}</p>
+                <p className="text-xs text-muted">{tg?.linked ? t('settings.tgDailyOn') : t('settings.tgNotLinked')}</p>
               </div>
               {tg?.linked && (
                 <button
                   type="button"
                   role="switch"
                   aria-checked={tg.daily}
-                  aria-label="Kunlik Telegram mashqi"
+                  aria-label={t('settings.tgToggle')}
                   onClick={toggleTgDaily}
                   className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${tg.daily ? 'bg-accent' : 'bg-border'}`}
                 >
@@ -322,8 +344,8 @@ export default function ProfileSettings({ open, onClose }) {
           </section>
 
           <section>
-            <h3 className={sectionTitle}>Ko&apos;rinish</h3>
-            <div role="group" aria-label="Mavzu" className="flex gap-2 p-1 bg-surface border border-border rounded-xl">
+            <h3 className={sectionTitle}>{t('settings.appearance')}</h3>
+            <div role="group" aria-label={t('settings.theme')} className="flex gap-2 p-1 bg-surface border border-border rounded-xl">
               {THEME_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -335,7 +357,7 @@ export default function ProfileSettings({ open, onClose }) {
                   }`}
                 >
                   <opt.icon size={15} aria-hidden="true" />
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               ))}
             </div>
@@ -343,23 +365,23 @@ export default function ProfileSettings({ open, onClose }) {
 
           <section>
             <h3 className={sectionTitle}>
-              <ShieldCheck size={13} aria-hidden="true" /> Xavfsizlik
+              <ShieldCheck size={13} aria-hidden="true" /> {t('settings.security')}
             </h3>
             <div className="bg-surface border border-border rounded-2xl shadow-card p-5">
-              <p className="text-sm text-ink font-medium mb-1">Barcha qurilmalardan chiqish</p>
-              <p className="text-xs text-muted mb-3">Telefoningiz yo&apos;qolgan yoki begona qurilmada kirgan bo&apos;lsangiz — barcha sessiyalar bekor qilinadi.</p>
+              <p className="text-sm text-ink font-medium mb-1">{t('settings.signOutAll')}</p>
+              <p className="text-xs text-muted mb-3">{t('settings.signOutAllHint')}</p>
               {confirmAll ? (
                 <div className="flex items-center gap-2">
                   <Button variant="danger" onClick={signOutEverywhere} disabled={signingOut}>
-                    {signingOut ? 'Bajarilmoqda...' : 'Ha, hammasidan chiqish'}
+                    {signingOut ? t('settings.working') : t('settings.signOutAllConfirm')}
                   </Button>
                   <Button variant="ghost" onClick={() => setConfirmAll(false)} disabled={signingOut}>
-                    Bekor qilish
+                    {t('settings.cancel')}
                   </Button>
                 </div>
               ) : (
                 <Button variant="ghost" onClick={() => setConfirmAll(true)}>
-                  <LogOut size={16} aria-hidden="true" /> Barcha qurilmalardan chiqish
+                  <LogOut size={16} aria-hidden="true" /> {t('settings.signOutAll')}
                 </Button>
               )}
             </div>
@@ -368,20 +390,20 @@ export default function ProfileSettings({ open, onClose }) {
           {chatAccess && (
             <section>
               <h3 className={sectionTitle}>
-                <Eye size={13} aria-hidden="true" /> Maxfiylik (Do&apos;stlar)
+                <Eye size={13} aria-hidden="true" /> {t('settings.privacy')}
               </h3>
               <div className="bg-surface border border-border rounded-2xl shadow-card p-5">
-                <p className="text-sm text-ink font-medium mb-1">Oxirgi marta ko&apos;rilgan / onlayn holatini kim ko&apos;radi</p>
-                <p className="text-xs text-muted mb-3">&quot;Suhbatlashganlar&quot; — sizga xabar yozgan yoki siz yozgan foydalanuvchilar.</p>
-                {visibilityLoading ? <Skeleton className="h-11 w-full rounded-xl" /> : segmented(VISIBILITY_OPTIONS, lastSeenVisibility, (v) => saveVisibility(v), "Ko'rinish")}
-                <p className="text-sm text-ink font-medium mt-5 mb-1">Profil rasmimni kim ko&apos;radi</p>
-                <p className="text-xs text-muted mb-3">Siz o&apos;z rasmlaringizni har doim ko&apos;rasiz.</p>
+                <p className="text-sm text-ink font-medium mb-1">{t('settings.lastSeenWho')}</p>
+                <p className="text-xs text-muted mb-3">{t('settings.lastSeenHint')}</p>
+                {visibilityLoading ? <Skeleton className="h-11 w-full rounded-xl" /> : segmented(VISIBILITY_OPTIONS, lastSeenVisibility, (v) => saveVisibility(v), t('settings.visibilityAria'))}
+                <p className="text-sm text-ink font-medium mt-5 mb-1">{t('settings.photoWho')}</p>
+                <p className="text-xs text-muted mb-3">{t('settings.photoHint')}</p>
                 {visibilityLoading ? (
                   <Skeleton className="h-11 w-full rounded-xl" />
                 ) : (
-                  segmented(VISIBILITY_OPTIONS, photoVisibility, (v) => saveVisibility(v, 'photoVisibility'), "Profil rasmi ko'rinishi")
+                  segmented(VISIBILITY_OPTIONS, photoVisibility, (v) => saveVisibility(v, 'photoVisibility'), t('settings.photoVisibilityAria'))
                 )}
-                {visibilityError && <p className="text-xs text-danger font-medium mt-2">Saqlanmadi, qayta urinib ko&apos;ring</p>}
+                {visibilityError && <p className="text-xs text-danger font-medium mt-2">{t('settings.saveFailed')}</p>}
               </div>
             </section>
           )}
