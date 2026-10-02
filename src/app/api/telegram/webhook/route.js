@@ -302,7 +302,10 @@ export async function POST(req) {
     // --- Kontakt (telefon raqam) yuborildi ---
     if (message.contact) {
       // Faqat o'zining kontaktini qabul qilamiz (forward qilingan boshqa kontaktlarni emas)
-      if (message.contact.user_id && message.contact.user_id !== message.from.id) {
+      // FAIL-CLOSED: `user_id` YO'Q kontakt (qo'lda yaratilgan/telefon kitobidan yuborilgan karta) ham rad etiladi — aks holda
+      // hujumchi boshqa odamning raqamini o'z kontakti sifatida "tasdiqlab", parolni tiklash kodini olishi mumkin edi.
+      // `request_contact` tugmasi esa har doim yuboruvchining o'z `user_id` sini beradi.
+      if (!message.contact.user_id || !message.from?.id || message.contact.user_id !== message.from.id) {
         await sendMessage(chatId, "❌ Iltimos, faqat o'zingizning telefon raqamingizni yuboring.", removeKeyboard());
         return NextResponse.json({ ok: true });
       }
