@@ -42,6 +42,10 @@ export async function PATCH(req, { params }) {
     // TCH-01 — 'teacher' shu bir xil oqimga qo'shildi (admin/chat/users PATCH),
     // alohida teacher-tayinlash UI/endpoint yaratilmadi.
     if (typeof body.role === 'string' && ['user', 'admin', 'teacher'].includes(body.role)) {
+      // O'z rolini o'zgartirib bo'lmaydi: oxirgi admin tasodifan o'zini tushirib, admin panelidan qulflanib qolmasin.
+      if (String(target._id) === String(admin._id) && body.role !== target.role) {
+        return NextResponse.json({ error: "O'z rolingizni o'zgartira olmaysiz" }, { status: 400 });
+      }
       diff.role = { from: target.role, to: body.role };
       target.role = body.role;
     }
