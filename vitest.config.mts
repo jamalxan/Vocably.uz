@@ -20,7 +20,9 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   // Integratsiya testlari mongodb-memory-server ishga tushiradi — to'liq suitda parallel yuklamada 5 s standart yetmaydi.
-  test: { exclude: ['**/node_modules/**', 'e2e/**'], testTimeout: 30_000 },
+  // Sakkizta integratsiya fayli har biri o'z mongod'ini ko'taradi — ko'p parallel ishga tushish "fassert() failure" beradi
+  // (xotira/disk bosimi), shuning uchun parallel ishchilar soni cheklangan va hook (mongod ishga tushishi) uchun vaqt kengroq.
+  test: { exclude: ['**/node_modules/**', 'e2e/**'], testTimeout: 30_000, hookTimeout: 60_000, maxWorkers: 3 },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
