@@ -22,7 +22,8 @@ test('multiple_choice sessiyasi boshdan oxirigacha o\'tadi, natija ko\'rinadi', 
   await page.getByRole('button', { name: "O'yinni boshlash" }).click();
 
   const counter = page.getByText(/Savol \d+ \/ \d+/);
-  await expect(counter).toBeVisible();
+  // Sessiya yaratuvchi API dev serverda birinchi so'rovda kompilyatsiya qilinadi — standart 5 s yetmaydi.
+  await expect(counter).toBeVisible({ timeout: 45_000 });
   const total = Number((await counter.textContent())!.match(/\/ (\d+)/)![1]);
 
   for (let i = 0; i < total; i++) {
@@ -41,7 +42,7 @@ test('multiple_choice sessiyasi boshdan oxirigacha o\'tadi, natija ko\'rinadi', 
 test('sahifani yangilash faol sessiyani tiklaydi', async ({ page }) => {
   await page.goto('/app/oyinlar/multiple_choice');
   await page.getByRole('button', { name: "O'yinni boshlash" }).click();
-  await expect(page.getByText(/Savol 1 \/ \d+/)).toBeVisible();
+  await expect(page.getByText(/Savol 1 \/ \d+/)).toBeVisible({ timeout: 45_000 });
   await page.reload();
   await page.getByRole('button', { name: 'Davom etish' }).click();
   await expect(page.getByText(/Savol \d+ \/ \d+/)).toBeVisible();
