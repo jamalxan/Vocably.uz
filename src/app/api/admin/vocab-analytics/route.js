@@ -9,7 +9,9 @@ export async function GET(req) {
   try {
     const admin = await requireAdminUser(req);
     if (admin.error) return NextResponse.json({ error: admin.error }, { status: admin.status });
-    const days = Number(new URL(req.url).searchParams.get('days')) || 30;
+    // Faqat 7/30/90 (servis ham shunday normallashtiradi) — keshga ixtiyoriy kalitlar to'lib ketmasin.
+    const requested = Number(new URL(req.url).searchParams.get('days'));
+    const days = [7, 30, 90].includes(requested) ? requested : 30;
     // Og'ir aggregatsiya — qisqa muddatga keshlanadi.
     const data = await cached(`admin:vocab-analytics:${days}`, () => adminVocabAnalytics({ days }), 60_000);
     return NextResponse.json(data);

@@ -4,6 +4,7 @@ import { AiCall, GameSession, ReviewEvent, User, UserQuest, VocabEvent, XpEvent 
 import { localDateWithCutoff } from '@/lib/srs';
 import { flattenUserWords } from './words';
 import { vocabOverview } from './profileService';
+import { computeSignupFunnel } from '../funnel';
 
 const DAY = 24 * 3600 * 1000;
 
@@ -110,6 +111,23 @@ export async function userProgress({ user, days = 30, now = new Date() }) {
   };
 }
 
+const FUNNEL_COHORT_MAX = 2000;
+const HOUR = 3600 * 1000;
+
+/** Oynada ro'yxatdan o'tganlar kogortasi: birinchi o'yin (24 s) va D1/D7 qaytish. Faollik soatlik guruhlanadi (katta jadvalda yengil). */
+async function signupFunnel(since, now) {
+  const cohort = await User.find({ createdAt: { $gte: since } }, { createdAt: 1 }).sort({ createdAt: -1 }).limit(FUNNEL_COHORT_MAX).lean();
+  if (!cohort.length) return computeSignupFunnel([], [], now);
+  const ids = cohort.map((u) => u._id);
+  const hourly = (Model, field, kind) =>
+    Model.aggregate([
+      { $match: { userId: { $in: ids }, [field]: { $gte: since } } },
+      { $group: { _id: { u: '$userId', h: { $floor: { $divide: [{ $toLong: `$${field}` }, HOUR] } } } } },
+    ]).then((rows) => rows.map((r) => ({ userId: r._id.u, at: r._id.h * HOUR, kind })));
+  const [games, reviews] = await Promise.all([hourly(GameSession, 'startedAt', 'game'), hourly(ReviewEvent, 'reviewedAt', 'review')]);
+  return computeSignupFunnel(cohort.map((u) => ({ id: u._id, createdAt: u.createdAt })), [...games, ...reviews], now);
+}
+
 /** Admin: yig'ma (anonim) o'yin/lug'at ko'rsatkichlari. */
 export async function adminVocabAnalytics({ days = 30, now = new Date() } = {}) {
   const range = [7, 30, 90].includes(days) ? days : 30;
@@ -199,9 +217,12 @@ export async function adminVocabAnalytics({ days = 30, now = new Date() } = {}) 
   const quest = Object.fromEntries(questTotals.map((r) => [r._id, { total: r.total, completed: r.completed, rate: r.total ? Math.round((r.completed / r.total) * 100) : null }]));
   const sd = streakDist[0] || { active: 0, ge3: 0, ge7: 0, ge30: 0 };
 
+  const funnel = await signupFunnel(since, now);
+
   return {
     range,
     users: { dau, wau },
+    funnel,
     games: {
       started: totalStarted,
       completed: totalCompleted,

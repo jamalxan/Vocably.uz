@@ -106,6 +106,19 @@ export default function AdminVocabAnalytics() {
         <Stat label="O'rtacha aniqlik" value={pct(g.avgAccuracy)} sub={g.avgResponseMs ? `O'rtacha javob: ${(g.avgResponseMs / 1000).toFixed(1)} s` : null} />
       </div>
 
+      {data.funnel && (
+        <section aria-label="Ro'yxatdan o'tish voronkasi">
+          <h2 className="text-sm font-semibold text-ink mb-2">Yangi foydalanuvchilar voronkasi ({data.range} kun)</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Stat label="Ro'yxatdan o'tganlar" value={data.funnel.signups} />
+            <Stat label="24 soatda birinchi o'yin" value={pct(data.funnel.firstGame24hRate)} sub={`${data.funnel.firstGame24h} / ${data.funnel.signups}`} />
+            <Stat label="1-kun qaytish (D1)" value={pct(data.funnel.d1.rate)} sub={`${data.funnel.d1.retained} / ${data.funnel.d1.eligible}`} />
+            <Stat label="7-kun qaytish (D7)" value={pct(data.funnel.d7.rate)} sub={`${data.funnel.d7.retained} / ${data.funnel.d7.eligible}`} />
+          </div>
+          <p className="text-[11px] text-muted mt-1.5">Qaytish — ro&apos;yxatdan o&apos;tgandan N·24 soat o&apos;tib, keyingi 24 soat ichida o&apos;yin yoki takrorlash. Oynasi tugamagan foydalanuvchilar hisobga olinmaydi.</p>
+        </section>
+      )}
+
       <section>
         <h2 className="text-sm font-semibold text-ink mb-2">O'yinlar bo'yicha</h2>
         <div className="bg-surface border border-border rounded-2xl overflow-x-auto">
