@@ -1,7 +1,8 @@
 import { connectToDatabase } from '@/lib/db';
 import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
-import { Report, Message } from '@/lib/models';
+import { Report, Message, Conversation, User } from '@/lib/models';
+import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
 
 const MAX_REASON_LEN = 500;
@@ -30,9 +31,21 @@ export async function POST(req) {
     // yubormasligi mumkin — buzilib qolmasin).
     const cat = REASON_CATEGORIES.includes(category) ? category : 'other';
 
+    if (!mongoose.isValidObjectId(targetId)) {
+      return NextResponse.json({ error: "Noto'g'ri format" }, { status: 400 });
+    }
+
+    if (targetType === 'user') {
+      if (String(targetId) === String(user._id)) return NextResponse.json({ error: "O'zingizga shikoyat qilib bo'lmaydi" }, { status: 400 });
+      if (!(await User.exists({ _id: targetId }))) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
+    }
+
     if (targetType === 'message') {
       const msg = await Message.findById(targetId).select('conversationId');
       if (!msg) return NextResponse.json({ error: 'Xabar topilmadi' }, { status: 404 });
+      // Faqat suhbat a'zosi shikoyat qila oladi — aks holda ixtiyoriy xabar ID'sini "flagged" qilib, begona suhbatlarni moderatsiyaga to'ldirish mumkin.
+      const isMember = await Conversation.exists({ _id: msg.conversationId, participantIds: user._id });
+      if (!isMember) return NextResponse.json({ error: 'Xabar topilmadi' }, { status: 404 });
       // Flag qo'yish — admin panelda ajratib ko'rsatish uchun (moderatsiya, o'chirish emas).
       await Message.updateOne({ _id: targetId }, { $set: { flagged: true } });
     }
