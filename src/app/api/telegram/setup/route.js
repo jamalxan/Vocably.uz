@@ -4,10 +4,11 @@ import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
 // Bir martalik sozlash: Telegram'ga "har bir yangilanishni shu manzilga yubor" deb aytadi.
-// Foydalanish: https://SIZNING-DOMENINGIZ.vercel.app/api/telegram/setup?secret=ADMIN_SETUP_SECRET
-export async function GET(req) {
+// Sir URL'da emas (loglarga tushmasligi uchun), `x-setup-secret` sarlavhasida yuboriladi:
+//   curl -X POST -H "x-setup-secret: ADMIN_SETUP_SECRET" https://DOMEN/api/telegram/setup
+export async function POST(req) {
   try {
-    const secret = req.nextUrl.searchParams.get('secret');
+    const secret = req.headers.get('x-setup-secret');
     if (!process.env.ADMIN_SETUP_SECRET || !safeEqual(secret, process.env.ADMIN_SETUP_SECRET)) {
       return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     }

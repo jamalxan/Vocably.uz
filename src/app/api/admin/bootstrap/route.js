@@ -31,6 +31,12 @@ export async function POST(req) {
 
     await connectToDatabase();
 
+    // Bir martalik: admin mavjud bo'lsa yopiladi (secret sizsa ham yangi admin tayinlab bo'lmaydi).
+    // Ataylab qayta ochish kerak bo'lsa: ADMIN_BOOTSTRAP_ALLOW=1.
+    if (process.env.ADMIN_BOOTSTRAP_ALLOW !== '1' && (await User.exists({ role: 'admin' }))) {
+      return NextResponse.json({ error: 'Admin allaqachon tayinlangan' }, { status: 403 });
+    }
+
     const normalizedPhone = normalizePhone(phone);
     const uname = username.trim().toLowerCase();
 

@@ -114,9 +114,9 @@ git push -u origin main
    `APP_URL` ni hozircha bo'sh qoldiring.
 4. "Deploy" tugmasini bosing. 1-2 daqiqada loyihangiz jonli bo'ladi (masalan `https://loyiha-nomi.vercel.app`).
 5. `APP_URL` environment variable'ini shu manzil bilan to'ldiring (masalan `https://loyiha-nomi.vercel.app`) va loyihani qayta deploy qiling (Vercel'da "Redeploy").
-6. Brauzerda quyidagi manzilga bir marta kiring (webhookni ro'yxatdan o'tkazish uchun):
+6. Terminalda bir marta ishga tushiring (webhookni ro'yxatdan o'tkazish uchun; sir URL'da emas, sarlavhada):
    ```
-   https://loyiha-nomi.vercel.app/api/telegram/setup?secret=ADMIN_SETUP_SECRET_QIYMATINGIZ
+   curl -X POST -H "x-setup-secret: ADMIN_SETUP_SECRET_QIYMATINGIZ" https://loyiha-nomi.vercel.app/api/telegram/setup
    ```
    Javobda `"success": true` chiqsa — bot tayyor.
 
