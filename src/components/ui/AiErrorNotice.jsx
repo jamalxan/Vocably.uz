@@ -1,11 +1,13 @@
 'use client';
 import { RotateCcw } from 'lucide-react';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §D1.3/§H3 — barcha AI generatsiya/baholash sahifalarida (Reading,
 // Writing, Listening, Speaking, so'z boyitish) bitta xabar shakli: faqat o'zbekcha
 // matn + "Qayta urinish" tugmasi + (mavjud bo'lsa) requestId. `error` — string yoki
 // `{ message, requestId }`; `onRetry` berilmasa tugma ko'rsatilmaydi.
 export default function AiErrorNotice({ error, onRetry, className = '' }) {
+  const { t } = useT();
   if (!error) return null;
   const { message, requestId } = typeof error === 'string' ? { message: error, requestId: null } : error;
 
@@ -19,7 +21,7 @@ export default function AiErrorNotice({ error, onRetry, className = '' }) {
             onClick={onRetry}
             className="flex items-center gap-1 px-2 -mx-2 -my-1 min-h-11 md:min-h-8 rounded-lg text-xs font-semibold text-danger hover:underline hover:bg-danger/10 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
           >
-            <RotateCcw size={12} aria-hidden="true" /> Qayta urinish
+            <RotateCcw size={12} aria-hidden="true" /> {t('hub.retry')}
           </button>
         )}
       </div>

@@ -8,19 +8,22 @@ import { dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
 import { answerStateClass } from '@/lib/lugatQuiz';
+import { useT } from '@/context/LocaleContext';
 
 // 6.1.6 (VOCABLY-TZ.md) — darajali tinglab yozish. Daraja 4 ("shovqin fonida") BU YERDA YO'Q —
 // brauzer TTS ovoz oqimiga real vaqtda shovqin qo'shish uchun Web Audio API orqali murakkab
 // audio-routing kerak (TTS chiqishi to'g'ridan-to'g'ri buferga ega emas), bu FAZA doirasidan
 // tashqari — real audio-fayl pipeline (T4) kelganda tabiiy yechiladi.
+// Yorliq/maslahat: lg.ls.<key>, lg.ls.<key>.hint
 const LEVELS = [
-  { key: 'word', label: "So'z", hint: "Eshitilgan so'zni yozing", rate: 0.9, needsExample: false },
-  { key: 'sentence', label: 'Jumla', hint: 'Eshitilgan jumlani yozing', rate: 0.9, needsExample: true },
-  { key: 'fast', label: 'Tez (1.25×)', hint: "Eshitilgan so'zni yozing", rate: 1.25, needsExample: false },
+  { key: 'word', rate: 0.9, needsExample: false },
+  { key: 'sentence', rate: 0.9, needsExample: true },
+  { key: 'fast', rate: 1.25, needsExample: false },
 ];
 
 export default function ListeningMode() {
   const { activeCategory, activeCatIndex, reviewWord, writeResetNonce } = useApp();
+  const { t } = useT();
 
   const [range, setRange] = useState({ from: 1, to: 10 });
   const [level, setLevel] = useState('word');
@@ -67,11 +70,7 @@ export default function ListeningMode() {
   const beginSession = (selected) => {
     const eligible = eligibleWords(selected);
     if (eligible.length === 0) {
-      setSetupError(
-        levelDef.needsExample
-          ? "Bu darajada faqat AI bilan boyitilgan (misol jumlasi bor) so'zlar ishlatiladi — bu oraliqda ular yo'q."
-          : "Oraliq noto'g'ri"
-      );
+      setSetupError(levelDef.needsExample ? t('lg.ls.needExample') : t('lg.rangeInvalid'));
       return;
     }
     setSetupError('');
@@ -89,7 +88,7 @@ export default function ListeningMode() {
     e?.preventDefault();
     const all = activeCategory.words || [];
     if (all.length === 0) {
-      setSetupError("Avval so'z qo'shing");
+      setSetupError(t('lg.addWordsFirst'));
       return;
     }
     const sliceFrom = Math.max(1, range.from) - 1;
@@ -155,7 +154,7 @@ export default function ListeningMode() {
                 level === l.key ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
               }`}
             >
-              {l.label}
+              {t(`lg.ls.${l.key}`)}
             </button>
           ))}
         </div>
@@ -165,7 +164,7 @@ export default function ListeningMode() {
           </p>
         )}
         <RangeSetupForm
-          title="Tinglab yozish oraliqlari"
+          title={t('lg.ls.range')}
           range={range}
           onRangeChange={setRange}
           onSubmit={startListening}
@@ -183,7 +182,7 @@ export default function ListeningMode() {
     <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
-        title="Tinglab yozish tugadi!"
+        title={t('lg.ls.done')}
         score={score}
         total={queue.length}
         onRestart={restartRound}
@@ -194,9 +193,9 @@ export default function ListeningMode() {
           <span>
             {idx + 1} / {queue.length}
           </span>
-          <span>To'g'ri: {score}</span>
+          <span>{t('lg.scoreSingle', { n: score })}</span>
           <button type="button" onClick={() => setActive(false)} className="text-accent hover:text-accent-hover font-semibold">
-            Oraliqni o'zgartirish
+            {t('lg.changeRange')}
           </button>
         </div>
 
@@ -205,22 +204,22 @@ export default function ListeningMode() {
             type="button"
             onClick={() => speakText(target, { rate: levelDef.rate })}
             className="w-16 h-16 rounded-full bg-accent-soft hover:bg-accent/20 text-accent flex items-center justify-center transition-colors"
-            title="Qayta eshitish"
-            aria-label="Qayta eshitish"
+            title={t('lg.ls.replay')}
+            aria-label={t('lg.ls.replay')}
           >
             <Volume2 size={24} />
           </button>
-          <p className="text-[11px] sm:text-xs text-muted mt-2 uppercase tracking-wider">{levelDef.hint}</p>
+          <p className="text-[11px] sm:text-xs text-muted mt-2 uppercase tracking-wider">{t(`lg.ls.${levelDef.key}.hint`)}</p>
         </div>
 
         <input
           ref={inputRef}
           type="text"
-          aria-label={levelDef.hint}
+          aria-label={t(`lg.ls.${levelDef.key}.hint`)}
           disabled={checked}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Eshitgan so'zingizni yozing..."
+          placeholder={t('lg.ls.placeholder')}
           className={`w-full px-3 py-2.5 border rounded-lg text-base md:text-sm outline-none mb-4 ${
             checked
               ? answerStateClass(isCorrect)
@@ -230,7 +229,7 @@ export default function ListeningMode() {
 
         {checked && !isCorrect && (
           <p className="text-xs text-muted mb-4">
-            To'g'ri javob: <span className="font-bold text-accent">{target}</span>
+            {t('q.correctAnswer')} <span className="font-bold text-accent">{target}</span>
           </p>
         )}
 
@@ -239,7 +238,7 @@ export default function ListeningMode() {
             type="submit"
             className="w-full bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
-            Tekshirish
+            {t('q.check')}
           </button>
         ) : (
           <button
@@ -247,7 +246,7 @@ export default function ListeningMode() {
             autoFocus
             className="w-full bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
-            Keyingi →
+            {t('lg.ls.next')}
           </button>
         )}
       </form>

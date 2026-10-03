@@ -7,25 +7,15 @@ import { cardFromStats, nextReviewState, dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
 import Badge from './ui/Badge';
+import { useT } from '@/context/LocaleContext';
+import { formatInterval } from '@/lib/formatInterval';
 
-const MINUTE_MS = 60_000;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
-
-function formatDuration(ms) {
-  if (ms < HOUR_MS) return `${Math.max(1, Math.round(ms / MINUTE_MS))} daq`;
-  if (ms < DAY_MS) return `${Math.round(ms / HOUR_MS)} soat`;
-  const days = ms / DAY_MS;
-  if (days < 30) return `${Math.round(days)} kun`;
-  if (days < 365) return `${Math.round(days / 30)} oy`;
-  return `${Math.round(days / 365)} yil`;
-}
-
+// Yorliqlar: lg.fc.rate.<rating>
 const RATING_BUTTONS = [
-  { rating: 1, key: '1', label: 'Bilmadim', emoji: '🔁', className: 'bg-danger-soft border-danger/25 hover:border-danger/60 text-danger' },
-  { rating: 2, key: '2', label: 'Qiynaldim', emoji: '😓', className: 'bg-warning-soft border-warning/25 hover:border-warning/60 text-warning' },
-  { rating: 3, key: '3', label: 'Bildim', emoji: '✅', className: 'bg-success-soft border-success/25 hover:border-success/60 text-success' },
-  { rating: 4, key: '4', label: 'Juda oson', emoji: '⚡', className: 'bg-info-soft border-info/25 hover:border-info/60 text-info' },
+  { rating: 1, key: '1', emoji: '🔁', className: 'bg-danger-soft border-danger/25 hover:border-danger/60 text-danger' },
+  { rating: 2, key: '2', emoji: '😓', className: 'bg-warning-soft border-warning/25 hover:border-warning/60 text-warning' },
+  { rating: 3, key: '3', emoji: '✅', className: 'bg-success-soft border-success/25 hover:border-success/60 text-success' },
+  { rating: 4, key: '4', emoji: '⚡', className: 'bg-info-soft border-info/25 hover:border-info/60 text-info' },
 ];
 
 // 6.1.1 (VOCABLY-TZ.md) — to'liq qayta yozildi: 3D flip animatsiya, 4 tugmali baholash
@@ -33,6 +23,7 @@ const RATING_BUTTONS = [
 // bu U2'ning aynan o'zi edi), keyingi interval oldindan ko'rsatiladi, audio avtomatik.
 export default function FlashcardMode() {
   const { activeCategory, activeCatIndex, categories, writeResetNonce, reviewWord } = useApp();
+  const { t } = useT();
 
   const [range, setRange] = useState({ from: 1, to: 10 });
   const [active, setActive] = useState(false);
@@ -55,7 +46,7 @@ export default function FlashcardMode() {
   }, [activeCatIndex, writeResetNonce]);
 
   const beginSession = (selected) => {
-    if (selected.length === 0) return setSetupError("Avval so'z qo'shing");
+    if (selected.length === 0) return setSetupError(t('lg.addWordsFirst'));
     setSetupError('');
     setWords(selected);
     setCardIndex(0);
@@ -71,7 +62,7 @@ export default function FlashcardMode() {
     const sliceFrom = Math.max(1, range.from) - 1;
     const sliceTo = Math.min(all.length, range.to);
     const selected = all.slice(sliceFrom, sliceTo);
-    if (selected.length === 0) return setSetupError("Oraliq noto'g'ri");
+    if (selected.length === 0) return setSetupError(t('lg.rangeInvalid'));
     beginSession(selected);
   };
 
@@ -85,10 +76,11 @@ export default function FlashcardMode() {
     const now = new Date();
     const map = {};
     for (const { rating } of RATING_BUTTONS) {
-      map[rating] = formatDuration(nextReviewState(prevCard, rating, now).dueAt.getTime() - now.getTime());
+      map[rating] = formatInterval(nextReviewState(prevCard, rating, now).dueAt.getTime() - now.getTime(), t);
     }
     return map;
-  }, [current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, t]);
 
   // Audio avtomatik — karta ochilganda (yoki flip qilinganda emas, faqat old tarafi
   // ko'rsatilganda) UK talaffuzi eshittiriladi, `muted` bilan o'chirish mumkin.
@@ -146,7 +138,7 @@ export default function FlashcardMode() {
   if (!active) {
     return (
       <RangeSetupForm
-        title="Kartochka oraliqlari"
+        title={t('lg.fcRange')}
         range={range}
         onRangeChange={(r) => {
           setRange(r);
@@ -172,8 +164,8 @@ export default function FlashcardMode() {
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}
-              aria-label={muted ? 'Ovozni yoqish' : "Ovozni o'chirish"}
-              title={muted ? 'Ovozni yoqish' : "Ovozni o'chirish"}
+              aria-label={muted ? t('lg.unmute') : t('lg.mute')}
+              title={muted ? t('lg.unmute') : t('lg.mute')}
               className="inline-flex items-center justify-center w-11 h-11 -my-3.5 md:w-8 md:h-8 md:-my-2 rounded-lg text-muted hover:text-accent hover:bg-accent-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
@@ -182,7 +174,7 @@ export default function FlashcardMode() {
               onClick={() => setActive(false)}
               className="inline-flex items-center min-h-11 -my-3.5 md:min-h-0 md:my-0 text-accent hover:text-accent-hover font-semibold"
             >
-              Oraliqni o'zgartirish
+              {t('lg.changeRange')}
             </button>
           </div>
         </div>
@@ -191,7 +183,7 @@ export default function FlashcardMode() {
           <div
             role="button"
             tabIndex={0}
-            aria-label={flipped ? 'Kartani old tarafga qaytarish' : "Javobni ko'rish"}
+            aria-label={flipped ? t('lg.flipBack') : t('lg.showAnswer')}
             onClick={() => setFlipped((v) => !v)}
             className="relative w-full h-full cursor-pointer select-none rounded-2xl transition-transform duration-[400ms] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
             style={{
@@ -211,8 +203,8 @@ export default function FlashcardMode() {
                   speakText(current?.word);
                 }}
                 className="absolute top-4 right-4 p-2 bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors"
-                title="Talaffuzni eshitish"
-                aria-label="Talaffuzni eshitish"
+                title={t('lg.pronounce')}
+                aria-label={t('lg.pronounce')}
               >
                 <Volume2 size={16} />
               </button>
@@ -226,7 +218,7 @@ export default function FlashcardMode() {
                 </Badge>
               )}
               <p className="text-xs text-muted mt-6 font-semibold">
-                Ko'rish uchun bosing <span className="hidden sm:inline">(yoki Space)</span>
+                {t('lg.tapToReveal')} <span className="hidden sm:inline">{t('lg.orSpace')}</span>
               </p>
             </div>
 
@@ -256,21 +248,21 @@ export default function FlashcardMode() {
                 className={`flex flex-col items-center gap-0.5 px-1 py-2.5 min-w-0 rounded-xl border font-semibold text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${b.className}`}
               >
                 <span className="text-base leading-none">{b.emoji}</span>
-                <span className="max-w-full break-words text-center">{b.label}</span>
+                <span className="max-w-full break-words text-center">{t(`lg.fc.rate.${b.rating}`)}</span>
                 <span className="text-[11px] leading-4 font-normal opacity-80">{previews?.[b.rating]}</span>
               </button>
             ))}
           </div>
         ) : (
           <div className="mt-6 w-full h-[74px] flex items-center justify-center">
-            <p className="text-[11px] text-muted hidden sm:block">Klaviatura: Space — ochish, 1-4 — baholash</p>
+            <p className="text-[11px] text-muted hidden sm:block">{t('lg.keyboardHint')}</p>
           </div>
         )}
       </div>
 
       <SessionCompleteCard
         open={complete}
-        title="Sessiya yakunlandi!"
+        title={t('lg.fcDone')}
         score={correctCount}
         total={words.length}
         onClose={() => setActive(false)}

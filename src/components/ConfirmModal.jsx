@@ -4,8 +4,10 @@ import { AlertTriangle } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
 import { useBackClose } from '@/lib/useBackClose';
+import { useT } from '@/context/LocaleContext';
 
-export default function ConfirmModal({ open, title, message, confirmLabel = "O'chirish", onConfirm, onCancel }) {
+export default function ConfirmModal({ open, title, message, confirmLabel, onConfirm, onCancel }) {
+  const { t } = useT();
   const confirmRef = useRef(null);
   const titleId = useId();
   const msgId = useId();
@@ -75,10 +77,10 @@ export default function ConfirmModal({ open, title, message, confirmLabel = "O'c
         </p>
         <div className="flex gap-3">
           <Button type="button" variant="secondary" onClick={onCancel} className="flex-1">
-            Bekor qilish
+            {t('settings.cancel')}
           </Button>
           <Button ref={confirmRef} type="submit" className="flex-1">
-            {confirmLabel}
+            {confirmLabel || t('lg.delete')}
           </Button>
         </div>
       </form>

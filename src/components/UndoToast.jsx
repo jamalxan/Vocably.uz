@@ -1,9 +1,11 @@
 'use client';
 import { Undo2 } from 'lucide-react';
+import { useT } from '@/context/LocaleContext';
 
 // Mobil (<768): pastki tab bar (~62px + safe-area) ustida, o'ngdagi AI tugmasiga
 // tegmasligi uchun right-20. md+ da odatdagidek pastda, markazda.
 export default function UndoToast({ message, onUndo }) {
+  const { t } = useT();
   return (
     <div
       role="status"
@@ -16,7 +18,7 @@ export default function UndoToast({ message, onUndo }) {
         onClick={onUndo}
         className="flex items-center gap-1 flex-shrink-0 px-2 py-3 -my-3 -mr-2 rounded-lg text-on-primary hover:opacity-80 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-primary"
       >
-        <Undo2 size={14} aria-hidden="true" /> Bekor qilish
+        <Undo2 size={14} aria-hidden="true" /> {t('lg.undo')}
       </button>
     </div>
   );

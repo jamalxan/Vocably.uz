@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import CategorySwitcher from '@/components/CategorySwitcher';
 import IconButton from '@/components/ui/IconButton';
+import { useT } from '@/context/LocaleContext';
 
 // Lug'at bo'limining barcha sahifalari (index menyu + 8 ta rejim) shu sarlavhani
 // baham ko'radi — kategoriya tanlagich va o'chirish tugmasi ilgari dashboard
@@ -10,6 +11,7 @@ import IconButton from '@/components/ui/IconButton';
 // Bugun/Do'stlar/Profil'da bunday tugma umuman kerak emas edi).
 export default function LugatLayout({ children }) {
   const { activeCatIndex, handleDeleteCategory } = useApp();
+  const { t } = useT();
 
   // items-end — o'chirish tugmasi kichik "Kategoriyalar" yorlig'iga emas, trigger'ga tekislanadi.
   // So'zlar soni trigger ichida ko'rsatiladi, shuning uchun alohida qator yo'q.
@@ -21,7 +23,7 @@ export default function LugatLayout({ children }) {
         </div>
         <IconButton
           icon={Trash2}
-          label="Kategoriyani o'chirish"
+          label={t('lugat.deleteCategory')}
           variant="danger"
           onClick={() => handleDeleteCategory(activeCatIndex)}
           className="border border-danger/25 flex-shrink-0"

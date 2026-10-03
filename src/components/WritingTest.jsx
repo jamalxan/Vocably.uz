@@ -8,6 +8,7 @@ import { levenshtein } from '@/lib/levenshtein';
 import { dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
+import { useT } from '@/context/LocaleContext';
 
 // 6.1.3 (VOCABLY-TZ.md) — qisman kredit: har bir javob eng yaqin to'g'ri variantga
 // Levenshtein masofasi bo'yicha solishtiriladi. 0 — aniq to'g'ri, 1 — "deyarli"
@@ -24,6 +25,7 @@ function closestMatch(input, candidates) {
 
 export default function WritingTest() {
   const { activeCategory, activeCatIndex, reviewWord, writeResetNonce } = useApp();
+  const { t } = useT();
 
   const [writeRange, setWriteRange] = useState({ from: 1, to: 10 });
   const [writeActive, setWriteActive] = useState(false);
@@ -60,7 +62,7 @@ export default function WritingTest() {
   }, [writeActive, writeCurIdx, writeChecked]);
 
   const beginSession = (selected) => {
-    if (selected.length === 0) return setSetupError("Oraliq noto'g'ri");
+    if (selected.length === 0) return setSetupError(t('lg.rangeInvalid'));
     setSetupError('');
     const shuffled = [...selected].sort(() => Math.random() - 0.5);
     setWriteWords(shuffled);
@@ -76,7 +78,7 @@ export default function WritingTest() {
   const startWriteTest = (e) => {
     e?.preventDefault();
     const words = activeCategory.words || [];
-    if (words.length === 0) return setSetupError("Avval so'z qo'shing");
+    if (words.length === 0) return setSetupError(t('lg.addWordsFirst'));
     const sliceFrom = Math.max(1, writeRange.from) - 1;
     const sliceTo = Math.min(words.length, writeRange.to);
     beginSession(words.slice(sliceFrom, sliceTo));
@@ -144,7 +146,7 @@ export default function WritingTest() {
     <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={writeFinished}
-        title="Yozish testi tugadi!"
+        title={t('lg.wt.done')}
         score={writeScore}
         total={writeWords.length}
         onRestart={restartWriteRound}
@@ -152,7 +154,7 @@ export default function WritingTest() {
       />
       {!writeActive ? (
         <RangeSetupForm
-          title="So'zlarni yozib sinash oraliqlari"
+          title={t('lg.wt.range')}
           range={writeRange}
           onRangeChange={(r) => {
             setWriteRange(r);
@@ -160,7 +162,7 @@ export default function WritingTest() {
           }}
           onSubmit={startWriteTest}
           error={setupError}
-          buttonLabel="Testni boshlash"
+          buttonLabel={t('lg.wt.start')}
           maxWords={activeCategory.words?.length || 0}
           onQuickStart={() => beginSession(dueWords)}
           quickStartCount={dueWords.length}
@@ -174,7 +176,7 @@ export default function WritingTest() {
             <span>
               {writeCurIdx + 1} / {writeWords.length}
             </span>
-            <span>To'g'ri: {writeScore}</span>
+            <span>{t('lg.scoreSingle', { n: writeScore })}</span>
           </div>
 
           <div className="flex items-center gap-2 mb-6">
@@ -184,8 +186,8 @@ export default function WritingTest() {
             <button
               type="button"
               onClick={() => speakText(writeWords[writeCurIdx]?.word)}
-              aria-label="Talaffuzni eshitish"
-              title="Talaffuzni eshitish"
+              aria-label={t('lg.pronounce')}
+              title={t('lg.pronounce')}
               className="inline-flex items-center justify-center w-11 h-11 md:w-8 md:h-8 bg-accent-soft hover:bg-accent/20 rounded-lg text-accent transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <Volume2 size={16} />
@@ -213,8 +215,8 @@ export default function WritingTest() {
                       type="text"
                       ref={(el) => (answerInputRefs.current[idx] = el)}
                       disabled={writeChecked}
-                      placeholder="Sinonim..."
-                      aria-label={`Sinonim ${idx + 1}`}
+                      placeholder={t('lg.wt.synPlaceholder')}
+                      aria-label={t('lg.wt.synAria', { n: idx + 1 })}
                       value={ans}
                       onChange={(e) => {
                         const temp = [...userAnswers];
@@ -235,7 +237,7 @@ export default function WritingTest() {
                   </div>
                   {tone === 'near' && (
                     <p className="text-[11px] text-warning mt-1 ml-8 break-words">
-                      Deyarli! <span className="line-through opacity-70">{ans}</span> → <span className="font-semibold">{result.match}</span>
+                      {t('lg.wt.near')} <span className="line-through opacity-70">{ans}</span> → <span className="font-semibold">{result.match}</span>
                     </p>
                   )}
                 </div>
@@ -245,7 +247,7 @@ export default function WritingTest() {
 
           {writeChecked && (
             <div className="bg-bg border border-border rounded-lg p-3 text-xs mb-4">
-              <span className="font-semibold text-muted block mb-1">To'g'ri javoblar:</span>
+              <span className="font-semibold text-muted block mb-1">{t('lg.wt.correctAnswers')}</span>
               <span className="font-bold text-accent text-sm">{writeWords[writeCurIdx].syns.join(', ')}</span>
             </div>
           )}
@@ -255,7 +257,7 @@ export default function WritingTest() {
             type="submit"
             className="w-full min-h-11 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
-            {writeChecked ? 'Keyingi savol →' : 'Tekshirish'}
+            {writeChecked ? t('lg.nextQuestion') : t('q.check')}
           </button>
         </form>
       )}

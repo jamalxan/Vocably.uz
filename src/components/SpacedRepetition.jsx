@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Volume2, Flame, Trophy, CalendarCheck, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import { speakText } from '@/lib/speech';
 import { cardFromStats, nextReviewState, localDateWithCutoff } from '@/lib/srs';
 
@@ -11,25 +12,26 @@ const DAY_MS = 24 * HOUR_MS;
 
 // Har bir baho tugmasi bosilsa keyingi takrorlash qachonligini taxminiy ko'rsatish uchun
 // (Anki'dagi kabi) — foydalanuvchi "Oson" bilan "Qiyin" orasidagi farqni ko'rib turadi.
-function formatDuration(ms) {
-  if (ms < HOUR_MS) return `${Math.max(1, Math.round(ms / MINUTE_MS))} daq`;
-  if (ms < DAY_MS) return `${Math.round(ms / HOUR_MS)} soat`;
+function formatDuration(ms, t) {
+  if (ms < HOUR_MS) return t('hub.minShort', { n: Math.max(1, Math.round(ms / MINUTE_MS)) });
+  if (ms < DAY_MS) return t('time.hour', { n: Math.round(ms / HOUR_MS) });
   const days = ms / DAY_MS;
-  if (days < 30) return `${Math.round(days)} kun`;
-  if (days < 365) return `${Math.round(days / 30)} oy`;
-  return `${Math.round(days / 365)} yil`;
+  if (days < 30) return t('time.day', { n: Math.round(days) });
+  if (days < 365) return t('lg.durMonth', { n: Math.round(days / 30) });
+  return t('lg.durYear', { n: Math.round(days / 365) });
 }
 
-// 1=Qayta(bilmadim) 2=Qiyin 3=Bildim 4=Oson — standart SM-2 baholash shkalasi (src/lib/srs.ts).
+// 1=Qayta(bilmadim) 2=Qiyin 3=Bildim 4=Oson — standart SM-2 baholash shkalasi (src/lib/srs.ts). Yorliqlar: lg.rate.<rating>.
 const RATING_BUTTONS = [
-  { rating: 1, key: '1', label: 'Qayta', emoji: '🔁', className: 'bg-danger-soft hover:border-danger/60 border-danger/30 text-danger' },
-  { rating: 2, key: '2', label: 'Qiyin', emoji: '😓', className: 'bg-warning-soft hover:border-warning/60 border-warning/30 text-warning' },
-  { rating: 3, key: '3', label: 'Bildim', emoji: '✅', className: 'bg-success-soft hover:border-success/60 border-success/30 text-success' },
-  { rating: 4, key: '4', label: 'Oson', emoji: '⚡', className: 'bg-info-soft hover:border-info/60 border-info/30 text-info' },
+  { rating: 1, key: '1', emoji: '🔁', className: 'bg-danger-soft hover:border-danger/60 border-danger/30 text-danger' },
+  { rating: 2, key: '2', emoji: '😓', className: 'bg-warning-soft hover:border-warning/60 border-warning/30 text-warning' },
+  { rating: 3, key: '3', emoji: '✅', className: 'bg-success-soft hover:border-success/60 border-success/30 text-success' },
+  { rating: 4, key: '4', emoji: '⚡', className: 'bg-info-soft hover:border-info/60 border-info/30 text-info' },
 ];
 
 export default function SpacedRepetition({ active }) {
   const { categories, reviewWord, reviewStreak, practiceWordIds, clearPracticeQueue } = useApp();
+  const { t } = useT();
   const [showAnswer, setShowAnswer] = useState(false);
   // A5/A13 (docs/AUDIT_FINDINGS.md): "Navbatda: N" bilan sarlavhadagi "Jami so'zlar" ziddiyatli
   // ko'rinardi. reviewedCount + qolgan dueWords.length'dan "X / Total" sessiya progressi
@@ -94,10 +96,11 @@ export default function SpacedRepetition({ active }) {
     const now = new Date();
     const map = {};
     for (const { rating } of RATING_BUTTONS) {
-      map[rating] = formatDuration(nextReviewState(prevCard, rating, now).dueAt.getTime() - now.getTime());
+      map[rating] = formatDuration(nextReviewState(prevCard, rating, now).dueAt.getTime() - now.getTime(), t);
     }
     return map;
-  }, [current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, t]);
 
   const answer = (rating) => {
     if (!current) return;
@@ -141,13 +144,13 @@ export default function SpacedRepetition({ active }) {
     <div className="flex flex-col items-center">
       {practiceSet && (
         <div className="w-full max-w-md flex items-center justify-between gap-3 bg-accent-soft border border-accent/20 text-accent text-xs rounded-lg px-3 py-2 mb-4">
-          <span>Maxsus mashq: qiynalayotgan so'zlar ({dueWords.length} qoldi)</span>
+          <span>{t('lg.practiceBanner', { n: dueWords.length })}</span>
           <button
             type="button"
             onClick={clearPracticeQueue}
             className="flex items-center gap-1 font-semibold hover:text-accent-hover flex-shrink-0 -my-1 -mr-2 px-2 min-h-11 md:min-h-9 rounded-md"
           >
-            <X size={12} /> Chiqish
+            <X size={12} /> {t('game.exit')}
           </button>
         </div>
       )}
@@ -156,24 +159,24 @@ export default function SpacedRepetition({ active }) {
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
           <CalendarCheck className="mx-auto text-accent mb-1" size={16} />
           <p className="text-lg font-bold text-ink">{todayCount}</p>
-          <p className="text-[11px] sm:text-xs text-muted">Bugun ko'rildi</p>
+          <p className="text-[11px] sm:text-xs text-muted">{t('lg.seenToday')}</p>
         </div>
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
           <Flame className="mx-auto text-warning mb-1" size={16} />
           <p className="text-lg font-bold text-ink">{reviewStreak}</p>
-          <p className="text-[11px] sm:text-xs text-muted">Kunlik ketma-ket</p>
+          <p className="text-[11px] sm:text-xs text-muted">{t('lg.streakDays')}</p>
         </div>
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
           <Trophy className="mx-auto text-accent mb-1" size={16} />
           <p className="text-lg font-bold text-ink">{masteredCount}</p>
-          <p className="text-[11px] sm:text-xs text-muted">O'zlashtirilgan</p>
+          <p className="text-[11px] sm:text-xs text-muted">{t('hub.statMastered')}</p>
         </div>
       </div>
 
       {!current ? (
         <div className="text-center py-10">
           <p className="text-2xl mb-2">🎉</p>
-          <p className="text-sm text-muted">Bugungi takrorlash uchun so'z qolmadi!</p>
+          <p className="text-sm text-muted">{t('lg.noDue')}</p>
         </div>
       ) : (
         <div className="w-full max-w-md">
@@ -198,8 +201,8 @@ export default function SpacedRepetition({ active }) {
                 speakText(current.word.word);
               }}
               className="absolute top-3 right-3 p-3 md:p-2 bg-accent-soft text-accent hover:bg-accent/20 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              title="Talaffuzni eshitish"
-              aria-label="Talaffuzni eshitish"
+              title={t('lg.pronounce')}
+              aria-label={t('lg.pronounce')}
             >
               <Volume2 size={16} />
             </button>
@@ -227,7 +230,7 @@ export default function SpacedRepetition({ active }) {
               </>
             ) : (
               <p className="text-xs text-muted mt-6 font-semibold">
-                Ko'rish uchun bosing <span className="hidden sm:inline">(yoki Space)</span>
+                {t('lg.tapToReveal')} <span className="hidden sm:inline">{t('lg.orSpace')}</span>
               </p>
             )}
           </div>
@@ -241,14 +244,14 @@ export default function SpacedRepetition({ active }) {
                   className={`flex flex-col items-center gap-0.5 py-2.5 rounded-xl border font-semibold text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${b.className}`}
                 >
                   <span className="text-base leading-none">{b.emoji}</span>
-                  <span>{b.label}</span>
+                  <span>{t(`lg.rate.${b.rating}`)}</span>
                   <span className="text-[11px] font-normal opacity-80">{previews?.[b.rating]}</span>
                 </button>
               ))}
             </div>
           ) : (
             <div className="mt-6 w-full h-[62px] flex items-center justify-center">
-              <p className="text-xs text-muted hidden sm:block">Klaviatura: Space — ochish, 1-4 — baholash</p>
+              <p className="text-xs text-muted hidden sm:block">{t('lg.keyboardHint')}</p>
             </div>
           )}
         </div>

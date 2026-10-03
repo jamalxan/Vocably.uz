@@ -141,6 +141,43 @@ test('o‘yin oqimi ruscha: sozlama → savollar → natija ekrani', async ({ pa
   await expect(page.getByRole('button', { name: 'Сыграть ещё раз' })).toBeVisible();
 });
 
+test('Lug‘at bo‘limi ruscha: menyu, jadval, test rejimi, takrorlash holati', async ({ page, context, isMobile }) => {
+  test.setTimeout(480_000);
+  await loginAs(page, E2E_PHONE);
+  await context.addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
+
+  await page.goto('/app/lugat');
+  await expect(page.getByRole('heading', { name: 'Словарь' })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText('В каком режиме хотите заниматься?')).toBeVisible();
+  await expect(page.getByText('Игра на память')).toBeVisible();
+  await expect(page.getByText('Категории', { exact: true })).toBeVisible(); // CategorySwitcher
+
+  await page.goto('/app/lugat/jadval');
+  await expect(page.getByText('Новое слово', { exact: true })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole('columnheader', { name: 'Слово' })).toBeVisible();
+  if (!isMobile) await expect(page.getByRole('columnheader', { name: 'Синонимы / переводы' })).toBeVisible(); // mobilda ustun yashirin
+  await expect(page.getByPlaceholder('Поиск по слову или переводам...')).toBeVisible();
+
+  await page.goto('/app/lugat/takrorlash');
+  await expect(page.getByText('Просмотрено сегодня')).toBeVisible({ timeout: 90_000 });
+  // Navbat holatiga qarab: bo'sh xabar YOKI karta ("Нажмите, чтобы увидеть")
+  await expect(page.getByText('На сегодня слов для повторения не осталось!').or(page.getByText(/Нажмите, чтобы увидеть/))).toBeVisible();
+
+  await page.goto('/app/lugat/test');
+  await expect(page.getByRole('heading', { name: 'Диапазон теста' })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText('От:', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Начать', exact: true }).click();
+  await expect(page.getByText(/Вопрос 1\/10/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/Выберите (перевод|английский вариант|слово по определению|слово для пропуска)/)).toBeVisible();
+  await page.locator('div.space-y-2 > button').first().click(); // TestMode variantlari
+  await expect(page.getByRole('button', { name: 'Следующий вопрос →' })).toBeVisible();
+
+  // O'zbekchaga qaytganda avvalgidek
+  await context.addCookies([{ name: 'vocably_lang', value: 'uz', url: 'http://localhost:3100' }]);
+  await page.goto('/app/lugat');
+  await expect(page.getByText('Qaysi rejimda mashq qilmoqchisiz?')).toBeVisible({ timeout: 60_000 });
+});
+
 test('noto‘g‘ri cookie qiymati uz ga tushadi (inyeksiya/yiqilish yo‘q)', async ({ page, context }) => {
   await loginAs(page, E2E_PHONE);
   await context.addCookies([{ name: 'vocably_lang', value: 'xx"<script>', url: 'http://localhost:3100' }]).catch(() => {});

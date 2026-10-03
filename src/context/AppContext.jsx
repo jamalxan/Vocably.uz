@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { AlertTriangle, RotateCcw, LogOut } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import Button from '@/components/ui/Button';
+import { useT } from '@/context/LocaleContext';
 
 const AppContext = createContext(null);
 
@@ -38,6 +39,7 @@ function needsVocabulary(pathname) {
 export function AppProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useT();
   // Root layout (src/app/app/layout.jsx) izohiga q. — AppProvider navigatsiya
   // paytida qayta mount bo'lmaydi, shuning uchun "lug'at allaqachon yuklandimi"
   // holatini oddiy state emas, ref bilan kuzatamiz (qayta render'ni talab qilmaydi).
@@ -363,10 +365,10 @@ export function AppProvider({ children }) {
         setActiveCatIndex(categories.length);
       } catch (err) {
         console.error("Kategoriya qo'shishda xatolik", err);
-        setNotice("Kategoriya qo'shib bo'lmadi, qayta urinib ko'ring");
+        setNotice(t('app.addCatFailed'));
       }
     },
-    [categories.length]
+    [categories.length, t]
   );
 
   const handleRenameCategory = useCallback(
@@ -408,12 +410,12 @@ export function AppProvider({ children }) {
       const cat = categories[idx];
       if (!cat) return;
       if (categories.length <= 1) {
-        setNotice('Kamida bitta kategoriya qolishi kerak');
+        setNotice(t('app.lastCategory'));
         return;
       }
       setCategoryDeleteIdx(idx);
     },
-    [categories]
+    [categories, t]
   );
 
   const cancelDeleteCategory = useCallback(() => setCategoryDeleteIdx(null), []);
@@ -659,8 +661,8 @@ export function AppProvider({ children }) {
             <div className="w-11 h-11 mx-auto mb-3 rounded-full bg-danger-soft text-danger flex items-center justify-center">
               <AlertTriangle size={20} />
             </div>
-            <h2 className="font-bold text-ink font-display mb-1">Ma&apos;lumotlarni yuklab bo&apos;lmadi</h2>
-            <p className="text-sm text-muted mb-5">Internet aloqasini tekshirib, qayta urinib ko&apos;ring.</p>
+            <h2 className="font-bold text-ink font-display mb-1">{t('app.loadFailedTitle')}</h2>
+            <p className="text-sm text-muted mb-5">{t('app.loadFailedText')}</p>
             <div className="flex flex-col gap-2">
               <Button
                 onClick={() => {
@@ -668,10 +670,10 @@ export function AppProvider({ children }) {
                   fetchUserData();
                 }}
               >
-                <RotateCcw size={16} /> Qayta urinish
+                <RotateCcw size={16} /> {t('hub.retry')}
               </Button>
               <Button variant="ghost" onClick={logout}>
-                <LogOut size={16} /> Chiqish
+                <LogOut size={16} /> {t('shell.logout')}
               </Button>
             </div>
           </div>
@@ -689,12 +691,8 @@ export function AppProvider({ children }) {
       )}
       <ConfirmModal
         open={!!categoryPendingDelete}
-        title="Kategoriyani o'chirish"
-        message={
-          categoryPendingDelete
-            ? `"${categoryPendingDelete.name}" kategoriyasi va undagi ${categoryPendingDelete.words.length} ta so'z butunlay o'chiriladi. Bu amalni qaytarib bo'lmaydi.`
-            : ''
-        }
+        title={t('lugat.deleteCategory')}
+        message={categoryPendingDelete ? t('app.deleteCatMsg', { name: categoryPendingDelete.name, n: categoryPendingDelete.words.length }) : ''}
         onConfirm={confirmDeleteCategory}
         onCancel={cancelDeleteCategory}
       />

@@ -1,15 +1,19 @@
+'use client';
 import Link from 'next/link';
 import { LUGAT_MODES } from '@/components/layout/navConfig';
+import { useT } from '@/context/LocaleContext';
 
 // Lug'at bo'limining kirish sahifasi — 8 ta rejimni menyu sifatida ko'rsatadi.
 // Mobilda bu bottom-nav'ning "Lug'at" tugmasi ochadigan to'liq ekranli menyu
 // (VOCABLY-TZ.md 3.2); desktop/planshetda sidebar/rail orqali ham to'g'ridan-to'g'ri
 // har bir rejimga o'tish mumkin, lekin bu sahifa hamon foydali kirish nuqtasi.
+// Rejim nomlari ataylab inglizcha; tavsiflar i18n (lugatmode.<key>).
 export default function LugatIndexPage() {
+  const { t } = useT();
   return (
     <div>
-      <h2 className="text-xl font-bold text-ink font-display mb-1">Lug'at</h2>
-      <p className="text-sm text-muted mb-6">Qaysi rejimda mashq qilmoqchisiz?</p>
+      <h2 className="text-xl font-bold text-ink font-display mb-1">{t('lugat.title')}</h2>
+      <p className="text-sm text-muted mb-6">{t('lugat.prompt')}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {LUGAT_MODES.map((mode) => (
           <Link
@@ -22,8 +26,8 @@ export default function LugatIndexPage() {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-ink">{mode.label}</p>
-              <p className="text-xs text-muted truncate" title={mode.description}>
-                {mode.description}
+              <p className="text-xs text-muted truncate" title={t(`lugatmode.${mode.key}`)}>
+                {t(`lugatmode.${mode.key}`)}
               </p>
             </div>
           </Link>

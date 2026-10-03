@@ -1,10 +1,12 @@
 'use client';
 import { useEffect, useId, useRef } from 'react';
 import { Trophy, RotateCcw, X } from 'lucide-react';
+import { useT } from '@/context/LocaleContext';
 
 // O'yin/mashq tugaganda natijani ko'rsatadigan umumiy modal — avval bu joyda alert() ishlatilardi,
 // bu esa ilovaning boshqa qismidagi uslubdan (ConfirmModal, UndoToast) butunlay chetga chiqardi.
-export default function SessionCompleteCard({ open, title = 'Yakunlandi!', score, total, onRestart, onClose, children }) {
+export default function SessionCompleteCard({ open, title, score, total, onRestart, onClose, children }) {
+  const { t } = useT();
   const dialogRef = useRef(null);
   const restartRef = useRef(null);
   const titleId = useId();
@@ -71,10 +73,10 @@ export default function SessionCompleteCard({ open, title = 'Yakunlandi!', score
           <Trophy size={26} />
         </div>
         <h3 id={titleId} className="font-bold text-ink font-display text-lg mb-1">
-          {title}
+          {title || t('lg.completed')}
         </h3>
         <p className="text-sm text-muted mb-5">
-          Natija: <span className="font-bold text-accent">{score}</span>/{total}{' '}
+          {t('lg.result')} <span className="font-bold text-accent">{score}</span>/{total}{' '}
           <span className="text-muted">({pct}%)</span>
         </p>
         {children}
@@ -84,7 +86,7 @@ export default function SessionCompleteCard({ open, title = 'Yakunlandi!', score
             onClick={onClose}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-11 bg-bg hover:bg-primary-soft text-muted rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <X size={15} /> Yopish
+            <X size={15} /> {t('settings.close')}
           </button>
           <button
             type="button"
@@ -92,7 +94,7 @@ export default function SessionCompleteCard({ open, title = 'Yakunlandi!', score
             onClick={onRestart}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 min-h-11 bg-accent hover:bg-accent-hover text-on-accent rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
-            <RotateCcw size={15} /> Qayta boshlash
+            <RotateCcw size={15} /> {t('lg.restart')}
           </button>
         </div>
       </div>

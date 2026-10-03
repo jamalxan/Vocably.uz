@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
+import { useT } from '@/context/LocaleContext';
 import { optionStateClass, OPTION_BUTTON_CLASS } from '@/lib/lugatQuiz';
 
 const START_TIME_MS = 8000;
@@ -62,6 +63,7 @@ function buildQuestion(words, prevTarget = null) {
 // chegarasi, jonlar (lives) va ketma-ketlik (streak) bilan arkada o'yin hissi beradi.
 export default function SpeedQuiz() {
   const { activeCategory, activeCatIndex, reviewWord, writeResetNonce } = useApp();
+  const { t } = useT();
 
   const [range, setRange] = useState({ from: 1, to: 10 });
   const [active, setActive] = useState(false);
@@ -99,7 +101,7 @@ export default function SpeedQuiz() {
 
   const beginSession = (selectedWords) => {
     if (selectedWords.length < 4) {
-      setSetupError("O'yin uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+      setSetupError(t('lg.sq.need4'));
       return;
     }
     setSetupError('');
@@ -121,7 +123,7 @@ export default function SpeedQuiz() {
     e?.preventDefault();
     const all = activeCategory.words || [];
     if (all.length === 0) {
-      setSetupError("Avval so'z qo'shing");
+      setSetupError(t('lg.addWordsFirst'));
       return;
     }
     const sliceFrom = Math.max(1, range.from) - 1;
@@ -255,11 +257,11 @@ export default function SpeedQuiz() {
           </p>
         )}
         <RangeSetupForm
-        title="Tezkor o'yin oraliqlari"
+        title={t('lg.sq.range')}
         range={range}
         onRangeChange={setRange}
         onSubmit={startGame}
-        buttonLabel="O'yinni boshlash"
+        buttonLabel={t('game.begin')}
         maxWords={activeCategory.words?.length || 0}
         onQuickStart={() => beginSession(dueWords)}
         quickStartCount={dueWords.length}
@@ -277,7 +279,7 @@ export default function SpeedQuiz() {
     <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
-        title={isNewBest ? 'Yangi rekord!' : "O'yin tugadi!"}
+        title={isNewBest ? t('lg.sq.newRecord') : t('lg.sq.gameOver')}
         score={score.correct}
         total={score.total}
         onRestart={restartGame}
@@ -285,18 +287,18 @@ export default function SpeedQuiz() {
       >
         <div className="flex flex-col items-center gap-1.5 text-xs mb-5">
           <div className={`flex items-center gap-1.5 font-bold text-base ${isNewBest ? 'text-warning' : 'text-accent'}`}>
-            <Trophy size={16} /> {points} ball {isNewBest && '🎉'}
+            <Trophy size={16} /> {t('lg.sq.points', { n: points })} {isNewBest && '🎉'}
           </div>
-          <p className="text-muted">Shaxsiy rekord: {Math.max(points, bestPoints)}</p>
+          <p className="text-muted">{t('lg.sq.best', { n: Math.max(points, bestPoints) })}</p>
           <div className="flex items-center gap-1.5 text-accent font-semibold">
-            <Flame size={14} /> Eng uzun ketma-ketlik: {bestStreak}
+            <Flame size={14} /> {t('lg.sq.bestStreak', { n: bestStreak })}
           </div>
         </div>
       </SessionCompleteCard>
 
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex flex-wrap justify-between items-center gap-x-2 gap-y-1 text-xs text-muted mb-3">
-          <div className="flex items-center gap-1" role="img" aria-label={`${lives} ta jon qoldi`}>
+          <div className="flex items-center gap-1" role="img" aria-label={t('game.livesLeft', { n: lives })}>
             {Array.from({ length: START_LIVES }).map((_, i) => (
               <Heart
                 key={i}
@@ -308,18 +310,18 @@ export default function SpeedQuiz() {
           </div>
           <span className="flex items-center gap-2.5 tabular-nums">
             <span className="flex items-center gap-1 font-semibold text-accent whitespace-nowrap">
-              <Zap size={13} /> {streak}x{comboMultiplier(streak) > 1 && ` (${comboMultiplier(streak)}× ball)`}
+              <Zap size={13} /> {streak}x{comboMultiplier(streak) > 1 && ` ${t('lg.sq.combo', { n: comboMultiplier(streak) })}`}
             </span>
             <span className="font-bold text-ink">{points}</span>
           </span>
           <button
             type="button"
             onClick={() => setActive(false)}
-            aria-label="Oraliqni o'zgartirish"
+            aria-label={t('lg.changeRange')}
             className="min-h-11 md:min-h-0 whitespace-nowrap text-accent hover:text-accent-hover font-semibold"
           >
-            <span className="sm:hidden">Oraliq</span>
-            <span className="hidden sm:inline">Oraliqni o'zgartirish</span>
+            <span className="sm:hidden">{t('lg.sq.rangeShort')}</span>
+            <span className="hidden sm:inline">{t('lg.changeRange')}</span>
           </button>
         </div>
 

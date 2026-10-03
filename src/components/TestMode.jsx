@@ -6,6 +6,7 @@ import { dueWordsInCategory } from '@/lib/srs';
 import { levenshtein } from '@/lib/levenshtein';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
+import { useT } from '@/context/LocaleContext';
 
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -89,15 +90,11 @@ function buildQuestion(words) {
   return { target, direction: 'en_uz', prompt: target.word, correctAnswer, options: shuffle([correctAnswer, ...distractors]) };
 }
 
-const DIRECTION_LABEL = {
-  en_uz: 'Tarjimasini tanlang',
-  uz_en: 'Inglizchasini tanlang',
-  definition: "Ta'rifga mos so'zni tanlang",
-  cloze: "Bo'sh joyga mos so'zni tanlang",
-};
+// Yo'nalish yorliqlari: lg.dir.<direction>
 
 export default function TestMode() {
   const { activeCategory, activeCatIndex, reviewWord, writeResetNonce } = useApp();
+  const { t } = useT();
 
   const [range, setRange] = useState({ from: 1, to: 10 });
   const [active, setActive] = useState(false);
@@ -135,7 +132,7 @@ export default function TestMode() {
   }, [words, questionIndex]);
 
   const beginSession = (selectedWords) => {
-    if (selectedWords.length < 4) return setSetupError("Test uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+    if (selectedWords.length < 4) return setSetupError(t('lg.testNeed4'));
     setSetupError('');
     setWords(selectedWords);
     setQuestion(buildQuestion(selectedWords));
@@ -150,7 +147,7 @@ export default function TestMode() {
   const startTest = (e) => {
     e?.preventDefault();
     const all = activeCategory.words || [];
-    if (all.length === 0) return setSetupError("Avval so'z qo'shing");
+    if (all.length === 0) return setSetupError(t('lg.addWordsFirst'));
     const sliceFrom = Math.max(1, range.from) - 1;
     const sliceTo = Math.min(all.length, range.to);
     beginSession(all.slice(sliceFrom, sliceTo));
@@ -170,7 +167,7 @@ export default function TestMode() {
   if (!active) {
     return (
       <RangeSetupForm
-        title="Test oraliqlari"
+        title={t('lg.testRange')}
         range={range}
         onRangeChange={(r) => {
           setRange(r);
@@ -191,21 +188,17 @@ export default function TestMode() {
     <div className="flex flex-col items-center">
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-muted mb-4">
-          <span>
-            Savol {questionIndex}/{SESSION_LENGTH}
-          </span>
-          <span>
-            To'g'ri: {score.correct}/{score.total}
-          </span>
+          <span>{t('lg.questionOf', { n: questionIndex, total: SESSION_LENGTH })}</span>
+          <span>{t('lg.correctScore', { a: score.correct, b: score.total })}</span>
           <button
             onClick={() => setActive(false)}
             className="inline-flex items-center min-h-11 -my-3.5 md:min-h-0 md:my-0 text-accent hover:text-accent-hover font-semibold"
           >
-            Oraliqni o'zgartirish
+            {t('lg.changeRange')}
           </button>
         </div>
         <p className="text-[11px] font-semibold uppercase tracking-wide text-accent text-center mb-2">
-          {DIRECTION_LABEL[question.direction]}
+          {t(`lg.dir.${question.direction}`)}
         </p>
         <p
           className={`font-bold text-ink mb-6 text-center break-words ${
@@ -236,13 +229,13 @@ export default function TestMode() {
                 {showCorrect && (
                   <>
                     <Check size={16} className="flex-shrink-0" aria-hidden="true" />
-                    <span className="sr-only">To'g'ri javob</span>
+                    <span className="sr-only">{t('q.rightAnswerAria')}</span>
                   </>
                 )}
                 {showWrong && (
                   <>
                     <X size={16} className="flex-shrink-0" aria-hidden="true" />
-                    <span className="sr-only">Noto'g'ri</span>
+                    <span className="sr-only">{t('lg.wrongSr')}</span>
                   </>
                 )}
               </button>
@@ -256,14 +249,14 @@ export default function TestMode() {
             onClick={nextQuestion}
             className="w-full min-h-11 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
-            {questionIndex >= SESSION_LENGTH ? 'Yakunlash' : 'Keyingi savol →'}
+            {questionIndex >= SESSION_LENGTH ? t('game.finish') : t('lg.nextQuestion')}
           </button>
         )}
       </div>
 
       <SessionCompleteCard
         open={complete}
-        title="Test yakunlandi!"
+        title={t('lg.testDone')}
         score={score.correct}
         total={score.total}
         onClose={() => setActive(false)}

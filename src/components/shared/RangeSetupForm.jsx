@@ -1,6 +1,7 @@
 'use client';
 import { useId, useState } from 'react';
 import { Target } from 'lucide-react';
+import { useT } from '@/context/LocaleContext';
 
 // Barcha o'yin/mashq rejimlarining "boshlash oldidan oraliq tanlash" ekrani uchun umumiy forma —
 // avval 5 ta komponentda (Flashcard, Match, Test, Listening, WritingTest) so'zma-so'z takrorlangan edi.
@@ -15,12 +16,13 @@ export default function RangeSetupForm({
   range,
   onRangeChange,
   onSubmit,
-  buttonLabel = 'Boshlash',
+  buttonLabel,
   maxWords,
   onQuickStart,
   quickStartCount = 0,
   error = '',
 }) {
+  const { t } = useT();
   // Foydalanuvchi mavjud so'zlar sonidan katta qiymat kiritsa, boshlashda jim-jimgina eng
   // yaqin mumkin bo'lgan songa moslashtiriladi (mos komponentda `Math.min(all.length, range.to)`) —
   // shu haqda oldindan xabar berish uchun mavjud son ko'rsatiladi va input shu songa cheklanadi.
@@ -51,19 +53,19 @@ export default function RangeSetupForm({
           className="w-full max-w-md flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-3 rounded-xl text-sm transition-colors shadow-glow mb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
         >
           <Target size={16} />
-          Bugungi so'zlar bilan boshlash ({quickStartCount} ta)
+          {t('lg.setupQuick', { n: quickStartCount })}
         </button>
       )}
       <form
         onSubmit={onSubmit}
         className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card"
       >
-        {showQuickStart && <p className="text-[11px] text-muted mb-3 -mt-1">yoki qo'lda oraliq tanlang:</p>}
+        {showQuickStart && <p className="text-[11px] text-muted mb-3 -mt-1">{t('lg.setupOr')}</p>}
         <h3 className="font-bold text-ink mb-4 font-display">{title}</h3>
         <div className="space-y-3 mb-2">
           <div className="flex items-center gap-4">
             <label htmlFor={fromId} className="text-xs font-semibold text-muted w-12">
-              Dan:
+              {t('lg.from')}
             </label>
             <input
               id={fromId}
@@ -81,7 +83,7 @@ export default function RangeSetupForm({
           </div>
           <div className="flex items-center gap-4">
             <label htmlFor={toId} className="text-xs font-semibold text-muted w-12">
-              Gacha:
+              {t('lg.to')}
             </label>
             <input
               id={toId}
@@ -99,11 +101,11 @@ export default function RangeSetupForm({
           </div>
         </div>
         <p className="text-[11px] text-muted mb-4 min-h-[1em]">
-          {hasMax && `Jami ${maxWords} ta so'z mavjud — bundan katta qiymat avtomatik shu songa moslashtiriladi.`}
+          {hasMax && t('lg.totalAvail', { n: maxWords })}
         </p>
         {(rangeInvalid || error) && (
           <p role="alert" className="text-xs font-medium text-danger mb-3">
-            {rangeInvalid ? "\"Dan\" qiymati \"Gacha\" qiymatidan katta bo'lmasligi kerak." : error}
+            {rangeInvalid ? t('lg.rangeOrder') : error}
           </p>
         )}
         <button
@@ -115,7 +117,7 @@ export default function RangeSetupForm({
               : 'bg-accent hover:bg-accent-hover text-on-accent shadow-glow'
           }`}
         >
-          {buttonLabel}
+          {buttonLabel || t('diag.start')}
         </button>
       </form>
     </div>

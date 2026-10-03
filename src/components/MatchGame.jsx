@@ -6,6 +6,7 @@ import { speakText } from '@/lib/speech';
 import { dueWordsInCategory } from '@/lib/srs';
 import RangeSetupForm from './shared/RangeSetupForm';
 import SessionCompleteCard from './shared/SessionCompleteCard';
+import { useT } from '@/context/LocaleContext';
 
 // 6.1.4 (VOCABLY-TZ.md) — 5 xil juftlik turi. Har so'z uchun mavjud enrichment
 // ma'lumotiga qarab tasodifiy tanlanadi (bo'lmasa — tarjima yoki audio, ikkalasi ham
@@ -28,6 +29,7 @@ function partnerText(w, type) {
 
 export default function MatchGame() {
   const { activeCategory, activeCatIndex, categories, matchGameNonce, reviewWord } = useApp();
+  const { t } = useT();
 
   const [range, setRange] = useState({ from: 1, to: 10 });
   const [active, setActive] = useState(false);
@@ -82,12 +84,12 @@ export default function MatchGame() {
   const startMatchGame = (e) => {
     e?.preventDefault();
     const all = activeCategory.words || [];
-    if (all.length === 0) return setSetupError("Avval so'z qo'shing");
+    if (all.length === 0) return setSetupError(t('lg.addWordsFirst'));
 
     const sliceFrom = Math.max(1, range.from) - 1;
     const sliceTo = Math.min(all.length, range.to);
     const selected = all.slice(sliceFrom, sliceTo);
-    if (selected.length < 4) return setSetupError("Bu o'yin uchun tanlangan oraliqda kamida 4 ta so'z kerak.");
+    if (selected.length < 4) return setSetupError(t('lg.mg.need4'));
 
     setSetupError('');
     setRangeWords(selected);
@@ -96,7 +98,7 @@ export default function MatchGame() {
   };
 
   const startDueQueue = () => {
-    if (dueWords.length < 4) return setSetupError("Bugungi navbatda kamida 4 ta so'z kerak.");
+    if (dueWords.length < 4) return setSetupError(t('lg.mg.need4Due'));
     setSetupError('');
     setRangeWords(dueWords);
     initMatchGame(dueWords);
@@ -134,7 +136,7 @@ export default function MatchGame() {
   if (!active) {
     return (
       <RangeSetupForm
-        title="Juftlikni topish oraliqlari"
+        title={t('lg.mg.range')}
         range={range}
         onRangeChange={(r) => {
           setRange(r);
@@ -152,18 +154,16 @@ export default function MatchGame() {
   return (
     <div className="flex flex-col items-center">
       {matchPairs.length === 0 ? (
-        <p className="text-sm text-muted">Bu o'yin uchun kamida 4 ta so'z kerak.</p>
+        <p className="text-sm text-muted">{t('lg.mg.need4Short')}</p>
       ) : (
         <>
           <div className="flex justify-between items-center text-xs text-muted w-full max-w-md mb-2.5">
-            <span>
-              {matchedIds.length} / {matchPairs.length / 2} juftlik
-            </span>
+            <span>{t('lg.mg.progress', { a: matchedIds.length, b: matchPairs.length / 2 })}</span>
             <button
               onClick={() => setActive(false)}
               className="inline-flex items-center min-h-11 -my-3.5 md:min-h-0 md:my-0 text-accent hover:text-accent-hover font-semibold"
             >
-              Oraliqni o'zgartirish
+              {t('lg.changeRange')}
             </button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 w-full max-w-md">
@@ -177,7 +177,7 @@ export default function MatchGame() {
                   onClick={() => handleMatchCardClick(card)}
                   disabled={isMatched}
                   aria-pressed={isSelected}
-                  aria-label={card.kind === 'audio' ? 'Talaffuzni eshitish' : undefined}
+                  aria-label={card.kind === 'audio' ? t('lg.pronounce') : undefined}
                   className={`min-h-20 sm:min-h-24 min-w-0 rounded-xl border flex items-center justify-center p-2.5 sm:p-3 text-center text-xs font-semibold cursor-pointer transition-all motion-reduce:transition-none select-none [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                     isMatched
                       ? 'border-success/20 bg-success-soft text-success opacity-60 pointer-events-none'
@@ -195,7 +195,7 @@ export default function MatchGame() {
           <SessionCompleteCard
             key={rounds}
             open={complete}
-            title="Barcha juftliklar topildi!"
+            title={t('lg.mg.allDone')}
             score={matchPairs.length / 2}
             total={matchPairs.length / 2}
             onClose={() => setActive(false)}

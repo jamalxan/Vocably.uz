@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Volume2, Trash2, Search, Sparkles } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import { speakText } from '@/lib/speech';
 import Badge from './ui/Badge';
 import ConfirmModal from './ConfirmModal';
@@ -13,6 +14,7 @@ const UNDO_MS = 5000;
 
 export default function WordTable() {
   const { activeCategory, handleAddWord, deleteWords, restoreWords, enrichWordsBatch } = useApp();
+  const { t } = useT();
   const [newWord, setNewWord] = useState('');
   const [newSyns, setNewSyns] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -86,7 +88,7 @@ export default function WordTable() {
           }
         } catch {
           // Tarmoq xatosi — partiyadagi barcha so'zlar "qayta urinish" ro'yxatiga tushadi.
-          for (const w of chunk) failed.push({ wordId: w._id, word: w.word, error: "Tarmoq xatosi — internetni tekshirib, qayta urinib ko'ring", requestId: null });
+          for (const w of chunk) failed.push({ wordId: w._id, word: w.word, error: t('wt.networkError'), requestId: null });
         }
         done += chunk.length;
         // To'xtatilgandan keyin tugagan so'rov progress tugmasini qaytarib chiqarmasin.
@@ -114,7 +116,7 @@ export default function WordTable() {
   const onAddWord = async (e) => {
     e?.preventDefault();
     if (!newWord.trim() || !newSyns.trim()) {
-      setAddError("So'z va sinonim/tarjima maydonlari to'ldirilishi kerak");
+      setAddError(t('wt.fillBoth'));
       return;
     }
     setAddError('');
@@ -122,7 +124,7 @@ export default function WordTable() {
     try {
       const { ok, error } = await handleAddWord(newWord, newSyns);
       if (!ok) {
-        setAddError(error || "So'z saqlanmadi, qayta urinib ko'ring");
+        setAddError(error || t('wt.saveFailed'));
         return;
       }
       setNewWord('');
@@ -189,12 +191,12 @@ export default function WordTable() {
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-end">
           <div className="flex-1 w-full">
             <label htmlFor={newWordId} className="block text-[11px] font-semibold text-muted uppercase mb-1">
-              Yangi so'z
+              {t('wt.newWord')}
             </label>
             <input
               id={newWordId}
               type="text"
-              placeholder="Masalan: Start"
+              placeholder={t('wt.newWordPlaceholder')}
               value={newWord}
               onChange={(e) => {
                 setNewWord(e.target.value);
@@ -206,12 +208,12 @@ export default function WordTable() {
           </div>
           <div className="flex-[2] w-full">
             <label htmlFor={newSynsId} className="block text-[11px] font-semibold text-muted uppercase mb-1">
-              Sinonimlar / tarjima, vergul bilan
+              {t('wt.synsLabel')}
             </label>
             <input
               id={newSynsId}
               type="text"
-              placeholder="Masalan: begin, commence, launch"
+              placeholder={t('wt.synsPlaceholder')}
               value={newSyns}
               onChange={(e) => {
                 setNewSyns(e.target.value);
@@ -226,7 +228,7 @@ export default function WordTable() {
             disabled={adding}
             className="px-5 py-2.5 min-h-11 md:min-h-0 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent font-semibold rounded-lg text-sm transition-colors whitespace-nowrap"
           >
-            {adding ? 'Qo\'shilmoqda...' : "Qo'shish"}
+            {adding ? t('wt.adding') : t('cat.add')}
           </button>
         </div>
         {addError && (
@@ -242,8 +244,8 @@ export default function WordTable() {
           <Search className="absolute left-3 top-3 text-muted" size={16} />
           <input
             type="search"
-            placeholder="So'z yoki tarjimalar bo'yicha qidirish..."
-            aria-label="So'zlarni qidirish"
+            placeholder={t('wt.searchPlaceholder')}
+            aria-label={t('wt.searchAria')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-surface text-ink placeholder:text-muted text-base md:text-sm outline-none focus:border-accent"
@@ -256,15 +258,15 @@ export default function WordTable() {
               onClick={stopBulkEnrich}
               className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-accent-soft text-accent border border-accent/25 rounded-xl text-sm font-semibold whitespace-nowrap"
             >
-              <Sparkles size={14} className="animate-pulse" /> Boyitilmoqda {bulkEnrich.done}/{bulkEnrich.total} — to'xtatish
+              <Sparkles size={14} className="animate-pulse" /> {t('wt.enriching', { a: bulkEnrich.done, b: bulkEnrich.total })}
             </button>
           ) : (
             <button
               onClick={startBulkEnrich}
-              title="Kategoriyadagi hali boyitilmagan so'zlarni AI bilan to'ldiradi (10 tadan partiyalarda, 3 tasi parallel)"
+              title={t('wt.enrichAllTitle')}
               className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-surface hover:bg-accent-soft border border-border hover:border-accent/40 text-muted hover:text-accent rounded-xl text-sm font-semibold transition-colors whitespace-nowrap"
             >
-              <Sparkles size={14} /> Barchasini boyitish ({unenrichedWords.length})
+              <Sparkles size={14} /> {t('wt.enrichAll', { n: unenrichedWords.length })}
             </button>
           )
         )}
@@ -272,7 +274,7 @@ export default function WordTable() {
 
       {bulkEnrichFailed.length > 0 && (
         <AiErrorNotice
-          error={`${bulkEnrichFailed.length} ta so'z boyitilmadi: ${bulkEnrichFailed[0].error}`}
+          error={t('wt.enrichFailed', { n: bulkEnrichFailed.length, err: bulkEnrichFailed[0].error })}
           onRetry={retryFailedEnrich}
           className="mb-4"
         />
@@ -280,19 +282,19 @@ export default function WordTable() {
 
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between bg-accent-soft border border-accent/15 rounded-xl px-4 py-3 text-sm">
-          <span className="font-semibold text-accent">{selectedIds.length} ta so'z tanlandi</span>
+          <span className="font-semibold text-accent">{t('wt.selected', { n: selectedIds.length })}</span>
           <div className="flex gap-2">
             <button
               onClick={requestDeleteSelected}
               className="px-3 py-1.5 min-h-11 md:min-h-0 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-xs font-semibold transition-colors"
             >
-              O'chirish
+              {t('lg.delete')}
             </button>
             <button
               onClick={() => setSelectedIds([])}
               className="px-3 py-1.5 min-h-11 md:min-h-0 bg-surface hover:bg-bg border border-border text-muted rounded-lg text-xs font-semibold transition-colors"
             >
-              Bekor qilish
+              {t('settings.cancel')}
             </button>
           </div>
         </div>
@@ -311,15 +313,15 @@ export default function WordTable() {
                       type="checkbox"
                       checked={allVisibleSelected}
                       onChange={toggleSelectAll}
-                      aria-label="Barcha ko'rinayotgan so'zlarni tanlash"
+                      aria-label={t('wt.selectAllAria')}
                       className="w-4 h-4 accent-accent cursor-pointer"
                     />
                   </label>
                 </th>
                 <th className="hidden sm:table-cell py-3 px-4 sm:px-6 w-12">#</th>
-                <th className="py-3 px-3 sm:px-6">So'z</th>
-                <th className="hidden sm:table-cell py-3 px-4 sm:px-6">Sinonimlar / tarjimalar</th>
-                <th className="py-3 px-3 sm:px-6 w-24">Amallar</th>
+                <th className="py-3 px-3 sm:px-6">{t('wt.colWord')}</th>
+                <th className="hidden sm:table-cell py-3 px-4 sm:px-6">{t('wt.colSyns')}</th>
+                <th className="py-3 px-3 sm:px-6 w-24">{t('wt.colActions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -332,7 +334,7 @@ export default function WordTable() {
                         checked={w._id ? selectedIds.includes(w._id) : false}
                         onChange={() => w._id && toggleSelect(w._id)}
                         disabled={!w._id}
-                        aria-label={`"${w.word}" so'zini tanlash`}
+                        aria-label={t('wt.selectOneAria', { word: w.word })}
                         className="w-4 h-4 accent-accent cursor-pointer"
                       />
                     </label>
@@ -345,7 +347,7 @@ export default function WordTable() {
                     >
                       {w.word}
                       {w.enrichment?.aiEnrichedAt && (
-                        <Sparkles size={11} className="text-accent flex-shrink-0" aria-label="AI bilan boyitilgan" />
+                        <Sparkles size={11} className="text-accent flex-shrink-0" aria-label={t('wt.aiEnriched')} />
                       )}
                       {w.enrichment?.cefr && <Badge tone="accent">{w.enrichment.cefr}</Badge>}
                     </Link>
@@ -357,8 +359,8 @@ export default function WordTable() {
                       <button
                         onClick={() => speakText(w.word)}
                         className="inline-flex items-center justify-center w-11 h-11 md:w-8 md:h-8 bg-accent-soft hover:bg-accent/20 text-accent rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        title="Eshitish"
-                        aria-label={`"${w.word}" so'zini eshitish`}
+                        title={t('wt.listen')}
+                        aria-label={t('wt.listenAria', { word: w.word })}
                       >
                         <Volume2 size={14} />
                       </button>
@@ -366,8 +368,8 @@ export default function WordTable() {
                         onClick={() => requestDeleteSingle(w)}
                         disabled={!w._id}
                         className="inline-flex items-center justify-center w-11 h-11 md:w-8 md:h-8 bg-accent-soft hover:bg-danger-soft text-accent hover:text-danger rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        title="O'chirish"
-                        aria-label={`"${w.word}" so'zini o'chirish`}
+                        title={t('lg.delete')}
+                        aria-label={t('wt.deleteAria', { word: w.word })}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -380,17 +382,17 @@ export default function WordTable() {
                   <td colSpan={5} className="py-10 px-4 text-center text-sm text-muted [overflow-wrap:anywhere]">
                     {words.length > 0 && searchTerm ? (
                       <>
-                        &quot;{searchTerm}&quot; bo&apos;yicha hech narsa topilmadi.{' '}
+                        {t('wt.noResults', { q: searchTerm })}{' '}
                         <button
                           type="button"
                           onClick={() => setSearchTerm('')}
                           className="inline-flex items-center min-h-11 md:min-h-0 font-semibold text-accent hover:text-accent-hover hover:underline"
                         >
-                          Qidiruvni tozalash
+                          {t('wt.clearSearch')}
                         </button>
                       </>
                     ) : (
-                      "Bu kategoriyada hali so'z yo'q."
+                      t('wt.emptyCat')
                     )}
                   </td>
                 </tr>
@@ -402,15 +404,15 @@ export default function WordTable() {
 
       <ConfirmModal
         open={!!confirmState}
-        title="So'zlarni o'chirish"
-        message={`${confirmState?.ids.length || 0} ta so'z o'chiriladi. Davom etasizmi?`}
+        title={t('wt.confirmTitle')}
+        message={t('wt.confirmMsg', { n: confirmState?.ids.length || 0 })}
         onConfirm={confirmDelete}
         onCancel={() => setConfirmState(null)}
       />
 
       {undoState && (
         <UndoToast
-          message={`${undoState.words.length} ta so'z o'chirildi`}
+          message={t('wt.deleted', { n: undoState.words.length })}
           onUndo={handleUndo}
         />
       )}
