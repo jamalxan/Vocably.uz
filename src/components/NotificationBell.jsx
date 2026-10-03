@@ -1,20 +1,21 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useBackClose } from '@/lib/useBackClose';
+import { useT } from '@/context/LocaleContext';
 import { Bell, BellRing, MessageCircle, Megaphone, Loader2, CreditCard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { pushSupported, getPushPermissionState, isPushSubscribed, subscribeToPush } from '@/lib/pushClient';
 
 const POLL_MS = 25_000;
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'hozir';
-  if (mins < 60) return `${mins} daq`;
+  if (mins < 1) return t('time.now');
+  if (mins < 60) return t('time.min', { n: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} soat`;
-  return `${Math.floor(hours / 24)} kun`;
+  if (hours < 24) return t('time.hour', { n: hours });
+  return t('time.day', { n: Math.floor(hours / 24) });
 }
 
 // Sidebar'dan mustaqil, dashboard header'ida (barcha view'larda ko'rinadigan yagona
@@ -25,6 +26,7 @@ function timeAgo(dateStr) {
 // autentifikatsiyadan o'tgan foydalanuvchi uchun render qilinadi).
 export default function NotificationBell({ onOpenFriends }) {
   const router = useRouter();
+  const { t } = useT();
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -174,8 +176,8 @@ export default function NotificationBell({ onOpenFriends }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="relative w-11 h-11 md:w-10 md:h-10 inline-flex items-center justify-center text-muted hover:text-accent hover:bg-surface rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-        title="Bildirishnomalar"
-        aria-label={unreadCount > 0 ? `Bildirishnomalar (${unreadCount} ta yangi)` : 'Bildirishnomalar'}
+        title={t('notif.title')}
+        aria-label={unreadCount > 0 ? t('notif.titleUnread', { n: unreadCount }) : t('notif.title')}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
@@ -193,18 +195,18 @@ export default function NotificationBell({ onOpenFriends }) {
       {open && (
         <div
           role="dialog"
-          aria-label="Bildirishnomalar"
+          aria-label={t('notif.title')}
           className="absolute right-0 top-full mt-2 z-40 w-80 max-w-[90vw] max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain bg-surface border border-border rounded-xl shadow-premium"
         >
           <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 border-b border-border">
-            <p className="text-sm font-bold text-ink">Bildirishnomalar</p>
+            <p className="text-sm font-bold text-ink">{t('notif.title')}</p>
             {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={markAllRead}
                 className="px-2 py-2 -my-2 -mr-2 rounded-lg text-xs font-semibold text-accent hover:text-accent-hover hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                Hammasini o'qilgan qilish
+                {t('notif.markAll')}
               </button>
             )}
           </div>
@@ -216,9 +218,7 @@ export default function NotificationBell({ onOpenFriends }) {
               className="w-full flex items-center gap-2 px-3.5 py-2.5 border-b border-border text-xs text-accent hover:bg-accent-soft transition-colors disabled:opacity-50"
             >
               {subscribing ? <Loader2 size={13} className="animate-spin" /> : <BellRing size={13} />}
-              {pushState === 'denied'
-                ? "Brauzer bildirishnomalari bloklangan (brauzer sozlamalaridan yoqing)"
-                : 'Brauzer bildirishnomalarini yoqish'}
+              {pushState === 'denied' ? t('notif.pushBlocked') : t('notif.pushEnable')}
             </button>
           )}
 
@@ -226,10 +226,10 @@ export default function NotificationBell({ onOpenFriends }) {
             {!loaded && items.length === 0 && (
               <div className="flex justify-center py-8" role="status">
                 <Loader2 size={18} className="animate-spin text-muted" aria-hidden="true" />
-                <span className="sr-only">Yuklanmoqda…</span>
+                <span className="sr-only">{t('dash.loading')}</span>
               </div>
             )}
-            {loaded && items.length === 0 && <p className="text-center text-xs text-muted py-8">Hozircha bildirishnoma yo'q</p>}
+            {loaded && items.length === 0 && <p className="text-center text-xs text-muted py-8">{t('notif.empty')}</p>}
             {items.map((n) => (
               <button
                 key={n._id}
@@ -256,7 +256,7 @@ export default function NotificationBell({ onOpenFriends }) {
                     </p>
                   )}
                 </div>
-                <span className="text-[11px] text-ink-subtle flex-shrink-0 mt-0.5">{timeAgo(n.createdAt)}</span>
+                <span className="text-[11px] text-ink-subtle flex-shrink-0 mt-0.5">{timeAgo(n.createdAt, t)}</span>
               </button>
             ))}
           </div>

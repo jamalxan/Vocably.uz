@@ -101,6 +101,10 @@ test('Bugun (dashboard) ruscha: kartalar, reja, kunlar; uz da o‘zgarmaydi', as
   await expect(page.getByText('По категориям')).toBeVisible();
   await expect(page.getByText('Повторено сегодня')).toBeVisible();
   await expect(page.getByText('Центр игр')).toBeVisible({ timeout: 30_000 }); // GamesCard — alohida so'rov
+  // Qobiq (AppShell): sarlavhadagi tugmalar va suzuvchi AI tugma ruscha
+  await expect(page.getByRole('button', { name: 'Выбрать тему' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Уведомления' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Открыть ИИ-помощника/ })).toBeVisible();
   // O'zbek tilida qaytganda avvalgidek
   await context.addCookies([{ name: 'vocably_lang', value: 'uz', url: 'http://localhost:3100' }]);
   await page.reload();

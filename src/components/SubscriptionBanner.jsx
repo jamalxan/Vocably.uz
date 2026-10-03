@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Clock, X, Lock } from 'lucide-react';
 import { TIER_CONFIG } from '@/lib/entitlements';
-import { formatUzDate } from '@/lib/uzDate';
+import { formatDateLocale } from '@/lib/uzDate';
+import { useT } from '@/context/LocaleContext';
 
 // In-app counterpart of the reminder sweep: shown on every app page from 3
 // days before expiry, on each of the grace days, and for a week after the
@@ -15,11 +16,9 @@ function dismissKey(sub) {
   return `vocably_sub_banner_${sub.status}_${new Date().toISOString().slice(0, 10)}`;
 }
 
-function fmt(date) {
-  return formatUzDate(date);
-}
-
 export default function SubscriptionBanner() {
+  const { t, locale } = useT();
+  const fmt = (date) => formatDateLocale(locale, date);
   const [sub, setSub] = useState(null);
   const [hidden, setHidden] = useState(false);
 
@@ -42,21 +41,22 @@ export default function SubscriptionBanner() {
 
   if (!sub || hidden || !sub.expiresAt) return null;
 
-  const label = TIER_CONFIG[sub.tier]?.label || sub.tier;
+  const tierLabel = TIER_CONFIG[sub.tier]?.label || sub.tier;
+  const label = sub.tier === 'free' ? t('tier.free') : tierLabel;
   let tone = null;
   let Icon = Clock;
   let text = '';
   if (sub.status === 'active' && sub.daysLeft <= 3) {
     tone = 'info';
-    text = `${label} obunangiz ${fmt(sub.expiresAt)} kuni tugaydi (${sub.daysLeft} kun qoldi).`;
+    text = t('sub.expiring', { tier: label, date: fmt(sub.expiresAt), n: sub.daysLeft });
   } else if (sub.status === 'grace') {
     tone = 'warning';
     Icon = AlertTriangle;
-    text = `${label} obunangiz muddati tugadi. Imkoniyatlar yana ${sub.graceDaysLeft} kun ochiq — ${fmt(sub.graceEndsAt)} kuni yopiladi.`;
+    text = t('sub.grace', { tier: label, n: sub.graceDaysLeft, date: fmt(sub.graceEndsAt) });
   } else if (sub.status === 'expired' && Date.now() - new Date(sub.graceEndsAt).getTime() < 7 * DAY_MS) {
     tone = 'danger';
     Icon = Lock;
-    text = `${label} obunangiz yopildi — hozir Bepul rejadasiz.`;
+    text = t('sub.expired', { tier: label });
   }
   if (!tone) return null;
 
@@ -75,7 +75,7 @@ export default function SubscriptionBanner() {
         href={`/app/tolov?tier=${sub.tier}`}
         className="flex-shrink-0 inline-flex items-center min-h-9 px-3 rounded-lg bg-accent text-on-accent text-xs font-semibold hover:bg-accent-hover"
       >
-        {sub.status === 'expired' ? 'Qayta faollashtirish' : 'Uzaytirish'}
+        {sub.status === 'expired' ? t('sub.reactivate') : t('sub.extend')}
       </Link>
       <button
         type="button"
@@ -85,7 +85,7 @@ export default function SubscriptionBanner() {
             localStorage.setItem(dismissKey(sub), '1');
           } catch {}
         }}
-        aria-label="Bugun uchun yopish"
+        aria-label={t('sub.dismiss')}
         className="flex-shrink-0 grid place-items-center w-8 h-8 rounded-lg text-muted hover:text-ink hover:bg-surface/60"
       >
         <X size={15} />

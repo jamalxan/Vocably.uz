@@ -141,6 +141,38 @@ const uz = {
   'hub.status.mastered': "O'zlashtirilgan",
   'hub.forYou': 'Siz uchun',
 
+  // --- Bildirishnomalar, obuna banneri, vaqt
+  'notif.title': 'Bildirishnomalar',
+  'notif.titleUnread': 'Bildirishnomalar ({n} ta yangi)',
+  'notif.markAll': "Hammasini o'qilgan qilish",
+  'notif.pushBlocked': 'Brauzer bildirishnomalari bloklangan (brauzer sozlamalaridan yoqing)',
+  'notif.pushEnable': 'Brauzer bildirishnomalarini yoqish',
+  'notif.empty': "Hozircha bildirishnoma yo'q",
+  'time.now': 'hozir',
+  'time.min': '{n} daq',
+  'time.hour': '{n} soat',
+  'time.day': '{n} kun',
+  'tier.free': 'Bepul',
+  'sub.expiring': '{tier} obunangiz {date} kuni tugaydi ({n} kun qoldi).',
+  'sub.grace': '{tier} obunangiz muddati tugadi. Imkoniyatlar yana {n} kun ochiq — {date} kuni yopiladi.',
+  'sub.expired': '{tier} obunangiz yopildi — hozir Bepul rejadasiz.',
+  'sub.reactivate': 'Qayta faollashtirish',
+  'sub.extend': 'Uzaytirish',
+  'sub.dismiss': 'Bugun uchun yopish',
+
+  // --- Qobiq (AppShell, AI panel)
+  'shell.logout': 'Chiqish',
+  'shell.homeAria': 'Vocably — Bugun',
+  'shell.mainNav': 'Asosiy navigatsiya',
+  'shell.collapse': "Menyuni yig'ish",
+  'shell.expand': 'Menyuni kengaytirish',
+  'shell.themePick': 'Mavzuni tanlash',
+  'ai.open': 'AI yordamchini ochish (Ctrl+K)',
+  'ai.title': 'AI yordamchi (Ctrl+K)',
+  'ai.panel': 'AI yordamchi',
+  'ai.shrink': 'Kichiklashtirish',
+  'ai.expand': 'Kengaytirish',
+
   // --- Bugun (dashboard)
   'dash.loading': 'Yuklanmoqda…',
   'dash.loadError': "Statistikani yuklab bo'lmadi.",

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Sun, Moon, Monitor, ChevronRight, ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useT } from '@/context/LocaleContext';
 import IconButton from '@/components/ui/IconButton';
 import NotificationBell from '@/components/NotificationBell';
 import Avatar from '@/components/avatar/Avatar';
@@ -29,6 +30,7 @@ export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const { displayName, username, logout, chatAccess, chatRole, chatUserId, myPhotoId } = useApp();
+  const { t } = useT();
 
   // TCH-01/02 — "O'qituvchi paneli" yorlig'i xuddi "Do'stlar" (requiresChatAccess)
   // kabi, faqat mos rolga ega foydalanuvchilarga ko'rinadi. `chatRole` —
@@ -110,7 +112,7 @@ export default function AppShell({ children }) {
               <h1 className="text-lg font-bold text-on-primary tracking-wide font-luxury leading-tight">
                 Voc<span className="text-accent">ably</span>
               </h1>
-              <p className="text-[11px] text-on-primary/70 leading-tight">Ingliz tili yordamchisi</p>
+              <p className="text-[11px] text-on-primary/70 leading-tight">{t('auth.tagline')}</p>
             </div>
           </Link>
 
@@ -168,7 +170,7 @@ export default function AppShell({ children }) {
               <p className="text-sm font-semibold text-on-primary truncate">{displayName}</p>
             </div>
           </Link>
-          <IconButton icon={LogOut} label="Chiqish" variant="ghost-on-primary" onClick={logout} className="focus-visible:ring-offset-primary" />
+          <IconButton icon={LogOut} label={t('shell.logout')} variant="ghost-on-primary" onClick={logout} className="focus-visible:ring-offset-primary" />
         </div>
       </aside>
 
@@ -183,7 +185,7 @@ export default function AppShell({ children }) {
         style={{ background: 'linear-gradient(160deg, #4A1226, #2A0C18)' }}
       >
         <div className="p-3 flex-1 overflow-y-auto overflow-x-hidden">
-          <Link href="/app" className="flex items-center gap-3 mb-6 px-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label="Vocably — Bugun">
+          <Link href="/app" className="flex items-center gap-3 mb-6 px-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label={t('shell.homeAria')}>
             <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-on-accent font-bold text-lg font-display shadow-glow flex-shrink-0">
               V
             </div>
@@ -191,7 +193,7 @@ export default function AppShell({ children }) {
               Voc<span className="text-accent">ably</span>
             </span>
           </Link>
-          <nav className="space-y-1" aria-label="Asosiy navigatsiya">
+          <nav className="space-y-1" aria-label={t('shell.mainNav')}>
             {visibleSidebarNav.map((item) => {
               const active = isNavActive(item, pathname);
               return (
@@ -213,14 +215,14 @@ export default function AppShell({ children }) {
         <div className="p-3 flex flex-col gap-1 flex-shrink-0">
           <IconButton
             icon={railOpen ? ChevronsLeft : ChevronsRight}
-            label={railOpen ? "Menyuni yig'ish" : 'Menyuni kengaytirish'}
+            label={railOpen ? t('shell.collapse') : t('shell.expand')}
             variant="ghost-on-primary"
             size="lg"
             aria-expanded={railOpen}
             onClick={() => setRailOpen((v) => !v)}
             className="focus-visible:ring-offset-primary"
           />
-          <IconButton icon={LogOut} label="Chiqish" variant="ghost-on-primary" size="lg" onClick={logout} className="focus-visible:ring-offset-primary" />
+          <IconButton icon={LogOut} label={t('shell.logout')} variant="ghost-on-primary" size="lg" onClick={logout} className="focus-visible:ring-offset-primary" />
         </div>
       </aside>
 
@@ -256,7 +258,7 @@ export default function AppShell({ children }) {
           <Link
             href="/app"
             className="md:hidden flex items-center gap-2 min-h-11 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            aria-label="Vocably — Bugun"
+            aria-label={t('shell.homeAria')}
           >
             <span className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-on-accent font-bold text-lg font-display shadow-glow" aria-hidden="true">
               V
@@ -305,9 +307,9 @@ function navItemClass(active, compact = false) {
 
 const THEME_ICON = { system: Monitor, light: Sun, dark: Moon };
 const THEME_OPTIONS = [
-  { value: 'light', label: "Yorug'", icon: Sun },
-  { value: 'dark', label: 'Tungi', icon: Moon },
-  { value: 'system', label: 'Tizim', icon: Monitor },
+  { value: 'light', labelKey: 'settings.themeLight', icon: Sun },
+  { value: 'dark', labelKey: 'settings.themeDark', icon: Moon },
+  { value: 'system', labelKey: 'settings.themeSystem', icon: Monitor },
 ];
 
 // TZ-vocably-v2.md BUG-004: avval bitta ikonka tugma edi, bosilganda uchta
@@ -315,6 +317,7 @@ const THEME_OPTIONS = [
 // bo'layotganini bilmasdi. Endi uchta aniq nomlangan variant bilan dropdown.
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const Icon = THEME_ICON[theme];
 
@@ -342,14 +345,14 @@ function ThemeToggle() {
       <IconButton
         ref={triggerRef}
         icon={Icon}
-        label="Mavzuni tanlash"
+        label={t('shell.themePick')}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       />
       {open && (
-        <div role="menu" aria-label="Mavzu" className="absolute right-0 top-full mt-2 z-40 w-40 bg-surface-2 border border-border rounded-xl shadow-premium overflow-hidden py-1">
-          {THEME_OPTIONS.map(({ value, label, icon: OptIcon }) => (
+        <div role="menu" aria-label={t('settings.theme')} className="absolute right-0 top-full mt-2 z-40 w-40 bg-surface-2 border border-border rounded-xl shadow-premium overflow-hidden py-1">
+          {THEME_OPTIONS.map(({ value, labelKey, icon: OptIcon }) => (
             <button
               key={value}
               type="button"
@@ -364,7 +367,7 @@ function ThemeToggle() {
               }`}
             >
               <OptIcon size={16} />
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>

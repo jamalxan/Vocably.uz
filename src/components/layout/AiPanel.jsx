@@ -6,6 +6,7 @@ import AiChat from '@/components/AiChat';
 import IconButton from '@/components/ui/IconButton';
 import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
 import { useBackClose } from '@/lib/useBackClose';
+import { useT } from '@/context/LocaleContext';
 
 // VOCABLY-TZ.md §12.1 — AI Tutor endi istalgan sahifadan ⌘K (Ctrl+K) yoki
 // suzuvchi tugma bilan ochiladigan sirg'aluvchi panel (desktop: 420px, mobil:
@@ -27,6 +28,7 @@ function contextHintForPath(pathname) {
 
 export default function AiPanel() {
   const pathname = usePathname();
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   // Kengaytirish ENDI sahifa navigatsiyasi EMAS (eski "To'liq sahifa" havolasi
   // /app/ai'ga olib ketardi — orqaga qaytilganda foydalanuvchi qaysi sahifada
@@ -85,8 +87,8 @@ export default function AiPanel() {
     <>
       <button
         onClick={() => setOpen(true)}
-        aria-label="AI yordamchini ochish (Ctrl+K)"
-        title="AI yordamchi (Ctrl+K)"
+        aria-label={t('ai.open')}
+        title={t('ai.title')}
         className="fixed z-40 right-4 sm:right-6 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-6 w-12 h-12 rounded-full bg-accent hover:bg-accent-hover text-on-accent shadow-glow flex items-center justify-center transition-transform hover:scale-105"
       >
         <Sparkles size={20} />
@@ -99,7 +101,7 @@ export default function AiPanel() {
             ref={panelRef}
             role="dialog"
             aria-modal="true"
-            aria-label="AI yordamchi"
+            aria-label={t('ai.panel')}
             tabIndex={-1}
             className={`relative h-full bg-bg shadow-2xl flex flex-col pb-[env(safe-area-inset-bottom)] outline-none ${
               fullscreen ? 'w-full' : 'w-full sm:w-[420px] animate-[slideIn_200ms_ease-out]'
@@ -113,15 +115,15 @@ export default function AiPanel() {
               >
                 {fullscreen ? (
                   <>
-                    <Minimize2 size={13} /> Kichiklashtirish
+                    <Minimize2 size={13} /> {t('ai.shrink')}
                   </>
                 ) : (
                   <>
-                    <Maximize2 size={13} /> Kengaytirish
+                    <Maximize2 size={13} /> {t('ai.expand')}
                   </>
                 )}
               </button>
-              <IconButton icon={X} label="Yopish" onClick={closePanel} />
+              <IconButton icon={X} label={t('settings.close')} onClick={closePanel} />
             </div>
             <div className="flex-1 min-h-0">
               <AiChat contextHint={contextHintForPath(pathname)} />
