@@ -113,6 +113,34 @@ test('Bugun (dashboard) ruscha: kartalar, reja, kunlar; uz da o‘zgarmaydi', as
   await expect(page.getByText('Bugungi ish')).toBeVisible();
 });
 
+test('o‘yin oqimi ruscha: sozlama → savollar → natija ekrani', async ({ page, context }) => {
+  test.setTimeout(420_000);
+  await loginAs(page, E2E_PHONE);
+  await context.addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
+  await page.goto('/app/oyinlar/multiple_choice');
+  await expect(page.getByRole('heading', { name: 'Тест с вариантами ответа' })).toBeVisible({ timeout: 90_000 }); // server nomi tarjima qilingan
+  await expect(page.getByText('Сложность', { exact: true })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Авто (рекомендуется)' })).toBeVisible();
+  await page.getByRole('button', { name: 'Начать игру' }).click();
+
+  const counter = page.getByText(/Вопрос \d+ \/ \d+/);
+  await expect(counter).toBeVisible({ timeout: 60_000 });
+  const total = Number((await counter.textContent())!.match(/\/ (\d+)/)![1]);
+  await expect(page.getByRole('radiogroup', { name: 'Варианты ответа' })).toBeVisible();
+  for (let i = 0; i < total; i++) {
+    await expect(page.getByText(`Вопрос ${i + 1} / ${total}`)).toBeVisible();
+    await page.getByRole('radiogroup', { name: 'Варианты ответа' }).getByRole('radio').first().click();
+    const next = page.getByRole('button', { name: /Далее|Завершить/ });
+    const after = i < total - 1 ? page.getByText(`Вопрос ${i + 2} / ${total}`) : page.getByText(/XP/).first();
+    await expect(next.or(after)).toBeVisible({ timeout: 15_000 });
+    if (await next.isVisible()) await next.click();
+  }
+  // Natija ekrani
+  await expect(page.getByRole('heading', { name: /Готово!|Сессия завершена/ })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Точность', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Сыграть ещё раз' })).toBeVisible();
+});
+
 test('noto‘g‘ri cookie qiymati uz ga tushadi (inyeksiya/yiqilish yo‘q)', async ({ page, context }) => {
   await loginAs(page, E2E_PHONE);
   await context.addCookies([{ name: 'vocably_lang', value: 'xx"<script>', url: 'http://localhost:3100' }]).catch(() => {});

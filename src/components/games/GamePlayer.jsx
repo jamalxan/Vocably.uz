@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Heart, Lock, Play, X, WifiOff } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import Button, { buttonClasses } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { abandonGame, completeGame, getActiveSession, getGames, startGame } from './api';
@@ -11,38 +12,12 @@ import { createAnswerQueue } from './answerQueue';
 import { ArrangeQuestion, AudioPlayer, ChoiceQuestion, Feedback, MatchQuestion, MemoryQuestion, TypedQuestion } from './QuestionViews';
 import ResultScreen from './ResultScreen';
 
-const DIFFICULTY_OPTIONS = [
-  { key: 'auto', label: 'Avto (tavsiya)', hint: 'Natijalaringizga moslashadi' },
-  { key: 'easy', label: 'Oson', hint: 'Yengil savollar' },
-  { key: 'medium', label: "O'rta", hint: 'Muvozanatli' },
-  { key: 'hard', label: 'Qiyin', hint: 'Variantsiz / vaqt bilan' },
-  { key: 'expert', label: 'Ekspert', hint: "Eng qiyin, ko'proq XP" },
-];
-const MODE_OPTIONS = [
-  { key: 'mixed', label: 'Aralash (tavsiya)' },
-  { key: 'review', label: 'Takrorlash kerak bo\'lganlar' },
-  { key: 'weak', label: "Zaif so'zlar" },
-  { key: 'new', label: "Yangi so'zlar" },
-];
+// Matnlar i18n kalitlarida: game.diff.<key>(.hint), game.mode.<key>, game.kind.<kind>.
+const DIFFICULTY_KEYS = ['auto', 'easy', 'medium', 'hard', 'expert'];
+const MODE_KEYS = ['mixed', 'review', 'weak', 'new'];
 const NO_TIMER_KEY = 'vocably-games-no-timer';
 const AUTO_ADVANCE_MS = 1000;
-
-const KIND_TITLES = {
-  mc_meaning: "So'zning ma'nosini toping",
-  mc_word: "Qaysi inglizcha so'z?",
-  definition: "Ta'rif qaysi so'zga tegishli?",
-  syn_ant: 'Sinonim / antonim',
-  fill_choice: "Bo'sh joyga mos so'zni tanlang",
-  fill_typed: "Bo'sh joyni to'ldiring",
-  listen_choose: "Eshiting va to'g'ri so'zni tanlang",
-  listen_type: "Eshiting va yozing",
-  sentence_build: 'Jumla quring',
-  match_pairs: "Juftliklarni toping",
-  memory_pairs: 'Xotira kartalari',
-  spell_drop: "Inglizchasini yozing",
-  image_word: "Rasmga mos so'zni toping",
-  word_image: "So'zga mos rasmni tanlang",
-};
+const KNOWN_KINDS = new Set(['mc_meaning', 'mc_word', 'definition', 'syn_ant', 'fill_choice', 'fill_typed', 'listen_choose', 'listen_type', 'sentence_build', 'match_pairs', 'memory_pairs', 'spell_drop', 'image_word', 'word_image']);
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -69,6 +44,7 @@ export default function GamePlayer({ gameKey }) {
   const router = useRouter();
   const search = useSearchParams();
   const { categories } = useApp();
+  const { t, ts } = useT();
   const reducedMotion = usePrefersReducedMotion();
 
   const [phase, setPhase] = useState('loading'); // loading | setup | starting | playing | finishing | result
@@ -103,7 +79,7 @@ export default function GamePlayer({ gameKey }) {
         if (ctrl.signal.aborted) return;
         const g = (catalog.games || []).find((x) => x.key === gameKey);
         if (!g) {
-          setError("Bunday o'yin topilmadi.");
+          setError(t('game.notFound'));
           setPhase('setup');
           return;
         }
@@ -112,11 +88,12 @@ export default function GamePlayer({ gameKey }) {
         setPhase('setup');
       } catch (err) {
         if (ctrl.signal.aborted) return;
-        setError(err.message || "Yuklashda xatolik");
+        setError(err.message || t('hub.loadError'));
         setPhase('setup');
       }
     })();
     return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameKey]);
 
   useEffect(() => () => clearTimeout(advanceTimer.current), []);
@@ -151,7 +128,7 @@ export default function GamePlayer({ gameKey }) {
       const view = await startGame(gameKey, { difficulty: opts.difficulty, categoryId: opts.categoryId, mode: opts.mode });
       beginSession(view);
     } catch (err) {
-      setError(err.message || "O'yinni boshlab bo'lmadi");
+      setError(err.message || t('game.startError'));
       setPhase('setup');
     }
   };
@@ -177,10 +154,11 @@ export default function GamePlayer({ gameKey }) {
       setFinal(out);
       setPhase('result');
     } catch (err) {
-      setError(err.message || 'Natijani olishda xatolik');
+      setError(err.message || t('game.resultError'));
       setPhase('playing');
       setOffline(err.code === 'network');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const advance = useCallback(() => {
@@ -335,7 +313,7 @@ export default function GamePlayer({ gameKey }) {
   }
 
   if (phase === 'result' && final) {
-    return <ResultScreen result={final} gameTitle={meta?.title || ''} onPlayAgain={playAgain} />;
+    return <ResultScreen result={final} gameTitle={ts(meta?.title || '')} onPlayAgain={playAgain} />;
   }
 
   if (phase === 'setup' || phase === 'starting') {
@@ -344,10 +322,10 @@ export default function GamePlayer({ gameKey }) {
     return (
       <div className="max-w-2xl mx-auto">
         <Link href="/app/oyinlar" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
-          <ArrowLeft size={14} aria-hidden="true" /> Barcha o'yinlar
+          <ArrowLeft size={14} aria-hidden="true" /> {t('game.allGames')}
         </Link>
-        <h1 className="text-2xl font-bold text-ink font-display">{meta?.title || "O'yin"}</h1>
-        <p className="text-sm text-muted mt-1 mb-5">{meta?.description}</p>
+        <h1 className="text-2xl font-bold text-ink font-display">{ts(meta?.title) || t('game.defaultTitle')}</h1>
+        <p className="text-sm text-muted mt-1 mb-5">{ts(meta?.description)}</p>
 
         {error && (
           <p role="alert" className="mb-4 text-sm text-danger bg-danger-soft border border-danger/30 rounded-xl px-4 py-3">
@@ -358,21 +336,21 @@ export default function GamePlayer({ gameKey }) {
         {locked && (
           <div className="mb-4 flex items-center gap-3 bg-warning-soft text-warning border border-warning/30 rounded-xl px-4 py-3 text-sm">
             <Lock size={16} aria-hidden="true" />
-            <span className="flex-1">{meta.lockedReason}</span>
+            <span className="flex-1">{ts(meta.lockedReason)}</span>
             <Link href="/narxlar" className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
-              Tariflar
+              {t('story.plans')}
             </Link>
           </div>
         )}
         {unavailable && (
-          <p className="mb-4 text-sm text-muted bg-bg-sunken border border-border rounded-xl px-4 py-3">{meta.unavailableReason}</p>
+          <p className="mb-4 text-sm text-muted bg-bg-sunken border border-border rounded-xl px-4 py-3">{ts(meta.unavailableReason)}</p>
         )}
 
         {resumable && !locked && (
           <div className="mb-4 flex flex-wrap items-center gap-3 bg-accent-soft border border-accent/30 rounded-xl px-4 py-3">
-            <p className="text-sm text-ink flex-1 min-w-[180px]">Yakunlanmagan sessiya bor. Davom ettirasizmi?</p>
+            <p className="text-sm text-ink flex-1 min-w-[180px]">{t('game.resumePrompt')}</p>
             <Button size="sm" onClick={resume}>
-              <Play size={14} aria-hidden="true" /> Davom etish
+              <Play size={14} aria-hidden="true" /> {t('game.resume')}
             </Button>
           </div>
         )}
@@ -380,21 +358,21 @@ export default function GamePlayer({ gameKey }) {
         {meta && !locked && (
           <fieldset disabled={phase === 'starting' || unavailable} className="bg-surface border border-border rounded-2xl p-5 grid gap-5 shadow-card">
             <div>
-              <legend className="text-sm font-semibold text-ink mb-2">Qiyinlik</legend>
-              <div role="radiogroup" aria-label="Qiyinlik darajasi" className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {DIFFICULTY_OPTIONS.map((d) => (
+              <legend className="text-sm font-semibold text-ink mb-2">{t('game.difficulty')}</legend>
+              <div role="radiogroup" aria-label={t('game.difficultyAria')} className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {DIFFICULTY_KEYS.map((key) => (
                   <button
-                    key={d.key}
+                    key={key}
                     type="button"
                     role="radio"
-                    aria-checked={opts.difficulty === d.key}
-                    onClick={() => setOpts((o) => ({ ...o, difficulty: d.key }))}
-                    title={d.hint}
+                    aria-checked={opts.difficulty === key}
+                    onClick={() => setOpts((o) => ({ ...o, difficulty: key }))}
+                    title={t(`game.diff.${key}.hint`)}
                     className={`px-2 py-2.5 min-h-11 rounded-lg border text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                      opts.difficulty === d.key ? 'border-accent bg-accent-soft text-accent-hover' : 'border-border text-ink hover:bg-bg-sunken'
+                      opts.difficulty === key ? 'border-accent bg-accent-soft text-accent-hover' : 'border-border text-ink hover:bg-bg-sunken'
                     }`}
                   >
-                    {d.label}
+                    {t(`game.diff.${key}`)}
                   </button>
                 ))}
               </div>
@@ -403,7 +381,7 @@ export default function GamePlayer({ gameKey }) {
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="game-mode" className="block text-sm font-semibold text-ink mb-2">
-                  So'zlar
+                  {t('game.words')}
                 </label>
                 <select
                   id="game-mode"
@@ -411,16 +389,16 @@ export default function GamePlayer({ gameKey }) {
                   onChange={(e) => setOpts((o) => ({ ...o, mode: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
                 >
-                  {MODE_OPTIONS.map((m) => (
-                    <option key={m.key} value={m.key}>
-                      {m.label}
+                  {MODE_KEYS.map((key) => (
+                    <option key={key} value={key}>
+                      {t(`game.mode.${key}`)}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
                 <label htmlFor="game-cat" className="block text-sm font-semibold text-ink mb-2">
-                  Kategoriya
+                  {t('game.category')}
                 </label>
                 <select
                   id="game-cat"
@@ -428,7 +406,7 @@ export default function GamePlayer({ gameKey }) {
                   onChange={(e) => setOpts((o) => ({ ...o, categoryId: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
                 >
-                  <option value="">Barcha so'zlarim</option>
+                  <option value="">{t('game.allMyWords')}</option>
                   {(categories || []).map((c) => (
                     <option key={c._id} value={c._id}>
                       {c.name} ({(c.words || []).length})
@@ -446,19 +424,15 @@ export default function GamePlayer({ gameKey }) {
                 className="mt-0.5 w-4 h-4 accent-[var(--color-accent)]"
               />
               <span>
-                Vaqt chegarasini o'chirish <span className="text-muted">(qulaylik — taymer savollarni cheklamaydi)</span>
+                {t('game.noTimer')} <span className="text-muted">{t('game.noTimerHint')}</span>
               </span>
             </label>
 
             <div className="flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={start} disabled={phase === 'starting' || unavailable}>
-                <Play size={18} aria-hidden="true" /> {phase === 'starting' ? 'Tayyorlanmoqda…' : "O'yinni boshlash"}
+                <Play size={18} aria-hidden="true" /> {phase === 'starting' ? t('game.preparing') : t('game.begin')}
               </Button>
-              {meta.dailyLimit != null && (
-                <span className="text-xs text-muted">
-                  Bugun: {meta.sessionsToday}/{meta.dailyLimit} ta o'yin
-                </span>
-              )}
+              {meta.dailyLimit != null && <span className="text-xs text-muted">{t('game.todayCount', { a: meta.sessionsToday, b: meta.dailyLimit })}</span>}
             </div>
           </fieldset>
         )}
@@ -476,14 +450,14 @@ export default function GamePlayer({ gameKey }) {
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <p className="text-xs text-muted">{meta?.title}</p>
+          <p className="text-xs text-muted">{ts(meta?.title)}</p>
           <p className="text-sm font-semibold text-ink tabular-nums" aria-live="polite">
-            Savol {index + 1} / {total}
+            {t('game.question', { n: index + 1, total })}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {lives != null && (
-            <span className="flex items-center gap-1" role="img" aria-label={`${lives} ta jon qoldi`}>
+            <span className="flex items-center gap-1" role="img" aria-label={t('game.livesLeft', { n: lives })}>
               {Array.from({ length: session.lives || lives }).map((_, i) => (
                 <Heart key={i} size={18} aria-hidden="true" className={i < lives ? 'text-danger fill-danger' : 'text-border'} />
               ))}
@@ -494,7 +468,7 @@ export default function GamePlayer({ gameKey }) {
             onClick={() => setConfirmExit(true)}
             className="inline-flex items-center gap-1 px-3 py-2 min-h-11 md:min-h-0 rounded-lg border border-border text-xs text-muted hover:bg-bg-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <X size={14} aria-hidden="true" /> Chiqish
+            <X size={14} aria-hidden="true" /> {t('game.exit')}
           </button>
         </div>
       </div>
@@ -505,42 +479,42 @@ export default function GamePlayer({ gameKey }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={progressPct}
-        aria-label="O'yin jarayoni"
+        aria-label={t('game.progressAria')}
       >
         <div className="h-full bg-accent motion-safe:transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
       </div>
 
       {confirmExit && (
-        <div role="alertdialog" aria-label="Chiqishni tasdiqlang" className="mb-4 bg-warning-soft border border-warning/30 rounded-xl px-4 py-3 text-sm flex flex-wrap items-center gap-3">
-          <p className="flex-1 min-w-[200px] text-ink">O'yindan chiqsangiz, bu sessiya yakunlanmaydi (XP berilmaydi). Chiqasizmi?</p>
+        <div role="alertdialog" aria-label={t('game.confirmExitAria')} className="mb-4 bg-warning-soft border border-warning/30 rounded-xl px-4 py-3 text-sm flex flex-wrap items-center gap-3">
+          <p className="flex-1 min-w-[200px] text-ink">{t('game.confirmExitText')}</p>
           <Button size="sm" variant="secondary" onClick={() => setConfirmExit(false)}>
-            Davom etish
+            {t('game.resume')}
           </Button>
           <Button size="sm" variant="danger" onClick={exit}>
-            Chiqish
+            {t('game.exit')}
           </Button>
         </div>
       )}
 
       {offline && (
         <p role="status" className="mb-3 flex items-center gap-2 text-sm text-warning bg-warning-soft border border-warning/30 rounded-xl px-4 py-2.5">
-          <WifiOff size={16} aria-hidden="true" /> Ulanish yo'q — javoblaringiz saqlandi, aloqa tiklanganda yuboriladi.
+          <WifiOff size={16} aria-hidden="true" /> {t('game.offlineNote')}
         </p>
       )}
       {error && phase === 'playing' && (
         <p role="alert" className="mb-3 text-sm text-danger bg-danger-soft border border-danger/30 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-3">
           <span className="flex-1">{error}</span>
           <Button size="sm" onClick={finish}>
-            Qayta urinish
+            {t('hub.retry')}
           </Button>
         </p>
       )}
 
       <div className="bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card" aria-busy={phase === 'finishing' || checking}>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">{KIND_TITLES[q.kind] || ''}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">{KNOWN_KINDS.has(q.kind) ? t(`game.kind.${q.kind}`) : ''}</p>
 
         {timeLimit && timeLeft != null && (
-          <div className="mb-3" role="timer" aria-label={`Qolgan vaqt: ${Math.ceil(timeLeft / 1000)} soniya`}>
+          <div className="mb-3" role="timer" aria-label={t('game.timerAria', { n: Math.ceil(timeLeft / 1000) })}>
             <div className="h-1.5 rounded-full bg-bg-sunken overflow-hidden">
               <div
                 className={`h-full ${timeLeft < 3000 ? 'bg-warning' : 'bg-accent'}`}
@@ -557,7 +531,7 @@ export default function GamePlayer({ gameKey }) {
         {q.inputType === 'match' && <h2 className="text-lg font-bold text-ink font-display mb-4">{q.prompt}</h2>}
         {q.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={q.imageUrl} alt="Savol rasmi" loading="lazy" className="mb-4 max-h-64 w-full rounded-xl border border-border object-contain bg-bg-sunken" />
+          <img src={q.imageUrl} alt={t('game.imageAlt')} loading="lazy" className="mb-4 max-h-64 w-full rounded-xl border border-border object-contain bg-bg-sunken" />
         )}
         {showAudio && (
           <div className="mb-4">
@@ -582,25 +556,25 @@ export default function GamePlayer({ gameKey }) {
         {instant && result && !result.pending && <Feedback result={result} near={result.near} />}
         {result?.pending && (
           <p role="status" className="mt-4 text-sm text-warning">
-            Javob saqlandi (ulanish yo'q). Natija aloqa tiklanganda ko'rinadi.
+            {t('game.pending')}
           </p>
         )}
         {checking && (
           <p role="status" className="mt-3 text-xs text-muted">
-            Tekshirilmoqda…
+            {t('game.checking')}
           </p>
         )}
 
         {questionAnswered && (!instant || result.isCorrect !== true || reducedMotion || result.pending) && phase === 'playing' && (
           <div className="mt-5 flex justify-end">
             <Button onClick={advance} autoFocus>
-              {index + 1 >= total ? 'Yakunlash' : 'Keyingisi'} <ArrowRight size={16} aria-hidden="true" />
+              {index + 1 >= total ? t('game.finish') : t('game.next')} <ArrowRight size={16} aria-hidden="true" />
             </Button>
           </div>
         )}
         {phase === 'finishing' && (
           <p role="status" className="mt-4 text-sm text-muted">
-            Natijalar hisoblanmoqda…
+            {t('game.calculating')}
           </p>
         )}
       </div>

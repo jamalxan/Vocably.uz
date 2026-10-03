@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Volume2, Check, X, RotateCcw } from 'lucide-react';
 import { speakText } from '@/lib/speech';
 import { optionStateClass, answerStateClass, OPTION_BUTTON_CLASS } from '@/lib/lugatQuiz';
+import { useT } from '@/context/LocaleContext';
 
 const SPEEDS = [0.75, 1, 1.25];
 
@@ -10,6 +11,7 @@ const SPEEDS = [0.75, 1, 1.25];
 // Audio tugmasi: Eshitish / Qayta / tezlik 0.75x-1x-1.25x (TZ §54). Audio ishlamasa zaxira xabar.
 // ---------------------------------------------------------------------------
 export function AudioPlayer({ text, autoPlay = true }) {
+  const { t: tx } = useT();
   const [speed, setSpeed] = useState(1);
   const [supported, setSupported] = useState(true);
   const [playing, setPlaying] = useState(false);
@@ -51,7 +53,7 @@ export function AudioPlayer({ text, autoPlay = true }) {
   if (!supported) {
     return (
       <p role="alert" className="text-sm text-warning bg-warning-soft border border-warning/30 rounded-xl px-3 py-2">
-        Bu brauzerda audio qo'llab-quvvatlanmaydi. Chrome, Edge yoki Safari'dan foydalaning.
+        {tx('q.audioUnsupported')}
       </p>
     );
   }
@@ -61,13 +63,13 @@ export function AudioPlayer({ text, autoPlay = true }) {
       <button
         type="button"
         onClick={play}
-        aria-label={playing ? 'Audio ijro etilmoqda' : 'Audioni eshitish'}
+        aria-label={playing ? tx('q.audioPlaying') : tx('q.audioListen')}
         className="inline-flex items-center gap-2 px-4 py-2.5 min-h-11 rounded-xl bg-accent text-on-accent font-semibold text-sm shadow-glow hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
       >
         <Volume2 size={18} aria-hidden="true" className={playing ? 'motion-safe:animate-pulse' : ''} />
-        {playing ? 'Eshitilmoqda…' : 'Eshitish'}
+        {playing ? tx('q.listening') : tx('q.listen')}
       </button>
-      <div role="group" aria-label="Audio tezligi" className="inline-flex rounded-xl border border-border overflow-hidden">
+      <div role="group" aria-label={tx('q.audioSpeed')} className="inline-flex rounded-xl border border-border overflow-hidden">
         {SPEEDS.map((s) => (
           <button
             key={s}
@@ -90,6 +92,7 @@ export function AudioPlayer({ text, autoPlay = true }) {
 // Javobdan keyingi fikr-mulohaza bloki (jazolamaydigan ohang, TZ §65)
 // ---------------------------------------------------------------------------
 export function Feedback({ result, near }) {
+  const { t: tx } = useT();
   if (!result) return null;
   const ok = result.isCorrect;
   const partial = !ok && result.totalParts != null && (result.correctParts || 0) > 0;
@@ -102,16 +105,16 @@ export function Feedback({ result, near }) {
       <p className="font-semibold flex items-center gap-2">
         {ok ? <Check size={16} aria-hidden="true" /> : <X size={16} aria-hidden="true" />}
         {ok
-          ? "To'g'ri!"
+          ? tx('q.correct')
           : partial
-            ? `${result.correctParts}/${result.totalParts} juftlik to'g'ri — yaxshi urinish`
+            ? tx('q.partial', { a: result.correctParts, b: result.totalParts })
             : near
-              ? "Deyarli to'g'ri — bitta harfda xato"
-              : "Xato qilish o'rganishning bir qismi — bu so'zni yana uchratamiz"}
+              ? tx('q.near')
+              : tx('q.wrong')}
       </p>
       {!ok && result.correctDisplay && result.totalParts == null && (
         <p className="mt-1 text-ink">
-          To'g'ri javob: <strong>{result.correctDisplay}</strong>
+          {tx('q.correctAnswer')} <strong>{result.correctDisplay}</strong>
         </p>
       )}
       {result.explanation && <p className="mt-1 text-muted">{result.explanation}</p>}
@@ -123,6 +126,7 @@ export function Feedback({ result, near }) {
 // Variantli savol (mc_meaning, mc_word, definition, syn_ant, fill_choice, listen_choose)
 // ---------------------------------------------------------------------------
 export function ChoiceQuestion({ question, result, locked, onAnswer }) {
+  const { t: tx } = useT();
   const [picked, setPicked] = useState(null);
   const optionRefs = useRef([]);
 
@@ -153,7 +157,7 @@ export function ChoiceQuestion({ question, result, locked, onAnswer }) {
 
   const imageOptions = (question.options || []).some((o) => o.imageUrl);
   return (
-    <div role="radiogroup" aria-label="Javob variantlari" className={imageOptions ? 'grid grid-cols-2 gap-2.5' : 'grid gap-2.5'}>
+    <div role="radiogroup" aria-label={tx('q.optionsAria')} className={imageOptions ? 'grid grid-cols-2 gap-2.5' : 'grid gap-2.5'}>
       {(question.options || []).map((opt, i) => {
         const isCorrectOpt = !!result && opt.text === result.correctDisplay;
         const isSelected = picked === opt.id;
@@ -177,8 +181,8 @@ export function ChoiceQuestion({ question, result, locked, onAnswer }) {
             ) : (
               <span className="flex-1 min-w-0 break-words">{opt.text}</span>
             )}
-            {result && isCorrectOpt && <Check size={16} aria-label="To'g'ri javob" />}
-            {result && isSelected && !isCorrectOpt && <X size={16} aria-label="Sizning javobingiz" />}
+            {result && isCorrectOpt && <Check size={16} aria-label={tx('q.rightAnswerAria')} />}
+            {result && isSelected && !isCorrectOpt && <X size={16} aria-label={tx('q.yourAnswerAria')} />}
           </button>
         );
       })}
@@ -190,6 +194,7 @@ export function ChoiceQuestion({ question, result, locked, onAnswer }) {
 // Yozma savol (fill_typed, listen_type, spell_drop)
 // ---------------------------------------------------------------------------
 export function TypedQuestion({ question, result, locked, onAnswer, near }) {
+  const { t: tx } = useT();
   const [value, setValue] = useState('');
   const inputRef = useRef(null);
 
@@ -208,7 +213,7 @@ export function TypedQuestion({ question, result, locked, onAnswer, near }) {
   return (
     <form onSubmit={submit} className="grid gap-3">
       <label htmlFor={`typed-${question.qid}`} className="sr-only">
-        Javobingizni yozing
+        {tx('q.typeLabel')}
       </label>
       <input
         id={`typed-${question.qid}`}
@@ -220,20 +225,20 @@ export function TypedQuestion({ question, result, locked, onAnswer, near }) {
         autoCapitalize="off"
         autoCorrect="off"
         spellCheck={false}
-        placeholder="Javobni yozing…"
+        placeholder={tx('q.typePlaceholder')}
         className={`w-full px-4 py-3 border rounded-xl text-base bg-surface text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${result ? answerStateClass(result.isCorrect) : 'border-border'}`}
       />
-      {question.hint && <p className="text-xs text-muted">Maslahat: {question.hint}</p>}
+      {question.hint && <p className="text-xs text-muted">{tx('q.hintLabel', { hint: question.hint })}</p>}
       {!result && (
         <button
           type="submit"
           disabled={locked || !value.trim()}
           className="self-start px-5 py-2.5 min-h-11 rounded-xl bg-accent text-on-accent font-semibold text-sm hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
         >
-          Tekshirish
+          {tx('q.check')}
         </button>
       )}
-      {near && !result?.isCorrect && <p className="text-xs text-warning">Deyarli to'g'ri!</p>}
+      {near && !result?.isCorrect && <p className="text-xs text-warning">{tx('q.nearShort')}</p>}
     </form>
   );
 }
@@ -242,6 +247,7 @@ export function TypedQuestion({ question, result, locked, onAnswer, near }) {
 // Jumla quruvchi (sentence_build)
 // ---------------------------------------------------------------------------
 export function ArrangeQuestion({ question, result, locked, onAnswer }) {
+  const { t: tx } = useT();
   const [chosen, setChosen] = useState([]); // token indekslari
   useEffect(() => setChosen([]), [question.qid]);
 
@@ -252,10 +258,10 @@ export function ArrangeQuestion({ question, result, locked, onAnswer }) {
   return (
     <div className="grid gap-4">
       <div
-        aria-label="Sizning jumlangiz"
+        aria-label={tx('q.yourSentence')}
         className={`min-h-14 flex flex-wrap gap-2 p-3 rounded-xl border border-dashed ${result ? answerStateClass(result.isCorrect) : 'border-border bg-bg-sunken'}`}
       >
-        {chosen.length === 0 && <span className="text-sm text-muted">So'zlarni bosib jumla tuzing…</span>}
+        {chosen.length === 0 && <span className="text-sm text-muted">{tx('q.tapWords')}</span>}
         {chosen.map((i, pos) => (
           <button
             key={`${i}-${pos}`}
@@ -263,13 +269,13 @@ export function ArrangeQuestion({ question, result, locked, onAnswer }) {
             disabled={disabled}
             onClick={() => setChosen((c) => c.filter((x) => x !== i))}
             className="px-3 py-2 min-h-11 rounded-lg bg-accent-soft text-accent-hover text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            aria-label={`${tokens[i]} — olib tashlash`}
+            aria-label={tx('q.remove', { word: tokens[i] })}
           >
             {tokens[i]}
           </button>
         ))}
       </div>
-      <div className="flex flex-wrap gap-2" aria-label="Mavjud so'zlar">
+      <div className="flex flex-wrap gap-2" aria-label={tx('q.availableWords')}>
         {available.map(({ t, i }) => (
           <button
             key={i}
@@ -290,7 +296,7 @@ export function ArrangeQuestion({ question, result, locked, onAnswer }) {
             onClick={() => onAnswer(chosen.map((i) => tokens[i]))}
             className="px-5 py-2.5 min-h-11 rounded-xl bg-accent text-on-accent font-semibold text-sm hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
           >
-            Tekshirish
+            {tx('q.check')}
           </button>
           <button
             type="button"
@@ -298,7 +304,7 @@ export function ArrangeQuestion({ question, result, locked, onAnswer }) {
             onClick={() => setChosen([])}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 min-h-11 rounded-xl border border-border text-sm text-muted hover:bg-bg-sunken disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <RotateCcw size={14} aria-hidden="true" /> Tozalash
+            <RotateCcw size={14} aria-hidden="true" /> {tx('q.clear')}
           </button>
         </div>
       )}
@@ -312,6 +318,7 @@ export function ArrangeQuestion({ question, result, locked, onAnswer }) {
 const PAIR_COLORS = ['bg-accent-soft border-accent/50', 'bg-info-soft border-info/50', 'bg-success-soft border-success/50', 'bg-warning-soft border-warning/50', 'bg-danger-soft border-danger/40', 'bg-primary-soft border-border'];
 
 export function MatchQuestion({ question, result, locked, onAnswer }) {
+  const { t: tx } = useT();
   const [pairs, setPairs] = useState({}); // leftId -> rightId
   const [activeLeft, setActiveLeft] = useState(null);
   useEffect(() => {
@@ -361,7 +368,7 @@ export function MatchQuestion({ question, result, locked, onAnswer }) {
   return (
     <div className="grid gap-4">
       <div className="grid grid-cols-2 gap-3">
-        <ul className="grid gap-2" aria-label="So'zlar">
+        <ul className="grid gap-2" aria-label={tx('game.words')}>
           {lefts.map((l) => {
             const part = result?.partResults?.[l.id];
             return (
@@ -389,7 +396,7 @@ export function MatchQuestion({ question, result, locked, onAnswer }) {
             );
           })}
         </ul>
-        <ul className="grid gap-2" aria-label="Tarjimalar">
+        <ul className="grid gap-2" aria-label={tx('q.translations')}>
           {rights.map((r) => {
             const owner = rightOwner[r.id];
             return (
@@ -417,15 +424,13 @@ export function MatchQuestion({ question, result, locked, onAnswer }) {
             onClick={() => onAnswer(pairs)}
             className="px-5 py-2.5 min-h-11 rounded-xl bg-accent text-on-accent font-semibold text-sm hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
           >
-            Tekshirish
+            {tx('q.check')}
           </button>
-          <span className="text-xs text-muted">
-            {Object.keys(pairs).length}/{lefts.length} juftlik
-          </span>
+          <span className="text-xs text-muted">{tx('q.pairsCount', { a: Object.keys(pairs).length, b: lefts.length })}</span>
         </div>
       )}
       {result?.correctMap && (
-        <ul className="text-sm text-muted grid gap-1" aria-label="To'g'ri juftliklar">
+        <ul className="text-sm text-muted grid gap-1" aria-label={tx('q.correctPairs')}>
           {lefts.map((l) => {
             const rid = result.correctMap[l.id];
             const right = rights.find((r) => r.id === rid);
@@ -445,6 +450,7 @@ export function MatchQuestion({ question, result, locked, onAnswer }) {
 // Xotira kartalari (memory_pairs): juftlik mosligi mijozda (memoryMap) tekshiriladi, natija serverda tasdiqlanadi.
 // ---------------------------------------------------------------------------
 export function MemoryQuestion({ question, result, locked, onAnswer, reducedMotion }) {
+  const { t: tx } = useT();
   const map = question.memoryMap || {};
   const cards = useMemo(() => {
     const arr = [
@@ -516,7 +522,7 @@ export function MemoryQuestion({ question, result, locked, onAnswer, reducedMoti
               type="button"
               onClick={() => flip(c)}
               disabled={locked || !!result || isMatched}
-              aria-label={isUp ? c.text : 'Yopiq karta'}
+              aria-label={isUp ? c.text : tx('q.closedCard')}
               aria-pressed={isUp}
               className={`min-h-16 px-2 py-3 rounded-xl border text-sm font-medium text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 isMatched
@@ -532,7 +538,7 @@ export function MemoryQuestion({ question, result, locked, onAnswer, reducedMoti
         })}
       </div>
       <p className="text-xs text-muted" aria-live="polite">
-        {matched.length / 2}/{pairCount} juftlik topildi · {tries} ta urinish
+        {tx('q.memoryStatus', { a: matched.length / 2, b: pairCount, n: tries })}
       </p>
     </div>
   );
