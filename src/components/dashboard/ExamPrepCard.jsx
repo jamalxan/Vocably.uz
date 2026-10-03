@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { Target, Headphones, BookOpen, PenLine, Mic } from 'lucide-react';
+import { useT } from '@/context/LocaleContext';
 
 // EDU-01b — "Target Band / Current Estimate / Days Left", plus the latest band
 // per skill so the estimate is explainable ("based on 2 of 4 skills").
@@ -17,6 +18,7 @@ function bandPct(band) {
 }
 
 export default function ExamPrepCard({ examPrep }) {
+  const { t } = useT();
   if (!examPrep) return null;
   const { targetBand, currentEstimate, daysLeft, skillBands, skillsCovered } = examPrep;
   const gap = targetBand != null && currentEstimate != null ? targetBand - currentEstimate : null;
@@ -24,36 +26,36 @@ export default function ExamPrepCard({ examPrep }) {
   return (
     <div className="bg-surface rounded-2xl shadow-card border border-border p-5">
       <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-3 flex items-center gap-1.5">
-        <Target size={13} /> IELTS tayyorgarlik
+        <Target size={13} /> {t('settings.prep')}
       </p>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <p className="text-[11px] text-muted mb-1">Maqsad band</p>
+          <p className="text-[11px] text-muted mb-1">{t('dash.targetBand')}</p>
           {targetBand != null ? (
             <p className="text-xl font-bold text-ink tabular-nums">{targetBand.toFixed(1)}</p>
           ) : (
             <Link href="/app/profil" className="text-xs text-accent font-semibold hover:underline">
-              Profilda belgilang
+              {t('dash.setInProfile')}
             </Link>
           )}
         </div>
 
         <div>
-          <p className="text-[11px] text-muted mb-1">Taxminiy band</p>
+          <p className="text-[11px] text-muted mb-1">{t('dash.estBand')}</p>
           <p className={`text-xl font-bold tabular-nums ${currentEstimate != null ? 'text-ink' : 'text-muted text-sm'}`}>
-            {currentEstimate != null ? currentEstimate.toFixed(1) : 'Hali yo‘q'}
+            {currentEstimate != null ? currentEstimate.toFixed(1) : t('dash.noneYet')}
           </p>
           {currentEstimate != null && skillsCovered > 0 && skillsCovered < 4 && (
-            <p className="text-[10px] text-muted mt-0.5">{skillsCovered}/4 ko‘nikma asosida</p>
+            <p className="text-[10px] text-muted mt-0.5">{t('dash.skillsBased', { n: skillsCovered })}</p>
           )}
         </div>
 
         <div>
-          <p className="text-[11px] text-muted mb-1">{daysLeft != null ? 'Imtihongacha' : 'Farq'}</p>
+          <p className="text-[11px] text-muted mb-1">{daysLeft != null ? t('dash.untilExam') : t('dash.gap')}</p>
           {daysLeft != null ? (
             <p className="text-xl font-bold text-ink tabular-nums">
               {daysLeft >= 0 ? daysLeft : 0}
-              <span className="ml-1 text-xs font-medium text-muted">kun</span>
+              <span className="ml-1 text-xs font-medium text-muted">{t('dash.daysUnit')}</span>
             </p>
           ) : (
             <p className={`text-xl font-bold tabular-nums ${gap != null ? (gap > 0 ? 'text-warning' : 'text-success') : 'text-muted text-sm'}`}>
@@ -87,7 +89,7 @@ export default function ExamPrepCard({ examPrep }) {
                     <span className="absolute inset-y-0 w-0.5 bg-ink/50" style={{ left: `${bandPct(targetBand)}%` }} aria-hidden="true" />
                   )}
                 </div>
-                {band == null && <p className="mt-1.5 text-[10px] text-muted group-hover:text-accent">Birinchi testni topshiring →</p>}
+                {band == null && <p className="mt-1.5 text-[10px] text-muted group-hover:text-accent">{t('dash.firstTest')}</p>}
               </Link>
             );
           })}

@@ -1,4 +1,5 @@
 'use client';
+import { useT } from '@/context/LocaleContext';
 
 function DeltaBadge({ pct }) {
   if (pct === null || pct === undefined) return null;
@@ -27,17 +28,18 @@ function KpiCard({ label, value, sub, delta }) {
 }
 
 export default function KpiRow({ today, deltas, totals }) {
+  const { t } = useT();
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <KpiCard
-        label="Bugun takrorlangan"
+        label={t('dash.kpiToday')}
         value={today.reviews}
-        sub={`aniqlik: ${today.accuracyPct}%`}
+        sub={t('dash.kpiAccuracy', { n: today.accuracyPct })}
         delta={deltas.reviewsVsYesterdayPct}
       />
-      <KpiCard label="Bu hafta" value={totals.thisWeekReviews} delta={deltas.weekVsLastWeekPct} sub="o'tgan haftaga nisbatan" />
-      <KpiCard label="Jami takrorlar" value={totals.reviews} />
-      <KpiCard label="O'zlashtirilgan so'zlar" value={totals.mastered} sub={`${totals.words} tadan`} />
+      <KpiCard label={t('dash.kpiWeek')} value={totals.thisWeekReviews} delta={deltas.weekVsLastWeekPct} sub={t('dash.kpiWeekSub')} />
+      <KpiCard label={t('dash.kpiTotal')} value={totals.reviews} />
+      <KpiCard label={t('dash.kpiMastered')} value={totals.mastered} sub={t('dash.kpiOf', { n: totals.words })} />
     </div>
   );
 }

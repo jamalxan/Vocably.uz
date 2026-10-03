@@ -100,6 +100,17 @@ const ru = {
     Titan: 'Титан',
     Master: 'Мастер',
 
+    // --- Страница «Сегодня» (src/lib/studyPlan.js)
+    '1 ta Reading passage': '1 текст Reading',
+    '1 ta Listening part': '1 часть Listening',
+    'Writing Task 2 insho': 'Эссе Writing Task 2',
+    'Writing Task 1 (grafik tavsifi)': 'Writing Task 1 (описание графика)',
+    'Speaking: Part 2 cue card': 'Speaking: Part 2, карточка-задание',
+    'Mock test (imtihon sharoiti)': 'Пробный тест (условия экзамена)',
+    'Imtihon sanasini profilda belgilang — reja unga moslashadi': 'Укажите дату экзамена в профиле — план подстроится под неё',
+    'Imtihon sanasi o‘tib ketgan — yangi sanani kiriting': 'Дата экзамена уже прошла — укажите новую',
+    'Imtihon bugun — omad! Faqat yengil takrorlash': 'Экзамен сегодня — удачи! Только лёгкое повторение',
+
     // --- Ежедневный план (src/lib/vocab/dailyPlan.ts)
     'SRS navbati': 'Очередь SRS',
     "Xato qilingan so'zlarni mustahkamlash": 'Закрепите слова, в которых вы ошибались',
@@ -114,6 +125,12 @@ const ru = {
     "So'zlarni og'zaki ishlating": 'Используйте слова в устной речи',
   },
   patterns: [
+    // --- src/lib/studyPlan.js (Bugun sahifasi reja kartasi; tipografik apostrof ‘ ’)
+    { uz: '{n} ta so‘zni takrorlash', tr: 'Повторить {n} {n#слово|слова|слов}' },
+    { uz: '{n} ta yangi so‘z o‘rganish', tr: 'Выучить {n} {n#новое слово|новых слова|новых слов}' },
+    { uz: 'Xatolardan {n} ta so‘z', tr: '{n} {n#слово|слова|слов} из ошибок' },
+    { uz: 'Imtihongacha {n} kun · maqsad {b}', tr: 'До экзамена {n} {n#день|дня|дней} · цель {b}' },
+    { uz: 'Imtihongacha {n} kun', tr: 'До экзамена {n} {n#день|дня|дней}' },
     { uz: "Kamida {min} ta so'z kerak (hozir {n})", tr: 'Нужно не менее {min} слов (сейчас {n})' },
     { uz: '{tier} rejada ochiladi', tr: 'Открывается в тарифе {tier}' },
     { uz: "Bu o'yin {need} rejada ochiladi. /narxlar sahifasidan tarifni yangilang.", tr: 'Эта игра открывается в тарифе {need}. Обновите тариф на странице /narxlar.' },

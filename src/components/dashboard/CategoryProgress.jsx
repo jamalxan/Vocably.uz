@@ -1,12 +1,14 @@
 'use client';
+import { useT } from '@/context/LocaleContext';
 
 export default function CategoryProgress({ byCategory, onOpenCategory }) {
+  const { t } = useT();
   return (
     <div className="bg-surface rounded-2xl shadow-card border border-border p-5">
-      <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-4">Kategoriyalar bo'yicha</p>
+      <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-4">{t('dash.byCategory')}</p>
 
       {byCategory.length === 0 ? (
-        <p className="text-sm text-muted py-2">Hali kategoriya yo'q.</p>
+        <p className="text-sm text-muted py-2">{t('dash.noCategories')}</p>
       ) : (
         <div className="space-y-3">
           {byCategory.map((c, i) => (
@@ -27,10 +29,10 @@ export default function CategoryProgress({ byCategory, onOpenCategory }) {
               <button
                 type="button"
                 onClick={() => onOpenCategory(i)}
-                aria-label={`${c.name} — boshlash`}
+                aria-label={t('dash.startCat', { name: c.name })}
                 className="flex-shrink-0 px-3 py-1.5 min-h-11 md:min-h-0 text-xs font-semibold text-accent hover:bg-accent-soft rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                Boshlash
+                {t('diag.start')}
               </button>
             </div>
           ))}

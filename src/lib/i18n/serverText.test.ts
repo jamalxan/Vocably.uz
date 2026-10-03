@@ -6,6 +6,7 @@ import { QUEST_DEFS } from '../vocab/quests';
 import { NEW_ACHIEVEMENT_DEFS } from '../vocab/achievements';
 import { LEVEL_NAMES } from '../vocab/config';
 import { buildDailyPlan } from '../vocab/dailyPlan';
+import { buildDailyPlan as studyPlan } from '../studyPlan';
 
 describe('ko‘plik (ruscha)', () => {
   const f = ['слово', 'слова', 'слов'];
@@ -56,6 +57,25 @@ describe('qamrov: serverdagi har bir ko‘rinadigan matn tarjima qilingan', () =
   it('o‘yin mavjud emasligi sabablari (hamma o‘yin, bo‘sh lug‘at bilan)', () => {
     const reasons = GAME_CATALOG.map((g) => availabilityFor(g, []).reason);
     expect(missing(reasons)).toEqual([]);
+  });
+
+  it('Bugun sahifasi reja kartasi (studyPlan.js): sarlavhalar va vazifalar', () => {
+    const texts: string[] = [];
+    for (const dl of [null, -3, 0, 1, 10, 30, 100]) {
+      for (const day of [0, 1, 2, 3, 5, 6, 7, 14]) {
+        for (const due of [0, 7, 60]) {
+          for (const mistakes of [0, 4, 30]) {
+            const plan = studyPlan({
+              due, newAvailable: 12, reviewsToday: 0, goal: 20, daysLeft: dl, targetBand: dl === 1 ? 7 : null,
+              skillBands: { listening: 6, reading: null, writing: 5, speaking: 7 }, sectionsDoneToday: [], mistakeWordsDue: mistakes, dailyMinutes: 45,
+              now: new Date(Date.UTC(2026, 0, 1 + day)),
+            });
+            texts.push(plan.headline, ...plan.tasks.map((t: any) => t.title));
+          }
+        }
+      }
+    }
+    expect(missing(texts)).toEqual([]);
   });
 
   it('kunlik reja matnlari (turli vaqt/holatlarda)', () => {

@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { useT } from '@/context/LocaleContext';
 
 // Recharts shu yerda import qilinadi — DashboardHome bu komponentni next/dynamic(ssr:false)
 // orqali yuklaydi, shunda grafik kutubxonasi faqat dashboard ochilganda yuklanadi (spec §11.3).
@@ -10,30 +11,30 @@ function formatDay(dateStr) {
 }
 
 function ChartTooltip({ active, payload, label }) {
+  const { t } = useT();
   if (!active || !payload?.length) return null;
   const { reviews, correct } = payload[0].payload;
   return (
     <div className="bg-primary text-on-primary text-xs rounded-lg px-3 py-2 shadow-card">
       <p className="font-semibold mb-0.5">{label}</p>
-      <p>
-        {reviews} takror, {correct} to'g'ri
-      </p>
+      <p>{t('dash.tooltip', { r: reviews, c: correct })}</p>
     </div>
   );
 }
 
 export default function ActivityChart({ activity7, activity30 }) {
+  const { t } = useT();
   const [range, setRange] = useState('7d');
   const data = (range === '7d' ? activity7 : activity30).map((d) => ({ ...d, label: formatDay(d.date) }));
 
   return (
     <div className="bg-surface rounded-2xl shadow-card border border-border p-5">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs font-semibold text-accent uppercase tracking-wider">Faollik</p>
-        <div className="flex gap-1 bg-bg rounded-lg p-0.5" role="group" aria-label="Davr">
+        <p className="text-xs font-semibold text-accent uppercase tracking-wider">{t('dash.activity')}</p>
+        <div className="flex gap-1 bg-bg rounded-lg p-0.5" role="group" aria-label={t('dash.period')}>
           {[
-            ['7d', '7 kun'],
-            ['30d', '30 kun'],
+            ['7d', t('dash.range7')],
+            ['30d', t('dash.range30')],
           ].map(([key, label]) => (
             <button
               key={key}

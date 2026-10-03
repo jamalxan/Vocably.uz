@@ -86,6 +86,29 @@ test('o‘yinlar markazi ruscha: sarlavhalar, server matnlari (o‘yin/daraja/va
   await expect(page.getByText("So'z juftligi").first()).toBeVisible();
 });
 
+test('Bugun (dashboard) ruscha: kartalar, reja, kunlar; uz da o‘zgarmaydi', async ({ page, context }) => {
+  test.setTimeout(420_000);
+  await loginAs(page, E2E_PHONE);
+  await context.addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
+  await page.goto('/app');
+  await expect(page.getByRole('heading', { name: /Добро пожаловать/ })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText('Подготовка к IELTS')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'План на сегодня' })).toBeVisible();
+  await expect(page.getByText('Задача на сегодня')).toBeVisible();
+  await expect(page.getByText('Серия', { exact: true })).toBeVisible();
+  await expect(page.getByText('Уровень освоения')).toBeVisible();
+  await expect(page.getByText('Нагрузка на ближайшие 7 дней')).toBeVisible();
+  await expect(page.getByText('По категориям')).toBeVisible();
+  await expect(page.getByText('Повторено сегодня')).toBeVisible();
+  await expect(page.getByText('Центр игр')).toBeVisible({ timeout: 30_000 }); // GamesCard — alohida so'rov
+  // O'zbek tilida qaytganda avvalgidek
+  await context.addCookies([{ name: 'vocably_lang', value: 'uz', url: 'http://localhost:3100' }]);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: /Xush kelibsiz/ })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText('IELTS tayyorgarlik')).toBeVisible();
+  await expect(page.getByText('Bugungi ish')).toBeVisible();
+});
+
 test('noto‘g‘ri cookie qiymati uz ga tushadi (inyeksiya/yiqilish yo‘q)', async ({ page, context }) => {
   await loginAs(page, E2E_PHONE);
   await context.addCookies([{ name: 'vocably_lang', value: 'xx"<script>', url: 'http://localhost:3100' }]).catch(() => {});

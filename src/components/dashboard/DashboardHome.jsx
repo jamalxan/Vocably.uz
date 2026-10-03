@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import HeroCard from './HeroCard';
@@ -26,6 +27,7 @@ const ActivityChart = dynamic(() => import('./ActivityChart'), {
 // spec §5.4: dashboard bitta so'rov bilan ochiladi — barcha bloklar shu bitta javobdan o'qiydi.
 export default function DashboardHome() {
   const router = useRouter();
+  const { t } = useT();
   const { isAuthed, displayName, setActiveCatIndex, startPracticeQueue } = useApp();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
@@ -75,7 +77,7 @@ export default function DashboardHome() {
     // Haqiqiy tartibni takrorlaydigan skelet — kontent kelganda sahifa sakramasin.
     return (
       <div className="space-y-5" role="status" aria-live="polite">
-        <span className="sr-only">Yuklanmoqda…</span>
+        <span className="sr-only">{t('dash.loading')}</span>
         <Skeleton className="h-7 w-56" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <Skeleton className="lg:col-span-2 h-[176px] rounded-2xl" />
@@ -95,8 +97,8 @@ export default function DashboardHome() {
   if (error) {
     return (
       <div className="text-center py-24">
-        <p className="text-sm text-muted mb-3">Statistikani yuklab bo'lmadi.</p>
-        <Button onClick={() => load()}>Qayta urinish</Button>
+        <p className="text-sm text-muted mb-3">{t('dash.loadError')}</p>
+        <Button onClick={() => load()}>{t('hub.retry')}</Button>
       </div>
     );
   }
@@ -106,9 +108,7 @@ export default function DashboardHome() {
   return (
     <div className="space-y-5 max-w-none">
       <div>
-        <h2 className="text-lg sm:text-xl font-bold text-ink font-luxury">
-          Xush kelibsiz, {displayName}
-        </h2>
+        <h2 className="text-lg sm:text-xl font-bold text-ink font-luxury">{t('dash.welcome', { name: displayName })}</h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

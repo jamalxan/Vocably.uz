@@ -2,12 +2,15 @@
 import Link from 'next/link';
 import { CalendarCheck, CheckCircle2, Circle, ChevronRight, Star } from 'lucide-react';
 import { buildDailyPlan } from '@/lib/studyPlan';
+import { useT } from '@/context/LocaleContext';
 
 const SKILL_LABEL = { listening: 'Listening', reading: 'Reading', writing: 'Writing', speaking: 'Speaking' };
 
 // "Bugungi reja" — today's concrete tasks (src/lib/studyPlan.js), built from
 // the same dashboard response, so it costs no extra request.
+// Reja matnlari (sarlavha, vazifalar) uz tilida quriladi va mijozda `ts()` bilan tarjima qilinadi (src/lib/i18n/serverTextRu.js).
 export default function StudyPlanCard({ data }) {
+  const { t, ts } = useT();
   const plan = buildDailyPlan({
     due: data.today?.due,
     newAvailable: data.today?.newAvailable,
@@ -31,40 +34,40 @@ export default function StudyPlanCard({ data }) {
         </span>
         <div className="min-w-0 flex-1">
           <h2 id="plan-h" className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-            Bugungi reja
+            {t('hub.plan')}
           </h2>
-          <p className="text-sm font-semibold text-ink mt-0.5">{plan.headline}</p>
+          <p className="text-sm font-semibold text-ink mt-0.5">{ts(plan.headline)}</p>
         </div>
         <span className="text-xs text-muted tabular-nums self-center">
-          {doneCount}/{plan.tasks.length} · ~{plan.totalMinutes} daq
+          {doneCount}/{plan.tasks.length} · ~{t('hub.minShort', { n: plan.totalMinutes })}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-bg overflow-hidden mb-4" aria-hidden="true">
         <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${(doneCount / Math.max(1, plan.tasks.length)) * 100}%` }} />
       </div>
       <ul className="space-y-2">
-        {plan.tasks.map((t) => (
-          <li key={t.key}>
+        {plan.tasks.map((task) => (
+          <li key={task.key}>
             <Link
-              href={t.href}
+              href={task.href}
               className={`flex items-center gap-3 px-3.5 py-3 rounded-xl border transition-colors ${
-                t.done ? 'border-success/30 bg-success-soft' : 'border-border bg-bg hover:border-accent/40'
+                task.done ? 'border-success/30 bg-success-soft' : 'border-border bg-bg hover:border-accent/40'
               }`}
             >
-              {t.done ? (
+              {task.done ? (
                 <CheckCircle2 size={18} className="text-success flex-shrink-0" aria-hidden="true" />
               ) : (
                 <Circle size={18} className="text-muted flex-shrink-0" aria-hidden="true" />
               )}
               <span className="min-w-0 flex-1">
-                <span className={`block text-sm font-semibold ${t.done ? 'text-muted line-through' : 'text-ink'}`}>{t.title}</span>
-                {t.focus && (
+                <span className={`block text-sm font-semibold ${task.done ? 'text-muted line-through' : 'text-ink'}`}>{ts(task.title)}</span>
+                {task.focus && (
                   <span className="inline-flex items-center gap-1 text-[11px] text-accent font-semibold mt-0.5">
-                    <Star size={11} aria-hidden="true" /> Eng zaif ko‘nikma: {SKILL_LABEL[t.skill]}
+                    <Star size={11} aria-hidden="true" /> {t('dash.weakestSkill', { skill: SKILL_LABEL[task.skill] })}
                   </span>
                 )}
               </span>
-              <span className="text-xs text-muted tabular-nums flex-shrink-0">{t.minutes} daq</span>
+              <span className="text-xs text-muted tabular-nums flex-shrink-0">{t('hub.minShort', { n: task.minutes })}</span>
               <ChevronRight size={15} className="text-muted flex-shrink-0" aria-hidden="true" />
             </Link>
           </li>

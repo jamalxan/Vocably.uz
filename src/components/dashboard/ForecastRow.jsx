@@ -1,15 +1,16 @@
 'use client';
-
-const DAY_SHORT = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'];
+import { useT } from '@/context/LocaleContext';
 
 // Keyingi 7 kunda qancha so'z due bo'lishini oldindan ko'rsatadi (spec §5.2 Blok 8) —
 // foydalanuvchi ertangi ish hajmini oldindan rejalashtirishi uchun.
 export default function ForecastRow({ forecast }) {
+  const { t } = useT();
+  const DAY_SHORT = t('dash.daysAbbr').split('|');
   const max = Math.max(1, ...forecast.map((f) => f.dueCount));
 
   return (
     <div className="bg-surface rounded-2xl shadow-card border border-border p-5">
-      <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-4">Kelgusi yuk (7 kun)</p>
+      <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-4">{t('dash.forecast')}</p>
       <div className="flex items-end gap-2 h-24">
         {forecast.map((f) => {
           const d = new Date(`${f.date}T00:00:00`);
