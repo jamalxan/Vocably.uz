@@ -35,12 +35,13 @@ import CefrPathCard from './CefrPathCard';
 import DiagnosticCard from './DiagnosticCard';
 import ReminderSettings from './ReminderSettings';
 import StoryCard from './StoryCard';
+import { useT } from '@/context/LocaleContext';
 import { getGames, getGamificationProfile, savePlanMinutes } from './api';
 
 const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown, Image: ImageIcon, Images: GalleryHorizontal };
 const PLAN_ICON = { review: ListChecks, weak: Target, new: Sparkles, game: Gamepad2, listening: Ear, writing: PenSquare, speaking: Headphones };
 const MINUTE_OPTIONS = [5, 10, 20, 30, 45];
-const STATUS_LABELS = { new: 'Yangi', learning: "O'rganilmoqda", familiar: 'Tanish', strong: 'Kuchli', advanced: "Ilg'or", mastered: "O'zlashtirilgan" };
+const STATUS_KEYS = ['new', 'learning', 'familiar', 'strong', 'advanced', 'mastered'];
 
 function ProgressBar({ value, tone = 'bg-accent', label }) {
   return (
@@ -58,27 +59,29 @@ function ProgressBar({ value, tone = 'bg-accent', label }) {
 }
 
 function QuestRow({ quest }) {
+  const { ts } = useT();
   return (
     <li className="py-2.5">
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <p className={`text-sm font-medium ${quest.done ? 'text-success' : 'text-ink'}`}>
           {quest.done && <span aria-hidden="true">✓ </span>}
-          {quest.title}
+          {ts(quest.title)}
         </p>
         <span className="text-xs text-muted tabular-nums whitespace-nowrap">
           {quest.progress}/{quest.target}
           {quest.rewardXp ? ` · +${quest.rewardXp} XP` : ''}
         </span>
       </div>
-      <ProgressBar value={quest.ratio} tone={quest.done ? 'bg-success' : 'bg-accent'} label={quest.title} />
+      <ProgressBar value={quest.ratio} tone={quest.done ? 'bg-success' : 'bg-accent'} label={ts(quest.title)} />
     </li>
   );
 }
 
 function GameCard({ game }) {
+  const { t, ts } = useT();
   const Icon = ICONS[game.icon] || Gamepad2;
   const disabled = !game.unlocked || !game.available;
-  const reason = !game.unlocked ? game.lockedReason : game.unavailableReason;
+  const reason = ts(!game.unlocked ? game.lockedReason : game.unavailableReason);
   const body = (
     <>
       <div className="flex items-start gap-3">
@@ -87,11 +90,11 @@ function GameCard({ game }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-ink">{game.title}</p>
-            {game.recommended && <Badge tone="accent">Siz uchun</Badge>}
+            <p className="text-sm font-semibold text-ink">{ts(game.title)}</p>
+            {game.recommended && <Badge tone="accent">{t('hub.forYou')}</Badge>}
             {game.priority === 'P2' && <Badge tone="warning">Premium</Badge>}
           </div>
-          <p className="text-xs text-muted mt-0.5">{game.description}</p>
+          <p className="text-xs text-muted mt-0.5">{ts(game.description)}</p>
           {reason && <p className="text-[11px] text-warning mt-1.5">{reason}</p>}
         </div>
       </div>
@@ -102,7 +105,7 @@ function GameCard({ game }) {
   }`;
   // Yopiq o'yinlar ham sahifaga olib boradi (u yerda sabab va /narxlar havolasi ko'rsatiladi).
   return (
-    <Link href={`/app/oyinlar/${game.key}`} className={cls} aria-label={`${game.title}${reason ? ` — ${reason}` : ''}`}>
+    <Link href={`/app/oyinlar/${game.key}`} className={cls} aria-label={`${ts(game.title)}${reason ? ` — ${reason}` : ''}`}>
       {body}
     </Link>
   );
@@ -110,6 +113,7 @@ function GameCard({ game }) {
 
 export default function GamesHub() {
   const router = useRouter();
+  const { t, ts, numLocale } = useT();
   const [profile, setProfile] = useState(null);
   const [games, setGames] = useState(null);
   const [error, setError] = useState('');
@@ -124,11 +128,11 @@ export default function GamesHub() {
       setProfile(p);
       setGames(g);
     } catch (err) {
-      setError(err.code === 'feature_disabled' ? "Lug'at o'yinlari hozircha sizga ochiq emas." : err.message || 'Yuklashda xatolik');
+      setError(err.code === 'feature_disabled' ? t('hub.featureDisabled') : err.message || t('hub.loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -140,7 +144,7 @@ export default function GamesHub() {
       await savePlanMinutes(m);
       await load();
     } catch (err) {
-      setError(err.message || 'Saqlashda xatolik');
+      setError(err.message || t('hub.saveError'));
     } finally {
       setSavingMinutes(false);
     }
@@ -161,7 +165,7 @@ export default function GamesHub() {
       <div role="alert" className="bg-danger-soft text-danger border border-danger/30 rounded-2xl p-5 text-sm">
         <p className="mb-3">{error}</p>
         <Button size="sm" onClick={() => load()}>
-          Qayta urinish
+          {t('hub.retry')}
         </Button>
       </div>
     );
@@ -180,44 +184,42 @@ export default function GamesHub() {
       {/* --- Hero --- */}
       <section className="bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card" aria-labelledby="hub-hero">
         <h1 id="hub-hero" className="text-2xl font-bold text-ink font-display mb-4">
-          Lug'at sayohatingiz
+          {t('hub.title')}
         </h1>
         <div className="grid sm:grid-cols-[1fr_auto] gap-5 items-center">
           <div>
             <div className="flex items-baseline justify-between gap-3 mb-2">
-              <p className="text-sm font-semibold text-ink">
-                {level.level}-daraja · {level.name}
-              </p>
+              <p className="text-sm font-semibold text-ink">{t('hub.levelLine', { level: level.level, name: ts(level.name) })}</p>
               <p className="text-xs text-muted tabular-nums">
-                {xp.toLocaleString('uz-UZ')} XP{level.nextLevelXp != null ? ` · keyingigacha ${level.xpToNext.toLocaleString('uz-UZ')}` : ''}
+                {xp.toLocaleString(numLocale)} XP{level.nextLevelXp != null ? ` · ${t('hub.toNext', { n: level.xpToNext.toLocaleString(numLocale) })}` : ''}
               </p>
             </div>
-            <ProgressBar value={level.progress} label="Daraja progressi" />
+            <ProgressBar value={level.progress} label={t('hub.levelProgress')} />
           </div>
           <div className="flex items-center gap-4">
-            <p className="flex items-center gap-1.5 text-sm" title={streak?.atRisk ? 'Bugun mashq qilsangiz seriya davom etadi' : ''}>
+            <p className="flex items-center gap-1.5 text-sm" title={streak?.atRisk ? t('hub.streakRiskTitle') : ''}>
               <Flame size={20} className={streakDays > 0 ? 'text-warning' : 'text-muted'} aria-hidden="true" />
               <strong className="text-ink text-lg tabular-nums">{streakDays}</strong>
-              <span className="text-muted">kunlik seriya</span>
+              <span className="text-muted">{t('hub.streakDays')}</span>
             </p>
             {streak?.freezes > 0 && (
-              <p className="flex items-center gap-1 text-xs text-info" title="Bir kunni o'tkazib yuborsangiz seriya saqlanadi">
+              <p className="flex items-center gap-1 text-xs text-info" title={t('hub.freezeTitle')}>
                 <Snowflake size={14} aria-hidden="true" /> {streak.freezes}
               </p>
             )}
           </div>
         </div>
         {streak?.atRisk && (
-          <p className="mt-3 text-xs text-muted">Bugun qisqa mashq qilsangiz, seriyangiz davom etadi — bir daqiqa ham yetadi.</p>
+          <p className="mt-3 text-xs text-muted">{t('hub.streakRisk')}</p>
         )}
-        {streak?.brokenPreview && <p className="mt-3 text-xs text-muted">Yangi seriyani bugundan boshlaymiz — har bir kun hisobga olinadi.</p>}
+        {streak?.brokenPreview && <p className="mt-3 text-xs text-muted">{t('hub.streakBroken')}</p>}
 
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
           {[
-            { label: "Jami so'zlar", value: overview.total },
-            { label: "O'zlashtirilgan", value: overview.mastered },
-            { label: "O'rganilmoqda", value: overview.learning },
-            { label: "Zaif so'zlar", value: overview.weak, href: '/app/lugat/zaif-sozlar' },
+            { label: t('hub.statTotal'), value: overview.total },
+            { label: t('hub.statMastered'), value: overview.mastered },
+            { label: t('hub.statLearning'), value: overview.learning },
+            { label: t('hub.statWeak'), value: overview.weak, href: '/app/lugat/zaif-sozlar' },
           ].map((s) => (
             <div key={s.label} className="bg-bg-sunken rounded-xl px-4 py-3">
               <dd className="text-xl font-bold text-ink font-display tabular-nums">{s.value}</dd>
@@ -241,9 +243,9 @@ export default function GamesHub() {
       <section className="bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card" aria-labelledby="hub-plan">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 id="hub-plan" className="text-lg font-bold text-ink font-display">
-            Bugungi reja
+            {t('hub.plan')}
           </h2>
-          <div role="group" aria-label="Kunlik vaqt" className="inline-flex rounded-xl border border-border overflow-hidden">
+          <div role="group" aria-label={t('hub.dailyTime')} className="inline-flex rounded-xl border border-border overflow-hidden">
             {MINUTE_OPTIONS.map((m) => (
               <button
                 key={m}
@@ -255,7 +257,7 @@ export default function GamesHub() {
                   plan?.plan?.minutes === m ? 'bg-accent-soft text-accent-hover' : 'bg-surface text-muted hover:bg-bg-sunken'
                 }`}
               >
-                {m === 45 ? '45+' : m} daq
+                {t('hub.minShort', { n: m === 45 ? '45+' : m })}
               </button>
             ))}
           </div>
@@ -275,34 +277,34 @@ export default function GamesHub() {
                         <Icon size={16} aria-hidden="true" />
                       </span>
                       <span className="flex-1 min-w-0">
-                        <span className="block text-sm font-medium text-ink">{item.label}</span>
-                        {item.reason && <span className="block text-xs text-muted">{item.reason}</span>}
+                        <span className="block text-sm font-medium text-ink">{ts(item.label)}</span>
+                        {item.reason && <span className="block text-xs text-muted">{ts(item.reason)}</span>}
                       </span>
-                      <span className="text-xs text-muted tabular-nums whitespace-nowrap">~{item.minutes} daq</span>
+                      <span className="text-xs text-muted tabular-nums whitespace-nowrap">~{t('hub.minShort', { n: item.minutes })}</span>
                     </Link>
                   </li>
                 );
               })}
             </ul>
             <Button size="lg" onClick={() => firstItem && router.push(firstItem.href)} className="w-full sm:w-auto">
-              BUGUNGI REJANI BOSHLASH
+              {t('hub.startPlan')}
             </Button>
           </>
         ) : (
           <p className="text-sm text-muted">
-            Bugungi reja bo'sh — hammasi bajarilgan yoki hali so'z qo'shilmagan.{' '}
+            {t('hub.planEmpty')}{' '}
             <Link href="/app/lugat/jadval" className="text-accent hover:underline">
-              So'z qo'shish
+              {t('hub.addWords')}
             </Link>
           </p>
         )}
       </section>
 
       {/* --- Vazifalar --- */}
-      <section className="grid md:grid-cols-2 gap-4" aria-label="Vazifalar">
+      <section className="grid md:grid-cols-2 gap-4" aria-label={t('hub.quests')}>
         {[
-          { title: 'Kunlik vazifalar', list: quests.daily },
-          { title: 'Haftalik vazifalar', list: quests.weekly },
+          { title: t('hub.questsDaily'), list: quests.daily },
+          { title: t('hub.questsWeekly'), list: quests.weekly },
         ].map((block) => (
           <div key={block.title} className="bg-surface border border-border rounded-2xl p-5 shadow-card">
             <h2 className="text-base font-bold text-ink font-display mb-1">{block.title}</h2>
@@ -319,12 +321,10 @@ export default function GamesHub() {
       <section aria-labelledby="hub-games">
         <div className="flex items-center justify-between mb-3">
           <h2 id="hub-games" className="text-lg font-bold text-ink font-display">
-            O'yinlar
+            {t('hub.games')}
           </h2>
           {games?.dailyLimit != null && (
-            <span className="text-xs text-muted">
-              Bugun {games.sessionsToday}/{games.dailyLimit}
-            </span>
+            <span className="text-xs text-muted">{t('hub.todayCount', { a: games.sessionsToday, b: games.dailyLimit })}</span>
           )}
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
@@ -338,7 +338,7 @@ export default function GamesHub() {
       <section className="bg-surface border border-border rounded-2xl p-5 shadow-card" aria-labelledby="hub-ach">
         <div className="flex items-center justify-between mb-3">
           <h2 id="hub-ach" className="text-base font-bold text-ink font-display flex items-center gap-2">
-            <Award size={18} aria-hidden="true" /> Yutuqlar
+            <Award size={18} aria-hidden="true" /> {t('hub.achievements')}
           </h2>
           <span className="text-xs text-muted">
             {earned.length}/{badges.length}
@@ -348,23 +348,23 @@ export default function GamesHub() {
           {badges.map((b) => (
             <li
               key={b.key}
-              title={b.description || b.label}
+              title={ts(b.description || b.label)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs ${
                 b.earned ? 'border-accent/40 bg-accent-soft text-accent-hover font-semibold' : 'border-border text-muted opacity-70'
               }`}
             >
               <span aria-hidden="true">{b.icon}</span>
-              {b.label}
-              {!b.earned && <span className="sr-only"> (hali olinmagan)</span>}
+              {ts(b.label)}
+              {!b.earned && <span className="sr-only">{t('hub.notEarned')}</span>}
             </li>
           ))}
         </ul>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/app/reyting" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
-            <Trophy size={14} aria-hidden="true" /> Reyting
+            <Trophy size={14} aria-hidden="true" /> {t('hub.leaderboard')}
           </Link>
           <Link href="/app/lugat/zaif-sozlar" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
-            <Target size={14} aria-hidden="true" /> Zaif so'zlar
+            <Target size={14} aria-hidden="true" /> {t('hub.statWeak')}
           </Link>
         </div>
       </section>
@@ -372,10 +372,11 @@ export default function GamesHub() {
       {/* --- Lug'at holati (mastery bosqichlari) --- */}
       <section className="bg-surface border border-border rounded-2xl p-5 shadow-card" aria-labelledby="hub-mastery">
         <h2 id="hub-mastery" className="text-base font-bold text-ink font-display mb-3">
-          O'zlashtirish bosqichlari
+          {t('hub.masteryStages')}
         </h2>
         <ul className="grid gap-2">
-          {Object.entries(STATUS_LABELS).map(([key, label]) => {
+          {STATUS_KEYS.map((key) => {
+            const label = t(`hub.status.${key}`);
             const n = overview.byStatus?.[key] || 0;
             return (
               <li key={key} className="flex items-center gap-3 text-sm">

@@ -11,10 +11,26 @@ const DICTS = { uz, ru };
 
 export const normalizeLocale = (v) => (LOCALES.includes(v) ? v : DEFAULT_LOCALE);
 
-/** `{n}` kabi o'rinbosarlar `vars` bilan almashtiriladi; topilmasa o'rinbosar o'zi qoladi. */
+const RU_PLURALS = new Intl.PluralRules('ru');
+
+/** Ko'plik shakli: ru — [bir, ikki-to'rt, ko'p] (1 слово, 2 слова, 5 слов); boshqa tillarda faqat birinchi shakl. */
+export function pluralForm(locale, n, forms) {
+  if (locale !== 'ru') return forms[0];
+  const c = RU_PLURALS.select(Math.abs(Number(n)) || 0);
+  return c === 'one' ? forms[0] : c === 'few' ? (forms[1] ?? forms[0]) : (forms[2] ?? forms[1] ?? forms[0]);
+}
+
+/** `{n}` — oddiy o'rinbosar; `{n#слово|слова|слов}` — `n` songa qarab ko'plik shakli. Berilmagan o'rinbosar o'zi qoladi. */
+export function renderTemplate(locale, template, vars) {
+  if (!vars) return template;
+  return template
+    .replace(/\{(\w+)#([^}]+)\}/g, (m, k, forms) => (k in vars ? pluralForm(locale, vars[k], forms.split('|')) : m))
+    .replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
+}
+
 export function translate(locale, key, vars) {
-  const raw = DICTS[normalizeLocale(locale)]?.[key] ?? DICTS.uz[key] ?? key;
-  return vars ? raw.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m)) : raw;
+  const l = normalizeLocale(locale);
+  return renderTemplate(l, DICTS[l]?.[key] ?? DICTS.uz[key] ?? key, vars);
 }
 
 export const MESSAGES = DICTS;

@@ -3,6 +3,7 @@
 // "AI foydalanuvchining o'rniga essay yozib bermasin" (TZ §24) — bu modul faqat o'quv materiali
 // (qisqa hikoya, mashq) yaratadi; hamma natija AI_GENERATED holatida, production kontentga avtomatik tushmaydi.
 import { findWordInSentence } from './games';
+import { translate } from '../i18n';
 
 export const AI_PROMPT_VERSIONS = {
   story: 'vocab_story_v1',
@@ -40,47 +41,50 @@ export interface CoachMessage {
   tone: 'greeting' | 'nudge' | 'celebrate';
 }
 
-function joinWords(words: string[]): string {
+function joinWords(words: string[], and: string): string {
   const w = words.slice(0, 2).map((x) => `"${x}"`);
-  return w.length === 2 ? `${w[0]} va ${w[1]}` : w[0] || '';
+  return w.length === 2 ? `${w[0]} ${and} ${w[1]}` : w[0] || '';
 }
 
-export function buildCoachMessage(c: CoachContext): CoachMessage {
-  const hello = c.hourLocal != null ? (c.hourLocal < 12 ? 'Xayrli tong' : c.hourLocal < 18 ? 'Xayrli kun' : 'Xayrli kech') : 'Salom';
+/** Murabbiy xabari. `locale` — 'uz' (asos) yoki 'ru'; matnlar src/lib/i18n/messages dan (server tomonida, cookie `vocably_lang` bo'yicha). */
+export function buildCoachMessage(c: CoachContext, locale: string = 'uz'): CoachMessage {
+  const t = (key: string, vars?: Record<string, string | number>) => translate(locale, key, vars);
+  const hello =
+    c.hourLocal != null ? (c.hourLocal < 12 ? t('coach.helloMorning') : c.hourLocal < 18 ? t('coach.helloDay') : t('coach.helloEvening')) : t('coach.hello');
   const parts: string[] = [];
 
   if (c.dueCount > 0) {
-    parts.push(`Bugun ${c.dueCount} ta so'zingiz takrorlash uchun tayyor${c.overdueCount > 0 ? ` (${c.overdueCount} tasining muddati o'tgan)` : ''}.`);
+    parts.push(c.overdueCount > 0 ? t('coach.dueOverdue', { n: c.dueCount, m: c.overdueCount }) : t('coach.due', { n: c.dueCount }));
   }
   if (c.recentMistakes.length > 0) {
-    parts.push(`Yaqinda ${joinWords(c.recentMistakes)} so'zlarida xato qilgansiz — avval shu so'zlardan boshlaymiz.`);
+    parts.push(t('coach.mistakes', { words: joinWords(c.recentMistakes, t('coach.and')) }));
   }
 
   let action: CoachMessage['action'];
   let tone: CoachMessage['tone'] = 'greeting';
 
   if (c.recentMistakes.length > 0 || c.weakCount >= 5) {
-    action = { label: "Zaif so'zlar bilan mashq", href: '/app/oyinlar/multiple_choice?mode=weak' };
+    action = { label: t('coach.actionWeak'), href: '/app/oyinlar/multiple_choice?mode=weak' };
   } else if (c.dueCount > 0) {
-    action = { label: 'Takrorlashni boshlash', href: '/app/lugat/takrorlash' };
+    action = { label: t('coach.actionReview'), href: '/app/lugat/takrorlash' };
   } else if (c.newAvailable > 0) {
-    action = { label: "Yangi so'zlarni o'rganish", href: '/app/lugat/kartochka' };
-    parts.push("Takrorlash navbati bo'sh — yangi so'zlar bilan tanishish uchun yaxshi payt.");
+    action = { label: t('coach.actionNew'), href: '/app/lugat/kartochka' };
+    parts.push(t('coach.emptyQueue'));
   } else {
-    action = { label: "O'yin o'ynash", href: '/app/oyinlar' };
+    action = { label: t('coach.actionGames'), href: '/app/oyinlar' };
   }
 
   if (c.dailyTotal > 0 && c.dailyDone >= c.dailyTotal) {
-    parts.unshift('Ajoyib! Bugungi barcha kunlik vazifalarni bajardingiz.');
+    parts.unshift(t('coach.allDone'));
     tone = 'celebrate';
   } else if (c.streakAtRisk && c.streak > 0) {
-    parts.push(`${c.streak} kunlik seriyangizni davom ettirish uchun bugun qisqa mashq qilish yetarli.`);
+    parts.push(t('coach.streakNudge', { n: c.streak }));
     tone = 'nudge';
   } else if (c.streak >= 7) {
-    parts.push(`${c.streak} kun ketma-ket — zo'r ketyapsiz!`);
+    parts.push(t('coach.streakGood', { n: c.streak }));
   }
 
-  if (parts.length === 0) parts.push("Bugun hammasi joyida. Xohlasangiz bitta o'yin bilan so'zlarni mustahkamlang.");
+  if (parts.length === 0) parts.push(t('coach.fine'));
   return { message: `${hello}${c.name ? `, ${c.name}` : ''}! ${parts.join(' ')}`, action, tone };
 }
 

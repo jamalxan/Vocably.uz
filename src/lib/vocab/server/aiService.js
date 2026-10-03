@@ -31,7 +31,7 @@ const DAY = 24 * 3600 * 1000;
 // ---------------------------------------------------------------------------
 // Coach — LLM'siz, real o'quv ma'lumotiga asoslangan (barcha tariflar uchun)
 // ---------------------------------------------------------------------------
-export async function coachForUser(user, now = new Date()) {
+export async function coachForUser(user, now = new Date(), locale = 'uz') {
   const tz = user.timezone || 'Asia/Tashkent';
   const words = flattenUserWords(user, { now });
   const dueWords = words.filter((w) => w.nextReview && new Date(w.nextReview).getTime() <= now.getTime() && (w.reps || 0) > 0);
@@ -67,7 +67,7 @@ export async function coachForUser(user, now = new Date()) {
     dailyTotal: quests.daily.length,
     newAvailable: words.filter((w) => (w.srsState || 'new') === 'new' && !(w.reps || 0)).length,
     hourLocal: hour,
-  });
+  }, locale);
 }
 
 // ---------------------------------------------------------------------------

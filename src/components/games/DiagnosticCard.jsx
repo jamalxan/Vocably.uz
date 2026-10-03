@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { ClipboardCheck } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import { useT } from '@/context/LocaleContext';
 import { getDiagnostic, skipDiagnostic, submitDiagnostic } from './api';
 
 const DONT_KNOW = '__unknown__';
@@ -9,6 +10,7 @@ const DONT_KNOW = '__unknown__';
 // Onboarding diagnostic (TZ §63–64): qisqa lug'at testi. Hech qachon majburiy emas — o'tkazib yuborish mumkin.
 // Holat tugagan/o'tkazilgan bo'lsa yoki xato bo'lsa karta ko'rinmaydi.
 export default function DiagnosticCard() {
+  const { t } = useT();
   const [data, setData] = useState(null);
   const [open, setOpen] = useState(false);
   const [idx, setIdx] = useState(0);
@@ -66,10 +68,8 @@ export default function DiagnosticCard() {
   if (result) {
     return (
       <section role="status" className="bg-accent-soft border border-accent/30 rounded-2xl p-5">
-        <h2 className="text-base font-bold text-ink font-display">Taxminiy lug'at darajangiz: {result.level}</h2>
-        <p className="text-sm text-muted mt-1">
-          {result.correct}/{result.total} to'g'ri ({result.score}%). Reja va tavsiyalar shu darajaga moslashtiriladi.
-        </p>
+        <h2 className="text-base font-bold text-ink font-display">{t('diag.resultTitle', { level: result.level })}</h2>
+        <p className="text-sm text-muted mt-1">{t('diag.resultText', { correct: result.correct, total: result.total, score: result.score })}</p>
       </section>
     );
   }
@@ -78,13 +78,13 @@ export default function DiagnosticCard() {
     return (
       <section className="bg-surface border border-border rounded-2xl p-5 shadow-card" aria-labelledby="diag-title">
         <h2 id="diag-title" className="text-base font-bold text-ink font-display flex items-center gap-2">
-          <ClipboardCheck size={18} className="text-accent" aria-hidden="true" /> Darajangizni aniqlang
+          <ClipboardCheck size={18} className="text-accent" aria-hidden="true" /> {t('diag.title')}
         </h2>
-        <p className="text-sm text-muted mt-1">{questions.length} ta qisqa savol (~2 daqiqa). Bilmaganingizga "Bilmayman" deng — taxmin qilish shart emas.</p>
+        <p className="text-sm text-muted mt-1">{t('diag.intro', { n: questions.length })}</p>
         <div className="flex flex-wrap gap-2 mt-3">
-          <Button onClick={() => setOpen(true)}>Boshlash</Button>
+          <Button onClick={() => setOpen(true)}>{t('diag.start')}</Button>
           <Button variant="secondary" onClick={skip}>
-            Keyinroq
+            {t('diag.later')}
           </Button>
         </div>
       </section>
@@ -98,9 +98,9 @@ export default function DiagnosticCard() {
         {idx + 1} / {questions.length}
       </p>
       <h2 id="diag-q" className="text-lg font-bold text-ink font-display mt-1">
-        "{q.word}" so'zining ma'nosi qaysi?
+        {t('diag.question', { word: q.word })}
       </h2>
-      <div className="grid gap-2 mt-3" role="group" aria-label="Variantlar">
+      <div className="grid gap-2 mt-3" role="group" aria-label={t('diag.options')}>
         {q.options.map((o) => (
           <button
             key={o}
@@ -118,7 +118,7 @@ export default function DiagnosticCard() {
           onClick={() => choose(DONT_KNOW)}
           className="text-left px-4 py-3 min-h-11 rounded-xl border border-dashed border-border text-sm text-muted hover:bg-bg-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
         >
-          Bilmayman
+          {t('diag.dontKnow')}
         </button>
       </div>
       {err && (

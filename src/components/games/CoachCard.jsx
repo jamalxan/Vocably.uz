@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
 import { buttonClasses } from '@/components/ui/Button';
+import { useT } from '@/context/LocaleContext';
 import { getCoach } from './api';
 
 // Shaxsiy murabbiy (TZ §27.4): real o'quv ma'lumotiga asoslangan qisqa xabar + bitta aniq keyingi qadam.
 export default function CoachCard() {
+  const { t } = useT();
   const [coach, setCoach] = useState(null);
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export default function CoachCard() {
 
   if (!coach) return null;
   return (
-    <section className="bg-surface border border-border rounded-2xl p-5 shadow-card flex flex-col sm:flex-row sm:items-center gap-4" aria-label="Murabbiy">
+    <section className="bg-surface border border-border rounded-2xl p-5 shadow-card flex flex-col sm:flex-row sm:items-center gap-4" aria-label={t('coach.region')}>
       <div className="w-10 h-10 rounded-xl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
         <MessageCircle size={20} aria-hidden="true" />
       </div>

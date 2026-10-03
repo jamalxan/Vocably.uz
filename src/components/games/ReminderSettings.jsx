@@ -2,17 +2,19 @@
 import { useEffect, useState } from 'react';
 import { BellRing } from 'lucide-react';
 import Switch from '@/components/ui/Switch';
+import { useT } from '@/context/LocaleContext';
 import { getReminderPrefs, saveReminderPrefs } from './api';
 
 const FREQ = [
-  { key: 'daily', label: 'Har kuni' },
-  { key: 'every_2_days', label: '2 kunda bir' },
-  { key: 'weekly', label: 'Haftada bir' },
+  { key: 'daily', labelKey: 'rem.daily' },
+  { key: 'every_2_days', labelKey: 'rem.every2' },
+  { key: 'weekly', labelKey: 'rem.weekly' },
 ];
 
 // Lug'at eslatmalari sozlamasi (TZ §55): yoqish/o'chirish va chastota. Spam bo'lmasligi uchun server kuniga
 // ko'pi bilan bitta eslatma yuboradi va bugun o'qigan foydalanuvchiga umuman yubormaydi.
 export default function ReminderSettings() {
+  const { t } = useT();
   const [prefs, setPrefs] = useState(null);
   const [error, setError] = useState('');
 
@@ -36,7 +38,7 @@ export default function ReminderSettings() {
       setPrefs(await saveReminderPrefs(patch));
     } catch (e) {
       setPrefs(prev);
-      setError(e.message || 'Saqlab bo‘lmadi');
+      setError(e.message || t('rem.saveFail'));
     }
   };
 
@@ -45,14 +47,14 @@ export default function ReminderSettings() {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 id="reminder-settings" className="text-sm font-bold text-ink font-display flex items-center gap-2">
-            <BellRing size={16} aria-hidden="true" /> Takrorlash eslatmalari
+            <BellRing size={16} aria-hidden="true" /> {t('rem.title')}
           </h2>
-          <p className="text-xs text-muted mt-0.5">Takrorlashga tayyor so&apos;zlar va seriyangiz haqida — spamsiz, kuniga ko&apos;pi bilan bitta.</p>
+          <p className="text-xs text-muted mt-0.5">{t('rem.intro')}</p>
         </div>
-        <Switch checked={prefs.enabled} onChange={(v) => update({ enabled: v })} aria-label="Eslatmalarni yoqish" />
+        <Switch checked={prefs.enabled} onChange={(v) => update({ enabled: v })} aria-label={t('rem.enable')} />
       </div>
       {prefs.enabled && (
-        <div className="flex flex-wrap gap-2 mt-3" role="radiogroup" aria-label="Eslatma chastotasi">
+        <div className="flex flex-wrap gap-2 mt-3" role="radiogroup" aria-label={t('rem.freqAria')}>
           {FREQ.map((f) => (
             <button
               key={f.key}
@@ -64,7 +66,7 @@ export default function ReminderSettings() {
                 prefs.frequency === f.key ? 'bg-accent text-on-accent border-accent' : 'bg-surface text-ink border-border hover:bg-bg-sunken'
               }`}
             >
-              {f.label}
+              {t(f.labelKey)}
             </button>
           ))}
         </div>
@@ -72,7 +74,7 @@ export default function ReminderSettings() {
       {prefs.enabled && (
         <div className="flex items-center justify-between gap-3 mt-3">
           <label htmlFor="reminder-hour" className="text-sm font-semibold text-ink">
-            Eslatma vaqti <span className="font-normal text-muted">({prefs.timezone})</span>
+            {t('rem.time')} <span className="font-normal text-muted">({prefs.timezone})</span>
           </label>
           <select
             id="reminder-hour"
@@ -91,12 +93,10 @@ export default function ReminderSettings() {
       {prefs.enabled && (
         <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-border">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-ink">Telegram&apos;ga ham yuborish</p>
-            <p className="text-xs text-muted mt-0.5">
-              {prefs.telegramLinked ? 'Eslatma botdagi chatingizga ham keladi.' : "Telegram bot ulanmagan — ro'yxatdan o'tishda ishlatilgan bot orqali ulanadi."}
-            </p>
+            <p className="text-sm font-semibold text-ink">{t('rem.tgAlso')}</p>
+            <p className="text-xs text-muted mt-0.5">{prefs.telegramLinked ? t('rem.tgLinked') : t('rem.tgNot')}</p>
           </div>
-          <Switch checked={!!prefs.telegram} disabled={!prefs.telegramLinked} onChange={(v) => update({ telegram: v })} aria-label="Telegram eslatmalarini yoqish" />
+          <Switch checked={!!prefs.telegram} disabled={!prefs.telegramLinked} onChange={(v) => update({ telegram: v })} aria-label={t('rem.tgEnable')} />
         </div>
       )}
       {error && (

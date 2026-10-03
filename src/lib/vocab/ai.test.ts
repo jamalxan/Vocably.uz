@@ -32,6 +32,26 @@ describe('AI Coach (real ma\'lumotga asoslangan)', () => {
   });
 });
 
+describe('AI Coach — ruscha (server tomonida lokalizatsiya)', () => {
+  it('salomlashuv, due/overdue, xato so‘zlar va tugma ruscha; uz o‘zgarmaydi', () => {
+    const ctx = { ...base, name: 'Ali', dueCount: 18, overdueCount: 5, recentMistakes: ['significant', 'maintain'], hourLocal: 9 };
+    const ru = buildCoachMessage(ctx, 'ru');
+    expect(ru.message).toContain('Доброе утро, Ali!');
+    expect(ru.message).toContain('готовых к повторению: 18 (просрочено: 5)');
+    expect(ru.message).toContain('"significant" и "maintain"');
+    expect(ru.action.label).toBe('Практика со слабыми словами');
+    expect(ru.action.href).toContain('mode=weak'); // yo'l tilga bog'liq emas
+    expect(buildCoachMessage(ctx).message).toContain('Xayrli tong, Ali!');
+    expect(buildCoachMessage(ctx, 'xx').message).toContain('Xayrli tong, Ali!'); // noma'lum til → uz
+  });
+  it('seriya xabarida ruscha ko‘plik (день/дня/дней)', () => {
+    expect(buildCoachMessage({ ...base, streak: 21, streakAtRisk: true }, 'ru').message).toContain('серию в 21 день');
+    expect(buildCoachMessage({ ...base, streak: 12, streakAtRisk: true }, 'ru').message).toContain('серию в 12 дней');
+    expect(buildCoachMessage({ ...base, streak: 7 }, 'ru').message).toContain('7 дней подряд');
+    expect(buildCoachMessage({ ...base, streak: 23 }, 'ru').message).toContain('23 дня подряд');
+  });
+});
+
 describe('AI hikoya (TZ §27.3)', () => {
   const words = ['maintain', 'significant', 'reluctant'];
   const story = 'Anna was **reluctant** to start the project. She knew it would make a **significant** difference to her team, so she decided to **maintain** a regular schedule. Every morning she wrote a short plan and checked it in the evening. After two weeks, her colleagues noticed that the work was calmer and better organised than before, and they asked how she did it.';
