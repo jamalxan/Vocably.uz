@@ -5,6 +5,7 @@ import { GAME_CATALOG, availabilityFor } from '../vocab/games';
 import { QUEST_DEFS } from '../vocab/quests';
 import { NEW_ACHIEVEMENT_DEFS } from '../vocab/achievements';
 import { LEVEL_NAMES } from '../vocab/config';
+import { WEAK_REASON_LABELS } from '../vocab/weakness';
 import { buildDailyPlan } from '../vocab/dailyPlan';
 import { buildDailyPlan as studyPlan } from '../studyPlan';
 
@@ -48,6 +49,10 @@ describe('qamrov: serverdagi har bir ko‘rinadigan matn tarjima qilingan', () =
   it('vazifalar va yutuqlar', () => {
     expect(missing(QUEST_DEFS.flatMap((q) => [q.title, q.description]))).toEqual([]);
     expect(missing(NEW_ACHIEVEMENT_DEFS.flatMap((a) => [a.label, a.description]))).toEqual([]);
+  });
+
+  it('zaif so‘z sabablari', () => {
+    expect(missing(Object.values(WEAK_REASON_LABELS))).toEqual([]);
   });
 
   it('daraja nomlari', () => {

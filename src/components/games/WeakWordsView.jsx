@@ -5,9 +5,10 @@ import { Target, Gamepad2 } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { buttonClasses } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
+import { useT } from '@/context/LocaleContext';
 import { getWeakWords } from './api';
 
-const SKILL_LABELS = { recall: "Ma'no", listening: 'Eshitish', spelling: 'Imlo', context: 'Kontekst', synonym: 'Sinonim', writing: 'Yozish', speaking: 'Gapirish' };
+const SKILL_KEYS = new Set(['recall', 'listening', 'spelling', 'context', 'synonym', 'writing', 'speaking']);
 
 function accuracyTone(pct) {
   if (pct == null) return 'text-muted';
@@ -17,7 +18,9 @@ function accuracyTone(pct) {
 }
 
 // Zaif so'zlar ko'rinishi (TZ §20): aniqlik % + sabablar (past recall, ko'p xato, sekin javob, yomon listening/spelling/context).
+// Sabab nomlari serverdan (uz) keladi va `ts()` bilan tarjima qilinadi.
 export default function WeakWordsView() {
+  const { t, ts } = useT();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
@@ -25,8 +28,9 @@ export default function WeakWordsView() {
     const ctrl = new AbortController();
     getWeakWords(200)
       .then((d) => !ctrl.signal.aborted && setData(d))
-      .catch((e) => !ctrl.signal.aborted && setError(e.message || 'Yuklashda xatolik'));
+      .catch((e) => !ctrl.signal.aborted && setError(e.message || t('hub.loadError')));
     return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (error) {
@@ -51,17 +55,13 @@ export default function WeakWordsView() {
       <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
           <h1 className="text-xl font-bold text-ink font-display flex items-center gap-2">
-            <Target size={20} aria-hidden="true" /> Zaif so'zlar
+            <Target size={20} aria-hidden="true" /> {t('hub.statWeak')}
           </h1>
-          <p className="text-sm text-muted mt-1">
-            {data.total > 0
-              ? `${data.total} ta so'z diqqatga muhtoj. Eng zaiflari yuqorida.`
-              : "Hozircha zaif so'z yo'q — ajoyib! O'yinlar va takrorlash xatolarni shu yerga yig'adi."}
-          </p>
+          <p className="text-sm text-muted mt-1">{data.total > 0 ? t('weak.count', { n: data.total }) : t('weak.none')}</p>
         </div>
         {data.total > 0 && (
           <Link href="/app/oyinlar/multiple_choice?mode=weak" className={buttonClasses({ variant: 'primary' })}>
-            <Gamepad2 size={16} aria-hidden="true" /> Zaif so'zlar bilan mashq
+            <Gamepad2 size={16} aria-hidden="true" /> {t('coach.actionWeak')}
           </Link>
         )}
       </div>
@@ -76,22 +76,22 @@ export default function WeakWordsView() {
               </div>
               <div className="text-right flex-shrink-0">
                 <p className={`text-xl font-bold font-display tabular-nums ${accuracyTone(w.accuracy)}`}>{w.accuracy == null ? '—' : `${w.accuracy}%`}</p>
-                <p className="text-[11px] text-muted">aniqlik</p>
+                <p className="text-[11px] text-muted">{t('weak.accuracy')}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 mt-3">
               {w.reasonLabels.map((r) => (
                 <Badge key={r} tone="warning" className="normal-case tracking-normal">
-                  {r}
+                  {ts(r)}
                 </Badge>
               ))}
               {w.isLeech && <Badge tone="danger">Leech</Badge>}
               {w.primarySkill && (
                 <Badge tone="neutral" className="normal-case tracking-normal">
-                  Eng zaif: {SKILL_LABELS[w.primarySkill] || w.primarySkill}
+                  {t('weak.hardest', { skill: SKILL_KEYS.has(w.primarySkill) ? t(`weak.skill.${w.primarySkill}`) : w.primarySkill })}
                 </Badge>
               )}
-              <span className="text-xs text-muted ml-auto tabular-nums">{w.attempts} urinish · {w.lapses} marta unutilgan</span>
+              <span className="text-xs text-muted ml-auto tabular-nums">{t('weak.attempts', { a: w.attempts, b: w.lapses })}</span>
             </div>
           </li>
         ))}

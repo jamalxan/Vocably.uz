@@ -100,6 +100,14 @@ const ru = {
     Titan: 'Титан',
     Master: 'Мастер',
 
+    // --- Причины слабости слов (src/lib/vocab/weakness.ts)
+    "Ma'noni eslay olmayapsiz": 'Не получается вспомнить значение',
+    "Ko'p xato qilingan": 'Много ошибок',
+    'Javob sekin': 'Медленные ответы',
+    'Eshitib tanish zaif': 'Слабое понимание на слух',
+    'Imlo zaif': 'Слабое написание',
+    'Kontekstda ishlatish zaif': 'Слабое использование в контексте',
+
     // --- Страница «Сегодня» (src/lib/studyPlan.js)
     '1 ta Reading passage': '1 текст Reading',
     '1 ta Listening part': '1 часть Listening',

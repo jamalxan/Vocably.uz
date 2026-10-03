@@ -178,6 +178,27 @@ test('Lug‘at bo‘limi ruscha: menyu, jadval, test rejimi, takrorlash holati',
   await expect(page.getByText('Qaysi rejimda mashq qilmoqchisiz?')).toBeVisible({ timeout: 60_000 });
 });
 
+test('Zaif so‘zlar, Kutubxona, Reyting ruscha', async ({ page, context }) => {
+  test.setTimeout(300_000);
+  await loginAs(page, E2E_PHONE);
+  await context.addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
+
+  await page.goto('/app/lugat/zaif-sozlar');
+  await expect(page.getByRole('heading', { name: 'Слабые слова' })).toBeVisible({ timeout: 90_000 });
+
+  await page.goto('/app/lugat/kutubxona');
+  await expect(page.getByRole('heading', { name: 'Библиотека слов' })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByPlaceholder('Слово или перевод…')).toBeVisible();
+
+  await page.goto('/app/reyting');
+  await expect(page.getByRole('button', { name: 'Эта неделя' })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole('heading', { name: 'Рейтинг' })).toBeVisible();
+
+  await context.addCookies([{ name: 'vocably_lang', value: 'uz', url: 'http://localhost:3100' }]);
+  await page.goto('/app/reyting');
+  await expect(page.getByRole('button', { name: 'Bu hafta' })).toBeVisible({ timeout: 60_000 });
+});
+
 test('noto‘g‘ri cookie qiymati uz ga tushadi (inyeksiya/yiqilish yo‘q)', async ({ page, context }) => {
   await loginAs(page, E2E_PHONE);
   await context.addCookies([{ name: 'vocably_lang', value: 'xx"<script>', url: 'http://localhost:3100' }]).catch(() => {});

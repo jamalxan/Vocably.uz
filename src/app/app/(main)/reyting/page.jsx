@@ -2,11 +2,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trophy, Medal, RotateCcw } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
+import { useT } from '@/context/LocaleContext';
 
 const PERIODS = [
-  { key: 'week', label: 'Bu hafta' },
-  { key: 'month', label: 'Oylik' },
-  { key: 'all', label: 'Umumiy' },
+  { key: 'week', label: 'lb.week' },
+  { key: 'month', label: 'lb.month' },
+  { key: 'all', label: 'lb.all' },
 ];
 
 // Faqat tokenlar (dark-mode'da invert bo'ladi); o'rin raqami sr-only matn sifatida ham bor.
@@ -16,6 +17,7 @@ const MEDAL_COLOR = ['text-warning', 'text-muted', 'text-accent'];
 // (izoh: src/app/api/gamification/leaderboard/route.js) — hozircha barcha
 // foydalanuvchilar bo'yicha umumiy reyting.
 export default function ReytingPage() {
+  const { t } = useT();
   const [period, setPeriod] = useState('week');
   const [rows, setRows] = useState(null);
   const [inactiveRows, setInactiveRows] = useState([]);
@@ -48,11 +50,11 @@ export default function ReytingPage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-lg mx-auto">
       <div className="flex items-center gap-2 mb-1">
         <Trophy size={20} className="text-accent" />
-        <h1 className="text-xl font-bold text-ink font-display">Reyting</h1>
+        <h1 className="text-xl font-bold text-ink font-display">{t('hub.leaderboard')}</h1>
       </div>
-      <p className="text-sm text-muted mb-5">Eng ko'p XP to'plagan foydalanuvchilar.</p>
+      <p className="text-sm text-muted mb-5">{t('lb.subtitle')}</p>
 
-      <div role="group" aria-label="Davr" className="flex gap-2 p-1 bg-surface border border-border rounded-xl mb-5">
+      <div role="group" aria-label={t('dash.period')} className="flex gap-2 p-1 bg-surface border border-border rounded-xl mb-5">
         {PERIODS.map((p) => (
           <button
             key={p.key}
@@ -62,7 +64,7 @@ export default function ReytingPage() {
               period === p.key ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:bg-bg-sunken'
             }`}
           >
-            {p.label}
+            {t(p.label)}
           </button>
         ))}
       </div>
@@ -71,22 +73,22 @@ export default function ReytingPage() {
         <p className="mb-4 text-sm text-muted bg-surface border border-border rounded-xl px-4 py-2.5" aria-live="polite">
           {me.rank ? (
             <>
-              Sizning o'rningiz: <strong className="text-ink">{me.rank}</strong> · <strong className="text-ink tabular-nums">{me.xp} XP</strong>
+              {t('lb.myRank')} <strong className="text-ink">{me.rank}</strong> · <strong className="text-ink tabular-nums">{me.xp} XP</strong>
             </>
           ) : (
-            "Bu davrda hali XP to'plamadingiz — bitta o'yin reytingga kiritadi."
+            t('lb.noXp')
           )}
         </p>
       )}
 
       {error && !loading ? (
         <div role="alert" className="bg-danger-soft border border-danger/25 rounded-2xl px-4 py-5 text-center">
-          <p className="text-sm text-danger mb-3">Reytingni yuklab bo'lmadi. Internet aloqasini tekshiring.</p>
+          <p className="text-sm text-danger mb-3">{t('lb.loadFail')}</p>
           <button
             onClick={load}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-surface border border-border text-sm font-semibold text-ink hover:bg-bg-sunken transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <RotateCcw size={14} /> Qayta urinish
+            <RotateCcw size={14} /> {t('hub.retry')}
           </button>
         </div>
       ) : loading && !rows ? (
@@ -98,10 +100,10 @@ export default function ReytingPage() {
               <Skeleton className="w-14 h-5" />
             </div>
           ))}
-          <span className="sr-only">Yuklanmoqda...</span>
+          <span className="sr-only">{t('dash.loading')}</span>
         </div>
       ) : (!rows || rows.length === 0) && inactiveRows.length === 0 ? (
-        <p className="text-center text-sm text-muted py-8">Hali hech kim XP to'plamagan.</p>
+        <p className="text-center text-sm text-muted py-8">{t('lb.empty')}</p>
       ) : (
         <>
           {rows && rows.length > 0 && (
@@ -121,18 +123,18 @@ export default function ReytingPage() {
                     key={r.userId}
                     className={`flex items-center gap-3 px-4 py-3 ${r.isMe ? 'bg-accent-soft' : ''}`}
                   >
-                    <span className="w-6 flex justify-center flex-shrink-0" title={`${r.rank}-o'rin`}>
+                    <span className="w-6 flex justify-center flex-shrink-0" title={t('lb.place', { n: r.rank })}>
                       {showMedal ? (
                         <>
                           <Medal size={16} className={MEDAL_COLOR[r.rank - 1]} aria-hidden="true" />
-                          <span className="sr-only">{r.rank}-o&apos;rin</span>
+                          <span className="sr-only">{t('lb.place', { n: r.rank })}</span>
                         </>
                       ) : (
                         <span className="text-xs font-semibold text-muted tabular-nums">{r.rank}</span>
                       )}
                     </span>
                     <span className={`flex-1 min-w-0 text-sm truncate ${r.isMe ? 'font-semibold text-accent' : 'text-ink'}`}>
-                      {r.displayName} {r.isMe && '(siz)'}
+                      {r.displayName} {r.isMe && t('lb.you')}
                     </span>
                     <span className="text-sm font-bold text-ink whitespace-nowrap flex-shrink-0 tabular-nums">{r.xp} XP</span>
                   </div>
@@ -143,13 +145,13 @@ export default function ReytingPage() {
 
           {period !== 'all' && inactiveRows.length > 0 && (
             <div className="mt-5">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{period === 'month' ? 'Bu oy faol emas' : 'Bu hafta faol emas'}</p>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">{period === 'month' ? t('lb.inactiveMonth') : t('lb.inactiveWeek')}</p>
               <div className="bg-surface border border-border rounded-2xl divide-y divide-border overflow-hidden opacity-70">
                 {inactiveRows.map((r) => (
                   <div key={r.userId} className={`flex items-center gap-3 px-4 py-3 ${r.isMe ? 'bg-accent-soft' : ''}`}>
                     <span className="w-6 flex justify-center flex-shrink-0 text-muted">–</span>
                     <span className={`flex-1 min-w-0 text-sm truncate ${r.isMe ? 'font-semibold text-accent' : 'text-muted'}`}>
-                      {r.displayName} {r.isMe && '(siz)'}
+                      {r.displayName} {r.isMe && t('lb.you')}
                     </span>
                   </div>
                 ))}
