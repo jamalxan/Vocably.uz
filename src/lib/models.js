@@ -1537,8 +1537,11 @@ const ClassroomSchema = new mongoose.Schema({
   teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true, trim: true },
   studentIds: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  // Roziligisiz qo'shib bo'lmaydi: o'qituvchi taklif yuboradi, o'quvchi qabul qilgach studentIds'ga o'tadi.
+  invitedIds: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   createdAt: { type: Date, default: Date.now },
 });
+ClassroomSchema.index({ invitedIds: 1 });
 // src/app/api/teacher/classrooms (GET) — "faqat o'z classroom'lari" so'rovi
 // shu bo'yicha filtrlaydi.
 ClassroomSchema.index({ teacherId: 1 });

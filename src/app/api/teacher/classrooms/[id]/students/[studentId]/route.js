@@ -23,6 +23,7 @@ export async function DELETE(req, props) {
     }
 
     classroom.studentIds = (classroom.studentIds || []).filter((sid) => String(sid) !== String(params.studentId));
+    classroom.invitedIds = (classroom.invitedIds || []).filter((sid) => String(sid) !== String(params.studentId)); // kutilayotgan taklifni bekor qilish
     await classroom.save();
 
     return NextResponse.json({ ok: true });

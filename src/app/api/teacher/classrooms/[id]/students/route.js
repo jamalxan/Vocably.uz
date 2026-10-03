@@ -5,8 +5,9 @@ import { User } from '@/lib/models';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
-// TCH-01/02 — student username orqali qo'shiladi (o'zi Vocably'da allaqachon
-// ro'yxatdan o'tgan bo'lishi kerak — teacher yangi hisob YARATMAYDI).
+// TCH-01/02 — student username orqali TAKLIF qilinadi (o'zi Vocably'da allaqachon
+// ro'yxatdan o'tgan bo'lishi kerak — teacher yangi hisob YARATMAYDI). O'quvchi
+// roziligisiz sinfga qo'shilmaydi: qabul qilish — /api/classroom-invites/[id].
 export async function POST(req, props) {
   const params = await props.params;
   try {
@@ -30,13 +31,17 @@ export async function POST(req, props) {
     const student = await User.findOne({ username }).select('_id username name').lean();
     if (!student) return NextResponse.json({ error: 'Bunday username topilmadi' }, { status: 404 });
 
-    const already = (classroom.studentIds || []).some((id) => String(id) === String(student._id));
-    if (!already) {
-      classroom.studentIds.push(student._id);
+    const has = (list) => (list || []).some((id) => String(id) === String(student._id));
+    let result = 'invited';
+    if (has(classroom.studentIds)) {
+      result = 'member';
+    } else if (!has(classroom.invitedIds)) {
+      classroom.invitedIds.push(student._id);
       await classroom.save();
     }
 
     return NextResponse.json({
+      status: result,
       student: { id: String(student._id), username: student.username, name: student.name || '' },
     });
   } catch (err) {

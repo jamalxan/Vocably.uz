@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
-import { Eye, Globe, LogOut, Monitor, Moon, Send, ShieldCheck, Sun, Target, X } from 'lucide-react';
+import { Eye, Globe, LogOut, Monitor, Moon, Send, ShieldCheck, Sun, Target, Users, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useT } from '@/context/LocaleContext';
@@ -57,11 +57,34 @@ export default function ProfileSettings({ open, onClose }) {
   const [visibilitySaving, setVisibilitySaving] = useState(false);
   const [visibilityError, setVisibilityError] = useState(false);
 
+  // ---- Sinf takliflari (/api/classroom-invites) — o'qituvchi roziligimizsiz qo'sha olmaydi
+  const [invites, setInvites] = useState([]);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const answerInvite = async (id, accept) => {
+    setInviteBusy(true);
+    try {
+      const res = await fetch(`/api/classroom-invites/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accept }),
+      });
+      if (res.ok || res.status === 404) setInvites((list) => list.filter((i) => i.id !== id));
+    } catch {
+      /* tarmoq xatosi: taklif ro'yxatda qoladi, qayta urinish mumkin */
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
   const loadedRef = useRef(false);
   useEffect(() => {
     if (!open || loadedRef.current) return undefined;
     loadedRef.current = true;
     let cancelled = false;
+    fetch('/api/classroom-invites')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => !cancelled && data?.invites && setInvites(data.invites))
+      .catch(() => {});
     fetch('/api/profile')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -249,6 +272,29 @@ export default function ProfileSettings({ open, onClose }) {
             </div>
             <p className="text-xs text-muted mt-2">{t('lang.hint')}</p>
           </section>
+
+          {invites.length > 0 && (
+            <section>
+              <h3 className={sectionTitle}>
+                <Users size={13} aria-hidden="true" /> {t('settings.invites')}
+              </h3>
+              <ul className="space-y-3">
+                {invites.map((inv) => (
+                  <li key={inv.id} className="bg-surface border border-border rounded-2xl shadow-card p-4">
+                    <p className="text-sm text-ink mb-3">{t('settings.inviteText', { teacher: inv.teacher, name: inv.name })}</p>
+                    <div className="flex gap-2">
+                      <Button onClick={() => answerInvite(inv.id, true)} disabled={inviteBusy}>
+                        {t('settings.inviteAccept')}
+                      </Button>
+                      <Button variant="ghost" onClick={() => answerInvite(inv.id, false)} disabled={inviteBusy}>
+                        {t('settings.inviteDecline')}
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section>
             <h3 className={sectionTitle}>

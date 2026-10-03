@@ -31,11 +31,16 @@ export async function GET(req, props) {
       ? await User.find({ _id: { $in: classroom.studentIds } }).select('username name').lean()
       : [];
 
+    const invited = classroom.invitedIds?.length
+      ? await User.find({ _id: { $in: classroom.invitedIds } }).select('username name').lean()
+      : [];
+
     return NextResponse.json({
       classroom: {
         id: String(classroom._id),
         name: classroom.name,
         students: students.map((s) => ({ id: String(s._id), username: s.username, name: s.name || '' })),
+        invited: invited.map((s) => ({ id: String(s._id), username: s.username, name: s.name || '' })),
       },
     });
   } catch (err) {

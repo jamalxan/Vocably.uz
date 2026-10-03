@@ -81,6 +81,7 @@ export default function TeacherClassroomPage() {
         return;
       }
       setUsername('');
+      if (data.status === 'member') setStudentError("Bu o'quvchi allaqachon sinfda");
       await Promise.all([loadClassroom(), loadAssignments()]);
     } finally {
       setAddingStudent(false);
@@ -146,7 +147,7 @@ export default function TeacherClassroomPage() {
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username orqali qo'shish"
+            placeholder="Username orqali taklif qilish"
             aria-label="O'quvchi username'i"
             className="flex-1 px-3.5 py-2.5 bg-bg border border-border rounded-xl text-base md:text-sm text-ink placeholder:text-muted/70 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
           />
@@ -156,10 +157,31 @@ export default function TeacherClassroomPage() {
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-11 bg-accent text-on-accent rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {addingStudent ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />}
-            Qo'shish
+            Taklif qilish
           </button>
         </form>
+        <p className="text-xs text-muted">O'quvchi taklifni o'z profilida (Sozlamalar) qabul qilgandan keyin sinfga qo'shiladi.</p>
         {studentError && <p className="text-sm text-red-500">{studentError}</p>}
+
+        {classroom.invited?.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-1">Javob kutilmoqda</p>
+            <ul className="divide-y divide-border">
+              {classroom.invited.map((s) => (
+                <li key={s.id} className="flex items-center justify-between py-2">
+                  <p className="text-sm text-muted truncate">{s.name || s.username} <span className="text-xs">@{s.username}</span></p>
+                  <button
+                    onClick={() => removeStudent(s.id)}
+                    aria-label={`${s.username} taklifini bekor qilish`}
+                    className="p-2 min-w-11 min-h-11 flex items-center justify-center text-muted hover:text-red-500 rounded-lg transition-colors"
+                  >
+                    <X size={15} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {classroom.students.length === 0 ? (
           <p className="text-sm text-muted">Hali o'quvchi yo'q</p>
