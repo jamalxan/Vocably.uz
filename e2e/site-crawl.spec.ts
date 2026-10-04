@@ -7,6 +7,9 @@ import path from 'node:path';
 import { E2E_ADMIN_PHONE, E2E_PHONE, E2E_TEACHER_PHONE } from './global-setup';
 import { loginAs } from './auth';
 
+// E2E_LANG=ru — barcha sahifalar ruscha rejimda (cookie) ko'riladi; xom i18n kalitlari va o'zbekcha qoldiqlar hisobotga tushadi.
+const LANG_RU = process.env.E2E_LANG === 'ru';
+
 type Group = 'guest' | 'user' | 'admin' | 'teacher';
 
 const APP = path.resolve('src/app');
@@ -79,7 +82,7 @@ async function visit(page: Page, url: string, findings: Finding[]) {
     await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => add('slow', 'networkidle 20 s ichida kelmadi'));
     await page.waitForTimeout(400);
     // dev'dagi Fast Refresh / kech redirect sahifani qayta yuklashi mumkin ("Execution context was destroyed") — bir marta kutib qayta uriniladi.
-    const evalInfo = () => page.evaluate(() => {
+    const evalInfo = () => page.evaluate((ru) => {
       const de = document.documentElement;
       const text = document.body?.innerText || '';
       return {
@@ -91,8 +94,10 @@ async function visit(page: Page, url: string, findings: Finding[]) {
         imgNoAlt: [...document.querySelectorAll('img')].filter((i) => !i.hasAttribute('alt')).length,
         btnNoName: [...document.querySelectorAll('button')].filter((b) => !(b.textContent || '').trim() && !b.getAttribute('aria-label') && !b.getAttribute('title') && !b.querySelector('img[alt]')).length,
         path: location.pathname,
+        rawKey: (text.match(/(?:ch|vm|av|ai|as|cv|mb|mi|mk|mr|rs|rv|sk|sp|wp|aw|an|em|wpk|pw|qz|cm|pr|co|en|mn|lg|auth|app|nav|sub|res|cat|wt|lib|practice|skill)\.[a-zA-Z][\w.]*/g) || []).slice(0, 5),
+        uzLeft: ru ? (text.match(/[a-z]+['ʻ‘’][a-z]+/g) || []).filter((w) => /^(bo|o|g|to|so|qo|yo|ma|ko|ru)['ʻ‘’]/.test(w)).slice(0, 8) : [],
       };
-    });
+    }, LANG_RU);
     const info = await evalInfo().catch(async () => {
       await page.waitForLoadState('load', { timeout: 20_000 }).catch(() => {});
       await page.waitForTimeout(800);
@@ -106,6 +111,8 @@ async function visit(page: Page, url: string, findings: Finding[]) {
     if (info.imgNoAlt) add('a11y', `${info.imgNoAlt} ta <img> alt'siz`);
     if (info.btnNoName) add('a11y', `${info.btnNoName} ta tugma nomsiz`);
     if (info.path !== url) add('redirect', `-> ${info.path}`);
+    if (info.rawKey.length) add('rawKey', info.rawKey.join(', '));
+    if (info.uzLeft.length) add('uzLeft', info.uzLeft.join(', '));
   } finally {
     page.off('pageerror', onErr);
     page.off('console', onConsole);
@@ -116,6 +123,7 @@ async function visit(page: Page, url: string, findings: Finding[]) {
 for (const group of ['guest', 'user', 'admin', 'teacher'] as Group[]) {
   test(`crawl: ${group} (${byGroup[group].length} sahifa)`, async ({ page }, testInfo) => {
     test.setTimeout(30 * 60_000);
+    if (LANG_RU) await page.context().addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
     if (group === 'user') await loginAs(page, E2E_PHONE);
     if (group === 'admin') await loginAs(page, E2E_ADMIN_PHONE);
     if (group === 'teacher') await loginAs(page, E2E_TEACHER_PHONE);
@@ -124,7 +132,7 @@ for (const group of ['guest', 'user', 'admin', 'teacher'] as Group[]) {
 
     fs.mkdirSync('test-results', { recursive: true });
     fs.writeFileSync(`test-results/crawl-${group}-${testInfo.project.name}.json`, JSON.stringify({ pages: byGroup[group], findings }, null, 1));
-    const hard = findings.filter((f) => ['pageerror', 'http5xx', 'errorScreen', 'overflowX', 'navigation'].includes(f.kind));
+    const hard = findings.filter((f) => ['pageerror', 'http5xx', 'errorScreen', 'overflowX', 'navigation', 'rawKey'].includes(f.kind));
     // eslint-disable-next-line no-console
     console.log(`[crawl ${group}/${testInfo.project.name}] sahifa=${byGroup[group].length} jiddiy=${hard.length} jami=${findings.length}`);
     expect(hard, JSON.stringify(hard, null, 1)).toEqual([]);
