@@ -1045,6 +1045,17 @@ const uz = {
   'mb.read': "O'qildi",
   'mb.delivered': "Yetkazildi",
   'mb.sentOk': "Yuborildi",
+  'em.search': "Emoji qidirish...",
+  'em.searchAria': "Emoji qidirish",
+  'em.skin': "Teri rangi",
+  'em.recent': "Yaqinda ishlatilgan",
+  'em.sticker': "Stiker",
+  'em.stickerNamed': "Stiker: {name}",
+  'em.noStickers': "Stikerlar yo'q",
+  'em.loading': "Yuklanmoqda...",
+  'em.empty': "Hech narsa topilmadi",
+  'em.tabStickers': "Stikerlar",
+  'em.tabAria': "Emoji yoki stiker",
 };
 
 export default uz;

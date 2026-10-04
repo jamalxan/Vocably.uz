@@ -1,4 +1,5 @@
 'use client';
+import { useT } from '@/context/LocaleContext';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { EmojiPicker as Frimousse } from 'frimousse';
 import { Search, Clock, Smile, Sticker } from 'lucide-react';
@@ -62,6 +63,7 @@ function saveRecent(emoji) {
 }
 
 function CategoryHeader({ category, headerRefs, ...props }) {
+  const { ts } = useT();
   const meta = CATEGORY_META[category.label];
   return (
     <div
@@ -76,7 +78,7 @@ function CategoryHeader({ category, headerRefs, ...props }) {
       }}
       className="sticky top-0 z-10 bg-surface/95 backdrop-blur-sm px-1 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wide"
     >
-      {meta?.uz || category.label}
+      {meta ? ts(meta.uz) : category.label}
     </div>
   );
 }
@@ -136,6 +138,7 @@ function categoryTop(viewport, headerNode) {
 }
 
 function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
+  const { t, ts } = useT();
   const [recents, setRecents] = useState([]);
   const [searching, setSearching] = useState(false);
   const [activeCategory, setActiveCategory] = useState(CATEGORY_ORDER[0]);
@@ -253,12 +256,12 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
           <Frimousse.Search
             ref={searchInputRef}
-            placeholder="Emoji qidirish..."
-            aria-label="Emoji qidirish"
+            placeholder={t('em.search')}
+            aria-label={t('em.searchAria')}
             className="w-full pl-8 pr-2.5 py-1.5 bg-bg border border-border rounded-lg text-base md:text-sm text-ink placeholder:text-muted/70 outline-none focus:border-accent transition-colors"
           />
         </div>
-        <Frimousse.SkinToneSelector aria-label="Teri rangi" className="flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-lg hover:bg-bg transition-colors emoji" />
+        <Frimousse.SkinToneSelector aria-label={t('em.skin')} className="flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-lg hover:bg-bg transition-colors emoji" />
       </div>
 
       {/* Kategoriya tablari — bosilganda mos kategoriyaga o'tadi, joriysi belgilanadi. */}
@@ -268,8 +271,8 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
             <button
               key={label}
               type="button"
-              title={CATEGORY_META[label].uz}
-              aria-label={CATEGORY_META[label].uz}
+              title={ts(CATEGORY_META[label].uz)}
+              aria-label={ts(CATEGORY_META[label].uz)}
               aria-pressed={activeCategory === label}
               onClick={() => scrollToCategory(label)}
               className={`flex-shrink-0 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-lg emoji transition-colors ${
@@ -290,7 +293,7 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
       {!searching && recents.length > 0 && (
         <div className="flex items-center gap-1 px-2 pb-1.5 flex-shrink-0 border-b border-border">
           <Clock size={13} className="text-muted flex-shrink-0 mx-1" aria-hidden="true" />
-          <div role="group" aria-label="Yaqinda ishlatilgan" className="flex gap-0.5 overflow-x-auto no-scrollbar min-w-0">
+          <div role="group" aria-label={t('em.recent')} className="flex gap-0.5 overflow-x-auto no-scrollbar min-w-0">
             {recents.map((e, i) => (
               <button
                 key={`${e}-${i}`}
@@ -306,8 +309,8 @@ function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
       )}
 
       <Frimousse.Viewport ref={viewportRef} onScroll={onViewportScroll} className="flex-1 overflow-y-auto px-2 pb-2 min-h-0">
-        <Frimousse.Loading className="block py-6 text-center text-xs text-muted">Yuklanmoqda...</Frimousse.Loading>
-        <Frimousse.Empty className="block py-6 text-center text-xs text-muted">Hech narsa topilmadi</Frimousse.Empty>
+        <Frimousse.Loading className="block py-6 text-center text-xs text-muted">{t('em.loading')}</Frimousse.Loading>
+        <Frimousse.Empty className="block py-6 text-center text-xs text-muted">{t('em.empty')}</Frimousse.Empty>
         <Frimousse.List components={listComponents} />
       </Frimousse.Viewport>
     </Frimousse.Root>
@@ -340,11 +343,12 @@ function saveStickerRecent(id) {
 }
 
 function StickerButton({ sticker, onPick }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       title={sticker.label || undefined}
-      aria-label={sticker.label ? `Stiker: ${sticker.label}` : 'Stiker'}
+      aria-label={sticker.label ? t('em.stickerNamed', { name: sticker.label }) : t('em.sticker')}
       onClick={() => onPick(String(sticker.id))}
       className="aspect-square p-1.5 rounded-xl hover:bg-accent-soft transition-transform duration-100 hover:scale-[1.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
@@ -355,6 +359,7 @@ function StickerButton({ sticker, onPick }) {
 }
 
 function StickerBody({ onPickSticker }) {
+  const { t } = useT();
   const { stickerPacks, loadStickers } = useChat();
   const [recents, setRecents] = useState([]);
   const sectionRefs = useRef({});
@@ -425,7 +430,7 @@ function StickerBody({ onPickSticker }) {
             </div>
           </section>
         ))}
-        {stickerPacks.length === 0 && <p className="text-center text-xs text-muted py-6">Stikerlar yo'q</p>}
+        {stickerPacks.length === 0 && <p className="text-center text-xs text-muted py-6">{t('em.noStickers')}</p>}
       </div>
     </div>
   );
@@ -433,8 +438,8 @@ function StickerBody({ onPickSticker }) {
 
 const PANEL_TAB_KEY = 'vocably.emojiPanelTab';
 const PANEL_TABS = [
-  { key: 'emoji', label: 'Emoji', Icon: Smile },
-  { key: 'sticker', label: 'Stikerlar', Icon: Sticker },
+  { key: 'emoji', label: 'ch.emoji', Icon: Smile },
+  { key: 'sticker', label: 'em.tabStickers', Icon: Sticker },
 ];
 
 // Oxirgi ochilgan tab eslab qolinadi (Telegram ham oxirgi bo'limni ochadi).
@@ -461,6 +466,7 @@ function usePanelTab(enabled) {
 // (kursor pozitsiyasi) chaqiruvchi (Composer.jsx) tomonidan hal qilinadi.
 // `onPickSticker(stickerId)` — ixtiyoriy; berilsa pastda "Emoji / Stikerlar" tablari chiqadi.
 export default function EmojiPicker({ onPick, onPickSticker, onClose, triggerRef }) {
+  const { t } = useT();
   const rootRef = useRef(null);
   const headerRefs = useRef({});
   const viewportRef = useRef(null);
@@ -479,7 +485,7 @@ export default function EmojiPicker({ onPick, onPickSticker, onClose, triggerRef
       {onPickSticker && (
         <div
           role="tablist"
-          aria-label="Emoji yoki stiker"
+          aria-label={t('em.tabAria')}
           className="flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1.5 border-t border-border bg-surface"
         >
           {PANEL_TABS.map(({ key, label, Icon }) => (
@@ -493,7 +499,7 @@ export default function EmojiPicker({ onPick, onPickSticker, onClose, triggerRef
                 tab === key ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink hover:bg-bg'
               }`}
             >
-              <Icon size={15} /> {label}
+              <Icon size={15} /> {t(label)}
             </button>
           ))}
         </div>

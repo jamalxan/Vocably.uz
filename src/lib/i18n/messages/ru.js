@@ -1045,6 +1045,17 @@ const ru = {
   'mb.read': "Прочитано",
   'mb.delivered': "Доставлено",
   'mb.sentOk': "Отправлено",
+  'em.search': "Поиск эмодзи...",
+  'em.searchAria': "Поиск эмодзи",
+  'em.skin': "Оттенок кожи",
+  'em.recent': "Недавно использованные",
+  'em.sticker': "Стикер",
+  'em.stickerNamed': "Стикер: {name}",
+  'em.noStickers': "Стикеров нет",
+  'em.loading': "Загрузка...",
+  'em.empty': "Ничего не найдено",
+  'em.tabStickers': "Стикеры",
+  'em.tabAria': "Эмодзи или стикер",
 };
 
 export default ru;

@@ -2,6 +2,16 @@
 // exact: точное совпадение; patterns: шаблоны с {имя} и множественным числом {n#слово|слова|слов} (см. src/lib/i18n/index.js).
 const ru = {
   exact: {
+    // --- Эмодзи (EmojiPicker.jsx)
+    "Smaylik": "Смайлики",
+    "Odamlar": "Люди",
+    "Tabiat": "Природа",
+    "Ovqat": "Еда",
+    "Sayohat": "Путешествия",
+    "Faoliyat": "Активности",
+    "Predmetlar": "Предметы",
+    "Belgilar": "Символы",
+    "Bayroqlar": "Флаги",
     // --- Чат (src/lib/chatConstants.js, presence.js)
     "📷 Rasm": "📷 Фото",
     "🎬 Video": "🎬 Видео",
