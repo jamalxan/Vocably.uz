@@ -2,6 +2,12 @@
 // exact: точное совпадение; patterns: шаблоны с {имя} и множественным числом {n#слово|слова|слов} (см. src/lib/i18n/index.js).
 const ru = {
   exact: {
+    // --- Пустое состояние обогащения (EnrichmentEmptyState)
+    "kamida bitta antonim": "хотя бы один антоним",
+    "kamida bitta misol jumla": "хотя бы один пример предложения",
+    "kamida bitta kollokatsiya": "хотя бы одна коллокация",
+    "so'z oilasi (word family)": "словообразовательная семья (word family)",
+    "kerakli ma'lumot": "нужные данные",
     // --- Ошибки чата (src/app/api/chat, ChatContext)
     "Juda ko'p so'rov. Biroz kuting.": "Слишком много запросов. Подождите немного.",
     "Noto'g'ri foydalanuvchi": "Некорректный пользователь",

@@ -1197,6 +1197,10 @@ const uz = {
   'av.viewPhotos': "Profil rasmlarini ko'rish",
   'av.setPhoto': "Profil rasmini qo'yish",
   'av.newPhotoAria': "Yangi profil rasmi qo'yish",
+  'en.title': "Bu rejim uchun so'zlar hali tayyor emas",
+  'en.text': "Bu mashq uchun so'zlarda <b>{field}</b> bo'lishi kerak — bu esa AI bilan boyitilgandan keyin paydo bo'ladi.",
+  'en.cta': "Jadvalga o'tib, so'zlarni boyitish",
+  'en.default': "kerakli ma'lumot",
 };
 
 export default uz;
