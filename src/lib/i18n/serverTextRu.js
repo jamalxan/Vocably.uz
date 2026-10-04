@@ -2,6 +2,14 @@
 // exact: точное совпадение; patterns: шаблоны с {имя} и множественным числом {n#слово|слова|слов} (см. src/lib/i18n/index.js).
 const ru = {
   exact: {
+    // --- Части речи (soz-oilasi)
+    "ot (noun)": "существительное (noun)",
+    "fe'l (verb)": "глагол (verb)",
+    "sifat (adjective)": "прилагательное (adjective)",
+    "ravish (adverb)": "наречие (adverb)",
+    "ibora (phrase)": "выражение (phrase)",
+    "idioma (idiom)": "идиома (idiom)",
+    "fe'lli ibora (phrasal verb)": "фразовый глагол (phrasal verb)",
     // --- Пустое состояние обогащения (EnrichmentEmptyState)
     "kamida bitta antonim": "хотя бы один антоним",
     "kamida bitta misol jumla": "хотя бы один пример предложения",

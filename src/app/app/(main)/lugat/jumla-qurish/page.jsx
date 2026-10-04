@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useT } from '@/context/LocaleContext';
 import { RotateCcw } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import EnrichmentEmptyState from '@/components/shared/EnrichmentEmptyState';
@@ -37,6 +38,7 @@ const TOKEN_CLASS =
 
 function JumlaQurishGame() {
   const { activeCategory, reviewWord } = useApp();
+  const { t, ts } = useT();
   const [queue] = useState(() => buildQueue(activeCategory.words || []));
   const [idx, setIdx] = useState(0);
   const [placed, setPlaced] = useState([]);
@@ -91,7 +93,7 @@ function JumlaQurishGame() {
     <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
-        title="Yakunlandi!"
+        title={t('lg.completed')}
         score={score}
         total={queue.length}
         onClose={() => setFinished(false)}
@@ -107,10 +109,10 @@ function JumlaQurishGame() {
       <div className="w-full max-w-lg bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-muted mb-4">
           <span>{idx + 1} / {queue.length}</span>
-          <span>To'g'ri: {score}</span>
+          <span>{t('lg.scoreSingle', { n: score })}</span>
         </div>
         <p className="text-[11px] sm:text-xs text-muted text-center mb-2 uppercase tracking-wide break-words">
-          "{current.word.word}" so'zi bilan jumla yig'ing
+          {t('vm.buildSentence', { w: current.word.word })}
         </p>
 
         <div
@@ -118,7 +120,7 @@ function JumlaQurishGame() {
             checked === true ? 'border-success/40 bg-success-soft' : checked === false ? 'border-danger/40 bg-danger-soft' : 'border-border'
           }`}
         >
-          {placed.length === 0 && <span className="text-xs text-muted">So'zlarni pastdan bosib joylashtiring...</span>}
+          {placed.length === 0 && <span className="text-xs text-muted">{t('vm.tapWords')}</span>}
           {placed.map((t) => (
             <button
               key={t.id}
@@ -145,7 +147,7 @@ function JumlaQurishGame() {
 
         {checked === false && (
           <p className="text-xs text-muted mb-4 text-center">
-            To'g'ri: <span className="font-semibold text-accent">{current.sentence}</span>
+            {t('vm.correctIs')} <span className="font-semibold text-accent">{current.sentence}</span>
           </p>
         )}
 
@@ -154,7 +156,7 @@ function JumlaQurishGame() {
             <button
               onClick={reset}
               className="px-3.5 py-2.5 bg-surface hover:bg-bg border border-border text-muted rounded-lg text-sm"
-              aria-label="Qayta boshlash"
+              aria-label={t('vm.restartAria')}
             >
               <RotateCcw size={16} />
             </button>
@@ -165,7 +167,7 @@ function JumlaQurishGame() {
               disabled={bank.length > 0}
               className="flex-1 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
             >
-              Tekshirish
+              {t('q.check')}
             </button>
           ) : (
             <button
@@ -173,7 +175,7 @@ function JumlaQurishGame() {
               onClick={next}
               className="flex-1 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
             >
-              Keyingi →
+              {t('lg.ls.next')}
             </button>
           )}
         </div>

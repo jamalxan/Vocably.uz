@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useT } from '@/context/LocaleContext';
 import { useApp } from '@/context/AppContext';
 import EnrichmentEmptyState from '@/components/shared/EnrichmentEmptyState';
 import SessionCompleteCard from '@/components/shared/SessionCompleteCard';
@@ -36,6 +37,7 @@ export default function KollokatsiyaPage() {
 
 function KollokatsiyaQuiz() {
   const { activeCategory, reviewWord } = useApp();
+  const { t, ts } = useT();
   const [questions] = useState(() => buildQuestions(activeCategory.words || []));
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -69,7 +71,7 @@ function KollokatsiyaQuiz() {
     <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
-        title="Yakunlandi!"
+        title={t('lg.completed')}
         score={score}
         total={questions.length}
         onClose={() => setFinished(false)}
@@ -83,7 +85,7 @@ function KollokatsiyaQuiz() {
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-muted mb-4">
           <span>{idx + 1} / {questions.length}</span>
-          <span>To'g'ri: {score}</span>
+          <span>{t('lg.scoreSingle', { n: score })}</span>
         </div>
         <p className="text-xl font-bold text-ink font-word mb-6 text-center break-words">{current.prompt}</p>
         <div className="space-y-2 mb-4">
@@ -109,7 +111,7 @@ function KollokatsiyaQuiz() {
             onClick={next}
             className="w-full bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
-            Keyingi →
+            {t('lg.ls.next')}
           </button>
         )}
       </div>

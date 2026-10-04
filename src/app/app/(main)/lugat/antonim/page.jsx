@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useT } from '@/context/LocaleContext';
 import { useApp } from '@/context/AppContext';
 import EnrichmentEmptyState from '@/components/shared/EnrichmentEmptyState';
 import SessionCompleteCard from '@/components/shared/SessionCompleteCard';
@@ -35,6 +36,7 @@ export default function AntonimPage() {
 
 function AntonimQuiz() {
   const { activeCategory, reviewWord } = useApp();
+  const { t, ts } = useT();
   const [questions] = useState(() => buildQuestions(activeCategory.words || []));
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -108,7 +110,7 @@ function AntonimQuiz() {
     <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
-        title="Jang tugadi!"
+        title={t('vm.battleOver')}
         score={score}
         total={questions.length}
         onClose={() => {
@@ -120,7 +122,7 @@ function AntonimQuiz() {
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-muted mb-3">
           <span>{idx + 1} / {questions.length}</span>
-          <span>To'g'ri: {score}</span>
+          <span>{t('lg.scoreSingle', { n: score })}</span>
         </div>
         <div className="h-1.5 bg-bg rounded-full overflow-hidden mb-5">
           <div
@@ -128,7 +130,7 @@ function AntonimQuiz() {
             style={{ width: `${timePct}%` }}
           />
         </div>
-        <p className="text-[11px] sm:text-xs text-muted text-center uppercase tracking-wide mb-1">Qarama-qarshisini toping</p>
+        <p className="text-[11px] sm:text-xs text-muted text-center uppercase tracking-wide mb-1">{t('vm.findOpposite')}</p>
         <p className="text-xl font-bold text-ink font-word mb-6 text-center break-words">{current.word.word}</p>
         <div className="space-y-2">
           {current.options.map((opt, i) => {
@@ -154,7 +156,7 @@ function AntonimQuiz() {
             onClick={restart}
             className="w-full mt-4 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
           >
-            Qayta boshlash
+            {t('lg.restart')}
           </button>
         )}
       </div>

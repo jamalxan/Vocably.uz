@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useT } from '@/context/LocaleContext';
 import { useApp } from '@/context/AppContext';
 import { normalizeForCompare } from '@/lib/textCompare';
 import EnrichmentEmptyState from '@/components/shared/EnrichmentEmptyState';
@@ -29,6 +30,7 @@ export default function ClozePage() {
 
 function ClozeQuiz() {
   const { activeCategory, reviewWord } = useApp();
+  const { t, ts } = useT();
   const [queue] = useState(() => buildQueue(activeCategory.words || []));
   const [idx, setIdx] = useState(0);
   const [input, setInput] = useState('');
@@ -75,7 +77,7 @@ function ClozeQuiz() {
     <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
-        title="Yakunlandi!"
+        title={t('lg.completed')}
         score={score}
         total={queue.length}
         onClose={() => setFinished(false)}
@@ -90,17 +92,17 @@ function ClozeQuiz() {
       <form onSubmit={handleSubmit} className="w-full max-w-lg bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-muted mb-4">
           <span>{idx + 1} / {queue.length}</span>
-          <span>To'g'ri: {score}</span>
+          <span>{t('lg.scoreSingle', { n: score })}</span>
         </div>
         <p className="text-base sm:text-lg text-ink text-center leading-relaxed mb-6">{current.blanked}</p>
         <input
           ref={inputRef}
           type="text"
-          aria-label="Yetishmayotgan so'z"
+          aria-label={t('vm.blankAria')}
           disabled={checked}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Yetishmayotgan so'zni yozing..."
+          placeholder={t('vm.blankPh')}
           className={`w-full px-3 py-2.5 border rounded-lg text-base md:text-sm outline-none mb-4 text-center font-word ${
             checked
               ? answerStateClass(isCorrect)
@@ -109,14 +111,14 @@ function ClozeQuiz() {
         />
         {checked && !isCorrect && (
           <p className="text-xs text-muted mb-4 text-center">
-            To'g'ri javob: <span className="font-bold text-accent">{current.answer}</span>
+            {t('vm.correctAnswerIs')} <span className="font-bold text-accent">{current.answer}</span>
           </p>
         )}
         <button
           type="submit"
           className="w-full bg-accent hover:bg-accent-hover text-on-accent font-semibold py-2.5 rounded-lg text-sm transition-colors"
         >
-          {checked ? 'Keyingi →' : 'Tekshirish'}
+          {checked ? t('lg.ls.next') : t('q.check')}
         </button>
       </form>
     </div>

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useT } from '@/context/LocaleContext';
 import { useApp } from '@/context/AppContext';
 import EnrichmentEmptyState from '@/components/shared/EnrichmentEmptyState';
 import SessionCompleteCard from '@/components/shared/SessionCompleteCard';
@@ -46,6 +47,7 @@ export default function SozOilasiPage() {
 
 function SozOilasiQuiz() {
   const { activeCategory } = useApp();
+  const { t, ts } = useT();
   const [questions] = useState(() => buildQuestions(activeCategory.words || []));
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -75,7 +77,7 @@ function SozOilasiQuiz() {
     <div className="flex flex-col items-center">
       <SessionCompleteCard
         open={finished}
-        title="Yakunlandi!"
+        title={t('lg.completed')}
         score={score}
         total={questions.length}
         onClose={() => setFinished(false)}
@@ -89,11 +91,11 @@ function SozOilasiQuiz() {
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
         <div className="flex justify-between items-center text-xs text-muted mb-4">
           <span>{idx + 1} / {questions.length}</span>
-          <span>To'g'ri: {score}</span>
+          <span>{t('lg.scoreSingle', { n: score })}</span>
         </div>
-        <p className="text-[11px] sm:text-xs text-muted text-center mb-1 break-words">{current.word.word} so'z oilasidan</p>
+        <p className="text-[11px] sm:text-xs text-muted text-center mb-1 break-words">{t('vm.familyOf', { w: current.word.word })}</p>
         <p className="text-xl font-bold text-ink font-word mb-1 text-center break-words">{current.form}</p>
-        <p className="text-xs text-muted text-center mb-6">bu qanday so'z turkumi?</p>
+        <p className="text-xs text-muted text-center mb-6">{t('vm.whichPos')}</p>
         <div className="space-y-2 mb-4">
           {current.options.map((opt, i) => {
             const isCorrectOpt = opt === current.correctPos;
@@ -106,7 +108,7 @@ function SozOilasiQuiz() {
                 disabled={!!selected}
                 className={`${OPTION_BUTTON_CLASS} ${style}`}
               >
-                {POS_LABEL[opt] || opt}
+                {POS_LABEL[opt] ? ts(POS_LABEL[opt]) : opt}
               </button>
             );
           })}

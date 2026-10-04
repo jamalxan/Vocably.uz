@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import { useT } from '@/context/LocaleContext';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Volume2, Sparkles, Loader2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
@@ -20,6 +21,7 @@ export default function SozPage() {
   const { wordId } = useParams();
   const router = useRouter();
   const { categories, enrichWord } = useApp();
+  const { t, ts } = useT();
   const [enriching, setEnriching] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,9 +45,9 @@ export default function SozPage() {
   if (!found) {
     return (
       <div className="w-full max-w-2xl mx-auto text-center py-16">
-        <p className="text-sm text-muted mb-4">So'z topilmadi.</p>
+        <p className="text-sm text-muted mb-4">{t('vm.wordNotFound')}</p>
         <Button variant="secondary" onClick={() => router.push('/app/lugat/jadval')}>
-          Jadvalga qaytish
+          {t('vm.backToTable')}
         </Button>
       </div>
     );
@@ -61,7 +63,7 @@ export default function SozPage() {
   return (
     <div className="w-full max-w-2xl mx-auto">
       <div className="flex items-center gap-2 mb-5">
-        <IconButton icon={ArrowLeft} label="Orqaga" variant="ghost" onClick={goBack} />
+        <IconButton icon={ArrowLeft} label={t('vm.back')} variant="ghost" onClick={goBack} />
         <span className="text-xs text-muted min-w-0 truncate" title={category.name}>{category.name}</span>
       </div>
 
@@ -71,7 +73,7 @@ export default function SozPage() {
             <h1 className="text-2xl sm:text-4xl font-bold text-ink font-word break-words">{word.word}</h1>
             {word.pronunciation && <p className="text-sm text-muted italic mt-1">{word.pronunciation}</p>}
           </div>
-          <IconButton icon={Volume2} label="Talaffuzni eshitish" variant="accent" className="flex-shrink-0" onClick={() => speakText(word.word)} />
+          <IconButton icon={Volume2} label={t('wp.listen')} variant="accent" className="flex-shrink-0" onClick={() => speakText(word.word)} />
         </div>
 
         {(e.pos || e.cefr || e.register) && (
@@ -83,13 +85,13 @@ export default function SozPage() {
         )}
 
         <div className="mt-5">
-          <SectionLabel>Tarjima</SectionLabel>
+          <SectionLabel>{t('vm.sec.translation')}</SectionLabel>
           <p className="text-base text-ink">{word.syns.join(', ')}</p>
         </div>
 
         {e.definitionEn && (
           <div className="mt-4">
-            <SectionLabel>Ta'rif</SectionLabel>
+            <SectionLabel>{t('vm.sec.definition')}</SectionLabel>
             <p className="text-sm text-ink">{e.definitionEn}</p>
             {e.definitionUz && <p className="text-sm text-muted mt-1">{e.definitionUz}</p>}
           </div>
@@ -97,7 +99,7 @@ export default function SozPage() {
 
         {e.examples?.length > 0 && (
           <div className="mt-4">
-            <SectionLabel>Misollar</SectionLabel>
+            <SectionLabel>{t('vm.sec.examples')}</SectionLabel>
             <div className="space-y-2">
               {e.examples.map((ex, i) => (
                 <div key={i} className="bg-bg rounded-lg p-3 text-sm">
@@ -111,7 +113,7 @@ export default function SozPage() {
 
         {e.collocations?.length > 0 && (
           <div className="mt-4">
-            <SectionLabel>Kollokatsiya</SectionLabel>
+            <SectionLabel>{t('vm.sec.collocations')}</SectionLabel>
             <div className="flex flex-wrap gap-1.5">
               {e.collocations.map((c, i) => (
                 <Badge key={i} tone="neutral">{c}</Badge>
@@ -122,7 +124,7 @@ export default function SozPage() {
 
         {e.wordFamily?.length > 0 && (
           <div className="mt-4">
-            <SectionLabel>So'z oilasi</SectionLabel>
+            <SectionLabel>{t('vm.sec.family')}</SectionLabel>
             <p className="text-sm text-ink">{e.wordFamily.map((f) => `${f.form} (${f.pos})`).join(' · ')}</p>
           </div>
         )}
@@ -131,13 +133,13 @@ export default function SozPage() {
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {e.synonymsEn?.length > 0 && (
               <div>
-                <SectionLabel>Sinonimlar</SectionLabel>
+                <SectionLabel>{t('vm.sec.synonyms')}</SectionLabel>
                 <p className="text-sm text-ink">{e.synonymsEn.join(', ')}</p>
               </div>
             )}
             {e.antonyms?.length > 0 && (
               <div>
-                <SectionLabel>Antonimlar</SectionLabel>
+                <SectionLabel>{t('vm.sec.antonyms')}</SectionLabel>
                 <p className="text-sm text-ink">{e.antonyms.join(', ')}</p>
               </div>
             )}
@@ -146,14 +148,14 @@ export default function SozPage() {
 
         {e.mnemonicUz && (
           <div className="mt-4 bg-accent-soft rounded-lg p-3">
-            <SectionLabel className="text-accent mb-1">Mnemonika</SectionLabel>
+            <SectionLabel className="text-accent mb-1">{t('vm.sec.mnemonic')}</SectionLabel>
             <p className="text-sm text-ink">{e.mnemonicUz}</p>
           </div>
         )}
 
         {e.commonMistakes?.length > 0 && (
           <div className="mt-4">
-            <SectionLabel>Ko'p uchraydigan xatolar</SectionLabel>
+            <SectionLabel>{t('vm.sec.mistakes')}</SectionLabel>
             <ul className="text-sm text-ink list-disc list-inside space-y-0.5">
               {e.commonMistakes.map((m, i) => (
                 <li key={i}>{m}</li>
@@ -167,7 +169,7 @@ export default function SozPage() {
 
       <Button onClick={handleEnrich} disabled={enriching} className="w-full">
         {enriching ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-        {enriching ? 'Boyitilmoqda...' : hasEnrichment ? 'Qayta boyitish (AI)' : "AI bilan boyitish"}
+        {enriching ? t('vm.enriching') : hasEnrichment ? t('vm.reenrich') : t('vm.enrich')}
       </Button>
     </div>
   );
