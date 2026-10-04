@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import { useT } from '@/context/LocaleContext';
 import { fetchAttemptResult } from '../state/attemptsApi';
 import ReviewScreen from './ReviewScreen';
 // recharts (~100 kB) faqat yakuniy natija ekranida kerak — imtihon sahifasining boshlang'ich bundle'iga kirmasin.
@@ -32,6 +33,7 @@ export interface SectionResultProps {
 }
 
 export default function SectionResult({ attemptId, result, sectionKey, label }: SectionResultProps) {
+  const { t } = useT();
   const [reviewDetail, setReviewDetail] = useState<AttemptReviewDetail | null>(null);
   const [loadingReview, setLoadingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
@@ -45,7 +47,7 @@ export default function SectionResult({ attemptId, result, sectionKey, label }: 
       const { detail } = await fetchAttemptResult(attemptId);
       setReviewDetail(detail);
     } catch {
-      setReviewError("Ko'rib chiqishni yuklab bo'lmadi.");
+      setReviewError(t('ex.reviewErr'));
     } finally {
       setLoadingReview(false);
     }
@@ -56,9 +58,9 @@ export default function SectionResult({ attemptId, result, sectionKey, label }: 
   if (!result || !section) {
     return (
       <div className="p-8 text-center text-sm text-muted">
-        <p>Natija topilmadi.</p>
+        <p>{t('rs.notFound')}</p>
         <Link href="/app" className="inline-flex items-center min-h-11 mt-2 text-sm font-semibold text-accent hover:underline">
-          Bosh sahifaga qaytish
+          {t('rs.home')}
         </Link>
       </div>
     );
@@ -66,16 +68,16 @@ export default function SectionResult({ attemptId, result, sectionKey, label }: 
 
   return (
     <div className="max-w-md mx-auto p-6 sm:p-10 text-center">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label} natijasi</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t('rs.sectionResult', { label })}</p>
       <p className="text-5xl font-bold text-brand-text mt-2 tabular-nums">{section.band.toFixed(1)}</p>
       <p className="text-sm text-muted mt-1 tabular-nums">
-        {section.raw} / {result.perQuestion.length} to&apos;g&apos;ri
+        {t('rs.correct', { raw: section.raw, total: result.perQuestion.length })}
       </p>
 
       {reviewError && <p className="text-xs text-danger mt-3">{reviewError}</p>}
       <Button type="button" onClick={openReview} disabled={loadingReview} className="mt-5">
         {loadingReview && <Loader2 size={14} className="animate-spin" />}
-        Javoblarni ko&apos;rib chiqish
+        {t('rs.review')}
       </Button>
 
       <ResultAnalytics perQuestion={result.perQuestion} metric={sectionKey} />

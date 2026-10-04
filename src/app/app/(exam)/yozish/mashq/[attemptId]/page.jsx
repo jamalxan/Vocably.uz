@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 import WritingPracticeSection from '@/features/exam/writing/WritingPracticeSection';
 import WritingResult from '@/features/exam/review/WritingResult';
@@ -10,13 +11,14 @@ import WritingResult from '@/features/exam/review/WritingResult';
 export default function YozishMashqAttemptPage() {
   const params = useParams();
   const { isAuthed } = useApp();
+  const { t } = useT();
   const [result, setResult] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
   const attemptId = params.attemptId;
 
   if (!isAuthed) {
-    return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
+    return <p className="p-8 text-sm text-muted">{t('ex.login')}</p>;
   }
 
   if (submitted) {
@@ -29,13 +31,13 @@ export default function YozishMashqAttemptPage() {
             href="/app/yozish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-accent hover:underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Yana mashq qilish
+            {t('ex.practiceMore')}
           </Link>
           <Link
             href="/app/yozish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-muted hover:text-ink font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Writing sahifasiga
+            {t('ex.toSkill', { skill: 'Writing' })}
           </Link>
         </div>
       </div>

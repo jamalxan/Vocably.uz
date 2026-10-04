@@ -1,5 +1,6 @@
 'use client';
 import type { WritingScore } from '@/lib/exam/types';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §8.5/§11.2 — Writing bahosi kartasi. Ikkala joyda
 // ishlatiladi: WritingResult.tsx (submit'dan darhol keyin) va
@@ -24,6 +25,7 @@ export interface WritingScoreCardProps {
 }
 
 export default function WritingScoreCard({ title, score, essayText }: WritingScoreCardProps) {
+  const { t } = useT();
   return (
     <div className="bg-surface border border-border rounded-xl p-4">
       <div className="flex items-center justify-between mb-2">
@@ -32,7 +34,7 @@ export default function WritingScoreCard({ title, score, essayText }: WritingSco
       </div>
       {score.underMinWords && (
         <p className="text-xs text-danger mb-2">
-          So&apos;z soni talab qilingan minimaldan kam — Task Achievement bahosi shu sabab jarimalangan.
+          {t('rs.underMin')}
         </p>
       )}
       <p className="text-sm text-muted mb-3">{score.feedbackUz}</p>
@@ -44,7 +46,7 @@ export default function WritingScoreCard({ title, score, essayText }: WritingSco
       </div>
       {score.corrections.length > 0 && (
         <div className="mt-3 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tuzatishlar</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t('rs.corrections')}</p>
           {score.corrections.map((c, i) => (
             <div key={i} className="text-xs bg-bg-sunken rounded-lg p-2.5 break-words">
               <p>
@@ -58,14 +60,14 @@ export default function WritingScoreCard({ title, score, essayText }: WritingSco
       {essayText && (
         <details className="mt-3">
           <summary className="min-h-10 -my-2 py-2 flex items-center text-xs font-semibold uppercase tracking-wide text-muted cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-            Insho matni
+            {t('rs.essay')}
           </summary>
           <p className="text-sm text-ink mt-2 whitespace-pre-wrap">{essayText}</p>
         </details>
       )}
       {score.graderModel && (
         <p className="mt-3 text-[11px] text-muted tabular-nums">
-          AI baholadi: {score.graderModel}
+          {t('rs.gradedBy', { model: score.graderModel })}
           {score.graderVersion ? ` · v${score.graderVersion}` : ''}
         </p>
       )}

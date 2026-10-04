@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 import ListeningPracticeSection from '@/features/exam/listening/ListeningPracticeSection';
 import ListeningResult from '@/features/exam/review/ListeningResult';
@@ -10,13 +11,14 @@ import ListeningResult from '@/features/exam/review/ListeningResult';
 export default function TinglashMashqAttemptPage() {
   const params = useParams();
   const { isAuthed } = useApp();
+  const { t } = useT();
   const [result, setResult] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
   const attemptId = params.attemptId;
 
   if (!isAuthed) {
-    return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
+    return <p className="p-8 text-sm text-muted">{t('ex.login')}</p>;
   }
 
   if (submitted) {
@@ -29,13 +31,13 @@ export default function TinglashMashqAttemptPage() {
             href="/app/tinglash"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-accent hover:underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Yana mashq qilish
+            {t('ex.practiceMore')}
           </Link>
           <Link
             href="/app/tinglash"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-muted hover:text-ink font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Listening sahifasiga
+            {t('ex.toSkill', { skill: 'Listening' })}
           </Link>
         </div>
       </div>

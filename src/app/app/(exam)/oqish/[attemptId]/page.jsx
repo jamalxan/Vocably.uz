@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 import ReadingSection from '@/features/exam/reading/ReadingSection';
 import ReadingResult from '@/features/exam/review/ReadingResult';
@@ -16,13 +17,14 @@ function candidateIdFrom(attemptId) {
 export default function OqishAttemptPage() {
   const params = useParams();
   const { isAuthed, displayName } = useApp();
+  const { t } = useT();
   const [result, setResult] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
   const attemptId = params.attemptId;
 
   if (!isAuthed) {
-    return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
+    return <p className="p-8 text-sm text-muted">{t('ex.login')}</p>;
   }
 
   if (submitted) {
@@ -35,13 +37,13 @@ export default function OqishAttemptPage() {
             href="/app/oqish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-accent hover:underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Yangi urinish boshlash
+            {t('ex.newAttempt')}
           </Link>
           <Link
             href="/app/oqish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-muted hover:text-ink font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Reading sahifasiga
+            {t('ex.toSkill', { skill: 'Reading' })}
           </Link>
         </div>
       </div>
@@ -51,7 +53,7 @@ export default function OqishAttemptPage() {
   return (
     <ReadingSection
       attemptId={attemptId}
-      candidateName={displayName || 'Foydalanuvchi'}
+      candidateName={displayName || t('ex.user')}
       candidateId={candidateIdFrom(attemptId)}
       onSubmitted={(r) => {
         setResult(r);

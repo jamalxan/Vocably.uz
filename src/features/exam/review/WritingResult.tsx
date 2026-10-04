@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { RotateCcw, Loader2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import { useT } from '@/context/LocaleContext';
 import { gradeWriting } from '../state/attemptsApi';
 import WritingScoreCard from './WritingScoreCard';
 import type { AttemptResult } from '@/lib/exam/types';
@@ -18,6 +19,7 @@ export interface WritingResultProps {
 }
 
 export default function WritingResult({ attemptId, result, onRegraded }: WritingResultProps) {
+  const { t } = useT();
   const [regrading, setRegrading] = useState(false);
   const [error, setError] = useState('');
 
@@ -28,7 +30,7 @@ export default function WritingResult({ attemptId, result, onRegraded }: Writing
       const { result: graded } = await gradeWriting(attemptId);
       onRegraded(graded);
     } catch {
-      setError("Baholab bo'lmadi — AI vaqtincha band bo'lishi mumkin. Yana urinib ko'ring.");
+      setError(t('rs.writingErr'));
     } finally {
       setRegrading(false);
     }
@@ -40,13 +42,12 @@ export default function WritingResult({ attemptId, result, onRegraded }: Writing
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">Writing</p>
         <p className="text-5xl font-bold text-brand-text mt-2">—</p>
         <p className="text-sm text-muted mt-3">
-          Insholaringiz saqlandi{result?.timeSpentSec ? ` (${Math.round(result.timeSpentSec / 60)} daqiqada)` : ''}, lekin AI
-          baholashda xatolik yuz berdi.
+          {t('rs.saved', { time: result?.timeSpentSec ? t('rs.inMin', { n: Math.round(result.timeSpentSec / 60) }) : '' })}
         </p>
         {error && <p className="text-xs text-danger mt-2">{error}</p>}
         <Button type="button" onClick={regrade} disabled={regrading} className="mt-4">
           {regrading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-          Qayta baholash
+          {t('rs.regrade')}
         </Button>
       </div>
     );
@@ -57,10 +58,10 @@ export default function WritingResult({ attemptId, result, onRegraded }: Writing
   return (
     <div className="max-w-2xl mx-auto p-6 sm:p-10 space-y-5">
       <div className="text-center mb-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Writing natijasi</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t('rs.sectionResult', { label: 'Writing' })}</p>
         <p className="text-5xl font-bold text-brand-text mt-2 tabular-nums">{writing.band.toFixed(1)}</p>
         <p className="text-[11px] text-muted mt-2 max-w-sm mx-auto">
-          Bu AI taxminiy bahosi, rasmiy IELTS bali emas.
+          {t('rs.aiEstimate')}
         </p>
       </div>
 

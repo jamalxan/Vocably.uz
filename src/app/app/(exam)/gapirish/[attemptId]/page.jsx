@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 import SpeakingSection from '@/features/exam/speaking/SpeakingSection';
 import SpeakingResult from '@/features/exam/review/SpeakingResult';
@@ -15,13 +16,14 @@ function candidateIdFrom(attemptId) {
 export default function GapirishAttemptPage() {
   const params = useParams();
   const { isAuthed, displayName } = useApp();
+  const { t } = useT();
   const [result, setResult] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
   const attemptId = params.attemptId;
 
   if (!isAuthed) {
-    return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
+    return <p className="p-8 text-sm text-muted">{t('ex.login')}</p>;
   }
 
   if (submitted) {
@@ -34,13 +36,13 @@ export default function GapirishAttemptPage() {
             href="/app/gapirish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-accent hover:underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Yangi urinish boshlash
+            {t('ex.newAttempt')}
           </Link>
           <Link
             href="/app/gapirish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-muted hover:text-ink font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Speaking sahifasiga
+            {t('ex.toSkill', { skill: 'Speaking' })}
           </Link>
         </div>
       </div>
@@ -50,7 +52,7 @@ export default function GapirishAttemptPage() {
   return (
     <SpeakingSection
       attemptId={attemptId}
-      candidateName={displayName || 'Foydalanuvchi'}
+      candidateName={displayName || t('ex.user')}
       candidateId={candidateIdFrom(attemptId)}
       onSubmitted={(r) => {
         setResult(r);

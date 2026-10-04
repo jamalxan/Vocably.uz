@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import ExamBackLink from '@/features/exam/shell/ExamBackLink';
 import ReadingSection from '@/features/exam/reading/ReadingSection';
 import ReviewScreen from '@/features/exam/review/ReviewScreen';
@@ -17,6 +18,7 @@ import { fetchAttemptResult } from '@/features/exam/state/attemptsApi';
 export default function OqishMashqAttemptPage() {
   const params = useParams();
   const { isAuthed, displayName } = useApp();
+  const { t } = useT();
   const [reviewDetail, setReviewDetail] = useState(null);
   const [loadingReview, setLoadingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
@@ -24,7 +26,7 @@ export default function OqishMashqAttemptPage() {
   const attemptId = params.attemptId;
 
   if (!isAuthed) {
-    return <p className="p-8 text-sm text-muted">Avval tizimga kiring.</p>;
+    return <p className="p-8 text-sm text-muted">{t('ex.login')}</p>;
   }
 
   const handleSubmitted = async () => {
@@ -34,7 +36,7 @@ export default function OqishMashqAttemptPage() {
       const { detail } = await fetchAttemptResult(attemptId);
       setReviewDetail(detail);
     } catch {
-      setReviewError("Ko'rib chiqishni yuklab bo'lmadi.");
+      setReviewError(t('ex.reviewErr'));
     } finally {
       setLoadingReview(false);
     }
@@ -50,13 +52,13 @@ export default function OqishMashqAttemptPage() {
             href="/app/oqish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-accent hover:underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Yana mashq qilish
+            {t('ex.practiceMore')}
           </Link>
           <Link
             href="/app/oqish"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-muted hover:text-ink font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            Reading sahifasiga
+            {t('ex.toSkill', { skill: 'Reading' })}
           </Link>
         </div>
       </div>
@@ -68,14 +70,14 @@ export default function OqishMashqAttemptPage() {
       <div className="p-8 text-center space-y-3">
         <p className="text-sm text-danger">{reviewError}</p>
         <Link href="/app/oqish" className="inline-flex items-center min-h-11 px-3 text-sm text-accent hover:underline font-semibold">
-          Reading sahifasiga
+          {t('ex.toSkill', { skill: 'Reading' })}
         </Link>
       </div>
     );
   }
 
   if (loadingReview) {
-    return <div className="p-8 text-center text-sm text-muted">Baholanmoqda...</div>;
+    return <div className="p-8 text-center text-sm text-muted">{t('ex.grading')}</div>;
   }
 
   // 2026-09-29: mashq ham haqiqiy imtihon interfeysida (split panel, matnni
