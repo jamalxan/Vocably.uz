@@ -1,4 +1,5 @@
 'use client';
+import { useT } from '@/context/LocaleContext';
 import { useEffect, useRef, useState } from 'react';
 import { Video, Square, X, SwitchCamera } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
@@ -8,6 +9,7 @@ const MAX_SECONDS = 60; // Telegram uslubidagi qisqa "video xabar" — 1 daqiqag
 
 function VideoRecorderPanel({ onRecorded, onCancel }) {
   const { sendTyping } = useChat();
+  const { t, locale } = useT();
   const [seconds, setSeconds] = useState(0);
   const [facing, setFacing] = useState('user');
   // Boshlang'ich taxmin: teginish ekranli (deyarli barcha telefon/planshet)
@@ -122,7 +124,7 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
           })
           .catch(() => {});
       } catch (err) {
-        alert(mediaErrorMessage(err, 'Kamera/mikrofon'));
+        alert(mediaErrorMessage(err, 'Kamera/mikrofon', locale));
         onCancel();
       }
     })();
@@ -210,7 +212,7 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
         // qoladi, lekin foydalanuvchi hech bo'lmasa asosiy xatoni ko'radi
         // va "Bekor qilish" bilan chiqa oladi.
       }
-      alert(mediaErrorMessage(err, 'Kamera'));
+      alert(mediaErrorMessage(err, 'Kamera', locale));
     } finally {
       flippingRef.current = false;
       setFlipping(false);
@@ -258,8 +260,8 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
           type="button"
           onClick={cancel}
           disabled={flipping}
-          title="Bekor qilish"
-          aria-label="Video yozishni bekor qilish"
+          title={t('ch.cancel')}
+          aria-label={t('ch.videoCancelAria')}
           className="p-3 bg-on-primary/10 hover:bg-on-primary/20 disabled:opacity-40 text-on-primary rounded-full transition-colors touch-manipulation"
         >
           <X size={20} />
@@ -269,8 +271,8 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
             type="button"
             onClick={flipCamera}
             disabled={flipping}
-            title="Kamerani almashtirish (yozuv qaytadan boshlanadi)"
-            aria-label={facing === 'user' ? 'Orqa kameraga o‘tish' : 'Old kameraga o‘tish'}
+            title={t('ch.flipTitle')}
+            aria-label={facing === 'user' ? t('ch.toRear') : t('ch.toFront')}
             className="p-3 bg-on-primary/10 hover:bg-on-primary/20 text-on-primary rounded-full transition-colors touch-manipulation disabled:opacity-40"
           >
             <SwitchCamera size={20} className={flipping ? 'animate-spin' : ''} />
@@ -280,8 +282,8 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
           type="button"
           onClick={stop}
           disabled={flipping}
-          title="Yuborish"
-          aria-label="Yozuvni tugatib yuborish"
+          title={t('ch.forward')}
+          aria-label={t('ch.finishRecAria')}
           className="p-4 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent rounded-full transition-colors touch-manipulation"
         >
           <Square size={22} />
@@ -292,14 +294,15 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
 }
 
 export default function VideoRecorderButton({ onRecorded }) {
+  const { t } = useT();
   const [active, setActive] = useState(false);
   return (
     <>
       <button
         type="button"
         onClick={() => setActive(true)}
-        title="Video xabar"
-        aria-label="Video xabar yozish"
+        title={t('ch.videoMsg')}
+        aria-label={t('ch.videoRecordAria')}
         className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
       >
         <Video size={18} />

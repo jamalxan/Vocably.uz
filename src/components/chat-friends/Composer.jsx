@@ -1,4 +1,5 @@
 'use client';
+import { useT } from '@/context/LocaleContext';
 import { useEffect, useRef, useState } from 'react';
 import { Send, Paperclip, Loader2, X, Pencil, Reply, FileText } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
@@ -15,6 +16,7 @@ const MAX_SIZE = { image: 10 * 1024 * 1024, video: 60 * 1024 * 1024, file: 25 * 
 const MAX_TEXTAREA_HEIGHT = 120;
 
 export default function Composer() {
+  const { t, ts } = useT();
   const {
     sendMessage,
     uploadAndSend,
@@ -105,7 +107,7 @@ export default function Composer() {
       if (!clean) return;
       setSending(true);
       const res = await editMessage(editingMessage.id, clean);
-      if (res.error) alert(res.error);
+      if (res.error) alert(ts(res.error));
       else setText('');
       setSending(false);
       return;
@@ -127,7 +129,7 @@ export default function Composer() {
         setPendingAttachment((cur) =>
           cur || { file, type, previewUrl: type !== 'file' ? URL.createObjectURL(file) : null }
         );
-        alert(res.error);
+        alert(ts(res.error));
       }
       setSending(false);
       return;
@@ -141,7 +143,7 @@ export default function Composer() {
     setText('');
     textInputRef.current?.focus();
     sendMessage({ type: 'text', text: clean }).then((res) => {
-      if (res?.error && res.error !== 'Tarmoq xatoligi') alert(res.error);
+      if (res?.error && res.error !== 'Tarmoq xatoligi') alert(ts(res.error));
     });
   };
 
@@ -170,7 +172,7 @@ export default function Composer() {
   // "Yuborish" tugmasi/Enter bosilganda (handleSendText) sodir bo'ladi.
   const stageAttachment = (file, type) => {
     if (file.size > MAX_SIZE[type]) {
-      alert(`Fayl juda katta (maksimum ${Math.round(MAX_SIZE[type] / 1024 / 1024)}MB)`);
+      alert(t('ch.fileTooBig', { mb: Math.round(MAX_SIZE[type] / 1024 / 1024) }));
       return;
     }
     clearPendingAttachment();
@@ -214,14 +216,14 @@ export default function Composer() {
   // other messages is never blocked by them (Telegram behaviour).
   const handleRecordedVoice = (file, durationSec) => {
     const extra = durationSec > 0 ? { durationSec: Math.round(durationSec) } : undefined;
-    uploadAndSend(file, 'voice', undefined, extra).then((res) => res?.error && alert(res.error));
+    uploadAndSend(file, 'voice', undefined, extra).then((res) => res?.error && alert(ts(res.error)));
   };
 
   // Camera recordings are "video notes": sent with `round: true` so every
   // client shows them in the same circle they were recorded in.
   const handleRecordedVideo = (file, durationSec) => {
     const extra = { round: true, ...(durationSec > 0 ? { durationSec: Math.round(durationSec) } : {}) };
-    uploadAndSend(file, 'video', undefined, extra).then((res) => res?.error && alert(res.error));
+    uploadAndSend(file, 'video', undefined, extra).then((res) => res?.error && alert(ts(res.error)));
   };
 
   // Tanlangan emoji xabar oxiriga emas, aynan kursor turgan joyga qo'shiladi.
@@ -247,17 +249,17 @@ export default function Composer() {
     setEmojiOpen(false);
     if (editingMessage) return;
     const res = await sendMessage({ type: 'sticker', stickerId });
-    if (res?.error) alert(res.error);
+    if (res?.error) alert(ts(res.error));
   };
 
   const replySenderLabel = replyingTo
     ? String(replyingTo.senderId) === String(myId)
-      ? 'Siz'
+      ? t('ch.you')
       : activeConversation?.otherUser?.username
         ? `@${activeConversation.otherUser.username}`
-        : 'Foydalanuvchi'
+        : t('ch.user')
     : '';
-  const replyPreview = replyingTo && (replyingTo.type === 'text' ? replyingTo.text : REPLY_TYPE_LABEL[replyingTo.type] || '');
+  const replyPreview = replyingTo && (replyingTo.type === 'text' ? replyingTo.text : ts(REPLY_TYPE_LABEL[replyingTo.type] || ''));
   // <640px: matn/biriktirma bo'lsa "Yuborish", bo'lmasa mikrofon/video (Telegram uslubi) —
   // tor ekranda 5 ta 44px tugma matn maydonini siqib qo'ymasligi uchun.
   const hasContent = !!text.trim() || !!pendingAttachment || sending;
@@ -270,8 +272,8 @@ export default function Composer() {
       {editingMessage && (
         <div className="flex items-center gap-2 px-3.5 pt-2 text-xs text-accent">
           <Pencil size={12} className="flex-shrink-0" />
-          <span className="flex-1 min-w-0 truncate">Xabarni tahrirlash</span>
-          <button onClick={handleCancelEdit} aria-label="Tahrirlashni bekor qilish" type="button" className={bannerCloseClass}>
+          <span className="flex-1 min-w-0 truncate">{t('ch.editing')}</span>
+          <button onClick={handleCancelEdit} aria-label={t('ch.cancelEditAria')} type="button" className={bannerCloseClass}>
             <X size={14} />
           </button>
         </div>
@@ -280,10 +282,10 @@ export default function Composer() {
         <div className="flex items-center gap-2 px-3.5 pt-2 text-xs">
           <Reply size={12} className="flex-shrink-0 text-accent" />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-accent truncate">{replySenderLabel}ga javob</p>
+            <p className="font-semibold text-accent truncate">{t('ch.replyTo', { who: replySenderLabel })}</p>
             <p className="text-muted truncate">{replyPreview || '…'}</p>
           </div>
-          <button onClick={cancelReply} aria-label="Javob berishni bekor qilish" type="button" className={bannerCloseClass}>
+          <button onClick={cancelReply} aria-label={t('ch.cancelReplyAria')} type="button" className={bannerCloseClass}>
             <X size={14} />
           </button>
         </div>
@@ -302,11 +304,11 @@ export default function Composer() {
           </div>
           <div className="flex-1 min-w-0 text-xs">
             <p className="font-semibold text-ink truncate">
-              {pendingAttachment.type === 'image' ? 'Rasm' : pendingAttachment.type === 'video' ? 'Video' : pendingAttachment.file.name}
+              {pendingAttachment.type === 'image' ? t('ch.attImage') : pendingAttachment.type === 'video' ? t('ch.attVideo') : pendingAttachment.file.name}
             </p>
             <p className="text-muted">{(pendingAttachment.file.size / 1024 / 1024).toFixed(1)} MB</p>
           </div>
-          <button onClick={clearPendingAttachment} aria-label="Biriktirilgan faylni olib tashlash" type="button" className={bannerCloseClass}>
+          <button onClick={clearPendingAttachment} aria-label={t('ch.removeAttAria')} type="button" className={bannerCloseClass}>
             <X size={14} />
           </button>
         </div>
@@ -321,8 +323,8 @@ export default function Composer() {
               ref={emojiButtonRef}
               type="button"
               onClick={() => setEmojiOpen((v) => !v)}
-              title="Emoji"
-              aria-label="Emoji tanlash"
+              title={t('ch.emoji')}
+              aria-label={t('ch.emojiPick')}
               className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors emoji font-chat"
             >
               🙂
@@ -349,8 +351,8 @@ export default function Composer() {
             }}
             onKeyDown={handleTextareaKeyDown}
             onPaste={handlePaste}
-            placeholder={pendingAttachment ? "Izoh qo'shing (ixtiyoriy)..." : 'Xabar yozing...'}
-            aria-label={pendingAttachment ? 'Biriktirma uchun izoh' : 'Xabar matni'}
+            placeholder={pendingAttachment ? t('ch.captionPh') : t('ch.msgPh')}
+            aria-label={pendingAttachment ? t('ch.captionAria') : t('ch.msgAria')}
             // TZ-vocably-v2.md BUG-2 (chat UI audit) — placeholder rangi hech qachon
             // aniq belgilanmagan edi (brauzer standarti/meros olingan rangga qolib
             // ketardi); endi to'g'ridan-to'g'ri `--color-muted` tokeniga bog'langan,
@@ -364,7 +366,7 @@ export default function Composer() {
               <input
                 ref={fileInputRef}
                 type="file"
-                aria-label="Fayl tanlash"
+                aria-label={t('ch.pickFileAria')}
                 className="hidden"
                 onChange={handleFilePick}
                 // C-14 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2) — .html/.htm/.json
@@ -378,8 +380,8 @@ export default function Composer() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                title="Fayl biriktirish"
-                aria-label="Fayl biriktirish"
+                title={t('ch.attach')}
+                aria-label={t('ch.attach')}
                 className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors flex-shrink-0"
               >
                 <Paperclip size={17} />
@@ -398,7 +400,7 @@ export default function Composer() {
         <button
           type="submit"
           disabled={(!text.trim() && !pendingAttachment) || (sending && (!!editingMessage || !!pendingAttachment))}
-          aria-label={editingMessage ? "Tahrirni saqlash" : 'Xabarni yuborish'}
+          aria-label={editingMessage ? t('ch.saveEdit') : t('ch.sendMsg')}
           className={`${hasContent || editingMessage ? 'inline-flex' : 'hidden'} sm:inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-on-accent rounded-full transition-colors flex-shrink-0`}
         >
           {sending ? <Loader2 size={16} className="animate-spin" /> : editingMessage ? <Pencil size={16} /> : <Send size={16} />}
