@@ -4,6 +4,7 @@ import { RotateCcw, Loader2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { gradeSpeaking } from '../state/attemptsApi';
 import type { AttemptResult } from '@/lib/exam/types';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §19 Faza 4 item 23 — AI Speaking grader natijasi.
 // WritingResult.tsx bilan bir xil naqsh (result.speaking bo'lmasa "Qayta
@@ -24,6 +25,7 @@ export interface SpeakingResultProps {
 }
 
 export default function SpeakingResult({ attemptId, result, onRegraded }: SpeakingResultProps) {
+  const { t } = useT();
   const [regrading, setRegrading] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,7 +36,7 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
       const { result: graded } = await gradeSpeaking(attemptId);
       onRegraded(graded);
     } catch {
-      setError("Baholab bo'lmadi — AI vaqtincha band bo'lishi mumkin. Yana urinib ko'ring.");
+      setError(t('rs.writingErr'));
     } finally {
       setRegrading(false);
     }
@@ -46,13 +48,12 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">Speaking</p>
         <p className="text-5xl font-bold text-brand-text mt-2">—</p>
         <p className="text-sm text-muted mt-3">
-          Javoblaringiz saqlandi{result?.timeSpentSec ? ` (${Math.round(result.timeSpentSec / 60)} daqiqada)` : ''}, lekin AI
-          baholashda xatolik yuz berdi.
+          {t('sp.saved', { time: result?.timeSpentSec ? t('rs.inMin', { n: Math.round(result.timeSpentSec / 60) }) : '' })}
         </p>
         {error && <p className="text-xs text-danger mt-2">{error}</p>}
         <Button type="button" onClick={regrade} disabled={regrading} className="mt-4">
           {regrading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-          Qayta baholash
+          {t('rs.regrade')}
         </Button>
       </div>
     );
@@ -63,12 +64,12 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
   return (
     <div className="max-w-2xl mx-auto p-6 sm:p-10 space-y-5">
       <div className="text-center mb-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Speaking natijasi</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t('rs.sectionResult', { label: 'Speaking' })}</p>
         <p className="text-5xl font-bold text-brand-text mt-2 tabular-nums">{s.band.toFixed(1)}</p>
         <p className="text-[11px] text-warning bg-warning-soft inline-block rounded-lg px-3 py-1.5 mt-3">
           {s.pronunciation
-            ? '⚠️ Talaffuz bahosi AI (audio) asosida — rasmiy IELTS pronunciation assessment emas, taxminiy baho.'
-            : '⚠️ Talaffuz balli fonema darajasida emas — faqat matn (Whisper transkripti) asosidagi taxminiy kuzatuv.'}
+            ? t('sp.warnAudio')
+            : t('sp.warnText')}
         </p>
       </div>
 
@@ -92,7 +93,7 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
           </div>
         ) : (
           <div className="bg-surface border border-border rounded-xl p-3">
-            <p className="text-[11px] font-semibold text-muted uppercase mb-0.5">Talaffuz (taxminiy)</p>
+            <p className="text-[11px] font-semibold text-muted uppercase mb-0.5">{t('sp.pronApprox')}</p>
             <p className="text-xs text-muted">{s.pronunciationNote}</p>
           </div>
         )}
@@ -102,7 +103,7 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
 
       {s.strengths.length > 0 && (
         <div className="bg-surface border border-border rounded-2xl p-4">
-          <p className="text-xs font-semibold text-ink mb-2">Kuchli tomonlar</p>
+          <p className="text-xs font-semibold text-ink mb-2">{t('sp.strengths')}</p>
           <ul className="text-xs text-muted list-disc list-inside space-y-1">
             {s.strengths.map((st, i) => (
               <li key={i}>{st}</li>
@@ -113,7 +114,7 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
 
       {s.corrections.length > 0 && (
         <div className="bg-surface border border-border rounded-2xl p-4">
-          <p className="text-xs font-semibold text-ink mb-2">Tuzatishlar</p>
+          <p className="text-xs font-semibold text-ink mb-2">{t('rs.corrections')}</p>
           <div className="space-y-1.5">
             {s.corrections.map((c, i) => (
               <p key={i} className="text-xs">
@@ -126,7 +127,7 @@ export default function SpeakingResult({ attemptId, result, onRegraded }: Speaki
 
       {s.nextStepsUz.length > 0 && (
         <div className="bg-surface border border-border rounded-2xl p-4">
-          <p className="text-xs font-semibold text-ink mb-2">Keyingi qadamlar</p>
+          <p className="text-xs font-semibold text-ink mb-2">{t('sp.nextSteps')}</p>
           <ul className="text-xs text-muted list-disc list-inside space-y-1">
             {s.nextStepsUz.map((st, i) => (
               <li key={i}>{st}</li>
@@ -144,58 +145,59 @@ function mmss(sec: number) {
 
 // Measured, not AI-judged: speech rate, fillers, Part 2 length, variety.
 function FluencyMetrics({ m }: { m: NonNullable<NonNullable<AttemptResult['speaking']>['metrics']> }) {
+  const { t } = useT();
   const tiles = [
     {
-      label: 'Nutq tezligi',
+      label: t('sp.m.rate'),
       value: m.wordsPerMinute != null ? `${m.wordsPerMinute}` : '—',
-      unit: 'so‘z/daq',
+      unit: t('sp.m.rateUnit'),
       ok: m.wordsPerMinute != null && m.wordsPerMinute >= 100 && m.wordsPerMinute <= 185,
       hint: 'Band 7: ~120–160',
     },
     {
-      label: 'To‘ldiruvchi so‘zlar',
+      label: t('sp.m.fillers'),
       value: String(m.fillers.total),
-      unit: `${m.fillers.per100}/100 so‘z`,
+      unit: t('sp.m.fillersUnit', { n: m.fillers.per100 }),
       ok: m.fillers.per100 <= 5,
-      hint: m.fillers.top.map((f) => `${f.word}×${f.count}`).join(', ') || 'yo‘q',
+      hint: m.fillers.top.map((f) => `${f.word}×${f.count}`).join(', ') || t('sp.m.none'),
     },
     {
-      label: 'Part 2 davomiyligi',
+      label: t('sp.m.part2'),
       value: m.part2Sec != null ? mmss(m.part2Sec) : '—',
       unit: '/ 2:00',
       ok: m.part2Sec != null && m.part2Sec >= 90,
-      hint: 'Kamida 1:45',
+      hint: t('sp.m.part2Hint'),
     },
     {
-      label: 'So‘z xilma-xilligi',
+      label: t('sp.m.variety'),
       value: m.lexicalVariety != null ? `${Math.round(m.lexicalVariety * 100)}%` : '—',
-      unit: 'takrorlanmagan',
+      unit: t('sp.m.varietyUnit'),
       ok: m.lexicalVariety == null || m.lexicalVariety >= 0.45,
-      hint: `${m.totalWords} so‘z jami`,
+      hint: t('sp.m.total', { n: m.totalWords }),
     },
   ];
   return (
     <div className="bg-surface border border-border rounded-2xl p-4">
-      <p className="text-xs font-semibold text-ink mb-3">Fluency ko‘rsatkichlari (o‘lchangan)</p>
+      <p className="text-xs font-semibold text-ink mb-3">{t('sp.m.title')}</p>
       <div className="grid grid-cols-2 gap-2">
-        {tiles.map((t) => (
-          <div key={t.label} className={`rounded-xl border p-3 ${t.ok ? 'border-border bg-bg' : 'border-warning/40 bg-warning-soft'}`}>
-            <p className="text-[11px] text-muted">{t.label}</p>
+        {tiles.map((tile) => (
+          <div key={tile.label} className={`rounded-xl border p-3 ${tile.ok ? 'border-border bg-bg' : 'border-warning/40 bg-warning-soft'}`}>
+            <p className="text-[11px] text-muted">{tile.label}</p>
             <p className="mt-0.5 text-ink">
-              <span className="text-xl font-bold tabular-nums">{t.value}</span> <span className="text-[11px] text-muted">{t.unit}</span>
+              <span className="text-xl font-bold tabular-nums">{tile.value}</span> <span className="text-[11px] text-muted">{tile.unit}</span>
             </p>
-            <p className="text-[11px] text-muted mt-0.5 truncate">{t.hint}</p>
+            <p className="text-[11px] text-muted mt-0.5 truncate">{tile.hint}</p>
           </div>
         ))}
       </div>
       {m.tipsUz.length > 0 && (
         <ul className="mt-3 text-xs text-ink list-disc list-inside space-y-1">
-          {m.tipsUz.map((t, i) => (
-            <li key={i}>{t}</li>
+          {m.tipsUz.map((tip, i) => (
+            <li key={i}>{tip}</li>
           ))}
         </ul>
       )}
-      <p className="text-[10px] text-muted mt-2">Transkript avtomatik — ba’zi “um”lar yozilmay qolishi mumkin, shuning uchun son minimal qiymat.</p>
+      <p className="text-[10px] text-muted mt-2">{t('sp.m.note')}</p>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import ReviewQuestionRow from './ReviewQuestionRow';
 import WritingScoreCard from './WritingScoreCard';
 import WordSelectionCatcher from './WordSelectionCatcher';
 import type { AttemptReviewDetail, ExamSectionKey } from '@/lib/exam/types';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §11.2 — Review ekrani: "Imtihon shell'ining o'zi, lekin
 // taymer yo'q, o'rniga 'Ko'rib chiqish rejimi'... Bo'limlar va savol turlari
@@ -34,8 +35,6 @@ const SECTION_LABEL: Record<'listening' | 'reading' | 'writing', string> = {
   writing: 'Writing',
 };
 
-const ESTIMATED_NOTE = "Taxminiy konversiya — xom ball rasmiy jadval oralig'idan tashqarida";
-
 function ScoreHeader({
   raw,
   band,
@@ -49,14 +48,15 @@ function ScoreHeader({
   onlyErrors: boolean;
   onOnlyErrorsChange: (v: boolean) => void;
 }) {
+  const { t } = useT();
   return (
     <div className="mb-3">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <p className="text-sm font-semibold text-ink">
-          Xom ball: {raw} · Band {band.toFixed(1)}
+          {t('rv.rawBand', { raw, band: band.toFixed(1) })}
           {estimated && (
-            <span className="ml-1 text-[11px] font-semibold text-muted" title={ESTIMATED_NOTE}>
-              (taxminiy)
+            <span className="ml-1 text-[11px] font-semibold text-muted" title={t('mr.estimatedNote')}>
+              {t('rv.estShort')}
             </span>
           )}
         </p>
@@ -67,19 +67,21 @@ function ScoreHeader({
             onChange={(e) => onOnlyErrorsChange(e.target.checked)}
             className="h-4 w-4 accent-accent"
           />
-          Faqat xatolar
+          {t('rv.onlyErrors')}
         </label>
       </div>
-      {estimated && <p className="text-[11px] text-muted mt-0.5">{ESTIMATED_NOTE}.</p>}
+      {estimated && <p className="text-[11px] text-muted mt-0.5">{t('mr.estimatedNote')}.</p>}
     </div>
   );
 }
 
 function EmptyErrors() {
-  return <p className="text-xs text-muted px-4 py-3">Bu qismda xato yo&apos;q.</p>;
+  const { t } = useT();
+  return <p className="text-xs text-muted px-4 py-3">{t('rv.noErrors')}</p>;
 }
 
 export default function ReviewScreen({ detail, onBack }: ReviewScreenProps) {
+  const { t } = useT();
   const availableSections = useMemo(
     () => (['listening', 'reading', 'writing'] as const).filter((k) => detail[k]),
     [detail]
@@ -113,16 +115,16 @@ export default function ReviewScreen({ detail, onBack }: ReviewScreenProps) {
     <div className="flex items-center justify-between gap-2 mb-2">
       {onBack ? (
         <button type="button" onClick={handleBack} className={navLinkClass}>
-          <ArrowLeft size={16} /> Natijaga qaytish
+          <ArrowLeft size={16} /> {t('rv.backResult')}
         </button>
       ) : (
         <Link href="/app" className={navLinkClass}>
-          <ArrowLeft size={16} /> Bosh sahifa
+          <ArrowLeft size={16} /> {t('mi.home')}
         </Link>
       )}
       {onBack && (
         <Link href="/app" className={navLinkClass}>
-          <Home size={16} /> Bosh sahifa
+          <Home size={16} /> {t('mi.home')}
         </Link>
       )}
     </div>
@@ -132,7 +134,7 @@ export default function ReviewScreen({ detail, onBack }: ReviewScreenProps) {
     return (
       <div className="max-w-3xl mx-auto p-4 sm:p-8">
         {topBar}
-        <p className="p-8 text-center text-sm text-muted">Ko&apos;rib chiqish uchun natija topilmadi.</p>
+        <p className="p-8 text-center text-sm text-muted">{t('rv.notFound')}</p>
       </div>
     );
   }
@@ -141,7 +143,7 @@ export default function ReviewScreen({ detail, onBack }: ReviewScreenProps) {
     <div className="max-w-3xl mx-auto p-4 sm:p-8">
       {topBar}
       <div className="text-center mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Ko&apos;rib chiqish rejimi</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t('rv.mode')}</p>
         <p className="text-5xl font-bold text-brand-text mt-2 tabular-nums">
           {detail.overall != null ? detail.overall.toFixed(1) : '—'}
         </p>
@@ -226,7 +228,7 @@ export default function ReviewScreen({ detail, onBack }: ReviewScreenProps) {
                   <p className="text-sm font-bold text-ink mb-2">Part {part.order}</p>
                   {part.transcript && (
                     <details className="border border-border rounded-xl mb-3 bg-surface">
-                      <summary className="px-4 py-3 min-h-11 flex items-center text-sm font-semibold text-ink cursor-pointer">Transkript</summary>
+                      <summary className="px-4 py-3 min-h-11 flex items-center text-sm font-semibold text-ink cursor-pointer">{t('rv.transcript')}</summary>
                       <p className="px-4 pb-3 text-sm leading-relaxed text-ink whitespace-pre-wrap">{part.transcript}</p>
                     </details>
                   )}

@@ -1,6 +1,7 @@
 'use client';
 import { Check, X, Circle } from 'lucide-react';
 import type { ReviewQuestion } from '@/lib/exam/types';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §11.2 — "Har savol yonida: ✅ / ❌ / ⚪ (javobsiz).
 // Foydalanuvchi javobi + to'g'ri javob(lar) ko'rsatiladi. explanationHtml
@@ -13,8 +14,9 @@ export interface ReviewQuestionRowProps {
 }
 
 export default function ReviewQuestionRow({ question: q, onLocate }: ReviewQuestionRowProps) {
+  const { t } = useT();
   const answered = q.userAnswer !== '';
-  const statusLabel = !answered ? 'Javobsiz' : q.correct ? "To'g'ri" : "Noto'g'ri";
+  const statusLabel = !answered ? t('rv.unanswered') : q.correct ? t('rv.right') : t('rv.wrong');
   const icon = (
     <span role="img" aria-label={statusLabel} title={statusLabel} className="flex-shrink-0">
       {!answered ? (
@@ -38,11 +40,11 @@ export default function ReviewQuestionRow({ question: q, onLocate }: ReviewQuest
             <span dangerouslySetInnerHTML={{ __html: q.promptHtml }} />
           </p>
           <p className="text-xs mt-1.5 text-muted break-words">
-            Sizning javobingiz: <span className={q.correct ? 'text-success font-medium' : 'text-danger font-medium'}>{q.userAnswer || '—'}</span>
+            {t('mn.yourAnswer')}: <span className={q.correct ? 'text-success font-medium' : 'text-danger font-medium'}>{q.userAnswer || '—'}</span>
           </p>
           {!q.correct && (
             <p className="text-xs mt-0.5 text-muted break-words">
-              To&apos;g&apos;ri javob: <span className="text-success font-medium">{q.accepted.join(' / ')}</span>
+              {t('mn.correct')}: <span className="text-success font-medium">{q.accepted.join(' / ')}</span>
             </p>
           )}
           {q.explanationHtml && (
@@ -55,7 +57,7 @@ export default function ReviewQuestionRow({ question: q, onLocate }: ReviewQuest
               onClick={() => onLocate(q.locatorParagraph!)}
               className="inline-flex items-center min-h-9 -mb-2 mt-0.5 px-1 -mx-1 text-xs text-accent hover:underline font-semibold rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              Matnda ko&apos;rish →
+              {t('rv.locate')}
             </button>
           )}
         </div>
