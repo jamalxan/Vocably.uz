@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, X, Loader2 } from 'lucide-react';
 import { useDialogFocus } from '../state/useDialogFocus';
 import Button from '@/components/ui/Button';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §11.3 / §19 Faza 3 item 18 — "Qo'shilgan so'zlar SRS
 // tizimiga tushadi va 24 soatdan keyin kartochkada chiqadi. Bu sizning
@@ -36,6 +37,7 @@ export interface AddWordModalProps {
 }
 
 export default function AddWordModal({ word, context, onClose, onAdded }: AddWordModalProps) {
+  const { t, ts } = useT();
   const [categories, setCategories] = useState<Category[] | null>(null);
   const [categoriesError, setCategoriesError] = useState(false);
   const [categoriesReload, setCategoriesReload] = useState(0);
@@ -107,11 +109,11 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
       .map((s) => s.trim())
       .filter(Boolean);
     if (!categoryId) {
-      setError('Avval kategoriyani tanlang');
+      setError(t('aw.pickCat'));
       return;
     }
     if (syns.length === 0) {
-      setError('Kamida bitta tarjima kerak');
+      setError(t('aw.needTr'));
       return;
     }
     setSubmitting(true);
@@ -124,7 +126,7 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
       if (!res.ok) {
         // So'z tavani (409 word_limit) — sababini ko'rsatamiz; qolgan xatolar umumiy xabar bilan.
         const data = await res.json().catch(() => null);
-        setError(data?.code === 'word_limit' && data.error ? data.error : "Qo'shib bo'lmadi, qayta urinib ko'ring");
+        setError(data?.code === 'word_limit' && data.error ? ts(data.error) : t('aw.addFail'));
         setSubmitting(false);
         return;
       }
@@ -132,7 +134,7 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
       onAdded?.();
       setTimeout(onClose, 900);
     } catch {
-      setError("Qo'shib bo'lmadi, qayta urinib ko'ring");
+      setError(t('aw.addFail'));
       setSubmitting(false);
     }
   };
@@ -152,15 +154,15 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
       >
         {done ? (
           <p role="status" className="text-sm font-semibold text-ink text-center py-4 break-words">
-            &quot;{word}&quot; lug&apos;atga qo&apos;shildi ✓
+            {t('aw.added', { word })}
           </p>
         ) : (
           <>
             <div className="flex items-center justify-between mb-3">
-              <h3 id="addword-title" className="font-bold text-ink font-display">Lug&apos;atga qo&apos;shish</h3>
+              <h3 id="addword-title" className="font-bold text-ink font-display">{t('aw.title')}</h3>
               <button
                 type="button"
-                aria-label="Yopish"
+                aria-label={t('aw.close')}
                 onClick={onClose}
                 className="w-11 h-11 -m-2.5 flex items-center justify-center rounded-lg text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
@@ -171,27 +173,27 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
 
             {loadingSuggestion && (
               <p className="text-xs text-muted flex items-center gap-1.5 mb-2">
-                <Loader2 size={12} className="animate-spin" /> Tarjima taklif qilinmoqda...
+                <Loader2 size={12} className="animate-spin" /> {t('aw.suggesting')}
               </p>
             )}
             <input
               value={pronunciation}
               onChange={(e) => setPronunciation(e.target.value)}
-              placeholder="Talaffuz (ixtiyoriy)"
-              aria-label="Talaffuz (ixtiyoriy)"
+              placeholder={t('aw.pron')}
+              aria-label={t('aw.pron')}
               className="w-full mb-2 px-3 py-2 bg-surface text-ink border border-border rounded-lg text-base md:text-sm outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 italic"
             />
             <input
               ref={synsRef}
               value={synsText}
               onChange={(e) => setSynsText(e.target.value)}
-              placeholder="Tarjimalar, vergul bilan"
-              aria-label="Tarjimalar, vergul bilan"
+              placeholder={t('aw.trs')}
+              aria-label={t('aw.trs')}
               className="w-full mb-3 px-3 py-2 bg-surface text-ink border border-border rounded-lg text-base md:text-sm outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/40"
             />
 
             {categories && categories.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3" role="group" aria-label="Kategoriya">
+              <div className="flex flex-wrap gap-2 mb-3" role="group" aria-label={t('aw.category')}>
                 {categories.map((c) => (
                   <button
                     key={c._id}
@@ -211,18 +213,18 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
             )}
             {categoriesError && (
               <div className="flex items-center justify-between gap-2 mb-3">
-                <p className="text-xs text-danger">Kategoriyalarni yuklab bo&apos;lmadi.</p>
+                <p className="text-xs text-danger">{t('aw.catFail')}</p>
                 <button
                   type="button"
                   onClick={() => setCategoriesReload((n) => n + 1)}
                   className="min-h-9 px-2 text-xs font-semibold text-accent hover:underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  Qayta urinish
+                  {t('aw.retry')}
                 </button>
               </div>
             )}
             {!categoriesError && categories && categories.length === 0 && (
-              <p className="text-xs text-muted mb-3">Avval lug&apos;atda kategoriya yarating.</p>
+              <p className="text-xs text-muted mb-3">{t('aw.noCat')}</p>
             )}
 
             {error && <p className="text-xs text-danger mb-2">{error}</p>}
@@ -233,7 +235,7 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
               className="w-full"
             >
               {submitting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-              Qo&apos;shish
+              {t('aw.add')}
             </Button>
           </>
         )}

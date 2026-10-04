@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Check, Loader2, Plus, RotateCw, Volume2, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import { useT } from '@/context/LocaleContext';
 
 // TZ §22 — Reading matnidagi so'z bosilganda: ta'rif, tarjima, talaffuz, misol, "Lug'atga qo'shish", "Takrorlash".
 // Foydalanuvchining o'z lug'ati indeksdan (bitta so'rov bilan yuklangan) darhol ko'rsatiladi; boshqa so'zlar uchun
@@ -34,19 +35,12 @@ interface LibraryEntry {
   examples: { en: string; uz?: string }[];
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  new: 'Yangi',
-  learning: "O'rganilmoqda",
-  familiar: 'Tanish',
-  strong: 'Kuchli',
-  advanced: "Ilg'or",
-  mastered: "O'zlashtirilgan",
-};
+const STATUS_KEYS = ['new', 'learning', 'familiar', 'strong', 'advanced', 'mastered'];
 
 async function jsonFetch(url: string, init?: RequestInit) {
   const res = await fetch(url, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...init });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || 'Xatolik');
+  if (!res.ok) throw new Error(data?.error || '');
   return data;
 }
 
@@ -77,6 +71,7 @@ export interface WordPopupCardProps {
 }
 
 export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAddModal, onChanged }: WordPopupCardProps) {
+  const { t, ts } = useT();
   const [entry, setEntry] = useState<LibraryEntry | null>(null);
   const [loading, setLoading] = useState(!owned);
   const [busy, setBusy] = useState(false);
@@ -123,10 +118,10 @@ export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAdd
         method: 'POST',
         body: JSON.stringify({ source: 'reading', items: [{ wordId: owned.wordId, correct }] }),
       });
-      setMsg(correct ? "Yaxshi! Mastery yangilandi ✓" : "Zaif so'zlarga e'tibor beramiz ✓");
+      setMsg(correct ? t('wp.good') : t('wp.weakNote'));
       onChanged();
     } catch (e: any) {
-      setError(e.message || 'Saqlab bo‘lmadi');
+      setError(ts(e.message) || t('wp.saveFail'));
     } finally {
       setBusy(false);
     }
@@ -144,10 +139,10 @@ export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAdd
         body: JSON.stringify({ source: 'reading', items: [{ word: entry.word, added: true }] }),
       }).catch(() => {});
       setAdded(true);
-      setMsg(r.added ? "Lug'atingizga qo'shildi ✓" : "Bu so'z allaqachon lug'atingizda");
+      setMsg(r.added ? t('wp.addedMsg') : t('wp.already'));
       onChanged();
     } catch (e: any) {
-      setError(e.message || "Qo'shib bo'lmadi");
+      setError(ts(e.message) || t('aw.addFail'));
     } finally {
       setBusy(false);
     }
@@ -161,7 +156,7 @@ export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAdd
     <div
       ref={cardRef}
       role="dialog"
-      aria-label={`${display} — so'z ma'lumoti`}
+      aria-label={t('wp.aria', { word: display })}
       style={{ position: 'fixed', left, top: below ? y + 28 : Math.max(y - 8, 8), transform: below ? 'translateX(-50%)' : 'translate(-50%, -100%)' }}
       className="z-40 w-[min(20rem,calc(100vw-1.5rem))] bg-surface-2 border border-border rounded-2xl shadow-card p-4 text-left"
     >
@@ -178,7 +173,7 @@ export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAdd
           <button
             type="button"
             onClick={() => speak(display)}
-            aria-label="Talaffuzni eshitish"
+            aria-label={t('wp.listen')}
             className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-lg text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Volume2 size={16} aria-hidden="true" />
@@ -186,7 +181,7 @@ export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAdd
           <button
             type="button"
             onClick={onClose}
-            aria-label="Yopish"
+            aria-label={t('aw.close')}
             className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-lg text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <X size={16} aria-hidden="true" />
@@ -200,30 +195,30 @@ export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAdd
           {owned.definitionEn && <p className="text-xs text-muted break-words">{owned.definitionEn}</p>}
           {owned.example && <p className="text-xs text-muted italic break-words">“{owned.example}”</p>}
           <p className="text-xs">
-            <span className="font-semibold text-ink">{STATUS_LABEL[owned.status] || owned.status}</span>
+            <span className="font-semibold text-ink">{STATUS_KEYS.includes(owned.status) ? t(`wp.st.${owned.status}`) : owned.status}</span>
             <span className="text-muted"> · {owned.mastery}%</span>
-            {owned.weak && <span className="ml-2 text-warning font-semibold">Zaif so&apos;z</span>}
-            {owned.due && <span className="ml-2 text-accent font-semibold">Takrorlash vaqti</span>}
+            {owned.weak && <span className="ml-2 text-warning font-semibold">{t('wp.weak')}</span>}
+            {owned.due && <span className="ml-2 text-accent font-semibold">{t('wp.due')}</span>}
           </p>
           {msg ? (
             <p role="status" className="text-xs text-success">{msg}</p>
           ) : (
             <div className="flex flex-wrap gap-2 pt-1">
               <Button size="sm" onClick={() => markKnown(true)} disabled={busy}>
-                <Check size={14} aria-hidden="true" /> Bildim
+                <Check size={14} aria-hidden="true" /> {t('wp.known')}
               </Button>
               <Button size="sm" variant="secondary" onClick={() => markKnown(false)} disabled={busy}>
-                Qiyin
+                {t('wp.hard')}
               </Button>
               <Link href="/app/lugat/takrorlash" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-accent hover:underline min-h-11 md:min-h-0">
-                <RotateCw size={14} aria-hidden="true" /> Takrorlash
+                <RotateCw size={14} aria-hidden="true" /> {t('wp.review')}
               </Link>
             </div>
           )}
         </div>
       ) : loading ? (
         <p className="text-xs text-muted flex items-center gap-1.5 mt-3">
-          <Loader2 size={12} className="animate-spin" aria-hidden="true" /> Qidirilmoqda...
+          <Loader2 size={12} className="animate-spin" aria-hidden="true" /> {t('wp.searching')}
         </p>
       ) : (
         <div className="mt-2 space-y-2">
@@ -234,13 +229,13 @@ export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAdd
               {entry.examples?.[0]?.en && <p className="text-xs text-muted italic break-words">“{entry.examples[0].en}”</p>}
             </>
           ) : (
-            <p className="text-xs text-muted">Kutubxonada topilmadi — tarjimani AI taklif qiladi.</p>
+            <p className="text-xs text-muted">{t('wp.notFound')}</p>
           )}
           {msg && <p role="status" className="text-xs text-success">{msg}</p>}
           {!added && (
             <Button size="sm" onClick={entry ? addFromLibrary : onOpenAddModal} disabled={busy}>
               {busy ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}
-              Lug&apos;atga qo&apos;shish
+              {t('aw.title')}
             </Button>
           )}
         </div>
