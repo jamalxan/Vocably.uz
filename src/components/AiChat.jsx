@@ -5,13 +5,14 @@ import { useApp } from '@/context/AppContext';
 import ChatMessage from './chat/ChatMessage';
 import WordPicker, { toWordContext } from './ai/WordPicker';
 import IconButton from './ui/IconButton';
+import { useT } from '@/context/LocaleContext';
 
 // Bu til FAQAT mikrofon (SpeechRecognition, ovozli kiritish) uchun — matn yozishga ta'sir
 // qilmaydi, tanlagich faqat mikrofon yoqilganda ko'rinadi.
 const RECOGNITION_LANGS = [
-  { code: 'en-US', label: 'EN', name: 'Ingliz tili' },
-  { code: 'uz-UZ', label: 'UZ', name: "O'zbek tili" },
-  { code: 'ru-RU', label: 'RU', name: 'Rus tili' },
+  { code: 'en-US', label: 'EN', name: 'ai.lang.en' },
+  { code: 'uz-UZ', label: 'UZ', name: 'ai.lang.uz' },
+  { code: 'ru-RU', label: 'RU', name: 'ai.lang.ru' },
 ];
 const DEFAULT_RECOGNITION_LANG = 'en-US';
 const MAX_ATTACHED_IMAGES = 10;
@@ -53,28 +54,28 @@ async function prepareImage(file) {
 // so'zlar asosida xabar avtomatik tuziladi va to'liq kontekst bilan yuboriladi.
 const QUICK_ACTIONS = [
   {
-    label: "Bu so'zni tushuntir",
+    label: 'ai.qa.explain',
     minSelect: 1,
     maxSelect: 1,
-    buildMessage: (words) => `"${words[0].word}" so'zini tushuntirib ber.`,
+    buildMessage: (words, t) => t('ai.qa.explain.msg', { w: words[0].word }),
   },
   {
-    label: 'Misol jumla ber',
+    label: 'ai.qa.examples',
     minSelect: 1,
     maxSelect: 5,
-    buildMessage: (words) => `${words.map((w) => w.word).join(', ')} so'z(lar)i uchun har biriga 3 tadan gap tuzib ber.`,
+    buildMessage: (words, t) => t('ai.qa.examples.msg', { w: words.map((w) => w.word).join(', ') }),
   },
   {
-    label: "Mnemonika o'ylab top",
+    label: 'ai.qa.mnemonic',
     minSelect: 1,
     maxSelect: 10,
-    buildMessage: (words) => `${words.map((w) => w.word).join(', ')} so'z(lar)i uchun o'zbekcha assotsiatsiya (mnemonika) o'ylab top.`,
+    buildMessage: (words, t) => t('ai.qa.mnemonic.msg', { w: words.map((w) => w.word).join(', ') }),
   },
   {
-    label: 'Test tuz',
+    label: 'ai.qa.quiz',
     minSelect: 5,
     maxSelect: 30,
-    buildMessage: (words) => `${words.map((w) => w.word).join(', ')} so'zlari asosida interaktiv test tuz.`,
+    buildMessage: (words, t) => t('ai.qa.quiz.msg', { w: words.map((w) => w.word).join(', ') }),
   },
 ];
 const RECOGNITION_LANG_KEY = 'vocably.recognitionLang';
@@ -108,24 +109,19 @@ function extractAiError(fullText) {
 // SpeechRecognition xatolari getUserMedia'dan farqli ismlar ishlatadi (masalan
 // "not-allowed", DOMException.name emas) — shuning uchun lib/mediaError.js dagi
 // mapping bu yerga to'g'ri kelmaydi, alohida xabar kerak.
-function recognitionErrorMessage(errorCode) {
+function recognitionErrorMessage(errorCode, t) {
   switch (errorCode) {
     case 'not-allowed':
     case 'service-not-allowed':
-      return (
-        'Mikrofonga ruxsat berilmagan. Manzil satridagi qulf (🔒) belgisini bosib, ' +
-        'saytga mikrofon ruxsatini "Ruxsat berish"ga o\'zgartiring, so\'ng sahifani yangilang. ' +
-        'Agar u yerda ruxsat berilgan ko\'rinsa — bu operatsion tizim darajasidagi cheklov bo\'lishi mumkin ' +
-        '(Windows: Sozlamalar → Maxfiylik va xavfsizlik → Mikrofon → "Ilovalarga ruxsat berish" yoqilganini tekshiring).'
-      );
+      return t('ai.mic.denied');
     case 'audio-capture':
-      return 'Mikrofon topilmadi. Qurilmangizda mikrofon ulanganligini tekshiring.';
+      return t('ai.mic.none');
     case 'no-speech':
-      return "Ovoz eshitilmadi — qayta urinib ko'ring.";
+      return t('ai.mic.nospeech');
     case 'network':
-      return "Internet aloqasida muammo — ovozli kiritish xizmatiga ulanib bo'lmadi.";
+      return t('ai.mic.network');
     default:
-      return "Ovozli kiritishni ishga tushirib bo'lmadi.";
+      return t('ai.mic.fail');
   }
 }
 
@@ -179,6 +175,9 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
     sessionOpenNonce,
     loadChatSessions,
   } = useApp();
+  const { t, ts } = useT();
+  const tRef = useRef(t);
+  tRef.current = t;
 
   const [messages, setMessages] = useState([]);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -385,7 +384,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
     recognition.onend = () => setMicListening(false);
     recognition.onerror = (e) => {
       // "aborted" — foydalanuvchi tugmani bosib o'zi to'xtatganda chiqadi, xato emas.
-      if (e.error !== 'aborted') setMicError(recognitionErrorMessage(e.error));
+      if (e.error !== 'aborted') setMicError(recognitionErrorMessage(e.error, tRef.current));
       setMicListening(false);
     };
     recognitionRef.current = recognition;
@@ -489,7 +488,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
 
     const userMsg = {
       role: 'user',
-      parts: [{ text: text || '(rasm yuborildi)' }],
+      parts: [{ text: text || t('ai.imgSent') }],
       imageUrls: attachedImages,
       wordChips: wordContextToSend.length > 0 ? wordContextToSend : undefined,
     };
@@ -532,7 +531,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
     setPickerConfig({
       minSelect: action.minSelect,
       maxSelect: action.maxSelect,
-      title: action.label,
+      title: t(action.label),
       pendingQuickAction: action,
     });
   };
@@ -540,14 +539,14 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
   // §D2.1 — asosiy "📚 Lug'atdan tanlash" tugmasi: tanlangan so'zlar inputga chip
   // sifatida qo'shiladi, xabar matnini foydalanuvchi o'zi yozadi.
   const openManualPicker = () => {
-    setPickerConfig({ minSelect: 1, maxSelect: 30, title: "Lug'atdan so'z tanlash" });
+    setPickerConfig({ minSelect: 1, maxSelect: 30, title: t('ai.pickTitle') });
   };
 
   const handlePickerConfirm = (words) => {
     const action = pickerConfig?.pendingQuickAction;
     setPickerConfig(null);
     if (action) {
-      handleSend(action.buildMessage(words), words);
+      handleSend(action.buildMessage(words, t), words);
       return;
     }
     setSelectedWordChips((prev) => {
@@ -638,12 +637,12 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold font-luxury text-on-primary leading-tight">Vocably AI</p>
-            <p className="text-[11px] text-on-primary/55 leading-tight">Har doim yordamga tayyor</p>
+            <p className="text-[11px] text-on-primary/55 leading-tight">{t('ai.sub')}</p>
           </div>
           {onOpenSessions && (
             <IconButton
               icon={PanelLeft}
-              label="Suhbatlar ro'yxati"
+              label={t('ai.sessionsList')}
               variant="ghost-on-primary"
               size="lg"
               onClick={onOpenSessions}
@@ -665,17 +664,17 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                 <Sparkles className="text-on-accent" size={24} />
               </div>
               <p className="text-base font-semibold text-ink font-display">
-                Assalomu alaykum{firstName ? `, ${firstName}` : ''}!
+                {firstName ? t('ai.helloName', { name: firstName }) : t('ai.hello')}
               </p>
               <p className="text-sm text-muted mt-1.5 max-w-sm mx-auto">
-                Men sizning Vocably yordamchingizman. Bugun sizga qanday yordam bera olaman?
+                {t('ai.intro')}
               </p>
               <p className="text-[11px] text-ink-subtle mt-2">
-                Masalan: "arise" so'zini bir nechta gapda ishlatib ko'rsat, yoki rasm yuboring
+                {t('ai.example')}
               </p>
               {/* Til qoidasi (src/lib/ai/replyLanguage.js) — foydalanuvchi oldindan bilsin. */}
               <p className="text-[11px] text-ink-subtle mt-1">
-                Javoblar ingliz tilida — o'zbekcha yozsangiz yoki «o'zbekcha gapir» desangiz, o'zbekcha javob beraman.
+                {t('ai.langRule')}
               </p>
               {/* Tez amallar (TZ-vocably-v2.md §D2.3) — avval Word Picker'ni ochadi. */}
               <div className="flex flex-wrap justify-center gap-1.5 mt-5 max-w-sm mx-auto">
@@ -685,7 +684,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                     onClick={() => openQuickAction(qa)}
                     className="px-3 py-2.5 md:py-1.5 bg-surface border border-border hover:border-accent/40 hover:text-accent rounded-full text-xs text-muted transition-colors"
                   >
-                    {qa.label}
+                    {t(qa.label)}
                   </button>
                 ))}
               </div>
@@ -714,7 +713,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                 <Sparkles size={13} />
               </div>
               <div className="bg-bg border border-border rounded-2xl rounded-bl-none px-4 py-2.5 text-sm text-muted flex items-center gap-1.5">
-                <Loader2 className="animate-spin" size={13} /> javob yozmoqda...
+                <Loader2 className="animate-spin" size={13} /> {t('ai.typing')}
               </div>
             </div>
           )}
@@ -724,7 +723,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
         <div className="p-3 sm:p-4 border-t border-border">
           {voiceSupported === false && (
             <p className="text-[11px] text-muted mb-2">
-              Brauzeringiz ovozli kiritishni qo'llab-quvvatlamaydi — matn rejimida davom eting.
+              {t('ai.noVoice')}
             </p>
           )}
           {micError && (
@@ -733,7 +732,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
               <button
                 type="button"
                 onClick={() => setMicError('')}
-                aria-label="Xatoni yopish"
+                aria-label={t('ai.closeErr')}
                 className="flex-shrink-0 p-2 -m-2 text-danger/70 hover:text-danger"
               >
                 <X size={12} />
@@ -782,7 +781,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                     <button
                       type="button"
                       onClick={() => removeWordChip(w.wordId)}
-                      aria-label={`${w.word} so'zini olib tashlash`}
+                      aria-label={t('ai.removeWord', { w: w.word })}
                       className="p-1.5 -m-1 hover:text-accent-hover"
                     >
                       <X size={11} />
@@ -792,11 +791,11 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                 {attachedImages.map((img, i) => (
                   <div key={i} className="relative inline-block">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img} alt="Yuklanadigan rasm" className="h-16 rounded-lg border border-border" />
+                    <img src={img} alt={t('ai.imgPreviewAlt')} className="h-16 rounded-lg border border-border" />
                     <button
                       type="button"
                       onClick={() => removeAttachedImage(i)}
-                      aria-label="Rasmni olib tashlash"
+                      aria-label={t('ai.removeImg')}
                       className="absolute -top-3 -right-3 p-1.5"
                     >
                       <span className="block bg-primary-hover text-on-primary rounded-full p-0.5">
@@ -817,8 +816,8 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
               rows={1}
               placeholder={
                 isCoarsePointer
-                  ? "Xabar yozing... (@ — lug'atdan so'z)"
-                  : "Xabaringizni yozing... (@ — lug'atdan so'z, Shift+Enter — yangi qator)"
+                  ? t('ai.ph.mobile')
+                  : t('ai.ph.desktop')
               }
               value={chatInput}
               onChange={handleChatInputChange}
@@ -832,8 +831,8 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                   type="button"
                   onClick={openManualPicker}
                   className="p-3 md:p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors"
-                  title="Lug'atdan so'z tanlash"
-                  aria-label="Lug'atdan so'z tanlash"
+                  title={t('ai.pickWord')}
+                  aria-label={t('ai.pickWord')}
                 >
                   <BookMarked size={18} />
                 </button>
@@ -842,8 +841,8 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={attachedImages.length >= MAX_ATTACHED_IMAGES}
                   className="p-3 md:p-2.5 text-muted hover:text-accent hover:bg-accent-soft rounded-xl transition-colors disabled:opacity-30"
-                  title={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
-                  aria-label={`Rasm biriktirish (${attachedImages.length}/${MAX_ATTACHED_IMAGES})`}
+                  title={t('ai.attach', { n: attachedImages.length, max: MAX_ATTACHED_IMAGES })}
+                  aria-label={t('ai.attach', { n: attachedImages.length, max: MAX_ATTACHED_IMAGES })}
                 >
                   <Paperclip size={18} />
                 </button>
@@ -857,8 +856,8 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                           ? 'text-accent bg-accent-soft animate-pulse'
                           : 'text-muted hover:text-accent hover:bg-accent-soft'
                       }`}
-                      title="Ovozli kiritish"
-                      aria-label={micListening ? "Ovozli kiritishni to'xtatish" : 'Ovozli kiritishni boshlash'}
+                      title={t('ai.voice')}
+                      aria-label={micListening ? t('ai.voiceStop') : t('ai.voiceStart')}
                     >
                       <Mic size={18} />
                     </button>
@@ -869,8 +868,8 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                         type="button"
                         onClick={() => setLangMenuOpen((v) => !v)}
                         className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded bg-accent hover:bg-accent-hover text-on-accent text-[11px] font-bold leading-tight shadow"
-                        title="Mikrofon tili"
-                        aria-label={`Mikrofon tili: ${activeLang.name}`}
+                        title={t('ai.micLang')}
+                        aria-label={t('ai.micLangNamed', { name: t(activeLang.name) })}
                         aria-expanded={langMenuOpen}
                       >
                         {activeLang.label}
@@ -880,7 +879,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                     {langMenuOpen && (
                       <div className="absolute bottom-full mb-2 left-0 z-30 w-40 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
                         <p className="px-3 py-1.5 text-[11px] font-semibold text-muted uppercase tracking-wider bg-bg">
-                          Mikrofon tili
+                          {t('ai.micLang')}
                         </p>
                         {RECOGNITION_LANGS.map((l) => (
                           <button
@@ -894,7 +893,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
                             }`}
                           >
                             <span className="w-6 font-bold">{l.label}</span>
-                            <span className="text-[11px] text-muted">{l.name}</span>
+                            <span className="text-[11px] text-muted">{t(l.name)}</span>
                           </button>
                         ))}
                       </div>
@@ -905,7 +904,7 @@ export default function AiChat({ contextHint, onOpenSessions } = {}) {
               <button
                 type="submit"
                 disabled={chatLoading || (!chatInput.trim() && attachedImages.length === 0)}
-                aria-label="Xabarni yuborish"
+                aria-label={t('ai.send')}
                 className="min-h-11 min-w-11 md:min-h-0 md:min-w-0 px-4 py-2 flex items-center justify-center bg-accent hover:bg-accent-hover text-on-accent rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex-shrink-0"
               >
                 <Send size={16} />
