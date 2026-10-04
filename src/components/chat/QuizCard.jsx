@@ -1,12 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { Check, X, RotateCcw } from 'lucide-react';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §D3 (BUG-011) — "Test tuz" endi oddiy matn emas: AI generate_quiz
 // funksiyasini chaqiradi (src/lib/aiTools.js), server buni [[QUIZ]] markeri bilan
 // oqimga qo'shadi (route.js), AiChat.jsx ajratib oladi — bu komponent natijani
 // interaktiv (bosib javob beriladigan, darhol tekshiriladigan) kartaga aylantiradi.
 export default function QuizCard({ quizAction }) {
+  const { t } = useT();
   const questions = quizAction?.questions || [];
   const [answers, setAnswers] = useState({}); // { [qIndex]: selectedOption }
 
@@ -26,10 +28,10 @@ export default function QuizCard({ quizAction }) {
   return (
     <div className="mt-2 w-full max-w-md border border-border rounded-2xl bg-surface overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 bg-bg border-b border-border">
-        <p className="text-xs font-bold text-ink uppercase tracking-wide">Test — {questions.length} ta savol</p>
+        <p className="text-xs font-bold text-ink uppercase tracking-wide">{t('qz.title', { n: questions.length })}</p>
         {allAnswered && (
           <span className="text-xs font-semibold text-accent">
-            {correctCount}/{questions.length} to'g'ri
+            {t('qz.score', { c: correctCount, n: questions.length })}
           </span>
         )}
       </div>
@@ -76,7 +78,7 @@ export default function QuizCard({ quizAction }) {
       {allAnswered && (
         <div className="px-4 py-2.5 border-t border-border">
           <button onClick={reset} className="flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline">
-            <RotateCcw size={12} /> Qaytadan boshlash
+            <RotateCcw size={12} /> {t('sk.restart')}
           </button>
         </div>
       )}

@@ -5,6 +5,7 @@ import { X, Search, Trash2, Pencil, AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ConfirmModal from '../ConfirmModal';
 import IconButton from '../ui/IconButton';
+import { useT } from '@/context/LocaleContext';
 
 function formatRelativeTime(dateStr) {
   if (!dateStr) return '';
@@ -20,6 +21,7 @@ function formatRelativeTime(dateStr) {
 
 export default function AllChatSessionsModal({ open, onClose, onSelect }) {
   const { chatSessions, currentSessionId, renameChatSession, deleteChatSession, deleteAllChatSessions } = useApp();
+  const { t, ts } = useT();
 
   const [query, setQuery] = useState('');
   const [renamingId, setRenamingId] = useState(null);
@@ -68,9 +70,9 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
         >
           <div className="flex items-center gap-3 pl-4 pr-2 py-2 border-b border-border flex-shrink-0">
             <h3 id="all-chat-sessions-title" className="font-bold text-ink font-display flex-1">
-              Barcha suhbatlar <span className="text-muted font-normal text-sm">({chatSessions.length})</span>
+              {t('as.allTitle')} <span className="text-muted font-normal text-sm">({chatSessions.length})</span>
             </h3>
-            <IconButton icon={X} label="Yopish" size="lg" onClick={onClose} />
+            <IconButton icon={X} label={t('ch.close')} size="lg" onClick={onClose} />
           </div>
 
           <form onSubmit={(e) => e.preventDefault()} className="relative p-3 flex-shrink-0">
@@ -78,17 +80,17 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
             <input
               type="search"
               autoFocus
-              placeholder="Suhbat nomi bo'yicha qidirish..."
+              placeholder={t('as.searchByName')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="Suhbat qidirish"
+              aria-label={t('as.searchAria')}
               className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-base md:text-sm bg-surface outline-none focus:border-accent"
             />
           </form>
 
           <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
             {filtered.length === 0 && (
-              <p className="text-center text-xs text-muted py-8">Suhbat topilmadi</p>
+              <p className="text-center text-xs text-muted py-8">{t('ch.chatNotFound')}</p>
             )}
             {filtered.map((s) => (
               <div
@@ -107,7 +109,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                       onKeyDown={(e) => {
                         if (e.key === 'Escape') setRenamingId(null);
                       }}
-                      aria-label="Suhbat nomi"
+                      aria-label={t('as.name')}
                       className="w-full px-2 py-1 border border-accent/30 rounded text-base md:text-sm bg-surface outline-none"
                     />
                   </form>
@@ -122,7 +124,7 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                         {s.title}
                       </p>
                       <p className="text-[11px] text-muted mt-0.5">
-                        {formatRelativeTime(s.updatedAt)} · {s.messageCount} ta xabar
+                        {ts(formatRelativeTime(s.updatedAt))} · {t('as.msgCount', { n: s.messageCount })}
                       </p>
                     </button>
                     <button
@@ -131,16 +133,16 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                         setRenameValue(s.title);
                       }}
                       className="min-w-11 min-h-11 lg:min-w-0 lg:min-h-0 p-1.5 flex items-center justify-center flex-shrink-0 text-muted hover:text-accent hover:bg-surface rounded opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                      title="Nomini o'zgartirish"
-                      aria-label="Suhbat nomini o'zgartirish"
+                      title={t('as.renameTitle')}
+                      aria-label={t('as.renameAria')}
                     >
                       <Pencil size={13} />
                     </button>
                     <button
                       onClick={() => setConfirmDeleteId(s.id)}
                       className="min-w-11 min-h-11 lg:min-w-0 lg:min-h-0 p-1.5 flex items-center justify-center flex-shrink-0 text-muted hover:text-accent hover:bg-surface rounded opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                      title="O'chirish"
-                      aria-label="Suhbatni o'chirish"
+                      title={t('as.delete')}
+                      aria-label={t('as.deleteAria')}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -157,14 +159,14 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                   onClick={() => setWipeStep(1)}
                   className="w-full flex items-center justify-center gap-2 py-2 text-accent hover:bg-accent-soft border border-accent/25 rounded-lg text-xs font-semibold transition-colors"
                 >
-                  <Trash2 size={13} /> Barcha suhbatlarni o'chirish
+                  <Trash2 size={13} /> {t('as.wipeAll')}
                 </button>
               ) : (
                 <div className="bg-danger-soft border border-danger/25 rounded-lg p-3">
                   <p role="alert" className="flex items-start gap-2 text-xs text-danger mb-3">
                     <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
                     <span>
-                      Barcha {chatSessions.length} ta suhbat butunlay o'chiriladi va tiklab bo'lmaydi.
+                      {t('as.wipeWarn', { n: chatSessions.length })}
                     </span>
                   </p>
                   <div className="flex gap-2">
@@ -172,13 +174,13 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
                       onClick={() => setWipeStep(0)}
                       className="flex-1 py-2.5 md:py-2 bg-surface hover:bg-bg border border-border text-muted rounded-lg text-xs font-semibold transition-colors"
                     >
-                      Bekor qilish
+                      {t('ch.cancel')}
                     </button>
                     <button
                       onClick={() => setWipeStep(2)}
                       className="flex-1 py-2.5 md:py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-xs font-semibold transition-colors"
                     >
-                      Ha, hammasini o'chir
+                      {t('as.wipeYes')}
                     </button>
                   </div>
                 </div>
@@ -190,8 +192,8 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
 
       <ConfirmModal
         open={!!pendingDelete}
-        title="Suhbatni o'chirish"
-        message="Bu suhbat o'chiriladi. Davom etasizmi?"
+        title={t('as.delTitle')}
+        message={t('as.delMsg')}
         onConfirm={() => {
           deleteChatSession(confirmDeleteId);
           setConfirmDeleteId(null);
@@ -201,9 +203,9 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
 
       <ConfirmModal
         open={wipeStep === 2}
-        title="Barcha suhbatlarni o'chirish"
-        message={`${chatSessions.length} ta suhbat butunlay o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi. Tasdiqlaysizmi?`}
-        confirmLabel="Hammasini o'chirish"
+        title={t('as.wipeAll')}
+        message={t('as.wipeConfirmMsg', { n: chatSessions.length })}
+        confirmLabel={t('as.wipeConfirm')}
         onConfirm={() => {
           deleteAllChatSessions();
           setWipeStep(0);

@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { Sparkles, Copy, Check, Pencil, RotateCcw, BookMarked } from 'lucide-react';
 import PendingAddWordsCard from './PendingAddWordsCard';
 import QuizCard from './QuizCard';
+import { useT } from '@/context/LocaleContext';
 
 // @tailwindcss/typography o'rnatilmagan — `prose` klasslari ishlamasdi, shuning uchun
 // har bir markdown elementi uchun token asosidagi utility klasslar (blog sahifasi kabi).
@@ -51,6 +52,7 @@ const MSG_ACTION_CLS =
   'mt-0.5 min-h-11 lg:min-h-0 lg:mt-1 flex items-center gap-1 text-[11px] text-muted hover:text-ink opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity';
 
 export default function ChatMessage({ msg, index, categories, sessionId, onResolvedAdd, onEdit, onRetry }) {
+  const { t, ts } = useT();
   const [copyState, setCopyState] = useState(null); // null | 'ok' | 'error'
   const isUser = msg.role === 'user';
   const text = msg.parts?.[0]?.text || '';
@@ -82,7 +84,7 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
               <img
                 key={i}
                 src={url}
-                alt="Yuklangan rasm"
+                alt={t('cm.imgAlt')}
                 className="max-w-[min(220px,100%)] rounded-xl border border-border"
               />
             ))}
@@ -107,14 +109,14 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
           // tugmasi, provayder/model/URL hech qachon ko'rinmaydi. requestId kichik shrift
           // bilan (support so'ralganda shu ID orqali logdan topiladi).
           <div className="rounded-2xl px-4 py-2.5 text-sm bg-danger-soft text-danger rounded-bl-none border border-danger/20 max-w-sm">
-            <p>{msg.aiError.message}</p>
+            <p>{ts(msg.aiError.message)}</p>
             <div className="flex items-center justify-between gap-3 mt-2">
               {onRetry && (
                 <button
                   onClick={onRetry}
                   className="flex items-center gap-1 text-xs font-semibold hover:underline"
                 >
-                  <RotateCcw size={12} /> Qayta urinish
+                  <RotateCcw size={12} /> {t('cm.retry')}
                 </button>
               )}
               {msg.aiError.requestId && (
@@ -147,7 +149,7 @@ export default function ChatMessage({ msg, index, categories, sessionId, onResol
         {!isUser && text && (
           <button onClick={handleCopy} className={MSG_ACTION_CLS}>
             {copyState === 'ok' ? <Check size={12} /> : <Copy size={12} />}{' '}
-            {copyState === 'ok' ? 'Nusxalandi' : copyState === 'error' ? "Nusxalab bo'lmadi" : 'Nusxalash'}
+            {copyState === 'ok' ? t('cm.copied') : copyState === 'error' ? t('cm.copyFail') : t('cm.copy')}
           </button>
         )}
         {isUser && onEdit && (

@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import IconButton from '../ui/IconButton';
 import ConfirmModal from '../ConfirmModal';
 import AllChatSessionsModal from './AllChatSessionsModal';
+import { useT } from '@/context/LocaleContext';
 
 // AI Chat sahifasining (src/app/app/ai/page.jsx) o'z ichidagi suhbatlar ro'yxati —
 // ChatGPT-uslubida. AppShell'ning asosiy navigatsiyasidan mustaqil: endi har bir
@@ -14,6 +15,7 @@ import AllChatSessionsModal from './AllChatSessionsModal';
 const VISIBLE_LIMIT = 20;
 
 export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBack }) {
+  const { t } = useT();
   const { chatSessions, currentSessionId, openChatSession, startNewChatSession, renameChatSession, deleteChatSession } =
     useApp();
 
@@ -87,7 +89,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
         ref={listRef}
         role={sidebarOpen ? 'dialog' : undefined}
         aria-modal={sidebarOpen ? 'true' : undefined}
-        aria-label="Suhbatlar"
+        aria-label={t('as.sessions')}
         className={`fixed lg:static inset-y-0 left-0 z-40 w-[min(18rem,85vw)] lg:w-64 bg-primary text-on-primary flex flex-col flex-shrink-0 border-r border-on-primary/10 transform transition-transform duration-300 ease-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
@@ -96,19 +98,19 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
           {onBack && (
             <button
               onClick={onBack}
-              title="Orqaga"
+              title={t('as.back')}
               className="p-1.5 -ml-1.5 text-on-primary/60 hover:text-on-primary hover:bg-primary-hover rounded-lg transition-colors flex-shrink-0"
             >
               <ArrowLeft size={16} />
             </button>
           )}
           <Sparkles size={15} className="text-accent flex-shrink-0" />
-          <h2 className="text-sm font-semibold flex-1">Suhbatlar</h2>
+          <h2 className="text-sm font-semibold flex-1">{t('as.sessions')}</h2>
           {sidebarOpen && (
             <IconButton
               ref={closeBtnRef}
               icon={X}
-              label="Yopish"
+              label={t('ch.close')}
               variant="ghost-on-primary"
               size="lg"
               onClick={() => setSidebarOpen(false)}
@@ -125,7 +127,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
             }}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-semibold transition-colors shadow-glow"
           >
-            <Plus size={15} /> Yangi suhbat
+            <Plus size={15} /> {t('as.new')}
           </button>
 
           {chatSessions.length > 5 && (
@@ -134,8 +136,8 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Suhbat qidirish..."
-                aria-label="Suhbat qidirish"
+                placeholder={t('as.search')}
+                aria-label={t('as.searchAria')}
                 className="w-full pl-8 pr-2.5 py-1.5 bg-primary-hover border border-on-primary/10 rounded-lg text-base md:text-xs text-on-primary outline-none focus:border-accent/50 transition-colors placeholder:text-on-primary/40"
               />
             </div>
@@ -144,10 +146,10 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
 
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {chatSessions.length === 0 && (
-            <p className="px-2.5 py-2 text-xs text-on-primary/40">Hali suhbatlar yo'q</p>
+            <p className="px-2.5 py-2 text-xs text-on-primary/40">{t('as.none')}</p>
           )}
           {chatSessions.length > 0 && filtered.length === 0 && (
-            <p className="px-2.5 py-2 text-xs text-on-primary/40">Topilmadi</p>
+            <p className="px-2.5 py-2 text-xs text-on-primary/40">{t('as.notFound')}</p>
           )}
 
           {visible.map((s, idx) =>
@@ -161,7 +163,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') setRenamingId(null);
                   }}
-                  aria-label="Suhbat nomi"
+                  aria-label={t('as.name')}
                   className="w-full px-2.5 py-1.5 bg-primary-hover border border-accent rounded-lg text-base md:text-xs text-on-primary outline-none"
                 />
               </form>
@@ -181,8 +183,8 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                 <button
                   onClick={() => setMenuOpenId(menuOpenId === s.id ? null : s.id)}
                   className="absolute top-1/2 -translate-y-1/2 right-0 lg:right-1.5 min-w-11 min-h-11 lg:min-w-0 lg:min-h-0 p-1 flex items-center justify-center rounded text-on-primary/60 lg:text-on-primary/40 hover:text-on-primary hover:bg-primary-hover opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                  title="Amallar"
-                  aria-label="Suhbat amallari"
+                  title={t('as.actions')}
+                  aria-label={t('as.actionsAria')}
                   aria-haspopup="menu"
                   aria-expanded={menuOpenId === s.id}
                 >
@@ -200,7 +202,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                       onClick={() => startRename(s)}
                       className="w-full flex items-center gap-2 px-3 py-3 lg:py-2 text-on-primary/70 hover:bg-primary hover:text-on-primary transition-colors"
                     >
-                      <Pencil size={12} /> Nomini o'zgartirish
+                      <Pencil size={12} /> {t('as.rename')}
                     </button>
                     <button
                       onClick={() => {
@@ -209,7 +211,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
                       }}
                       className="w-full flex items-center gap-2 px-3 py-3 lg:py-2 text-accent hover:bg-primary transition-colors"
                     >
-                      <Trash2 size={12} /> O'chirish
+                      <Trash2 size={12} /> {t('as.delete')}
                     </button>
                   </div>
                 )}
@@ -222,7 +224,7 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
               onClick={() => setAllModalOpen(true)}
               className="w-full text-left px-2.5 py-3 lg:py-2 rounded-lg text-[11px] text-accent hover:bg-primary-hover transition-colors"
             >
-              Barchasini ko'rish ({chatSessions.length})
+              {t('as.viewAll', { n: chatSessions.length })}
             </button>
           )}
         </div>
@@ -230,8 +232,8 @@ export default function AiChatSessionsPanel({ sidebarOpen, setSidebarOpen, onBac
 
       <ConfirmModal
         open={!!pendingDelete}
-        title="Suhbatni o'chirish"
-        message="Bu suhbat o'chiriladi. Davom etasizmi?"
+        title={t('as.delTitle')}
+        message={t('as.delMsg')}
         onConfirm={() => {
           deleteChatSession(confirmDeleteId);
           setConfirmDeleteId(null);

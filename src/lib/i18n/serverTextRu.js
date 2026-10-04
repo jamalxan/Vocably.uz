@@ -256,6 +256,7 @@ const ru = {
     "So'zlarni og'zaki ishlating": 'Используйте слова в устной речи',
   },
   patterns: [
+    { uz: "{n} daq oldin", tr: "{n} мин назад" },
     { uz: "{n} daqiqagacha ovozsiz", tr: "без звука ещё {n} {n#минуту|минуты|минут}" },
     { uz: "{n} soatgacha ovozsiz", tr: "без звука ещё {n} {n#час|часа|часов}" },
     { uz: "{n} kungacha ovozsiz", tr: "без звука ещё {n} {n#день|дня|дней}" },
