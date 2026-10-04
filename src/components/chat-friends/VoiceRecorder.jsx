@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Mic, Square, X } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
 import { useChat } from '@/context/ChatContext';
+import { useT } from '@/context/LocaleContext';
 
 // Ovozli xabar uchun yuqori chegara — cheksiz yozuv yuklashda xato bilan yo'qolmasin.
 const MAX_SECONDS = 300;
@@ -11,6 +12,7 @@ const MAX_SECONDS = 300;
 // mumkin, haqiqiy qurilmada sinash tavsiya etiladi (docs/ chat plani, "Frontend" bo'limi).
 export default function VoiceRecorder({ onRecorded, onCancel }) {
   const { sendTyping } = useChat();
+  const { t, locale } = useT();
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const mediaRecorderRef = useRef(null);
@@ -59,7 +61,7 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
       }, 1000);
     } catch (err) {
       if (gen !== genRef.current) return;
-      alert(mediaErrorMessage(err, 'Mikrofon'));
+      alert(mediaErrorMessage(err, 'Mikrofon', locale));
       onCancel();
     }
   };
@@ -112,8 +114,8 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
       <button
         type="button"
         onClick={cancel}
-        aria-label="Ovozli xabarni bekor qilish"
-        title="Bekor qilish"
+        aria-label={t('ch.voiceCancelAria')}
+        title={t('ch.cancel')}
         className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-1.5 rounded-full text-muted hover:text-accent transition-colors"
       >
         <X size={16} />
@@ -121,8 +123,8 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
       <button
         type="button"
         onClick={stop}
-        aria-label="Yozishni tugatib yuborish"
-        title="Yuborish"
+        aria-label={t('ch.finishSendAria')}
+        title={t('ch.forward')}
         className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-full transition-colors"
       >
         <Square size={14} />
@@ -132,6 +134,7 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
 }
 
 export function VoiceRecorderButton({ onRecorded, onActiveChange }) {
+  const { t } = useT();
   const [active, setActiveState] = useState(false);
   const setActive = (v) => {
     setActiveState(v);
@@ -142,8 +145,8 @@ export function VoiceRecorderButton({ onRecorded, onActiveChange }) {
       <button
         type="button"
         onClick={() => setActive(true)}
-        title="Ovozli xabar"
-        aria-label="Ovozli xabar yozish"
+        title={t('ch.voiceMsg')}
+        aria-label={t('ch.voiceRecordAria')}
         className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
       >
         <Mic size={18} />

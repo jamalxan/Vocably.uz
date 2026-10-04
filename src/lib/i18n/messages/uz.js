@@ -946,6 +946,23 @@ const uz = {
   'ch.reason': "Sabab",
   'ch.noteOpt': "Izoh (ixtiyoriy)",
   'ch.notePh': "Qo'shimcha izoh...",
+  'ch.photoErr': "Xato",
+  'ch.zoom': "Rasmni kattalashtirish",
+  'ch.photoAlt': "Rasm",
+  'ch.loadFail2': "Yuklab bo'lmadi.",
+  'ch.nothing': "Bu yerda hali hech narsa yo'q",
+  'ch.older': "Eskisini yuklash",
+  'ch.tabImg': "Rasmlar",
+  'ch.tabVid': "Videolar",
+  'ch.tabVoice': "Ovozli xabarlar",
+  'ch.viewPhotos': "Profil rasmlarini ko'rish",
+  'ch.nickPh': "Taxallus qo'ying (faqat sizga ko'rinadi)...",
+  'ch.nick': "Taxallus",
+  'ch.save': "Saqlash",
+  'ch.voiceCancelAria': "Ovozli xabarni bekor qilish",
+  'ch.finishSendAria': "Yozishni tugatib yuborish",
+  'ch.voiceMsg': "Ovozli xabar",
+  'ch.voiceRecordAria': "Ovozli xabar yozish",
 };
 
 export default uz;

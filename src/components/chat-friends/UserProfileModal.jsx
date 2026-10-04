@@ -7,6 +7,7 @@ import { ImageLightbox } from './MessageBubble';
 import Avatar from '@/components/avatar/Avatar';
 import PhotoViewer from '@/components/avatar/PhotoViewer';
 import { fetchUserPhotos } from '@/lib/profilePhotosClient';
+import { useT } from '@/context/LocaleContext';
 
 // C-09 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 E) — 80x80 grid
 // thumbnail, useAuthedMediaUrl orqali (MessageBubble.jsx'dagi ImageBubble bilan
@@ -14,20 +15,21 @@ import { fetchUserPhotos } from '@/lib/profilePhotosClient';
 // MessageBubble'dagi lightbox (import qilib qayta ishlatiladi — alohida oyna
 // qurish shart emas).
 function GalleryImageThumb({ media }) {
+  const { t } = useT();
   const { url, error } = useAuthedMediaUrl(media.key);
   const [open, setOpen] = useState(false);
-  if (error) return <div className="w-20 h-20 rounded-lg bg-bg flex items-center justify-center text-[10px] text-muted">Xato</div>;
+  if (error) return <div className="w-20 h-20 rounded-lg bg-bg flex items-center justify-center text-[10px] text-muted">{t('ch.photoErr')}</div>;
   if (!url) return <div className="w-20 h-20 bg-bg rounded-lg animate-pulse" />;
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Rasmni kattalashtirish"
+        aria-label={t('ch.zoom')}
         className="block w-20 h-20 rounded-lg overflow-hidden cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt="Rasm" className="w-full h-full object-cover" />
+        <img src={url} alt={t('ch.photoAlt')} className="w-full h-full object-cover" />
       </button>
       {open && <ImageLightbox url={url} onClose={() => setOpen(false)} />}
     </>
@@ -53,6 +55,7 @@ const GALLERY_BUBBLE = { image: GalleryImageThumb, video: GalleryVideoBubble, vo
 // bir xil naqsh, lekin oddiy foydalanuvchi endpointidan (/api/chat/conversations/[id]/
 // messages?type=...&order=desc) — faqat ikkala ishtirokchi ham ko'rgan (o'chirilmagan) xabarlar.
 function MediaGallery({ conversationId, type }) {
+  const { t, locale } = useT();
   const [data, setData] = useState(null); // { messages, cursor }
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -96,13 +99,13 @@ function MediaGallery({ conversationId, type }) {
   if (error) {
     return (
       <div className="text-center py-8">
-        <p className="text-sm text-danger font-medium mb-2">Yuklab bo'lmadi.</p>
+        <p className="text-sm text-danger font-medium mb-2">{t('ch.loadFail2')}</p>
         <button
           type="button"
           onClick={() => setReloadKey((k) => k + 1)}
           className="min-h-11 px-3 text-xs font-semibold text-accent hover:underline"
         >
-          Qayta yuklash
+          {t('ch.reload')}
         </button>
       </div>
     );
@@ -133,7 +136,7 @@ function MediaGallery({ conversationId, type }) {
             <GalleryImageThumb key={m.id || m._id} media={m.media} />
           ))}
         </div>
-        {visibleMessages.length === 0 && <p className="text-center text-xs text-muted py-8">Bu yerda hali hech narsa yo'q</p>}
+        {visibleMessages.length === 0 && <p className="text-center text-xs text-muted py-8">{t('ch.nothing')}</p>}
         {data.cursor && (
           <div className="flex justify-center pt-3">
             <button
@@ -141,7 +144,7 @@ function MediaGallery({ conversationId, type }) {
               disabled={loadingMore}
               className="min-h-11 md:min-h-0 px-3 py-1.5 bg-bg border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
             >
-              {loadingMore && <Loader2 size={12} className="animate-spin" />} Eskisini yuklash
+              {loadingMore && <Loader2 size={12} className="animate-spin" />} {t('ch.older')}
             </button>
           </div>
         )}
@@ -155,11 +158,11 @@ function MediaGallery({ conversationId, type }) {
         {visibleMessages.map((m) => (
           <div key={m.id || m._id} className="w-fit max-w-full rounded-xl border border-border bg-bg p-2 flex flex-col gap-1">
             <Bubble media={m.media} />
-            <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString('uz-UZ')}</p>
+            <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString(locale === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
           </div>
         ))}
       </div>
-      {visibleMessages.length === 0 && <p className="text-center text-xs text-muted py-8">Bu yerda hali hech narsa yo'q</p>}
+      {visibleMessages.length === 0 && <p className="text-center text-xs text-muted py-8">{t('ch.nothing')}</p>}
       {data.cursor && (
         <div className="flex justify-center pt-3">
           <button
@@ -167,7 +170,7 @@ function MediaGallery({ conversationId, type }) {
             disabled={loadingMore}
             className="min-h-11 md:min-h-0 px-3 py-1.5 bg-bg border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
           >
-            {loadingMore && <Loader2 size={12} className="animate-spin" />} Eskisini yuklash
+            {loadingMore && <Loader2 size={12} className="animate-spin" />} {t('ch.older')}
           </button>
         </div>
       )}
@@ -176,9 +179,9 @@ function MediaGallery({ conversationId, type }) {
 }
 
 const TABS = [
-  { key: 'image', label: 'Rasmlar', Icon: ImageIcon },
-  { key: 'video', label: 'Videolar', Icon: Video },
-  { key: 'voice', label: 'Ovozli xabarlar', Icon: Mic },
+  { key: 'image', label: 'ch.tabImg', Icon: ImageIcon },
+  { key: 'video', label: 'ch.tabVid', Icon: Video },
+  { key: 'voice', label: 'ch.tabVoice', Icon: Mic },
 ];
 
 // Suhbat sarlavhasidagi username'ga bosilganda ochiladigan oyna (ConversationView.jsx) —
@@ -186,6 +189,7 @@ const TABS = [
 // rasm/video/ovozli xabarlarni har birini alohida ko'rish.
 export default function UserProfileModal({ open, onClose }) {
   const { activeConversation, setNickname } = useChat();
+  const { t, ts } = useT();
   const [viewerPhotos, setViewerPhotos] = useState(null);
   const [photosLoading, setPhotosLoading] = useState(false);
   const [tab, setTab] = useState('image');
@@ -242,7 +246,7 @@ export default function UserProfileModal({ open, onClose }) {
     setSaving(true);
     const res = await setNickname(activeConversation.id, nicknameInput.trim());
     setSaving(false);
-    if (res.error) alert(res.error);
+    if (res.error) alert(ts(res.error));
   };
 
   return (
@@ -261,7 +265,7 @@ export default function UserProfileModal({ open, onClose }) {
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="Yopish"
+            aria-label={t('ch.close')}
             className="absolute top-3 right-3 inline-flex items-center justify-center w-11 h-11 md:w-9 md:h-9 rounded-lg text-muted hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <X size={18} />
@@ -270,7 +274,7 @@ export default function UserProfileModal({ open, onClose }) {
             type="button"
             onClick={openPhotos}
             disabled={!other.photoId}
-            aria-label={other.photoId ? "Profil rasmlarini ko'rish" : undefined}
+            aria-label={other.photoId ? t('ch.viewPhotos') : undefined}
             className="relative rounded-full disabled:cursor-default enabled:cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
             <Avatar userId={other.id} photoId={other.photoId} name={other.nickname || other.name} username={other.username} size={96} />
@@ -292,9 +296,9 @@ export default function UserProfileModal({ open, onClose }) {
           <input
             value={nicknameInput}
             onChange={(e) => setNicknameInput(e.target.value)}
-            placeholder="Taxallus qo'ying (faqat sizga ko'rinadi)..."
+            placeholder={t('ch.nickPh')}
             maxLength={60}
-            aria-label="Taxallus"
+            aria-label={t('ch.nick')}
             className="flex-1 min-w-0 px-3 py-2.5 md:py-2 bg-bg rounded-xl text-base md:text-sm text-ink placeholder:text-muted outline-none focus:ring-2 focus:ring-accent/20"
           />
           <button
@@ -302,7 +306,7 @@ export default function UserProfileModal({ open, onClose }) {
             disabled={saving}
             className="min-h-11 md:min-h-0 px-3 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent rounded-xl text-xs font-semibold transition-colors flex-shrink-0"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : 'Saqlash'}
+            {saving ? <Loader2 size={14} className="animate-spin" /> : t('ch.save')}
           </button>
         </form>
 
@@ -318,7 +322,7 @@ export default function UserProfileModal({ open, onClose }) {
                 tab === key ? 'bg-accent text-on-accent' : 'bg-bg text-muted hover:text-ink'
               }`}
             >
-              <Icon size={12} /> {label}
+              <Icon size={12} /> {t(label)}
             </button>
           ))}
         </div>
