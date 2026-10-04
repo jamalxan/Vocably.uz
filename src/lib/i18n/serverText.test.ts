@@ -96,3 +96,13 @@ describe('qamrov: serverdagi har bir ko‘rinadigan matn tarjima qilingan', () =
     expect(missing(texts)).toEqual([]);
   });
 });
+
+describe('tarif va mock matnlari', () => {
+  it('mock tavsiyasi va tarif imkoniyatlari ruscha', () => {
+    expect(translateServerText('ru', "Reading bo'limingiz eng past ko'rsatkichga ega (6.5) — shu bo'limga ko'proq mashq qiling.")).toBe(
+      'Ваш раздел Reading имеет самый низкий показатель (6.5) — потренируйтесь в нём больше.',
+    );
+    expect(translateServerText('ru', "To'liq Mock testlar")).toBe('Полные пробные тесты');
+    expect(translateServerText('uz', "To'liq Mock testlar")).toBe("To'liq Mock testlar");
+  });
+});

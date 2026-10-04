@@ -2,6 +2,7 @@
 // exact: точное совпадение; patterns: шаблоны с {имя} и множественным числом {n#слово|слова|слов} (см. src/lib/i18n/index.js).
 const ru = {
   exact: {
+    'Vocably Mock Imtihon': 'Пробный экзамен Vocably',
     // --- Тарифы (src/lib/entitlements.js)
     "Bepul": "Бесплатно",
     "Reading practice — cheklangan foydalanish": "Практика Reading — ограниченный доступ",
@@ -162,6 +163,8 @@ const ru = {
     "So'zlarni og'zaki ishlating": 'Используйте слова в устной речи',
   },
   patterns: [
+    // --- src/lib/exam/mockRecommendation.ts
+    { uz: "{label} bo'limingiz eng past ko'rsatkichga ega ({b}) — shu bo'limga ko'proq mashq qiling.", tr: 'Ваш раздел {label} имеет самый низкий показатель ({b}) — потренируйтесь в нём больше.' },
     // --- src/lib/studyPlan.js (Bugun sahifasi reja kartasi; tipografik apostrof ‘ ’)
     { uz: '{n} ta so‘zni takrorlash', tr: 'Повторить {n} {n#слово|слова|слов}' },
     { uz: '{n} ta yangi so‘z o‘rganish', tr: 'Выучить {n} {n#новое слово|новых слова|новых слов}' },

@@ -13,6 +13,7 @@ import {
   type TestPreview,
 } from '../state/attemptsApi';
 import { useIntegrityEvents } from '../state/useIntegrityEvents';
+import { useT } from '@/context/LocaleContext';
 import IntroScreen from './IntroScreen';
 import ConfirmFinishModal from './ConfirmFinishModal';
 import MockResult from './MockResult';
@@ -68,6 +69,7 @@ interface PendingConfirm {
 }
 
 export default function MockShell({ testId, candidateName }: MockShellProps) {
+  const { t } = useT();
   const [phase, setPhase] = useState<Phase>('intro');
   const [testPreview, setTestPreview] = useState<TestPreview | null>(null);
   const [previewError, setPreviewError] = useState('');
@@ -104,9 +106,7 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
         .then((p) => {
           if (cancelled) return;
           if (!p.available || !p.sections) {
-            setPreviewError(
-              "Hozircha to'liq mock uchun yetarli test yo'q. Reading, Listening va Writing bo'limlarini alohida mashq qilishingiz mumkin."
-            );
+            setPreviewError('mk.noPool');
             return;
           }
           setTestPreview({
@@ -123,7 +123,7 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
     }
     fetchTestPreview(testId)
       .then((p) => !cancelled && setTestPreview(p))
-      .catch(() => !cancelled && setPreviewError("Testni yuklab bo'lmadi."));
+      .catch(() => !cancelled && setPreviewError('mk.loadErr'));
     return () => {
       cancelled = true;
     };
@@ -170,7 +170,7 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
       }
       setPhase('section');
     } catch {
-      setStartError("Imtihonni boshlab bo'lmadi. Qayta urinib ko'ring.");
+      setStartError('mk.startErr');
     } finally {
       setStarting(false);
     }
@@ -255,13 +255,13 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
   if (previewError) {
     return (
       <div className="mx-auto max-w-md p-8 text-center text-sm">
-        <p className="text-ink leading-relaxed">{previewError}</p>
+        <p className="text-ink leading-relaxed">{t(previewError)}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <Link href="/app/mashq" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-accent font-semibold text-on-accent hover:bg-accent-hover">
-            Bo&apos;limlar bo&apos;yicha mashq
+            {t('mk.bySkill')}
           </Link>
           <Link href="/app" className="inline-flex items-center min-h-11 px-2 font-semibold text-accent hover:underline">
-            Bosh sahifa
+            {t('mi.home')}
           </Link>
         </div>
       </div>
@@ -270,7 +270,7 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
 
   if (phase === 'intro') {
     if (!testPreview || activeMock === undefined) {
-      return <div className="p-8 text-center text-sm text-muted">Yuklanmoqda...</div>;
+      return <div className="p-8 text-center text-sm text-muted">{t('mk.loading')}</div>;
     }
     return <IntroScreen test={testPreview} onStart={handleStart} starting={starting} resumeInfo={activeMock} error={startError} />;
   }

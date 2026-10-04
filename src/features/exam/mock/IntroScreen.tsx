@@ -5,6 +5,7 @@ import { Headphones, BookOpen, PenLine, AlertTriangle, Loader2, Monitor, RotateC
 import type { ActiveMockInfo, TestPreview } from '../state/attemptsApi';
 import { useIsMobile } from '../state/useIsMobile';
 import { MOCK_KINDS, DEFAULT_MOCK_KIND, type MockKind } from '@/lib/exam/mockKind';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §9.2 — Mock intro ekrani. "Bu yerda premium dizayn qiling"
 // (§9.2 sarlavhasi) — imtihon HALI boshlanmagan, shuning uchun §5.1 qoidasi
@@ -31,18 +32,18 @@ const SECTION_LABEL_UZ: Record<string, string> = { listening: 'Listening', readi
 // "qattiq"gacha (Practice → Exam → Secure), UI'da chapdan o'ngga o'sib boradi.
 const MOCK_KIND_INFO: Record<MockKind, { label: string; description: string; Icon: typeof ShieldCheck }> = {
   practice: {
-    label: 'Mashq',
-    description: "Erkin navigatsiya, bo'limlar orasida orqaga qaytish mumkin. Vaqt bosimi kamroq.",
+    label: 'mi.kind.practice',
+    description: 'mi.kind.practice.d',
     Icon: GraduationCap,
   },
   exam: {
-    label: 'Imtihon simulyatsiyasi',
-    description: "Qat'iy taymer, bo'limlar tartibi qat'iy (orqaga qaytib bo'lmaydi).",
+    label: 'mi.kind.exam',
+    description: 'mi.kind.exam.d',
     Icon: Timer,
   },
   secure: {
-    label: 'Xavfsiz rejim',
-    description: "Imtihon qoidalari + fokus/tab almashish kuzatuvi (halollik logi).",
+    label: 'mi.kind.secure',
+    description: 'mi.kind.secure.d',
     Icon: ShieldCheck,
   },
 };
@@ -52,6 +53,7 @@ function formatMinutes(sec: number): number {
 }
 
 export default function IntroScreen({ test, onStart, starting, resumeInfo, error }: IntroScreenProps) {
+  const { t, ts } = useT();
   const { listening, reading, writing } = test.sections;
   const totalSec = (listening?.durationSec || 0) + (reading?.durationSec || 0) + (writing?.durationSec || 0);
   const totalMin = formatMinutes(totalSec);
@@ -67,7 +69,7 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
             href="/app"
             className="inline-flex items-center gap-1.5 min-h-11 text-sm font-medium text-muted hover:text-ink rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <ArrowLeft size={16} /> Bosh sahifa
+            <ArrowLeft size={16} /> {t('mi.home')}
           </Link>
         </div>
         <div className="my-auto w-full max-w-md bg-surface rounded-2xl shadow-card border border-border p-6 sm:p-8">
@@ -76,17 +78,16 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
           {isMobile && (
             <div className="mb-4 flex items-start gap-2 px-3 py-2.5 bg-warning-soft rounded-lg text-xs text-ink">
               <Monitor size={15} className="flex-shrink-0 mt-0.5 text-warning" />
-              Eng yaxshi tajriba uchun kompyuterdan foydalaning — mock imtihon telefonda ham ishlaydi, lekin split-ekran o'rniga tab rejimida.
+              {t('mi.mobile')}
             </div>
           )}
 
-          <h1 className="text-lg font-bold text-ink font-display">{test.title}</h1>
+          <h1 className="text-lg font-bold text-ink font-display">{ts(test.title)}</h1>
           <p className="text-xs uppercase tracking-wide text-muted mt-1">{test.module === 'academic' ? 'Academic' : 'General Training'}</p>
           {test.format === 'mini' && (
             <p className="mt-3 flex items-start gap-2 rounded-lg bg-info-soft px-3 py-2.5 text-xs leading-relaxed text-ink">
               <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-info" />
-              Mini mock: tuzilishi haqiqiy IELTS bilan bir xil (3 passage / 40 savol, 4 part, 2 task), lekin
-              matnlar rasmiy uzunlikdan qisqaroq. Natija taxminiy band sifatida ko&apos;rsatiladi.
+              {t('mi.mini')}
             </p>
           )}
 
@@ -96,7 +97,7 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
                 <Headphones size={16} className="text-accent flex-shrink-0" />
                 <span className="text-ink">Listening</span>
                 <span className="ml-auto text-muted tabular-nums">
-                  {formatMinutes(listening.durationSec)} daq · {listening.questionCount} savol
+                  {t('mi.qMeta', { min: formatMinutes(listening.durationSec), q: listening.questionCount })}
                 </span>
               </div>
             )}
@@ -105,7 +106,7 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
                 <BookOpen size={16} className="text-accent flex-shrink-0" />
                 <span className="text-ink">Reading</span>
                 <span className="ml-auto text-muted tabular-nums">
-                  {formatMinutes(reading.durationSec)} daq · {reading.questionCount} savol
+                  {t('mi.qMeta', { min: formatMinutes(reading.durationSec), q: reading.questionCount })}
                 </span>
               </div>
             )}
@@ -114,16 +115,16 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
                 <PenLine size={16} className="text-accent flex-shrink-0" />
                 <span className="text-ink">Writing</span>
                 <span className="ml-auto text-muted tabular-nums">
-                  {formatMinutes(writing.durationSec)} daq · {writing.taskCount} task
+                  {t('mi.tMeta', { min: formatMinutes(writing.durationSec), q: writing.taskCount })}
                 </span>
               </div>
             )}
           </div>
 
           <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-sm font-semibold">
-            <span className="text-ink">Jami</span>
+            <span className="text-ink">{t('mi.total')}</span>
             <span className="text-ink tabular-nums">
-              {Math.floor(totalMin / 60)} soat {totalMin % 60} daqiqa
+              {t('mi.totalTime', { h: Math.floor(totalMin / 60), m: totalMin % 60 })}
             </span>
           </div>
 
@@ -132,7 +133,7 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
               rejimida davom etadi (tanlov ta'sir qilmaydi), lekin "Yangi
               tasodifiy mock boshlash" shu tanlov bilan boshlanadi. */}
           <div className="mt-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">Mock rejimi</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">{t('mi.mode')}</p>
             <div className="grid grid-cols-1 gap-2">
               {MOCK_KINDS.map((kind) => {
                 const info = MOCK_KIND_INFO[kind];
@@ -149,8 +150,8 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
                   >
                     <info.Icon size={17} className={`flex-shrink-0 mt-0.5 ${selected ? 'text-accent' : 'text-muted'}`} />
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-ink">{info.label}</span>
-                      <span className="block text-xs text-muted mt-0.5">{info.description}</span>
+                      <span className="block text-sm font-semibold text-ink">{t(info.label)}</span>
+                      <span className="block text-xs text-muted mt-0.5">{t(info.description)}</span>
                     </span>
                   </button>
                 );
@@ -160,11 +161,9 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
 
           <div className="mt-5 space-y-1.5">
             {[
-              "Boshlangandan keyin taymer to'xtamaydi.",
-              mockKind === 'practice'
-                ? "Mashq rejimida bo'limlar orasida orqaga qaytish mumkin."
-                : "Bo'limlar orasida orqaga qaytib bo'lmaydi.",
-              'Naushnik tayyorlang.',
+              t('mi.w1'),
+              mockKind === 'practice' ? t('mi.w2p') : t('mi.w2e'),
+              t('mi.w3'),
             ].map((warning) => (
               <p key={warning} className="flex items-start gap-2 text-xs text-muted">
                 <AlertTriangle size={13} className="flex-shrink-0 mt-0.5 text-warning" />
@@ -176,13 +175,13 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
           {resumeInfo && (
             <div className="mt-5 flex items-start gap-2 px-3 py-2.5 bg-warning-soft rounded-lg text-xs text-ink">
               <RotateCcw size={15} className="flex-shrink-0 mt-0.5 text-warning" />
-              Sizda tugallanmagan mock urinish bor ({SECTION_LABEL_UZ[resumeInfo.currentSection] || resumeInfo.currentSection} bo'limida). Davom ettirasizmi yoki yangi tasodifiy test bilan qaytadan boshlaysizmi?
+              {t('mi.resume', { section: SECTION_LABEL_UZ[resumeInfo.currentSection] || resumeInfo.currentSection })}
             </div>
           )}
 
           {error && (
             <p role="alert" className="mt-5 px-3 py-2.5 rounded-lg bg-danger-soft text-danger text-xs font-medium">
-              {error}
+              {t(error)}
             </p>
           )}
 
@@ -192,7 +191,7 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
             className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent hover:bg-accent-hover disabled:opacity-60 disabled:hover:bg-accent text-on-accent font-semibold rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
             {starting && <Loader2 size={16} className="animate-spin" />}
-            {error ? 'Qayta urinish' : resumeInfo ? 'Davom ettirish' : 'Imtihonni boshlash'}
+            {error ? t('mi.retry') : resumeInfo ? t('mi.continue') : t('mi.begin')}
           </button>
 
           {resumeInfo && (
@@ -201,7 +200,7 @@ export default function IntroScreen({ test, onStart, starting, resumeInfo, error
               disabled={starting}
               className="mt-2.5 w-full min-h-11 flex items-center justify-center gap-2 px-4 py-2.5 bg-transparent hover:bg-bg disabled:opacity-60 text-muted hover:text-ink font-medium rounded-lg text-xs transition-colors border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              Yangi tasodifiy mock boshlash
+              {t('mi.fresh')}
             </button>
           )}
         </div>

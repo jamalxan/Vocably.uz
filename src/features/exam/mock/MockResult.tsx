@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, RotateCcw, Target } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import { useT } from '@/context/LocaleContext';
 import { fetchAttempt, fetchAttemptResult, gradeWriting } from '../state/attemptsApi';
 import ReviewScreen from '../review/ReviewScreen';
 // recharts (~100 kB) faqat yakuniy natija ekranida kerak — imtihon sahifasining boshlang'ich bundle'iga kirmasin.
@@ -23,17 +24,16 @@ export interface MockResultProps {
   result: AttemptResult | null;
 }
 
-const ESTIMATED_NOTE = "Taxminiy konversiya — xom ball rasmiy jadval oralig'idan tashqarida";
-
 function SectionRow({ label, band, estimated }: { label: string; band?: number | null; estimated?: boolean }) {
+  const { t } = useT();
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b border-border last:border-0">
       <span className="text-sm font-semibold text-ink">{label}</span>
       <span className="text-lg font-bold text-brand-text tabular-nums">
         {band != null ? band.toFixed(1) : '—'}
         {band != null && estimated && (
-          <span className="ml-1 align-top text-[11px] font-semibold text-muted" title={ESTIMATED_NOTE}>
-            taxminiy
+          <span className="ml-1 align-top text-[11px] font-semibold text-muted" title={t('mr.estimatedNote')}>
+            {t('mr.estimated')}
           </span>
         )}
       </span>
@@ -42,17 +42,19 @@ function SectionRow({ label, band, estimated }: { label: string; band?: number |
 }
 
 function BackToApp() {
+  const { t } = useT();
   return (
     <Link
       href="/app"
       className="inline-flex items-center gap-1.5 min-h-11 px-1 -mx-1 mb-2 text-sm font-medium text-muted hover:text-ink rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <ArrowLeft size={16} /> Bosh sahifa
+      <ArrowLeft size={16} /> {t('mi.home')}
     </Link>
   );
 }
 
 export default function MockResult({ attemptId, result: initialResult }: MockResultProps) {
+  const { t, ts } = useT();
   const [result, setResult] = useState<AttemptResult | null>(initialResult);
   const [reviewDetail, setReviewDetail] = useState<AttemptReviewDetail | null>(null);
   const [loadingReview, setLoadingReview] = useState(false);
@@ -69,7 +71,7 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
       const { detail } = await fetchAttemptResult(attemptId);
       setReviewDetail(detail);
     } catch {
-      setReviewError("Ko'rib chiqishni yuklab bo'lmadi.");
+      setReviewError(t('ex.reviewErr'));
     } finally {
       setLoadingReview(false);
     }
@@ -84,7 +86,7 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
       const { result: graded } = await gradeWriting(attemptId);
       if (graded) setResult(graded);
     } catch {
-      setRegradeError("Baholab bo'lmadi — AI vaqtincha band bo'lishi mumkin. Yana urinib ko'ring.");
+      setRegradeError(t('rs.writingErr'));
     } finally {
       setRegrading(false);
     }
@@ -96,9 +98,9 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
     try {
       const data = await fetchAttempt(attemptId);
       if (data.attempt.result) setResult(data.attempt.result);
-      else setReloadError("Natija hali tayyor emas.");
+      else setReloadError(t('mr.resultMissing'));
     } catch {
-      setReloadError("Natijani yuklab bo'lmadi.");
+      setReloadError(t('mr.loadErr'));
     } finally {
       setReloading(false);
     }
@@ -111,11 +113,11 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
       <div className="max-w-md mx-auto p-6 sm:p-10">
         <BackToApp />
         <div className="text-center">
-          <p className="text-sm text-muted">Natija topilmadi.</p>
+          <p className="text-sm text-muted">{t('rs.notFound')}</p>
           {reloadError && <p className="text-xs text-danger mt-2">{reloadError}</p>}
           <Button type="button" variant="secondary" onClick={reloadResult} disabled={reloading} className="mt-4">
             {reloading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-            Qayta yuklash
+            {t('mr.reload')}
           </Button>
         </div>
       </div>
@@ -139,7 +141,7 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
     <div className="max-w-md mx-auto p-6 sm:p-10">
       <BackToApp />
       <div className="text-center mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Umumiy band</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t('mr.overall')}</p>
         <p className="text-6xl font-bold text-brand-text mt-2 tabular-nums">
           {result.overall != null ? result.overall.toFixed(1) : '—'}
         </p>
@@ -149,7 +151,7 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
         <SectionRow label="Reading" band={result.reading?.band} estimated={result.reading?.bandEstimated} />
         <SectionRow label="Writing" band={result.writing?.band} />
       </div>
-      {anyEstimated && <p className="text-[11px] text-muted mt-2">{ESTIMATED_NOTE}.</p>}
+      {anyEstimated && <p className="text-[11px] text-muted mt-2">{t('mr.estimatedNote')}.</p>}
 
       {/* §52.7 — "skill-by-skill weaknesses" + "recommended next practice".
           Boshqa (question-type/vocabulary weaknesses, readiness trend)
@@ -157,17 +159,17 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
       {recommendation && (
         <div className="mt-4 flex items-start gap-2 px-3 py-2.5 bg-accent/5 border border-accent/20 rounded-lg text-xs text-ink">
           <Target size={15} className="flex-shrink-0 mt-0.5 text-accent" />
-          {recommendation.message}
+          {ts(recommendation.message)}
         </div>
       )}
 
       {writingPending && (
         <div className="mt-4 text-center">
-          <p className="text-xs text-muted">Writing baholanmadi — AI vaqtincha band bo&apos;lishi mumkin. Insholaringiz saqlangan.</p>
+          <p className="text-xs text-muted">{t('mr.writingPending')}</p>
           {regradeError && <p className="text-xs text-danger mt-2">{regradeError}</p>}
           <Button type="button" variant="secondary" onClick={regradeWriting} disabled={regrading} className="mt-3">
             {regrading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-            Qayta baholash
+            {t('rs.regrade')}
           </Button>
         </div>
       )}
@@ -175,10 +177,10 @@ export default function MockResult({ attemptId, result: initialResult }: MockRes
       {reviewError && <p className="text-xs text-danger mt-3 text-center">{reviewError}</p>}
       <Button type="button" onClick={openReview} disabled={loadingReview || writingPending} className="mt-5 w-full">
         {loadingReview && <Loader2 size={14} className="animate-spin" />}
-        Javoblarni ko&apos;rib chiqish
+        {t('rs.review')}
       </Button>
       {writingPending && (
-        <p className="text-[11px] text-muted mt-2 text-center">Ko&apos;rib chiqish Writing baholangandan keyin ochiladi.</p>
+        <p className="text-[11px] text-muted mt-2 text-center">{t('mr.reviewLocked')}</p>
       )}
 
       <ResultAnalytics perQuestion={result.perQuestion} metric="overall" />
