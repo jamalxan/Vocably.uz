@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useT } from '@/context/LocaleContext';
 import { Camera } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import Avatar from './Avatar';
@@ -12,6 +13,7 @@ import { deletePhoto, fetchMyPhotos, setMainPhoto, uploadProfilePhoto } from '@/
 // bosilsa barcha rasmlar ko'ruvchida ochiladi (rasm bo'lmasa — fayl tanlash),
 // kamera belgisi — yangi rasm qo'yish (fayl -> kesish -> yuklash).
 export default function MyProfilePhoto({ size = 72 }) {
+  const { t } = useT();
   const { chatUserId, displayName, username, setMyPhotoId } = useApp();
   const inputRef = useRef(null);
   const [photos, setPhotos] = useState(null);
@@ -50,11 +52,11 @@ export default function MyProfilePhoto({ size = 72 }) {
     e.target.value = ''; // bir xil faylni qayta tanlash ham ishlasin
     if (!f) return;
     if (!f.type.startsWith('image/') || f.type === 'image/svg+xml') {
-      setPickError('Faqat rasm fayli tanlang (JPG, PNG, WEBP).');
+      setPickError('av.notImage');
       return;
     }
     if (f.size > AVATAR_INPUT_MAX_BYTES) {
-      setPickError('Rasm juda katta (25 MB dan oshmasin).');
+      setPickError('av.tooBig');
       return;
     }
     setUploadError('');
@@ -96,7 +98,7 @@ export default function MyProfilePhoto({ size = 72 }) {
         <button
           type="button"
           onClick={() => (hasPhotos ? setViewerOpen(true) : pickFile())}
-          aria-label={hasPhotos ? "Profil rasmlarini ko'rish" : "Profil rasmini qo'yish"}
+          aria-label={hasPhotos ? t('av.viewPhotos') : t('av.setPhoto')}
           className="block rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
         >
           <Avatar
@@ -111,8 +113,8 @@ export default function MyProfilePhoto({ size = 72 }) {
         <button
           type="button"
           onClick={pickFile}
-          aria-label="Yangi profil rasmi qo'yish"
-          title="Yangi rasm qo'yish"
+          aria-label={t('av.newPhotoAria')}
+          title={t('av.addNew')}
           className="absolute -bottom-0.5 -right-0.5 w-8 h-8 rounded-full bg-accent text-on-accent border-[3px] border-surface inline-flex items-center justify-center shadow-md hover:bg-accent-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Camera size={14} />
@@ -122,10 +124,10 @@ export default function MyProfilePhoto({ size = 72 }) {
 
       {pickError && (
         <p role="alert" className="sr-only">
-          {pickError}
+          {t(pickError)}
         </p>
       )}
-      {pickError && <PickErrorToast text={pickError} onDone={() => setPickError('')} />}
+      {pickError && <PickErrorToast text={t(pickError)} onDone={() => setPickError('')} />}
 
       {file && (
         <AvatarCropper

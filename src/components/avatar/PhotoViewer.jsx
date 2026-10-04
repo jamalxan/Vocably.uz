@@ -3,13 +3,16 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useBackClose } from '@/lib/useBackClose';
 import { X, ChevronLeft, ChevronRight, Download, MoreVertical, Star, Trash2, Camera, Loader2 } from 'lucide-react';
 import { avatarUrl } from '@/lib/avatarShared';
+import { useT } from '@/context/LocaleContext';
+import { formatDateLocale } from '@/lib/uzDate';
 
 const UZ_MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr'];
 
-function formatPhotoDate(iso) {
+function formatPhotoDate(iso, locale) {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
+  if (locale === 'ru') return formatDateLocale('ru', d, { year: true });
   return `${d.getDate()}-${UZ_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -30,6 +33,7 @@ export default function PhotoViewer({
   onDelete,
   onAddNew,
 }) {
+  const { t, ts, locale } = useT();
   const titleId = useId();
   useBackClose(true, onClose); // telefonda orqaga rasm ko'rgichni yopsin
   const closeRef = useRef(null);
@@ -157,10 +161,10 @@ export default function PhotoViewer({
     setWorking(true);
     const res = await onSetMain?.(photo.id);
     setWorking(false);
-    if (res?.error) showToast(res.error);
+    if (res?.error) showToast(ts(res.error));
     else {
       setIndex(0);
-      showToast('Asosiy rasm yangilandi');
+      showToast(t('av.mainUpdated'));
     }
   };
 
@@ -198,20 +202,20 @@ export default function PhotoViewer({
         className="relative z-10 flex items-center gap-2 px-2 pt-4 pb-2 bg-gradient-to-b from-black/70 to-transparent"
         style={{ paddingTop: 'max(1rem, calc(env(safe-area-inset-top) + 0.75rem))' }}
       >
-        <button ref={closeRef} type="button" onClick={onClose} aria-label="Yopish" className={ICON_BTN}>
+        <button ref={closeRef} type="button" onClick={onClose} aria-label={t('ch.close')} className={ICON_BTN}>
           <X size={22} />
         </button>
         <div className="min-w-0 flex-1">
           <p id={titleId} className="text-sm font-semibold truncate">
-            {title || 'Profil rasmi'}
+            {title || t('av.profilePhoto')}
           </p>
           <p className="text-xs text-white/65 truncate">
-            {count > 1 ? `${index + 1} / ${count}` : 'Profil rasmi'}
-            {photo.createdAt ? ` · ${formatPhotoDate(photo.createdAt)}` : ''}
-            {isOwn && index === 0 && count > 1 ? ' · asosiy' : ''}
+            {count > 1 ? `${index + 1} / ${count}` : t('av.profilePhoto')}
+            {photo.createdAt ? ` · ${formatPhotoDate(photo.createdAt, locale)}` : ''}
+            {isOwn && index === 0 && count > 1 ? t('av.main') : ''}
           </p>
         </div>
-        <button type="button" onClick={download} aria-label="Yuklab olish" title="Yuklab olish" className={ICON_BTN}>
+        <button type="button" onClick={download} aria-label={t('av.download')} title={t('av.download')} className={ICON_BTN}>
           <Download size={20} />
         </button>
         {isOwn && (
@@ -219,7 +223,7 @@ export default function PhotoViewer({
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
-              aria-label="Ko'proq"
+              aria-label={t('av.more')}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               className={ICON_BTN}
@@ -235,17 +239,17 @@ export default function PhotoViewer({
                 {onAddNew && (
                   <MenuItem
                     icon={Camera}
-                    label="Yangi rasm qo'yish"
+                    label={t('av.addNew')}
                     onClick={() => {
                       setMenuOpen(false);
                       onAddNew();
                     }}
                   />
                 )}
-                {index > 0 && <MenuItem icon={Star} label="Asosiy rasm qilish" onClick={handleSetMain} />}
+                {index > 0 && <MenuItem icon={Star} label={t('av.setMain')} onClick={handleSetMain} />}
                 <MenuItem
                   icon={Trash2}
-                  label="O'chirish"
+                  label={t('ch.delete')}
                   danger
                   onClick={() => {
                     setMenuOpen(false);
@@ -291,7 +295,7 @@ export default function PhotoViewer({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={avatarUrl(userId, photo.id, 'full')}
-            alt={title ? `${title} — profil rasmi` : 'Profil rasmi'}
+            alt={title ? t('av.photoOf', { title }) : t('av.profilePhoto')}
             draggable={false}
             onLoad={() => setLoaded((m) => ({ ...m, [photo.id]: true }))}
             className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${
@@ -306,7 +310,7 @@ export default function PhotoViewer({
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => go(-1)}
-            aria-label="Oldingi rasm"
+            aria-label={t('av.prev')}
             className="hidden md:inline-flex absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <ChevronLeft size={26} />
@@ -317,7 +321,7 @@ export default function PhotoViewer({
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => go(1)}
-            aria-label="Keyingi rasm"
+            aria-label={t('av.next')}
             className="hidden md:inline-flex absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <ChevronRight size={26} />
@@ -336,7 +340,7 @@ export default function PhotoViewer({
               key={p.id}
               type="button"
               onClick={() => go(i - index)}
-              aria-label={`${i + 1}-rasm`}
+              aria-label={t('av.nth', { n: i + 1 })}
               aria-current={i === index ? 'true' : undefined}
               className={`flex-shrink-0 w-11 h-11 rounded-lg overflow-hidden ring-2 transition-all focus-visible:outline-none focus-visible:ring-white ${
                 i === index ? 'ring-white opacity-100' : 'ring-transparent opacity-50 hover:opacity-80'
@@ -354,13 +358,13 @@ export default function PhotoViewer({
         <div className="absolute inset-0 z-20 flex items-end sm:items-center justify-center bg-black/60 p-4" onClick={() => !working && setConfirmDelete(false)}>
           <div
             role="alertdialog"
-            aria-label="Rasmni o'chirish"
+            aria-label={t('av.delAria')}
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-2xl bg-neutral-900 border border-white/10 p-5 shadow-2xl"
           >
-            <p className="text-base font-semibold mb-1">Rasmni o'chirasizmi?</p>
+            <p className="text-base font-semibold mb-1">{t('av.delQ')}</p>
             <p className="text-sm text-white/65 mb-5">
-              {index === 0 && count > 1 ? "Keyingi rasm asosiy bo'lib qoladi." : "Bu amalni ortga qaytarib bo'lmaydi."}
+              {index === 0 && count > 1 ? t('av.delNext') : t('av.irreversible')}
             </p>
             <div className="flex gap-2 justify-end">
               <button
@@ -369,7 +373,7 @@ export default function PhotoViewer({
                 disabled={working}
                 className="min-h-11 px-4 rounded-xl text-sm font-medium text-white/85 hover:bg-white/10"
               >
-                Bekor qilish
+                {t('ch.cancel')}
               </button>
               <button
                 type="button"
@@ -378,7 +382,7 @@ export default function PhotoViewer({
                 autoFocus
                 className="min-h-11 px-4 rounded-xl text-sm font-semibold bg-red-500 hover:bg-red-600 text-white inline-flex items-center gap-2 disabled:opacity-60"
               >
-                {working && <Loader2 size={15} className="animate-spin" />} O'chirish
+                {working && <Loader2 size={15} className="animate-spin" />} {t('ch.delete')}
               </button>
             </div>
           </div>

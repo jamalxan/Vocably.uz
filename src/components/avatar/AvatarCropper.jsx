@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useT } from '@/context/LocaleContext';
 import { X, Check, RotateCcw, ZoomIn, ZoomOut, Loader2, Undo2 } from 'lucide-react';
 import {
   MAX_ZOOM,
@@ -17,6 +18,7 @@ import { AVATAR_OUTPUT } from './avatarConfig';
 // burish. Natija — ikki JPEG (640 va 160px), `onConfirm({ full, small })`ga beriladi.
 // Yuklash jarayonini (progress) ota komponent boshqaradi — `busy`/`progress` orqali.
 export default function AvatarCropper({ file, onCancel, onConfirm, busy = false, progress = 0, error = '' }) {
+  const { t, ts } = useT();
   const titleId = useId();
   const stageRef = useRef(null);
   const saveRef = useRef(null);
@@ -46,7 +48,7 @@ export default function AvatarCropper({ file, onCancel, onConfirm, busy = false,
       setZoom(1);
       setOffset({ x: 0, y: 0 });
     };
-    img.onerror = () => setLoadError("Bu rasmni ochib bo'lmadi. JPG, PNG yoki WEBP formatidagi rasm tanlang.");
+    img.onerror = () => setLoadError('av.openFail');
     img.src = url;
     return () => URL.revokeObjectURL(url);
   }, [file]);
@@ -189,7 +191,7 @@ export default function AvatarCropper({ file, onCancel, onConfirm, busy = false,
       ]);
       await onConfirm({ full, small });
     } catch {
-      setLoadError("Rasmni tayyorlab bo'lmadi. Boshqa rasm tanlab ko'ring.");
+      setLoadError('av.prepFail');
     } finally {
       setRendering(false);
     }
@@ -251,20 +253,20 @@ export default function AvatarCropper({ file, onCancel, onConfirm, busy = false,
             type="button"
             onClick={onCancel}
             disabled={busy}
-            aria-label="Bekor qilish"
+            aria-label={t('ch.cancel')}
             className="w-11 h-11 inline-flex items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <X size={22} />
           </button>
           <h2 id={titleId} className="text-base font-semibold">
-            Rasmni joylashtiring
+            {t('av.place')}
           </h2>
           <button
             type="button"
             onClick={reset}
             disabled={!image || working}
-            aria-label="Asl holatga qaytarish"
-            title="Asl holatga qaytarish"
+            aria-label={t('av.reset')}
+            title={t('av.reset')}
             className="w-11 h-11 inline-flex items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <Undo2 size={19} />
@@ -279,7 +281,7 @@ export default function AvatarCropper({ file, onCancel, onConfirm, busy = false,
           onPointerCancel={onPointerUp}
           className={`relative overflow-hidden rounded-2xl bg-black touch-none ${image ? (interacting ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
           style={{ width: viewport, height: viewport }}
-          aria-label="Rasm maydoni: sudrab joylashtiring, g'ildirak yoki ikki barmoq bilan kattalashtiring"
+          aria-label={t('av.stage')}
         >
           {!image && !loadError && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -320,14 +322,14 @@ export default function AvatarCropper({ file, onCancel, onConfirm, busy = false,
           {working && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40">
               <ProgressRing value={busy ? progress : 0} />
-              <span className="text-xs text-white/85">{busy ? 'Yuklanmoqda…' : 'Tayyorlanmoqda…'}</span>
+              <span className="text-xs text-white/85">{busy ? t('av.uploading') : t('av.preparing')}</span>
             </div>
           )}
         </div>
 
         {shownError && (
           <p role="alert" className="text-sm text-red-300 text-center">
-            {shownError}
+            {ts(t(shownError))}
           </p>
         )}
 
@@ -336,7 +338,7 @@ export default function AvatarCropper({ file, onCancel, onConfirm, busy = false,
             type="button"
             onClick={() => setZoomCentered(zoom / 1.25)}
             disabled={!image || working || zoom <= MIN_ZOOM}
-            aria-label="Kichraytirish"
+            aria-label={t('av.zoomOut')}
             className="w-11 h-11 inline-flex items-center justify-center rounded-full text-white/80 hover:bg-white/10 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <ZoomOut size={18} />
@@ -352,14 +354,14 @@ export default function AvatarCropper({ file, onCancel, onConfirm, busy = false,
               setAnimate(false);
               setZoomCentered(Number(e.target.value));
             }}
-            aria-label="Kattalashtirish darajasi"
+            aria-label={t('av.zoomLevel')}
             className="flex-1 accent-white"
           />
           <button
             type="button"
             onClick={() => setZoomCentered(zoom * 1.25)}
             disabled={!image || working || zoom >= MAX_ZOOM}
-            aria-label="Kattalashtirish"
+            aria-label={t('av.zoomIn')}
             className="w-11 h-11 inline-flex items-center justify-center rounded-full text-white/80 hover:bg-white/10 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <ZoomIn size={18} />
@@ -371,20 +373,20 @@ export default function AvatarCropper({ file, onCancel, onConfirm, busy = false,
             type="button"
             onClick={rotate}
             disabled={!image || working}
-            aria-label="90° burish"
-            title="Burish (R)"
+            aria-label={t('av.rotate')}
+            title={t('av.rotateTitle')}
             className="w-12 h-12 inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <RotateCcw size={20} />
           </button>
-          <p className="text-[11px] text-white/55 text-center px-2 hidden sm:block">Sudrang · g'ildirak bilan kattalashtiring</p>
+          <p className="text-[11px] text-white/55 text-center px-2 hidden sm:block">{t('av.hint')}</p>
           <button
             ref={saveRef}
             type="button"
             onClick={save}
             disabled={!image || working}
-            aria-label="Saqlash"
-            title="Saqlash (Enter)"
+            aria-label={t('av.save')}
+            title={t('av.saveTitle')}
             className="w-14 h-14 inline-flex items-center justify-center rounded-full bg-accent text-on-accent shadow-lg hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             {working ? <Loader2 size={22} className="animate-spin" /> : <Check size={24} />}
