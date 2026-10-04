@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { Check, Loader2, MessageCircle, Sparkles } from 'lucide-react';
 import { TIER_CONFIG } from '@/lib/entitlements';
 import { getBotUsername } from '@/lib/telegram';
-import { formatUzDate } from '@/lib/uzDate';
+import { formatDateLocale } from '@/lib/uzDate';
+import { useT } from '@/context/LocaleContext';
 
 // BILL-01/02 — haqiqiy (placeholder emas) pricing sahifasi. Narx/feature
 // ro'yxati src/lib/entitlements.js'dan keladi (TZ §46.2: hardcode qilinmaydi).
@@ -20,6 +21,7 @@ function formatSom(n) {
 }
 
 export default function PricingTable() {
+  const { t, ts, locale } = useT();
   const [period, setPeriod] = useState('monthly'); // 'monthly' | 'yearly'
   const [authState, setAuthState] = useState('loading'); // 'loading' | 'in' | 'out'
   const [currentTier, setCurrentTier] = useState(null);
@@ -66,7 +68,7 @@ export default function PricingTable() {
 
   const telegramHref = `https://t.me/${getBotUsername()}`;
 
-  const fmtDate = (d) => formatUzDate(d, { year: true });
+  const fmtDate = (d) => formatDateLocale(locale, d, { year: true });
 
   return (
     <div>
@@ -79,17 +81,17 @@ export default function PricingTable() {
         >
           {subscription.status === 'active' && (
             <>
-              Joriy tarif: <strong>{TIER_CONFIG[subscription.tier]?.label}</strong> — {fmtDate(subscription.expiresAt)} gacha ({subscription.daysLeft} kun).
+              {t('pr.subActive', { tier: ts(TIER_CONFIG[subscription.tier]?.label), date: fmtDate(subscription.expiresAt), n: subscription.daysLeft })}
             </>
           )}
           {subscription.status === 'grace' && (
             <>
-              <strong>{TIER_CONFIG[subscription.tier]?.label}</strong> muddati tugadi. Imkoniyatlar {fmtDate(subscription.graceEndsAt)} gacha ochiq ({subscription.graceDaysLeft} kun) — uzaytirish uchun quyidagi tarifni tanlang.
+              {t('pr.subGrace', { tier: ts(TIER_CONFIG[subscription.tier]?.label), date: fmtDate(subscription.graceEndsAt), n: subscription.graceDaysLeft })}
             </>
           )}
           {subscription.status === 'expired' && (
             <>
-              <strong>{TIER_CONFIG[subscription.tier]?.label}</strong> obunangiz {fmtDate(subscription.graceEndsAt)} kuni yopilgan. Qayta faollashtirish uchun tarifni tanlang.
+              {t('pr.subExpired', { tier: ts(TIER_CONFIG[subscription.tier]?.label), date: fmtDate(subscription.graceEndsAt) })}
             </>
           )}
         </div>
@@ -97,8 +99,8 @@ export default function PricingTable() {
       <div className="flex justify-center mb-10">
         <div className="inline-flex items-center gap-1 p-1 bg-surface border border-border rounded-xl">
           {[
-            { key: 'monthly', label: 'Oylik' },
-            { key: 'yearly', label: 'Yillik' },
+            { key: 'monthly', label: t('pr.monthly') },
+            { key: 'yearly', label: t('pr.yearly') },
           ].map((opt) => (
             <button
               key={opt.key}
@@ -110,7 +112,7 @@ export default function PricingTable() {
             >
               {opt.label}
               {opt.key === 'yearly' && (
-                <span className="ml-1.5 text-[10px] font-semibold text-emerald-500">tejamkor</span>
+                <span className="ml-1.5 text-[10px] font-semibold text-emerald-500">{t('pr.saving')}</span>
               )}
             </button>
           ))}
@@ -133,31 +135,31 @@ export default function PricingTable() {
             >
               {isPopular && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 bg-accent text-on-accent text-[11px] font-semibold px-3 py-1 rounded-full shadow-glow">
-                  <Sparkles size={11} /> Eng ko'p tanlanadi
+                  <Sparkles size={11} /> {t('pr.popular')}
                 </span>
               )}
 
-              <h2 className="font-luxury text-xl font-bold text-ink mb-1">{config.label}</h2>
+              <h2 className="font-luxury text-xl font-bold text-ink mb-1">{ts(config.label)}</h2>
 
               <div className="mb-1">
                 <span className="font-luxury text-3xl font-bold text-ink">
-                  {price === 0 ? 'Bepul' : `${formatSom(price)} so'm`}
+                  {price === 0 ? t('pr.free') : t('pr.som', { n: formatSom(price) })}
                 </span>
                 {price > 0 && (
-                  <span className="text-sm text-muted"> / {period === 'monthly' ? 'oy' : 'yil'}</span>
+                  <span className="text-sm text-muted"> / {period === 'monthly' ? t('pr.perMonth') : t('pr.perYear')}</span>
                 )}
               </div>
               <p className="text-xs text-ink-subtle mb-5 min-h-[1rem]">
-                {tier === 'free' && "Har doim bepul"}
-                {tier !== 'free' && period === 'yearly' && "2 oyga yaqin tejaysiz"}
-                {tier !== 'free' && period === 'monthly' && "Istalgan payt bekor qilinadi"}
+                {tier === 'free' && t('pr.alwaysFree')}
+                {tier !== 'free' && period === 'yearly' && t('pr.saveYear')}
+                {tier !== 'free' && period === 'monthly' && t('pr.cancelAny')}
               </p>
 
               <ul className="space-y-2.5 mb-6 flex-1">
                 {config.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-ink">
                     <Check size={15} className="text-accent mt-0.5 flex-shrink-0" />
-                    <span>{f}</span>
+                    <span>{ts(f)}</span>
                   </li>
                 ))}
               </ul>
@@ -165,25 +167,25 @@ export default function PricingTable() {
               {isCurrent && tier !== 'free' ? (
                 <div className="flex flex-col gap-2">
                   <span className="inline-flex items-center justify-center gap-2 border border-accent/40 bg-accent-soft text-accent font-semibold px-5 py-2.5 rounded-xl text-sm">
-                    Joriy rejangiz
+                    {t('pr.current')}
                   </span>
                   <Link
                     href={`/app/tolov?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`}
                     className="inline-flex items-center justify-center text-sm font-semibold text-accent hover:underline py-1"
                   >
-                    Muddatni uzaytirish →
+                    {t('pr.extend')}
                   </Link>
                 </div>
               ) : isCurrent ? (
                 <span className="inline-flex items-center justify-center gap-2 border border-accent/40 bg-accent-soft text-accent font-semibold px-5 py-3 rounded-xl text-sm">
-                  Joriy rejangiz
+                  {t('pr.current')}
                 </span>
               ) : tier === 'free' ? (
                 <Link
                   href={authState === 'in' ? '/app' : '/royxat'}
                   className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold px-5 py-3 rounded-xl text-sm transition-colors shadow-glow"
                 >
-                  {authState === 'loading' ? <Loader2 size={15} className="animate-spin" /> : 'Hozir boshlash'}
+                  {authState === 'loading' ? <Loader2 size={15} className="animate-spin" /> : t('pr.start')}
                 </Link>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -199,7 +201,7 @@ export default function PricingTable() {
                       isPopular ? 'bg-accent hover:bg-accent-hover text-on-accent shadow-glow' : 'bg-ink text-bg hover:opacity-90'
                     }`}
                   >
-                    {subscription?.tier === tier && subscription.status !== 'free' ? 'Uzaytirish' : 'Sotib olish'}
+                    {subscription?.tier === tier && subscription.status !== 'free' ? t('pr.renew') : t('pr.buy')}
                   </Link>
                   <a
                     href={telegramHref}
@@ -207,7 +209,7 @@ export default function PricingTable() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-muted hover:text-accent py-1"
                   >
-                    <MessageCircle size={13} /> Savol bormi? Telegram
+                    <MessageCircle size={13} /> {t('pr.question')}
                   </a>
                 </div>
               )}
@@ -217,8 +219,7 @@ export default function PricingTable() {
       </div>
 
       <p className="text-center text-xs text-ink-subtle max-w-lg mx-auto mt-8">
-        To'lov karta orqali: summani o'tkazib, chekni yuklaysiz — tasdiqlangach tarif darhol ochiladi
-        va 1 oy (yoki 1 yil) amal qiladi. Muddat tugagach yana 3 kun ochiq turadi.
+        {t('pr.footer')}
       </p>
     </div>
   );
