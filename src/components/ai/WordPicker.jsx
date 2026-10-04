@@ -3,16 +3,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBackClose } from '@/lib/useBackClose';
 import { X, Search, Check } from 'lucide-react';
 import IconButton from '../ui/IconButton';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §D2.1 (BUG-007) — "Bu so'zni tushuntir" va boshqa AI tez-tugmalari
 // avval AI'dan so'zni qo'lda yozib berishni so'rardi, holbuki foydalanuvchida allaqachon
 // kategoriyalar/so'zlar bor edi. Bu komponent o'sha lug'atdan tanlab, AI'ga to'liq
 // kontekst (tarjima, CEFR, SRS holati, xato soni) bilan yuboradigan modal.
 const FILTERS = [
-  { key: 'all', label: 'Hammasi' },
-  { key: 'new', label: 'Yangi' },
-  { key: 'hard', label: 'Qiyin' },
-  { key: 'today', label: 'Bugungi' },
+  { key: 'all', label: 'wpk.all' },
+  { key: 'new', label: 'wpk.new' },
+  { key: 'hard', label: 'wpk.hard' },
+  { key: 'today', label: 'wpk.today' },
 ];
 
 function isDue(word) {
@@ -35,10 +36,10 @@ function matchesFilter(word, filter) {
 
 function srsBadge(word) {
   const state = word.stats?.srsState || 'new';
-  if (state === 'new') return { label: 'yangi', tone: 'text-muted' };
-  if (state === 'learning' || state === 'relearning') return { label: "o'rg.", tone: 'text-warning' };
-  if (isDue(word)) return { label: 'bugungi', tone: 'text-danger' };
-  return { label: 'bilg.', tone: 'text-success' };
+  if (state === 'new') return { label: 'wpk.b.new', tone: 'text-muted' };
+  if (state === 'learning' || state === 'relearning') return { label: 'wpk.b.learning', tone: 'text-warning' };
+  if (isDue(word)) return { label: 'wpk.b.due', tone: 'text-danger' };
+  return { label: 'wpk.b.known', tone: 'text-success' };
 }
 
 // AI'ga (va Word Picker orqali chat inputiga) yuboriladigan to'liq kontekst —
@@ -65,9 +66,10 @@ export default function WordPicker({
   defaultCategoryId,
   minSelect = 1,
   maxSelect = 30,
-  title = "Lug'atdan so'z tanlash",
+  title,
   onConfirm,
 }) {
+  const { t } = useT();
   const [categoryId, setCategoryId] = useState(defaultCategoryId || categories?.[0]?._id || '');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -161,16 +163,16 @@ export default function WordPicker({
       >
         <div className="flex items-center justify-between gap-2 pl-4 pr-2 py-1.5 border-b border-border flex-shrink-0">
           <h2 id="word-picker-title" className="text-sm font-bold text-ink min-w-0 truncate">
-            {title}
+            {title || t('ai.pickTitle')}
           </h2>
-          <IconButton icon={X} label="Yopish" size="lg" onClick={onClose} className="flex-shrink-0" />
+          <IconButton icon={X} label={t('ch.close')} size="lg" onClick={onClose} className="flex-shrink-0" />
         </div>
 
         <div className="p-4 space-y-3 flex-shrink-0 border-b border-border">
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            aria-label="Kategoriya"
+            aria-label={t('wpk.category')}
             className="w-full px-3 py-2 border border-border rounded-lg text-base md:text-sm bg-bg outline-none focus:border-accent"
           >
             {(categories || []).map((c) => (
@@ -185,10 +187,10 @@ export default function WordPicker({
             <input
               ref={searchRef}
               type="search"
-              aria-label="So'z qidirish"
+              aria-label={t('wpk.searchAria')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="So'z yoki tarjima bo'yicha qidirish..."
+              placeholder={t('wpk.searchPh')}
               className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-base md:text-sm outline-none focus:border-accent bg-bg"
             />
           </div>
@@ -203,7 +205,7 @@ export default function WordPicker({
                   filter === f.key ? 'bg-accent text-on-accent' : 'bg-bg text-muted border border-border hover:border-accent/40'
                 }`}
               >
-                {f.label}
+                {t(f.label)}
               </button>
             ))}
           </div>
@@ -211,7 +213,7 @@ export default function WordPicker({
 
         <div className="flex-1 overflow-y-auto px-2 py-2 min-h-0">
           {filtered.length === 0 ? (
-            <p className="text-center text-sm text-muted py-8">Mos so'z topilmadi</p>
+            <p className="text-center text-sm text-muted py-8">{t('wpk.none')}</p>
           ) : (
             filtered.map((w) => {
               const badge = srsBadge(w);
@@ -237,7 +239,7 @@ export default function WordPicker({
                     <span className="block text-sm font-semibold text-ink truncate">{w.word}</span>
                     <span className="block text-xs text-muted truncate">{(w.syns || []).join(', ')}</span>
                   </span>
-                  <span className={`text-[11px] font-semibold uppercase flex-shrink-0 ${badge.tone}`}>{badge.label}</span>
+                  <span className={`text-[11px] font-semibold uppercase flex-shrink-0 ${badge.tone}`}>{t(badge.label)}</span>
                 </button>
               );
             })
@@ -247,26 +249,26 @@ export default function WordPicker({
         <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3 border-t border-border flex-shrink-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted min-w-0">
             <span aria-live="polite">
-              Tanlandi: <strong className="text-ink">{selectedIds.length}</strong>
+              {t('wpk.selected')} <strong className="text-ink">{selectedIds.length}</strong>
               {maxSelect < 999 ? ` / ${maxSelect}` : ''}
-              {capHit && <span className="block text-warning">Ko&apos;pi bilan {maxSelect} ta</span>}
+              {capHit && <span className="block text-warning">{t('wpk.cap', { n: maxSelect })}</span>}
             </span>
             {filtered.length > 1 && (
               <button onClick={selectAllFiltered} className="text-accent hover:underline font-semibold">
-                Hammasini tanlash
+                {t('wpk.selectAll')}
               </button>
             )}
           </div>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-3.5 py-2.5 md:py-2 text-sm font-semibold text-muted hover:text-ink rounded-lg">
-              Bekor
+              {t('wpk.cancel')}
             </button>
             <button
               onClick={handleConfirm}
               disabled={selectedIds.length < minSelect}
               className="px-4 py-2.5 md:py-2 whitespace-nowrap bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-sm font-semibold rounded-lg transition-colors"
             >
-              Qo'shish →
+              {t('wpk.add')}
             </button>
           </div>
         </div>

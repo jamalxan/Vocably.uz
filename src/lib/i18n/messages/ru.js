@@ -1145,6 +1145,23 @@ const ru = {
   'ai.micLang': "Язык микрофона",
   'ai.micLangNamed': "Язык микрофона: {name}",
   'ai.send': "Отправить сообщение",
+  'wpk.all': "Все",
+  'wpk.new': "Новые",
+  'wpk.hard': "Сложные",
+  'wpk.today': "На сегодня",
+  'wpk.b.new': "новое",
+  'wpk.b.learning': "изуч.",
+  'wpk.b.due': "сегодня",
+  'wpk.b.known': "знаю",
+  'wpk.category': "Категория",
+  'wpk.searchAria': "Поиск слова",
+  'wpk.searchPh': "Поиск по слову или переводу...",
+  'wpk.none': "Подходящих слов не найдено",
+  'wpk.selected': "Выбрано:",
+  'wpk.cap': "Не более {n}",
+  'wpk.selectAll': "Выбрать все",
+  'wpk.cancel': "Отмена",
+  'wpk.add': "Добавить →",
 };
 
 export default ru;

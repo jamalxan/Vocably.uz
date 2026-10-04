@@ -1145,6 +1145,23 @@ const uz = {
   'ai.micLang': "Mikrofon tili",
   'ai.micLangNamed': "Mikrofon tili: {name}",
   'ai.send': "Xabarni yuborish",
+  'wpk.all': "Hammasi",
+  'wpk.new': "Yangi",
+  'wpk.hard': "Qiyin",
+  'wpk.today': "Bugungi",
+  'wpk.b.new': "yangi",
+  'wpk.b.learning': "o'rg.",
+  'wpk.b.due': "bugungi",
+  'wpk.b.known': "bilg.",
+  'wpk.category': "Kategoriya",
+  'wpk.searchAria': "So'z qidirish",
+  'wpk.searchPh': "So'z yoki tarjima bo'yicha qidirish...",
+  'wpk.none': "Mos so'z topilmadi",
+  'wpk.selected': "Tanlandi:",
+  'wpk.cap': "Ko'pi bilan {n} ta",
+  'wpk.selectAll': "Hammasini tanlash",
+  'wpk.cancel': "Bekor",
+  'wpk.add': "Qo'shish →",
 };
 
 export default uz;
