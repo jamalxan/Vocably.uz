@@ -2,11 +2,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useBackClose } from '@/lib/useBackClose';
 import { Trash2 } from 'lucide-react';
+import { useT } from '@/context/LocaleContext';
 
 // DeleteMessageModal bilan bir xil uslub, lekin butun suhbat uchun: xabar
 // o'chirishdan farqli, bu yerda "ikkala tomon uchun" har doim tanlash mumkin —
 // ikkala qatnashchi ham suhbatning teng egasi (faqat "o'z xabari" cheklovi yo'q).
 export default function DeleteConversationModal({ open, otherUsername, onConfirm, onCancel }) {
+  const { t } = useT();
   const [forEveryone, setForEveryone] = useState(false);
   const confirmRef = useRef(null);
   const cancelRef = useRef(null);
@@ -62,12 +64,11 @@ export default function DeleteConversationModal({ open, otherUsername, onConfirm
           <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
             <Trash2 size={18} />
           </div>
-          <h3 id={titleId} className="font-bold text-ink font-display">Suhbatni tozalash</h3>
+          <h3 id={titleId} className="font-bold text-ink font-display">{t('ch.delConvTitle')}</h3>
         </div>
 
         <p className="text-sm text-muted mb-3">
-          @{otherUsername || 'foydalanuvchi'} bilan bo'lgan suhbat ro'yxatdan o'chiriladi. Keyinroq qidiruvdan topib
-          qayta yozishingiz mumkin.
+          {t('ch.delConvText', { u: otherUsername || t('ch.user') })}
         </p>
 
         <label className="flex items-center gap-2.5 mb-5 px-3 py-2.5 bg-bg rounded-xl cursor-pointer select-none">
@@ -78,7 +79,7 @@ export default function DeleteConversationModal({ open, otherUsername, onConfirm
             className="w-4 h-4 accent-accent flex-shrink-0"
           />
           <span className="text-sm text-ink">
-            @{otherUsername || 'foydalanuvchi'} uchun ham o'chirilsinmi? (ikkala tomondan)
+            {t('ch.delConvBoth', { u: otherUsername || t('ch.user') })}
           </span>
         </label>
 
@@ -89,14 +90,14 @@ export default function DeleteConversationModal({ open, otherUsername, onConfirm
             onClick={onCancel}
             className="flex-1 py-2.5 bg-bg hover:bg-primary-soft text-muted rounded-xl text-sm font-semibold transition-colors"
           >
-            Bekor qilish
+            {t('ch.cancel')}
           </button>
           <button
             ref={confirmRef}
             type="submit"
             className="flex-1 py-2.5 bg-accent hover:bg-accent-hover text-on-accent rounded-xl text-sm font-semibold transition-colors"
           >
-            O'chirish
+            {t('ch.delete')}
           </button>
         </div>
       </form>

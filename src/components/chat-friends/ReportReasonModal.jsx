@@ -5,6 +5,7 @@ import { Flag } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
 import { REPORT_REASON_CATEGORIES } from '@/lib/chatConstants';
+import { useT } from '@/context/LocaleContext';
 
 // H-2 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H — "Report: sabab kategoriyasi +
 // xabar konteksti admin'ga boradi") — ilgari MessageBubble.jsx `handleReport` faqat
@@ -12,6 +13,7 @@ import { REPORT_REASON_CATEGORIES } from '@/lib/chatConstants';
 // Endi kichik kategoriya tanlovi (admin ReportsQueue.jsx ko'rsatadigan
 // REPORT_REASON_CATEGORIES bilan bir xil manba) + ixtiyoriy qo'shimcha izoh.
 export default function ReportReasonModal({ open, onSubmit, onCancel }) {
+  const { t, ts } = useT();
   const [category, setCategory] = useState(REPORT_REASON_CATEGORIES[0].value);
   const [note, setNote] = useState('');
   const selectRef = useRef(null);
@@ -45,12 +47,12 @@ export default function ReportReasonModal({ open, onSubmit, onCancel }) {
             <Flag size={18} />
           </div>
           <h3 id={titleId} className="font-bold text-ink font-display">
-            Shikoyat qilish
+            {t('ch.reportTitle')}
           </h3>
         </div>
 
         <label className="block mb-3">
-          <span className="block text-xs font-medium text-muted mb-1.5">Sabab</span>
+          <span className="block text-xs font-medium text-muted mb-1.5">{t('ch.reason')}</span>
           <select
             ref={selectRef}
             value={category}
@@ -59,30 +61,30 @@ export default function ReportReasonModal({ open, onSubmit, onCancel }) {
           >
             {REPORT_REASON_CATEGORIES.map((r) => (
               <option key={r.value} value={r.value}>
-                {r.label}
+                {ts(r.label)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="block mb-5">
-          <span className="block text-xs font-medium text-muted mb-1.5">Izoh (ixtiyoriy)</span>
+          <span className="block text-xs font-medium text-muted mb-1.5">{t('ch.noteOpt')}</span>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
             rows={2}
-            placeholder="Qo'shimcha izoh..."
+            placeholder={t('ch.notePh')}
             className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-base md:text-sm text-ink placeholder:text-muted outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition-colors resize-none"
           />
         </label>
 
         <div className="flex gap-3">
           <Button type="button" variant="secondary" onClick={onCancel} className="flex-1">
-            Bekor qilish
+            {t('ch.cancel')}
           </Button>
           <Button type="submit" className="flex-1">
-            Yuborish
+            {t('ch.forward')}
           </Button>
         </div>
       </form>

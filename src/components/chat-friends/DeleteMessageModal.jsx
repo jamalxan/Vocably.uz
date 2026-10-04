@@ -2,11 +2,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useBackClose } from '@/lib/useBackClose';
 import { Trash2 } from 'lucide-react';
+import { useT } from '@/context/LocaleContext';
 
 // Telegram uslubidagi ikki bosqichli o'chirish: sukut bo'yicha "faqat men uchun",
 // lekin xabar egasi bo'lsa "@user uchun ham o'chirilsinmi?" katakchasi belgilanishi
 // mumkin — belgilansa ikkala tomondan ham (deletedForEveryone) o'chadi.
 export default function DeleteMessageModal({ open, canDeleteForEveryone, otherUsername, onConfirm, onCancel }) {
+  const { t } = useT();
   const [forEveryone, setForEveryone] = useState(false);
   const confirmRef = useRef(null);
   const titleId = useId();
@@ -56,7 +58,7 @@ export default function DeleteMessageModal({ open, canDeleteForEveryone, otherUs
           <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
             <Trash2 size={18} />
           </div>
-          <h3 id={titleId} className="font-bold text-ink font-display">Xabarni o'chirish</h3>
+          <h3 id={titleId} className="font-bold text-ink font-display">{t('ch.delMsgTitle')}</h3>
         </div>
 
         {canDeleteForEveryone && (
@@ -68,12 +70,12 @@ export default function DeleteMessageModal({ open, canDeleteForEveryone, otherUs
               className="w-4 h-4 accent-accent flex-shrink-0"
             />
             <span className="text-sm text-ink">
-              @{otherUsername || 'foydalanuvchi'} uchun ham o'chirilsinmi?
+              {t('ch.delMsgBoth', { u: otherUsername || t('ch.user') })}
             </span>
           </label>
         )}
         {!canDeleteForEveryone && (
-          <p className="text-sm text-muted mb-5">Xabar faqat sizning tarafingizdan o'chiriladi.</p>
+          <p className="text-sm text-muted mb-5">{t('ch.delMsgOnlyMe')}</p>
         )}
 
         <div className="flex gap-3">
@@ -82,14 +84,14 @@ export default function DeleteMessageModal({ open, canDeleteForEveryone, otherUs
             onClick={onCancel}
             className="flex-1 py-2.5 bg-bg hover:bg-primary-soft text-muted rounded-xl text-sm font-semibold transition-colors"
           >
-            Bekor qilish
+            {t('ch.cancel')}
           </button>
           <button
             ref={confirmRef}
             type="submit"
             className="flex-1 py-2.5 bg-accent hover:bg-accent-hover text-on-accent rounded-xl text-sm font-semibold transition-colors"
           >
-            O'chirish
+            {t('ch.delete')}
           </button>
         </div>
       </form>

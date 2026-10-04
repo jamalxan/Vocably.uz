@@ -4,6 +4,7 @@ import { useBackClose } from '@/lib/useBackClose';
 import { Loader2, Search, Send, X } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import Avatar from '@/components/avatar/Avatar';
+import { useT } from '@/context/LocaleContext';
 
 // C-10 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 C) — "Forward" uchun
 // yengil "suhbat tanlash" oynasi: alohida so'rov/endpoint kerak emas —
@@ -11,6 +12,7 @@ import Avatar from '@/components/avatar/Avatar';
 // (TZ ko'rsatmasiga muvofiq).
 export default function ForwardMessageModal({ open, message, onClose }) {
   const { conversations, forwardMessage } = useChat();
+  const { t, ts } = useT();
   const [query, setQuery] = useState('');
   const [sendingId, setSendingId] = useState(null);
   const [doneId, setDoneId] = useState(null);
@@ -49,7 +51,7 @@ export default function ForwardMessageModal({ open, message, onClose }) {
     const res = await forwardMessage(message, conv.id);
     setSendingId(null);
     if (res.error) {
-      alert(res.error);
+      alert(ts(res.error));
     } else {
       setDoneId(conv.id);
       setTimeout(() => onClose?.(), 500);
@@ -69,13 +71,13 @@ export default function ForwardMessageModal({ open, message, onClose }) {
       >
         <div className="flex items-center gap-3 p-5 pb-3 flex-shrink-0">
           <h3 id={titleId} className="flex-1 font-bold text-ink font-display">
-            Yuborish
+            {t('ch.forward')}
           </h3>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="Yopish"
+            aria-label={t('ch.close')}
             className="inline-flex items-center justify-center w-11 h-11 -m-2.5 md:w-auto md:h-auto md:m-0 md:p-1 rounded-lg text-muted hover:text-ink transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <X size={18} />
@@ -88,15 +90,15 @@ export default function ForwardMessageModal({ open, message, onClose }) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Suhbat qidirish..."
-              aria-label="Suhbat qidirish"
+              placeholder={t('ch.findChat')}
+              aria-label={t('ch.findChatAria')}
               className="flex-1 min-w-0 bg-transparent text-base md:text-sm text-ink placeholder:text-muted outline-none"
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 pb-3">
-          {filtered.length === 0 && <p className="text-center text-xs text-muted px-4 py-6">Suhbat topilmadi</p>}
+          {filtered.length === 0 && <p className="text-center text-xs text-muted px-4 py-6">{t('ch.chatNotFound')}</p>}
           {filtered.map((c) => (
             <button
               key={c.id}
@@ -113,10 +115,10 @@ export default function ForwardMessageModal({ open, message, onClose }) {
                 size={36}
               />
               <span className="flex-1 min-w-0 text-sm font-medium text-ink truncate">
-                {c.otherUser?.nickname || `@${c.otherUser?.username || "noma'lum"}`}
+                {c.otherUser?.nickname || `@${c.otherUser?.username || t('ch.unknown')}`}
               </span>
               {sendingId === c.id && <Loader2 size={14} className="animate-spin text-muted flex-shrink-0" />}
-              {doneId === c.id && <span className="text-xs text-success flex-shrink-0">Yuborildi ✓</span>}
+              {doneId === c.id && <span className="text-xs text-success flex-shrink-0">{t('ch.sent')}</span>}
               {sendingId !== c.id && doneId !== c.id && <Send size={13} className="text-muted flex-shrink-0" />}
             </button>
           ))}

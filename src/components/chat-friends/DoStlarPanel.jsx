@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
 import { ChatProvider, useChat } from '@/context/ChatContext';
 import ConversationList from './ConversationList';
 import ConversationView from './ConversationView';
@@ -18,6 +19,7 @@ function DoStlarShell({ onActiveChange }) {
   } = useChat();
   const params = useParams();
   const router = useRouter();
+  const { ts } = useT();
 
   // /app/dostlar/[username] — chatAccess'i bor HAR QANDAY (mavjud username'li)
   // foydalanuvchi uchun to'g'ridan-to'g'ri havola: /api/chat/conversations POST
@@ -46,7 +48,7 @@ function DoStlarShell({ onActiveChange }) {
     let cancelled = false;
     openConversationByUsername(routeUsername).then((res) => {
       if (!cancelled && res?.error) {
-        alert(res.error);
+        alert(ts(res.error));
         router.replace('/app/dostlar');
       }
     });
@@ -132,9 +134,10 @@ function DoStlarShell({ onActiveChange }) {
 // tekshiruv — himoyaning ikkinchi qatlami, to'g'ridan-to'g'ri URL kiritilsa ham ishlaydi).
 export default function DoStlarPanel({ onActiveChange }) {
   const { chatUserId, chatAccess } = useApp();
+  const { t } = useT();
 
   if (!chatAccess) {
-    return <p className="text-sm text-muted text-center py-12">Bu bo'lim uchun ruxsatingiz yo'q.</p>;
+    return <p className="text-sm text-muted text-center py-12">{t('ch.noAccess')}</p>;
   }
 
   return (

@@ -2,6 +2,25 @@
 // exact: точное совпадение; patterns: шаблоны с {имя} и множественным числом {n#слово|слова|слов} (см. src/lib/i18n/index.js).
 const ru = {
   exact: {
+    // --- Чат (src/lib/chatConstants.js, presence.js)
+    "📷 Rasm": "📷 Фото",
+    "🎬 Video": "🎬 Видео",
+    "🎤 Ovozli xabar": "🎤 Голосовое сообщение",
+    "📎 Fayl": "📎 Файл",
+    "😊 Stiker": "😊 Стикер",
+    "yozmoqda...": "печатает...",
+    "ovoz yubormoqda...": "записывает голосовое...",
+    "video yubormoqda...": "отправляет видео...",
+    "1 soatga": "на 1 час",
+    "8 soatga": "на 8 часов",
+    "1 kunga": "на 1 день",
+    "Doimiy": "Навсегда",
+    "Spam": "Спам",
+    "Tazyiq/xafa qilish": "Преследование/оскорбления",
+    "Nomaqbul kontent": "Недопустимый контент",
+    "Boshqa": "Другое",
+    "hozir": "сейчас",
+    "Onlayn": "Онлайн",
     // --- Типы вопросов (src/lib/exam/analytics.ts)
     "Ko'p tanlovli (bitta)": "С выбором ответа (один)",
     "Ko'p tanlovli (bir nechta)": "С выбором ответа (несколько)",
@@ -181,6 +200,13 @@ const ru = {
     "So'zlarni og'zaki ishlating": 'Используйте слова в устной речи',
   },
   patterns: [
+    { uz: "oxirgi marta ko'rilgan {n} daqiqa oldin", tr: "был(а) {n} {n#минуту|минуты|минут} назад" },
+    { uz: "oxirgi marta ko'rilgan {n} soat oldin", tr: "был(а) {n} {n#час|часа|часов} назад" },
+    { uz: "oxirgi marta ko'rilgan {n} kun oldin", tr: "был(а) {n} {n#день|дня|дней} назад" },
+    { uz: "oxirgi marta ko'rilgan {d}", tr: "был(а) {d}" },
+    { uz: "{n} daqiqa oldin", tr: "{n} {n#минуту|минуты|минут} назад" },
+    { uz: "{n} soat oldin", tr: "{n} {n#час|часа|часов} назад" },
+    { uz: "{n} kun oldin", tr: "{n} {n#день|дня|дней} назад" },
     // --- src/lib/exam/mockRecommendation.ts
     { uz: "{label} bo'limingiz eng past ko'rsatkichga ega ({b}) — shu bo'limga ko'proq mashq qiling.", tr: 'Ваш раздел {label} имеет самый низкий показатель ({b}) — потренируйтесь в нём больше.' },
     // --- src/lib/studyPlan.js (Bugun sahifasi reja kartasi; tipografik apostrof ‘ ’)

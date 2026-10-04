@@ -7,6 +7,7 @@ import { TYPING_LABEL } from '@/lib/chatConstants';
 import UserSearchBar from './UserSearchBar';
 import DeleteConversationModal from './DeleteConversationModal';
 import Avatar from '@/components/avatar/Avatar';
+import { useT } from '@/context/LocaleContext';
 
 // Uzoq bosish (long-press) uchun chegara — bundan qisqarog'i oddiy bosish
 // (suhbatni ochish) hisoblanadi, uzunrog'i esa o'chirish menyusini chiqaradi
@@ -14,6 +15,7 @@ import Avatar from '@/components/avatar/Avatar';
 const LONG_PRESS_MS = 500;
 
 function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typing }) {
+  const { t, ts } = useT();
   const pressTimer = useRef(null);
   const longPressFired = useRef(false);
 
@@ -79,21 +81,21 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
           <span className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-1 min-w-0">
               <span className={`block text-sm truncate ${c.unreadCount > 0 ? 'font-bold text-ink' : 'font-medium text-ink'}`}>
-                {c.otherUser?.nickname || `@${c.otherUser?.username || 'noma\'lum'}`}
+                {c.otherUser?.nickname || `@${c.otherUser?.username || t('ch.unknown')}`}
               </span>
               {c.muted && <BellOff size={11} className="text-muted flex-shrink-0" />}
             </span>
             {/* BUG-024: backend `lastMessageAt: null` qaytarishi mumkin (foydalanuvchi
                 suhbatni tozalagan, hali yangi xabar kelmagan) — bunday holatda vaqt
                 yorlig'i umuman ko'rsatilmaydi. */}
-            {c.lastMessageAt && <span className="text-[11px] text-muted flex-shrink-0">{formatRelativeTime(c.lastMessageAt)}</span>}
+            {c.lastMessageAt && <span className="text-[11px] text-muted flex-shrink-0">{ts(formatRelativeTime(c.lastMessageAt))}</span>}
           </span>
           <span className="flex items-center justify-between gap-2">
             {typing ? (
-              <span className="block text-xs text-accent italic truncate">{TYPING_LABEL[typing] || TYPING_LABEL.text}</span>
+              <span className="block text-xs text-accent italic truncate">{ts(TYPING_LABEL[typing] || TYPING_LABEL.text)}</span>
             ) : (
               <span className={`block text-xs truncate ${c.unreadCount > 0 ? 'text-ink font-semibold' : 'text-muted'}`}>
-                {c.lastMessagePreview || ''}
+                {ts(c.lastMessagePreview || '')}
               </span>
             )}
             {c.unreadCount > 0 && (
@@ -107,8 +109,8 @@ function ConversationRow({ c, selected, onSelect, onDeleteRequest, online, typin
       <button
         type="button"
         onClick={() => onDeleteRequest(c)}
-        title="Suhbatni tozalash"
-        aria-label="Suhbatni tozalash"
+        title={t('ch.clearChat')}
+        aria-label={t('ch.clearChat')}
         className="flex-shrink-0 inline-flex items-center justify-center w-11 h-11 lg:w-auto lg:h-auto lg:p-1 lg:mr-2.5 rounded-lg text-muted hover:text-accent transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <Trash2 size={14} />
@@ -128,6 +130,7 @@ export default function ConversationList({ onSelect, selectedId }) {
     livePresence,
     typingByConversation,
   } = useChat();
+  const { t, ts } = useT();
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   useLiveClock();
@@ -137,18 +140,18 @@ export default function ConversationList({ onSelect, selectedId }) {
     setDeleting(true);
     const res = await deleteConversation(deleteTarget.id, forEveryone);
     setDeleting(false);
-    if (res.error) alert(res.error);
+    if (res.error) alert(ts(res.error));
     else setDeleteTarget(null);
   };
 
   return (
     <div className="w-full lg:w-72 flex-shrink-0 border-r border-border flex flex-col h-full bg-surface">
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        <h3 className="text-sm font-bold text-ink">Do'stlar</h3>
+        <h3 className="text-sm font-bold text-ink">{t('ch.friends')}</h3>
         <span
           role="status"
-          title={socketConnected ? 'Onlayn' : 'Oflayn (yangilanish bilan)'}
-          aria-label={socketConnected ? 'Onlayn' : 'Oflayn (yangilanish bilan)'}
+          title={socketConnected ? t('ch.online') : t('ch.offline')}
+          aria-label={socketConnected ? t('ch.online') : t('ch.offline')}
           className="text-muted"
         >
           {socketConnected ? <Wifi size={13} className="text-success" /> : <WifiOff size={13} />}
@@ -168,19 +171,19 @@ export default function ConversationList({ onSelect, selectedId }) {
         )}
         {!loadingConversations && conversationsError && conversations.length === 0 && (
           <div className="text-center px-4 py-6">
-            <p className="text-sm text-danger font-medium mb-2">Suhbatlarni yuklab bo'lmadi.</p>
+            <p className="text-sm text-danger font-medium mb-2">{t('ch.loadFail')}</p>
             <button
               type="button"
               onClick={loadConversations}
               className="min-h-11 px-3 text-xs font-semibold text-accent hover:underline"
             >
-              Qayta yuklash
+              {t('ch.reload')}
             </button>
           </div>
         )}
         {!loadingConversations && !conversationsError && conversations.length === 0 && (
           <p className="text-center text-xs text-muted px-4 py-6">
-            Hozircha suhbat yo'q. Yuqoridan username qidirib, yozishni boshlang.
+            {t('ch.empty')}
           </p>
         )}
         {conversations.map((c) => (

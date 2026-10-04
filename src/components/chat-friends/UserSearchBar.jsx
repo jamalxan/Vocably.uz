@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import Avatar from '@/components/avatar/Avatar';
+import { useT } from '@/context/LocaleContext';
 
 // C-08 — min 2 belgi bosilmaguncha qidirilmaydi (bitta harf butun kolleksiyani
 // qimmat skanerlashga olib kelardi, natija ham foydasiz keng bo'lardi).
@@ -12,6 +13,7 @@ const DEBOUNCE_MS = 250;
 
 export default function UserSearchBar({ onOpen }) {
   const { searchUsername, openConversationByUsername } = useChat();
+  const { t, ts } = useT();
   const [q, setQ] = useState('');
   const [results, setResults] = useState(undefined); // undefined=hech qidirilmagan, []=topilmadi
   const [searching, setSearching] = useState(false);
@@ -45,7 +47,7 @@ export default function UserSearchBar({ onOpen }) {
     setOpeningUsername(username);
     const res = await openConversationByUsername(username);
     setOpeningUsername(null);
-    if (res.error) alert(res.error);
+    if (res.error) alert(ts(res.error));
     else {
       setQ('');
       setResults(undefined);
@@ -63,8 +65,8 @@ export default function UserSearchBar({ onOpen }) {
           onChange={(e) => onChange(e.target.value)}
           // Panel torroq (masalan lg breakpoint atrofida) bo'lganda uzun matn
           // kesilib "...kiriti" bo'lib chiqardi — qisqaroq, mazmuni bir xil matn.
-          placeholder="Username yoki ism bo'yicha qidirish"
-          aria-label="Username yoki ism bo'yicha qidirish"
+          placeholder={t('ch.searchPh')}
+          aria-label={t('ch.searchPh')}
           className="w-full pl-9 pr-3 py-2 bg-bg rounded-lg text-base md:text-sm text-ink placeholder:text-muted outline-none focus:ring-2 focus:ring-accent/20"
         />
         {searching && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted" />}
@@ -89,12 +91,12 @@ export default function UserSearchBar({ onOpen }) {
                 {openingUsername === result.username ? (
                   <Loader2 size={14} className="animate-spin text-accent flex-shrink-0" />
                 ) : (
-                  <span className="text-xs text-accent font-medium flex-shrink-0">Yozish</span>
+                  <span className="text-xs text-accent font-medium flex-shrink-0">{t('ch.write')}</span>
                 )}
               </button>
             ))
           ) : (
-            <p className="text-xs text-muted text-center py-2">Foydalanuvchi topilmadi</p>
+            <p className="text-xs text-muted text-center py-2">{t('ch.userNotFound')}</p>
           )}
         </div>
       )}

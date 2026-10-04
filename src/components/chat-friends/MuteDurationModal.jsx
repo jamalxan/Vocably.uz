@@ -5,11 +5,13 @@ import { BellOff } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
 import { MUTE_DURATION_OPTIONS } from '@/lib/chatConstants';
+import { useT } from '@/context/LocaleContext';
 
 // G-3 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 G — "Mute: 1 soat / 8 soat / 1 kun /
 // doimiy") — ilgari sarlavhadagi 🔔 tugmasi to'g'ridan-to'g'ri (faqat doimiy) mute
 // qilardi. Endi bosilganda shu davomiylik tanlash oynasi ochiladi (ConversationView.jsx).
 export default function MuteDurationModal({ open, onSelect, onCancel }) {
+  const { t, ts } = useT();
   const firstRef = useRef(null);
   const titleId = useId();
   const dialogRef = useDialogFocus(open, firstRef);
@@ -34,7 +36,7 @@ export default function MuteDurationModal({ open, onSelect, onCancel }) {
             <BellOff size={18} />
           </div>
           <h3 id={titleId} className="font-bold text-ink font-display">
-            Necha vaqtga ovozsiz?
+            {t('ch.muteTitle')}
           </h3>
         </div>
 
@@ -47,13 +49,13 @@ export default function MuteDurationModal({ open, onSelect, onCancel }) {
               onClick={() => onSelect?.(opt.durationMs)}
               className="w-full min-h-11 px-3.5 py-2.5 text-left bg-bg hover:bg-primary-soft rounded-xl text-sm text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              {opt.label}
+              {ts(opt.label)}
             </button>
           ))}
         </div>
 
         <Button type="button" variant="secondary" onClick={onCancel} className="w-full">
-          Bekor qilish
+          {t('ch.cancel')}
         </Button>
       </div>
     </div>

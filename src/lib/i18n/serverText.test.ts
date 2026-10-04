@@ -106,3 +106,12 @@ describe('tarif va mock matnlari', () => {
     expect(translateServerText('uz', "To'liq Mock testlar")).toBe("To'liq Mock testlar");
   });
 });
+
+describe('chat matnlari', () => {
+  it('nisbiy vaqt va oxirgi faollik ruscha ko‘plik bilan', () => {
+    expect(translateServerText('ru', '5 daqiqa oldin')).toBe('5 минут назад');
+    expect(translateServerText('ru', '1 soat oldin')).toBe('1 час назад');
+    expect(translateServerText('ru', "oxirgi marta ko'rilgan 2 kun oldin")).toBe('был(а) 2 дня назад');
+    expect(translateServerText('ru', '📷 Rasm')).toBe('📷 Фото');
+  });
+});

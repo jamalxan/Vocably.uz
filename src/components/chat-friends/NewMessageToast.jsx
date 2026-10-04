@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { MessageCircle, X } from 'lucide-react';
+import { useT } from '@/context/LocaleContext';
 
 // G-2 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 G — "Tab ochiq, lekin boshqa
 // suhbatda bo'lsa — in-app toast") — vizual naqsh/joylashuv src/components/UndoToast.jsx
@@ -11,6 +12,7 @@ import { MessageCircle, X } from 'lucide-react';
 // 5s'dan keyin o'zi yopiladi (`toast` identifikatori — clientMessageId yo'qligi
 // sababli conversationId+messageId+createdAt — o'zgarganda qayta boshlanadi).
 export default function NewMessageToast({ toast, onOpen, onDismiss }) {
+  const { t, ts } = useT();
   useEffect(() => {
     if (!toast) return undefined;
     const timer = setTimeout(() => onDismiss?.(), 5000);
@@ -33,13 +35,13 @@ export default function NewMessageToast({ toast, onOpen, onDismiss }) {
         <MessageCircle size={16} className="flex-shrink-0" aria-hidden="true" />
         <span className="min-w-0">
           <span className="block font-semibold truncate">{toast.senderLabel}</span>
-          <span className="block text-on-primary/80 truncate">{toast.preview}</span>
+          <span className="block text-on-primary/80 truncate">{ts(toast.preview)}</span>
         </span>
       </button>
       <button
         type="button"
         onClick={onDismiss}
-        aria-label="Yopish"
+        aria-label={t('ch.close')}
         className="flex-shrink-0 p-2 -m-1 rounded-lg text-on-primary/80 hover:text-on-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-primary"
       >
         <X size={14} aria-hidden="true" />
