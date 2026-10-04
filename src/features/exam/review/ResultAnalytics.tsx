@@ -5,13 +5,14 @@ import { fetchAttemptHistory } from '../state/attemptsApi';
 import { QUESTION_TYPE_LABEL, meaningfulTypeAccuracy } from '@/lib/exam/analytics';
 import type { TypeAccuracy } from '@/lib/exam/analytics';
 import type { AttemptResult, AttemptHistoryEntry } from '@/lib/exam/types';
+import { useT } from '@/context/LocaleContext';
 
 // TZ-vocably-v2.md §19 Faza 3 item 17 — "Natija analitikasi: zaif savol
 // turlari, progress chart". SectionResult.tsx va MockResult.tsx ikkalasi ham
 // shu bitta komponentni ishlatadi — faqat `metric` farq qiladi (bo'lim
 // natijasi bo'lsa o'sha bo'limning bandi, mock bo'lsa umumiy band).
 const METRIC_LABEL: Record<'overall' | 'listening' | 'reading' | 'writing', string> = {
-  overall: 'Umumiy',
+  overall: 'an.overall',
   listening: 'Listening',
   reading: 'Reading',
   writing: 'Writing',
@@ -43,22 +44,24 @@ function formatDate(iso: string | null): string {
 }
 
 function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: AttemptHistoryEntry & { label: string; value: number | null } }[] }) {
+  const { t } = useT();
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   return (
     <div className="bg-primary text-on-primary text-xs rounded-lg px-3 py-2 shadow-card">
-      <p className="font-semibold mb-0.5">{p.testTitle || 'Urinish'}</p>
+      <p className="font-semibold mb-0.5">{p.testTitle || t('an.attempt')}</p>
       <p>{p.value != null ? p.value.toFixed(1) : '—'}</p>
     </div>
   );
 }
 
 function TypeRow({ type }: { type: TypeAccuracy }) {
+  const { ts } = useT();
   const pct = Math.round(type.accuracy * 100);
   return (
     <li>
       <div className="flex items-baseline justify-between gap-2 mb-1">
-        <span className="text-sm text-ink min-w-0 break-words">{QUESTION_TYPE_LABEL[type.type]}</span>
+        <span className="text-sm text-ink min-w-0 break-words">{ts(QUESTION_TYPE_LABEL[type.type])}</span>
         <span className="text-xs text-muted tabular-nums shrink-0">
           {type.correct}/{type.total} ({pct}%)
         </span>
@@ -69,7 +72,7 @@ function TypeRow({ type }: { type: TypeAccuracy }) {
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={QUESTION_TYPE_LABEL[type.type]}
+        aria-label={ts(QUESTION_TYPE_LABEL[type.type])}
       >
         <div className={`h-full rounded-full ${accuracyBarColor(type.accuracy)}`} style={{ width: `${pct}%` }} />
       </div>
@@ -78,6 +81,8 @@ function TypeRow({ type }: { type: TypeAccuracy }) {
 }
 
 export default function ResultAnalytics({ perQuestion, metric }: ResultAnalyticsProps) {
+  const { t, ts } = useT();
+  const metricLabel = METRIC_LABEL[metric].startsWith('an.') ? t(METRIC_LABEL[metric]) : METRIC_LABEL[metric];
   const [history, setHistory] = useState<AttemptHistoryEntry[] | null>(null);
 
   useEffect(() => {
@@ -95,8 +100,8 @@ export default function ResultAnalytics({ perQuestion, metric }: ResultAnalytics
   }, []);
 
   const breakdown = meaningfulTypeAccuracy(perQuestion);
-  const strong = breakdown.filter((t) => t.accuracy >= STRONG_THRESHOLD).slice(-MAX_LISTED).reverse();
-  const weak = breakdown.filter((t) => t.accuracy < WEAK_THRESHOLD).slice(0, MAX_LISTED);
+  const strong = breakdown.filter((x) => x.accuracy >= STRONG_THRESHOLD).slice(-MAX_LISTED).reverse();
+  const weak = breakdown.filter((x) => x.accuracy < WEAK_THRESHOLD).slice(0, MAX_LISTED);
   const chartData = (history || [])
     .filter((h) => h[metric] != null)
     .map((h) => ({ ...h, label: formatDate(h.submittedAt), value: h[metric] }));
@@ -107,16 +112,16 @@ export default function ResultAnalytics({ perQuestion, metric }: ResultAnalytics
     <div className="mt-6 space-y-4 text-left">
       {(strong.length > 0 || weak.length > 0) && (
         <div className="bg-surface border border-border rounded-xl p-4 space-y-3">
-          <p className="text-xs font-semibold text-accent uppercase tracking-wider">Kuchli va zaif tomonlar</p>
+          <p className="text-xs font-semibold text-accent uppercase tracking-wider">{t('an.strongWeak')}</p>
           {weak.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-danger mb-1">Zaif tomonlar</p>
+              <p className="text-xs font-medium text-danger mb-1">{t('an.weak')}</p>
               <ul className="space-y-0.5">
-                {weak.map((t) => (
-                  <li key={t.type} className="text-sm text-ink flex items-baseline justify-between gap-2">
-                    <span>{QUESTION_TYPE_LABEL[t.type]}</span>
+                {weak.map((w) => (
+                  <li key={w.type} className="text-sm text-ink flex items-baseline justify-between gap-2">
+                    <span>{ts(QUESTION_TYPE_LABEL[w.type])}</span>
                     <span className="text-xs text-muted tabular-nums shrink-0">
-                      {t.correct}/{t.total} ({Math.round(t.accuracy * 100)}%)
+                      {w.correct}/{w.total} ({Math.round(w.accuracy * 100)}%)
                     </span>
                   </li>
                 ))}
@@ -125,13 +130,13 @@ export default function ResultAnalytics({ perQuestion, metric }: ResultAnalytics
           )}
           {strong.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-success mb-1">Kuchli tomonlar</p>
+              <p className="text-xs font-medium text-success mb-1">{t('an.strong')}</p>
               <ul className="space-y-0.5">
-                {strong.map((t) => (
-                  <li key={t.type} className="text-sm text-ink flex items-baseline justify-between gap-2">
-                    <span>{QUESTION_TYPE_LABEL[t.type]}</span>
+                {strong.map((s) => (
+                  <li key={s.type} className="text-sm text-ink flex items-baseline justify-between gap-2">
+                    <span>{ts(QUESTION_TYPE_LABEL[s.type])}</span>
                     <span className="text-xs text-muted tabular-nums shrink-0">
-                      {t.correct}/{t.total} ({Math.round(t.accuracy * 100)}%)
+                      {s.correct}/{s.total} ({Math.round(s.accuracy * 100)}%)
                     </span>
                   </li>
                 ))}
@@ -144,11 +149,11 @@ export default function ResultAnalytics({ perQuestion, metric }: ResultAnalytics
       {breakdown.length > 0 && (
         <div className="bg-surface border border-border rounded-xl p-4">
           <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-3">
-            Savol turi bo&apos;yicha natija
+            {t('an.byType')}
           </p>
           <ul className="space-y-2.5">
-            {breakdown.map((t) => (
-              <TypeRow key={t.type} type={t} />
+            {breakdown.map((b) => (
+              <TypeRow key={b.type} type={b} />
             ))}
           </ul>
         </div>
@@ -157,12 +162,12 @@ export default function ResultAnalytics({ perQuestion, metric }: ResultAnalytics
       {chartData.length >= 2 && (
         <div className="bg-surface border border-border rounded-xl p-4">
           <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-3">
-            {METRIC_LABEL[metric]} — oldingi urinishlar
+            {t('an.prev', { label: metricLabel })}
           </p>
           <div
             style={{ width: '100%', height: 160 }}
             role="img"
-            aria-label={`${METRIC_LABEL[metric]} band: ${chartData.map((d) => `${d.label} — ${d.value != null ? d.value.toFixed(1) : '—'}`).join(', ')}`}
+            aria-label={`${metricLabel} band: ${chartData.map((d) => `${d.label} — ${d.value != null ? d.value.toFixed(1) : '—'}`).join(', ')}`}
           >
             <ResponsiveContainer>
               <LineChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>

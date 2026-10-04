@@ -2,6 +2,24 @@
 // exact: точное совпадение; patterns: шаблоны с {имя} и множественным числом {n#слово|слова|слов} (см. src/lib/i18n/index.js).
 const ru = {
   exact: {
+    // --- Типы вопросов (src/lib/exam/analytics.ts)
+    "Ko'p tanlovli (bitta)": "С выбором ответа (один)",
+    "Ko'p tanlovli (bir nechta)": "С выбором ответа (несколько)",
+    "Gapni to‘ldirish": "Завершение предложения",
+    "Qisqa javob": "Краткий ответ",
+    "Qaydnomani to‘ldirish": "Заполнение заметок",
+    "Jadvalni to‘ldirish": "Заполнение таблицы",
+    "Oqim-chizmani to‘ldirish": "Заполнение блок-схемы",
+    "Xulosani to‘ldirish": "Заполнение резюме",
+    "Xulosani to‘ldirish (bankdan)": "Заполнение резюме (из банка слов)",
+    "Moslashtirish (xususiyat)": "Сопоставление (признаки)",
+    "Gap oxirini moslashtirish": "Сопоставление окончаний предложений",
+    "Diagramma yorlig‘i": "Подписи к диаграмме",
+    "Sarlavhalarni moslashtirish": "Сопоставление заголовков",
+    "Ma’lumotni moslashtirish": "Сопоставление информации",
+    "Formani to‘ldirish": "Заполнение формы",
+    "Xarita yorlig‘i": "Подписи к карте",
+    "Reja yorlig‘i": "Подписи к плану",
     'Vocably Mock Imtihon': 'Пробный экзамен Vocably',
     // --- Тарифы (src/lib/entitlements.js)
     "Bepul": "Бесплатно",

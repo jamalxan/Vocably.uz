@@ -907,6 +907,13 @@ const ru = {
   'wp.review': "Повторить",
   'wp.searching': "Поиск...",
   'wp.notFound': "В библиотеке не найдено — перевод предложит ИИ.",
+  'an.overall': "Общий",
+  'an.attempt': "Попытка",
+  'an.strongWeak': "Сильные и слабые стороны",
+  'an.weak': "Слабые стороны",
+  'an.strong': "Сильные стороны",
+  'an.byType': "Результат по типам вопросов",
+  'an.prev': "{label} — предыдущие попытки",
 };
 
 export default ru;

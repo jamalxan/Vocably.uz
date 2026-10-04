@@ -907,6 +907,13 @@ const uz = {
   'wp.review': "Takrorlash",
   'wp.searching': "Qidirilmoqda...",
   'wp.notFound': "Kutubxonada topilmadi — tarjimani AI taklif qiladi.",
+  'an.overall': "Umumiy",
+  'an.attempt': "Urinish",
+  'an.strongWeak': "Kuchli va zaif tomonlar",
+  'an.weak': "Zaif tomonlar",
+  'an.strong': "Kuchli tomonlar",
+  'an.byType': "Savol turi bo'yicha natija",
+  'an.prev': "{label} — oldingi urinishlar",
 };
 
 export default uz;
