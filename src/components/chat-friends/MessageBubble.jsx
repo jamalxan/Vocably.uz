@@ -1,4 +1,5 @@
 'use client';
+import { useT } from '@/context/LocaleContext';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
@@ -36,8 +37,9 @@ import ReportReasonModal from './ReportReasonModal';
 const LONG_PRESS_MS = 500;
 
 function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
-  const senderLabel = String(replyTo.senderId) === String(myId) ? 'Siz' : otherUsername ? `@${otherUsername}` : 'Foydalanuvchi';
-  const preview = replyTo.type === 'text' ? replyTo.text : REPLY_TYPE_LABEL[replyTo.type] || '';
+  const { t, ts } = useT();
+  const senderLabel = String(replyTo.senderId) === String(myId) ? t('ch.youRaw') : otherUsername ? `@${otherUsername}` : t('ch.user');
+  const preview = replyTo.type === 'text' ? replyTo.text : ts(REPLY_TYPE_LABEL[replyTo.type] || '');
   return (
     <button
       type="button"
@@ -54,7 +56,8 @@ function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
 
 // Presign so'rovi xato bo'lsa — cheksiz "pulsing" skelet o'rniga aniq xabar.
 function MediaError() {
-  return <p className="text-xs text-muted italic">Yuklab bo'lmadi</p>;
+  const { t } = useT();
+  return <p className="text-xs text-muted italic">{t('mb.loadFail')}</p>;
 }
 
 // Oyna ochilganda fokusni ichkariga oladi, Escape bilan yopiladi, yopilganda
@@ -80,13 +83,14 @@ function useDialogFocus(initialRef, onClose) {
 // ishlatadi (bosilganda rasm kattalashadi) — alohida oyna qurish o'rniga eksport
 // qilinadi (TZ ko'rsatmasiga ko'ra "bo'lsa qayta ishlatilsin").
 export function ImageLightbox({ url, onClose }) {
+  const { t } = useT();
   const closeRef = useRef(null);
   useDialogFocus(closeRef, onClose);
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Rasm"
+      aria-label={t('ch.photoAlt')}
       onClick={onClose}
       className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-zoom-out"
     >
@@ -94,14 +98,14 @@ export function ImageLightbox({ url, onClose }) {
         ref={closeRef}
         type="button"
         onClick={onClose}
-        aria-label="Yopish"
+        aria-label={t('ch.close')}
         className="absolute top-3 right-3 w-11 h-11 inline-flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         style={{ marginTop: 'env(safe-area-inset-top)' }}
       >
         <X size={20} />
       </button>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="Rasm" className="max-w-full max-h-full rounded-lg" />
+      <img src={url} alt={t('ch.photoAlt')} className="max-w-full max-h-full rounded-lg" />
     </div>
   );
 }
@@ -112,6 +116,7 @@ export function ImageLightbox({ url, onClose }) {
 // useAuthedMediaUrl'ga `null` uzatiladi, u esa mediaKey bo'lmasa hech qanday
 // so'rov yubormaydi (src/lib/useAuthedMedia.js).
 function ImageBubble({ media }) {
+  const { t } = useT();
   const [viewRef, inView] = useInViewport();
   const { url, error } = useAuthedMediaUrl(inView ? media.key : null);
   const [open, setOpen] = useState(false);
@@ -125,11 +130,11 @@ function ImageBubble({ media }) {
         ref={viewRef}
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Rasmni kattalashtirish"
+        aria-label={t('ch.zoom')}
         className="block max-w-full rounded-lg cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt="Rasm" className="block max-w-[min(240px,100%)] max-h-[280px] rounded-lg object-cover" />
+        <img src={url} alt={t('ch.photoAlt')} className="block max-w-[min(240px,100%)] max-h-[280px] rounded-lg object-cover" />
       </button>
       {open && <ImageLightbox url={url} onClose={() => setOpen(false)} />}
     </>
@@ -159,6 +164,7 @@ function VideoBubble({ media }) {
 // again to pause; a ring shows progress. Muted autoplay preview is skipped on
 // purpose: many notes in view would all start moving and downloading.
 function RoundVideo({ url, viewRef }) {
+  const { t } = useT();
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -179,7 +185,7 @@ function RoundVideo({ url, viewRef }) {
       ref={viewRef}
       type="button"
       onClick={toggle}
-      aria-label={playing ? 'Video xabarni to‘xtatish' : 'Video xabarni ijro etish'}
+      aria-label={playing ? t('mb.pauseVideo') : t('mb.playVideo')}
       className={`relative block ${size} rounded-full overflow-hidden bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
     >
       <video
@@ -245,6 +251,7 @@ function fmtTime(sec) {
 // Next-in-line is found in DOM order via [data-voice-bubble] and started with
 // a 'voice-play' event, so bubbles don't need to know about each other.
 function VoiceBubble({ media, isMine }) {
+  const { t } = useT();
   const rootRef = useRef(null);
   const audioRef = useRef(null);
   const [armed, setArmed] = useState(false);
@@ -300,7 +307,7 @@ function VoiceBubble({ media, isMine }) {
       <button
         type="button"
         onClick={toggle}
-        aria-label={playing ? 'Ovozli xabarni to‘xtatish' : 'Ovozli xabarni ijro etish'}
+        aria-label={playing ? t('mb.pauseVoice') : t('mb.playVoice')}
         className={`w-10 h-10 rounded-full grid place-items-center flex-shrink-0 ${tone} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
       >
         {loading ? (
@@ -316,7 +323,7 @@ function VoiceBubble({ media, isMine }) {
           <div className={`h-full rounded-full ${fill}`} style={{ width: `${pct}%` }} />
         </div>
         <p className={`mt-1 text-[11px] tabular-nums ${isMine ? 'text-on-accent/75' : 'text-muted'}`}>
-          {playing || pos > 0 ? `${fmtTime(pos)} / ${fmtTime(dur)}` : dur ? fmtTime(dur) : 'Ovozli xabar'}
+          {playing || pos > 0 ? `${fmtTime(pos)} / ${fmtTime(dur)}` : dur ? fmtTime(dur) : t('ch.voiceMsg')}
         </p>
       </div>
       {url && (
@@ -346,12 +353,13 @@ function VoiceBubble({ media, isMine }) {
 }
 
 function FileBubble({ media }) {
+  const { t } = useT();
   const [viewRef, inView] = useInViewport();
   const { url, error } = useAuthedMediaUrl(inView ? media.key : null);
   const inner = (
     <>
       <FileText size={16} className="flex-shrink-0" />
-      <span className="truncate max-w-[160px]">{error ? "Yuklab bo'lmadi" : 'Fayl'}</span>
+      <span className="truncate max-w-[160px]">{error ? t('mb.loadFail') : t('mb.file')}</span>
       <Download size={14} className="ml-auto flex-shrink-0" />
     </>
   );
@@ -382,6 +390,7 @@ function FileBubble({ media }) {
 // bitta pastdan chiquvchi menyuni ochadi. Ilgari desktop'da alohida hover
 // ikonkalar qatori bo'lgan (Reply/Edit/Delete/Report) — endi bittalashtirilgan.
 function MessageContextMenu({ actions, onClose }) {
+  const { t } = useT();
   const firstRef = useRef(null);
   useDialogFocus(firstRef, onClose);
   return (
@@ -389,7 +398,7 @@ function MessageContextMenu({ actions, onClose }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Xabar amallari"
+        aria-label={t('mb.actions')}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md bg-surface border-t border-border rounded-t-2xl shadow-card p-2"
         style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
@@ -487,6 +496,7 @@ function formatMessageTime(dateStr) {
 }
 
 export default function MessageBubble({ message, isMine, myId, onJumpToReply }) {
+  const { t, ts } = useT();
   const {
     reportTarget,
     activeConversation,
@@ -537,7 +547,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
     setDeleting(true);
     const res = await deleteMessage(message.id || message._id, forEveryone);
     setDeleting(false);
-    if (res.error) alert(res.error);
+    if (res.error) alert(ts(res.error));
     else setDeleteOpen(false);
   };
 
@@ -562,7 +572,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
 
   const handleTogglePin = async () => {
     const res = isPinned ? await unpinMessage(messageIdStr) : await pinMessage(messageIdStr);
-    if (res?.error) alert(res.error);
+    if (res?.error) alert(ts(res.error));
   };
 
   // C-10 — §9.3 C to'liq ro'yxati: Javob, Nusxa olish, Forward (Yuborish), Pin,
@@ -571,24 +581,24 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
   // modeliga qo'shimcha talab qiladigan qadam sifatida ko'rsatilgan (bu bosqichdan
   // tashqarida).
   const actions = [
-    { key: 'reply', label: 'Javob berish', aria: 'Xabarga javob berish', Icon: Reply, onClick: () => startReply(message) },
+    { key: 'reply', label: t('mb.reply'), aria: t('mb.replyAria'), Icon: Reply, onClick: () => startReply(message) },
     ...(message.text
-      ? [{ key: 'copy', label: 'Nusxa olish', aria: 'Xabar matnini nusxalash', Icon: Copy, onClick: handleCopyText }]
+      ? [{ key: 'copy', label: t('mb.copy'), aria: t('mb.copyAria'), Icon: Copy, onClick: handleCopyText }]
       : []),
-    { key: 'forward', label: 'Yuborish', aria: 'Boshqa suhbatga yuborish', Icon: Forward, onClick: () => setForwardOpen(true) },
+    { key: 'forward', label: t('mb.forward'), aria: t('mb.forwardAria'), Icon: Forward, onClick: () => setForwardOpen(true) },
     {
       key: 'pin',
-      label: isPinned ? 'Qadashni bekor qilish' : 'Qadash',
-      aria: isPinned ? 'Xabarni qadashni bekor qilish' : 'Xabarni yuqoriga qadash',
+      label: isPinned ? t('cv.unpin') : t('mb.pin'),
+      aria: isPinned ? t('mb.unpinAria') : t('mb.pinAria'),
       Icon: isPinned ? PinOff : Pin,
       onClick: handleTogglePin,
     },
     ...(canEdit
-      ? [{ key: 'edit', label: 'Tahrirlash', aria: 'Xabarni tahrirlash', Icon: Pencil, onClick: () => startEditMessage(message) }]
+      ? [{ key: 'edit', label: t('mb.edit'), aria: t('mb.editAria'), Icon: Pencil, onClick: () => startEditMessage(message) }]
       : []),
-    { key: 'delete', label: "O'chirish", aria: "Xabarni o'chirish", Icon: Trash2, onClick: () => setDeleteOpen(true), danger: true },
+    { key: 'delete', label: t('ch.delete'), aria: t('mb.delAria'), Icon: Trash2, onClick: () => setDeleteOpen(true), danger: true },
     ...(canReport
-      ? [{ key: 'report', label: 'Shikoyat qilish', aria: 'Xabar haqida shikoyat qilish', Icon: Flag, onClick: handleReport }]
+      ? [{ key: 'report', label: t('mb.report'), aria: t('mb.reportAria'), Icon: Flag, onClick: handleReport }]
       : []),
   ];
 
@@ -646,7 +656,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
         >
           {deleted ? (
             <p className="flex items-center gap-1.5">
-              <Trash2 size={13} /> Xabar o'chirildi
+              <Trash2 size={13} /> {t('mb.deleted')}
             </p>
           ) : (
             <>
@@ -670,7 +680,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
                   <img src={sticker.file} alt={sticker.label} draggable={false} className="w-32 h-32 md:w-36 md:h-36" />
                 ) : (
                   // Manifestdan olib tashlangan (eski) stiker — bo'sh pufakcha emas, yorliq.
-                  <p className="text-sm text-muted">😊 Stiker</p>
+                  <p className="text-sm text-muted">{t('mb.sticker')}</p>
                 ))}
               {message.type === 'image' && <ImageBubble media={message.media} />}
               {message.type === 'video' && <VideoBubble media={message.media} />}
@@ -681,7 +691,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
               )}
               {message.edited && (
                 <span className={`block text-[11px] mt-0.5 ${isMine ? 'text-on-accent/60' : 'text-muted'}`}>
-                  tahrirlangan
+                  {t('mb.edited')}
                 </span>
               )}
             </>
@@ -695,7 +705,7 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
-            aria-label="Xabar amallari"
+            aria-label={t('mb.actions')}
             aria-haspopup="dialog"
             className="flex-shrink-0 w-11 min-h-11 lg:w-8 lg:min-h-8 -mx-1.5 -my-2 lg:mx-0 lg:my-0 inline-flex items-center justify-center text-muted hover:text-accent transition-colors touch-manipulation rounded-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
@@ -711,29 +721,29 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
             yuborish" (tap orqali qayta urinish). */}
         {isMine && !deleted && (
           message._status === 'sending' ? (
-            <span title="Yuborilmoqda" aria-label="Yuborilmoqda" role="img" className="inline-flex">
+            <span title={t('mb.sending')} aria-label={t('mb.sending')} role="img" className="inline-flex">
               <Clock size={12} />
             </span>
           ) : message._status === 'failed' ? (
             <button
               type="button"
               onClick={() => retryMessage(message)}
-              title="Yuborilmadi — qayta yuborish uchun bosing"
+              title={t('mb.failed')}
               className="inline-flex items-center gap-0.5 text-danger hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger rounded"
             >
               <AlertCircle size={12} />
-              Qayta yuborish
+              {t('mb.retry')}
             </button>
           ) : message.readAt ? (
-            <span title="O'qildi" aria-label="O'qildi" role="img" className="inline-flex">
+            <span title={t('mb.read')} aria-label={t('mb.read')} role="img" className="inline-flex">
               <CheckCheck size={13} className="text-accent" />
             </span>
           ) : otherOnline ? (
-            <span title="Yetkazildi" aria-label="Yetkazildi" role="img" className="inline-flex">
+            <span title={t('mb.delivered')} aria-label={t('mb.delivered')} role="img" className="inline-flex">
               <CheckCheck size={13} />
             </span>
           ) : (
-            <span title="Yuborildi" aria-label="Yuborildi" role="img" className="inline-flex">
+            <span title={t('mb.sentOk')} aria-label={t('mb.sentOk')} role="img" className="inline-flex">
               <Check size={13} />
             </span>
           )
