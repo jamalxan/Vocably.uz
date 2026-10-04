@@ -200,6 +200,9 @@ const ru = {
     "So'zlarni og'zaki ishlating": 'Используйте слова в устной речи',
   },
   patterns: [
+    { uz: "{n} daqiqagacha ovozsiz", tr: "без звука ещё {n} {n#минуту|минуты|минут}" },
+    { uz: "{n} soatgacha ovozsiz", tr: "без звука ещё {n} {n#час|часа|часов}" },
+    { uz: "{n} kungacha ovozsiz", tr: "без звука ещё {n} {n#день|дня|дней}" },
     { uz: "oxirgi marta ko'rilgan {n} daqiqa oldin", tr: "был(а) {n} {n#минуту|минуты|минут} назад" },
     { uz: "oxirgi marta ko'rilgan {n} soat oldin", tr: "был(а) {n} {n#час|часа|часов} назад" },
     { uz: "oxirgi marta ko'rilgan {n} kun oldin", tr: "был(а) {n} {n#день|дня|дней} назад" },

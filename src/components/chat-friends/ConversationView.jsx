@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X, Send } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/context/LocaleContext';
+import { formatDateLocale } from '@/lib/uzDate';
 import { formatLastSeen, formatMuteUntil, isOnline, useLiveClock } from '@/lib/presence';
 import { TYPING_LABEL, REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import MessageBubble from './MessageBubble';
@@ -31,13 +33,14 @@ const UZ_MONTHS = [
 
 // C-06 — xabarlar orasidagi kun ajratgichi: "Bugun" / "Kecha" / "15-sentyabr"
 // (joriy yildan boshqa yil bo'lsa yil ham qo'shiladi).
-function formatDaySeparator(dateStr) {
+function formatDaySeparator(dateStr, t, locale) {
   const d = new Date(dateStr);
   const now = new Date();
-  if (d.toDateString() === now.toDateString()) return 'Bugun';
+  if (d.toDateString() === now.toDateString()) return t('cv.today');
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return 'Kecha';
+  if (d.toDateString() === yesterday.toDateString()) return t('cv.yesterday');
+  if (locale === 'ru') return formatDateLocale(locale, d, { year: d.getFullYear() !== now.getFullYear() });
   const label = `${d.getDate()}-${UZ_MONTHS[d.getMonth()]}`;
   return d.getFullYear() === now.getFullYear() ? label : `${label} ${d.getFullYear()}`;
 }
@@ -58,13 +61,14 @@ function DaySeparator({ label }) {
 // yuklanmagan) xabar qadalgan bo'lsa umumiy "Qadalgan xabar" yorlig'i qoladi,
 // bosilganda hech narsa qilinmaydi (scope: alohida so'rov qo'shilmadi).
 function PinnedBanner({ pinnedIds, messages, onJump, onUnpin }) {
+  const { t, ts } = useT();
   const lastId = pinnedIds[pinnedIds.length - 1];
   const pinnedMessage = messages.find((m) => String(m.id || m._id) === String(lastId));
   const preview = pinnedMessage
     ? pinnedMessage.type === 'text'
       ? pinnedMessage.text || '…'
-      : REPLY_TYPE_LABEL[pinnedMessage.type] || 'Xabar'
-    : 'Qadalgan xabar';
+      : ts(REPLY_TYPE_LABEL[pinnedMessage.type]) || t('cv.message')
+    : t('cv.pinned');
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-accent-soft/40 flex-shrink-0">
       <Pin size={14} className="text-accent flex-shrink-0" />
@@ -74,15 +78,15 @@ function PinnedBanner({ pinnedIds, messages, onJump, onUnpin }) {
         className="flex-1 min-w-0 text-left rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <p className="text-[11px] font-semibold text-accent">
-          Qadalgan xabar{pinnedIds.length > 1 ? ` (1/${pinnedIds.length})` : ''}
+          {t('cv.pinned')}{pinnedIds.length > 1 ? ` (1/${pinnedIds.length})` : ''}
         </p>
         <p className="text-xs text-ink truncate">{preview}</p>
       </button>
       <button
         type="button"
         onClick={() => onUnpin(lastId)}
-        aria-label="Qadashni bekor qilish"
-        title="Qadashni bekor qilish"
+        aria-label={t('cv.unpin')}
+        title={t('cv.unpin')}
         className="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 -m-1 text-muted hover:text-danger transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <X size={14} />
@@ -92,6 +96,7 @@ function PinnedBanner({ pinnedIds, messages, onJump, onUnpin }) {
 }
 
 export default function ConversationView({ onBack }) {
+  const { t, ts, locale } = useT();
   const {
     activeConversation,
     messages,
@@ -194,7 +199,7 @@ export default function ConversationView({ onBack }) {
   }, [messages, myId]);
 
   if (!activeConversation) {
-    return <div className="hidden lg:flex flex-1 items-center justify-center text-sm text-muted">Suhbatni tanlang</div>;
+    return <div className="hidden lg:flex flex-1 items-center justify-center text-sm text-muted">{t('cv.pickChat')}</div>;
   }
 
   // H-1 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H) — otherUser o'zining
@@ -206,9 +211,9 @@ export default function ConversationView({ onBack }) {
   const typingKind = typingByConversation[activeConversation.id];
   const isTyping = !!typingKind;
   const lastSeenText = showPresence
-    ? formatLastSeen(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)])
+    ? ts(formatLastSeen(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]))
     : null;
-  const muteUntilText = activeConversation.muted ? formatMuteUntil(activeConversation.mutedUntil) : null;
+  const muteUntilText = activeConversation.muted ? ts(formatMuteUntil(activeConversation.mutedUntil)) : null;
 
   const handleScroll = () => {
     const el = listRef.current;
@@ -254,7 +259,7 @@ export default function ConversationView({ onBack }) {
   const handleBlock = async () => {
     setBlockOpen(false);
     const res = await blockUser(activeConversation.otherUser.id);
-    if (res?.error) alert(res.error);
+    if (res?.error) alert(ts(res.error));
   };
 
   // G-3 — ovozsiz emas bo'lsa bosilganda davomiylik tanlash oynasi ochiladi
@@ -279,24 +284,24 @@ export default function ConversationView({ onBack }) {
 
   const handleToggleTgMessageNotify = async () => {
     const res = await toggleTgMessageNotify(activeConversation.id, !activeConversation.tgMessageNotify);
-    if (res?.error) alert(res.error);
+    if (res?.error) alert(ts(res.error));
   };
 
   const handleUnpin = async (messageId) => {
     const res = await unpinMessage(messageId);
-    if (res?.error) alert(res.error);
+    if (res?.error) alert(ts(res.error));
   };
 
   return (
     <div className="flex-1 flex flex-col h-full min-w-0 bg-surface">
       <div className="flex items-center gap-1 md:gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
-        <button onClick={onBack} aria-label="Suhbatlar ro'yxatiga qaytish" className={`lg:hidden -ml-2.5 md:ml-0 text-muted hover:text-ink ${HEADER_BTN}`}>
+        <button onClick={onBack} aria-label={t('cv.backAria')} className={`lg:hidden -ml-2.5 md:ml-0 text-muted hover:text-ink ${HEADER_BTN}`}>
           <ArrowLeft size={18} />
         </button>
         <button
           type="button"
           onClick={() => setProfileOpen(true)}
-          aria-label="Foydalanuvchi profili"
+          aria-label={t('cv.profileAria')}
           className="flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Avatar
@@ -312,29 +317,21 @@ export default function ConversationView({ onBack }) {
         <button
           onClick={() => setProfileOpen(true)}
           className="min-w-0 flex-1 text-left ml-1.5 md:ml-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          title="Foydalanuvchi haqida (taxallus, media)"
+          title={t('cv.profileTitle')}
         >
           <p className="text-sm font-semibold text-ink truncate hover:underline">
             {activeConversation.otherUser?.nickname || `@${activeConversation.otherUser?.username}`}
           </p>
           {isTyping ? (
-            <p className="text-[11px] text-accent italic truncate">{TYPING_LABEL[typingKind] || TYPING_LABEL.text}</p>
+            <p className="text-[11px] text-accent italic truncate">{ts(TYPING_LABEL[typingKind] || TYPING_LABEL.text)}</p>
           ) : (
             lastSeenText && <p className="text-[11px] text-muted truncate">{lastSeenText}</p>
           )}
         </button>
         <button
           onClick={handleToggleNotifyOnline}
-          title={
-            activeConversation.notifyOnline
-              ? "Onlayn bo'lganda Telegram orqali xabar berishni o'chirish"
-              : "Onlayn bo'lganda Telegram bot orqali xabar ber"
-          }
-          aria-label={
-            activeConversation.notifyOnline
-              ? "Onlayn bo'lganda Telegram orqali xabar berishni o'chirish"
-              : "Onlayn bo'lganda Telegram bot orqali xabar ber"
-          }
+          title={activeConversation.notifyOnline ? t('cv.notifyOnOff') : t('cv.notifyOnOn')}
+          aria-label={activeConversation.notifyOnline ? t('cv.notifyOnOff') : t('cv.notifyOnOn')}
           className={`${HEADER_BTN} ${activeConversation.notifyOnline ? 'text-accent' : 'text-muted hover:text-accent'}`}
         >
           {/* Wifi ikonkasi ro'yxatda "ulanish holati" ma'nosida — bu yerda boshqa ikonka. */}
@@ -359,13 +356,13 @@ export default function ConversationView({ onBack }) {
         </button>
         <button
           onClick={handleToggleMute}
-          title={activeConversation.muted ? (muteUntilText || 'Bildirishnomani yoqish') : 'Bildirishnomani o\'chirish'}
-          aria-label={activeConversation.muted ? 'Bildirishnomani yoqish' : 'Bildirishnomani o\'chirish'}
+          title={activeConversation.muted ? (muteUntilText || t('cv.unmute')) : t('cv.mute')}
+          aria-label={activeConversation.muted ? t('cv.unmute') : t('cv.mute')}
           className={`${HEADER_BTN} text-muted hover:text-accent`}
         >
           {activeConversation.muted ? <BellOff size={16} /> : <Bell size={16} />}
         </button>
-        <button onClick={() => setBlockOpen(true)} title="Bloklash" aria-label="Foydalanuvchini bloklash" className={`${HEADER_BTN} text-muted hover:text-danger`}>
+        <button onClick={() => setBlockOpen(true)} title={t('cv.block')} aria-label={t('cv.blockAria')} className={`${HEADER_BTN} text-muted hover:text-danger`}>
           <ShieldOff size={16} />
         </button>
       </div>
@@ -397,7 +394,7 @@ export default function ConversationView({ onBack }) {
               !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
             return (
               <div key={m.id || m._id || m.clientMessageId}>
-                {showDaySeparator && <DaySeparator label={formatDaySeparator(m.createdAt)} />}
+                {showDaySeparator && <DaySeparator label={formatDaySeparator(m.createdAt, t, locale)} />}
                 <MessageBubble
                   message={m}
                   isMine={String(m.senderId) === String(myId)}
@@ -418,7 +415,7 @@ export default function ConversationView({ onBack }) {
         {(loadingMessages || messagesError || messages.length === 0) && (
           <div className="absolute inset-0 flex items-center justify-center px-6">
             {loadingMessages && (
-              <div className="w-full max-w-xs space-y-2.5 animate-pulse" aria-label="Yuklanmoqda">
+              <div className="w-full max-w-xs space-y-2.5 animate-pulse" aria-label={t('cv.loading')}>
                 <div className="h-10 w-2/3 rounded-2xl bg-surface-2" />
                 <div className="h-10 w-1/2 rounded-2xl bg-accent-soft ml-auto" />
                 <div className="h-10 w-3/5 rounded-2xl bg-surface-2" />
@@ -426,14 +423,14 @@ export default function ConversationView({ onBack }) {
             )}
             {!loadingMessages && messagesError && (
               <div className="text-center">
-                <p className="text-sm text-danger font-medium mb-2">Xabarlarni yuklab bo'lmadi.</p>
+                <p className="text-sm text-danger font-medium mb-2">{t('cv.msgLoadFail')}</p>
                 <button onClick={retryLoadMessages} className="text-xs font-semibold text-accent hover:underline">
-                  Qayta yuklash
+                  {t('ch.reload')}
                 </button>
               </div>
             )}
             {!loadingMessages && !messagesError && messages.length === 0 && (
-              <p className="text-center text-sm text-muted">Hali xabar yo'q. Birinchi xabarni yozing!</p>
+              <p className="text-center text-sm text-muted">{t('cv.noMsgs')}</p>
             )}
           </div>
         )}
@@ -444,8 +441,8 @@ export default function ConversationView({ onBack }) {
         {!isNearBottom && (
           <button
             onClick={() => scrollToBottom('smooth')}
-            title="Pastga tushish"
-            aria-label="Suhbat oxiriga tushish"
+            title={t('cv.down')}
+            aria-label={t('cv.downAria')}
             className="absolute bottom-4 right-4 w-11 h-11 rounded-full bg-surface border border-border shadow-card flex items-center justify-center text-ink hover:text-accent hover:border-accent/40 transition-colors"
           >
             <ArrowDown size={18} />
@@ -465,9 +462,9 @@ export default function ConversationView({ onBack }) {
       <MuteDurationModal open={muteModalOpen} onSelect={handleSelectMuteDuration} onCancel={() => setMuteModalOpen(false)} />
       <ConfirmModal
         open={blockOpen}
-        title="Foydalanuvchini bloklash"
-        message={`@${activeConversation.otherUser?.username || 'foydalanuvchi'}ni bloklaysizmi? Suhbat yopiladi.`}
-        confirmLabel="Bloklash"
+        title={t('cv.blockTitle')}
+        message={t('cv.blockMsg', { u: activeConversation.otherUser?.username || t('ch.user') })}
+        confirmLabel={t('cv.blockConfirm')}
         onConfirm={handleBlock}
         onCancel={() => setBlockOpen(false)}
       />
