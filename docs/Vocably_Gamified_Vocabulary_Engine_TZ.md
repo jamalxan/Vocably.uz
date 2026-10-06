@@ -2065,7 +2065,7 @@ Test
  ↓
 Feature flag
  ↓
-Staged rollout
+Staged rollout  
 ```
 
 Shu tartib Vocably.uz'ni mavjud platformani buzmasdan, uzoq muddatli va scalable vocabulary-learning ecosystem'ga aylantirish uchun asosiy texnik yo'l bo'lsin.
