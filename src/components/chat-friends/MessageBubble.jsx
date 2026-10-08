@@ -39,7 +39,9 @@ const LONG_PRESS_MS = 500;
 function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
   const { t, ts } = useT();
   const senderLabel = String(replyTo.senderId) === String(myId) ? t('ch.youRaw') : otherUsername ? `@${otherUsername}` : t('ch.user');
-  const preview = replyTo.type === 'text' ? replyTo.text : ts(REPLY_TYPE_LABEL[replyTo.type] || '');
+  const preview = replyTo.deleted
+    ? t('mb.deleted')
+    : replyTo.type === 'text' ? replyTo.text : ts(REPLY_TYPE_LABEL[replyTo.type] || '');
   return (
     <button
       type="button"

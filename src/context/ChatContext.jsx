@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { connectChatSocket } from '@/lib/socketClient';
-import { mergePolledMessages } from '@/lib/chatMerge';
+import { mergePolledMessages, applyDeletedForEveryone } from '@/lib/chatMerge';
 import { enqueueOffline, dequeueOffline, mergeQueuedIntoMessages } from '@/lib/offlineQueue';
 import { PREVIEW_BY_TYPE, isMutedNow } from '@/lib/chatConstants';
 import { STICKER_PACKS as STATIC_STICKER_PACKS } from '@/lib/stickers';
@@ -551,14 +551,8 @@ export function ChatProvider({ myUserId, children }) {
         // Admin o'z xabarini "hamma uchun" o'chirsa server `silently: true` qaytaradi —
         // tombstone qoldirilmaydi, xabar ro'yxatdan butunlay olib tashlanadi (server
         // GET query'si ham buni tasdiqlaydi, src/lib/models.js'dagi izohga qarang).
-        if (forEveryone && !data.silently) {
-          setMessages((prev) =>
-            prev.map((m) =>
-              String(m.id || m._id) === String(messageId)
-                ? { ...m, deletedForEveryone: true, text: '', media: null, stickerId: null }
-                : m
-            )
-          );
+        if (forEveryone) {
+          setMessages((prev) => applyDeletedForEveryone(prev, messageId, data.silently));
         } else {
           setMessages((prev) => prev.filter((m) => String(m.id || m._id) !== String(messageId)));
         }
@@ -1089,6 +1083,17 @@ export function ChatProvider({ myUserId, children }) {
       });
       socket.on('disconnect', () => setSocketConnected(false));
       socket.on('message:new', ({ conversationId, message }) => {
+        // Eski realtime-server (emit-edited/emit-deleted endpointlarisiz) uchun
+        // fallback: server tahrir/o'chirishni shu kanal orqali `_event` bilan
+        // yuboradi (src/lib/realtime.js, pushMessageEvent).
+        if (message?._event === 'deleted') {
+          onMessageDeleted({ conversationId, messageId: message.id, silently: message.silently });
+          return;
+        }
+        if (message?._event === 'edited') {
+          onMessageEdited({ conversationId, message });
+          return;
+        }
         if (String(conversationId) === String(activeIdRef.current)) {
           appendMessage(message);
           // Suhbat hozir ochiq turibdi — kelgan zahoti "o'qildi" deb belgilaymiz
@@ -1139,7 +1144,7 @@ export function ChatProvider({ myUserId, children }) {
       // src/app/api/chat/conversations/[id]/messages/[messageId] PATCH'dagi
       // pushMessageEdited) real-vaqtda yangi matnni ko'rsatamiz — avval bu event
       // umuman yo'q edi, tahrirlangan matn faqat sahifa qayta yuklanganda ko'rinardi.
-      socket.on('message:edited', ({ conversationId, message } = {}) => {
+      const onMessageEdited = ({ conversationId, message } = {}) => {
         if (!conversationId || !message) return;
         if (String(conversationId) === String(activeIdRef.current)) {
           setMessages((prev) =>
@@ -1151,26 +1156,20 @@ export function ChatProvider({ myUserId, children }) {
           );
         }
         loadConversations();
-      });
+      };
       // C-11 — boshqa tomon xabarni "hamma uchun" o'chirganda (DELETE'dagi
       // pushMessageDeleted) real-vaqtda darhol tombstone'ga aylantiradi (yoki
       // `silently` bo'lsa butunlay olib tashlaydi) — avval bu event umuman yo'q
       // edi, o'chirilgan xabar faqat sahifa qayta yuklanganda yo'qolardi.
-      socket.on('message:deleted', ({ conversationId, messageId, silently } = {}) => {
+      const onMessageDeleted = ({ conversationId, messageId, silently } = {}) => {
         if (!conversationId || !messageId) return;
         if (String(conversationId) === String(activeIdRef.current)) {
-          setMessages((prev) =>
-            silently
-              ? prev.filter((m) => String(m.id || m._id) !== String(messageId))
-              : prev.map((m) =>
-                  String(m.id || m._id) === String(messageId)
-                    ? { ...m, deletedForEveryone: true, text: '', media: null, stickerId: null }
-                    : m
-                )
-          );
+          setMessages((prev) => applyDeletedForEveryone(prev, messageId, silently));
         }
         loadConversations();
-      });
+      };
+      socket.on('message:edited', onMessageEdited);
+      socket.on('message:deleted', onMessageDeleted);
       socket.on('typing', ({ conversationId, kind } = {}) => {
         if (!conversationId) return;
         clearTimeout(typingTimersRef.current[conversationId]);

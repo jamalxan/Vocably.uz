@@ -489,6 +489,9 @@ const ReplyToSchema = new mongoose.Schema(
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     type: { type: String, required: true },
     text: { type: String, default: '' },
+    // Iqtibos qilingan asl xabar "hamma uchun" o'chirilgan — matn tozalanadi,
+    // iqtibos o'rnida "Xabar o'chirildi" ko'rsatiladi.
+    deleted: { type: Boolean, default: false },
   },
   { _id: false }
 );

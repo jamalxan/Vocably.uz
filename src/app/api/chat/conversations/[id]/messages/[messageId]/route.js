@@ -84,7 +84,7 @@ export async function PATCH(req, props) {
     // sahifani qayta yuklaganda yangi matnni ko'rardi).
     const otherId = convo.participantIds.find((id) => String(id) !== String(user._id));
     if (otherId) {
-      pushMessageEdited(otherId, String(convo._id), {
+      await pushMessageEdited(otherId, String(convo._id), {
         id: message._id,
         conversationId: convo._id,
         text: message.text,
@@ -141,11 +141,19 @@ export async function DELETE(req, props) {
     // boshqa tomonga hech qanday ta'sir qilmaydi — ular hali ham xabarni ko'raveradi,
     // shuning uchun preview qayta hisoblanmaydi va socket eventi yuborilmaydi.
     if (forEveryone) {
+      // Shu xabarga javob bo'lib yozilgan xabarlardagi iqtibos ham o'chadi —
+      // aks holda o'chirilgan matn reply-iqtibosda ikkala tomonga ko'rinib qolardi.
+      await Message.updateMany(
+        { conversationId: convo._id, 'replyTo.messageId': message._id },
+        { $set: { 'replyTo.text': '', 'replyTo.deleted': true } }
+      );
       await recomputeLastMessageIfNeeded(convo, message._id);
-      const otherId = convo.participantIds.find((id) => String(id) !== String(user._id));
-      if (otherId) {
-        pushMessageDeleted(otherId, String(convo._id), message._id, silently);
-      }
+      // Ikkala a'zoga ham: boshqa tomon + o'chirgan kishining boshqa qurilma/tablari
+      // (shu tabda allaqachon mahalliy yangilangan — hodisa idempotent). `await` —
+      // serverless muhitda javobdan keyin tugallanmagan so'rov uzilib qolmasin.
+      await Promise.all(
+        convo.participantIds.map((id) => pushMessageDeleted(id, String(convo._id), message._id, silently))
+      );
     }
 
     return NextResponse.json({ success: true, silently });

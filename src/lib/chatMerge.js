@@ -7,6 +7,29 @@
 
 const idOf = (m) => String(m.id || m._id);
 
+/**
+ * A message was deleted "for everyone": turn it into a tombstone (or drop it
+ * when `silently`) and blank out reply quotes that point at it.
+ * Returns `list` itself when nothing changed.
+ */
+export function applyDeletedForEveryone(list, messageId, silently) {
+  const target = String(messageId);
+  let changed = false;
+  const out = [];
+  for (const m of list) {
+    if (idOf(m) === target) {
+      changed = true;
+      if (!silently) out.push({ ...m, deletedForEveryone: true, text: '', media: null, stickerId: null });
+    } else if (m.replyTo && String(m.replyTo.messageId) === target && !m.replyTo.deleted) {
+      changed = true;
+      out.push({ ...m, replyTo: { ...m.replyTo, text: '', deleted: true } });
+    } else {
+      out.push(m);
+    }
+  }
+  return changed ? out : list;
+}
+
 /** @returns the merged list, oldest → newest */
 export function mergePolledMessages(prev, page) {
   if (!page.length) return prev.filter((m) => m._status === 'sending' || m._status === 'failed');
