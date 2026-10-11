@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Text, Float, ContactShadows } from '@react-three/drei';
+import React, { useState } from 'react';
+import { Text, Float } from '@react-three/drei';
 import * as THREE from 'three';
 
 export function MemoryMatch({ words, onComplete, onMatch }) {
@@ -14,7 +13,6 @@ export function MemoryMatch({ words, onComplete, onMatch }) {
     cards.push({ id: `w${i}`, content: w.text, type: 'word', pairId: i });
     cards.push({ id: `t${i}`, content: w.translations[0] || w.text, type: 'translation', pairId: i });
   });
-  // Shuffle cards
   const shuffledCards = [...cards].sort(() => Math.random() - 0.5);
 
   const handleFlip = (id, pairId, type) => {
@@ -27,7 +25,6 @@ export function MemoryMatch({ words, onComplete, onMatch }) {
       setLockBoard(true);
       const [firstId, secondId] = newFlipped;
 
-      // Find the pair IDs
       const firstCard = shuffledCards.find(c => c.id === firstId);
       const secondCard = shuffledCards.find(c => c.id === secondId);
 
@@ -54,7 +51,7 @@ export function MemoryMatch({ words, onComplete, onMatch }) {
 
         return (
           <group key={card.id} position={[x, 0, z]}>
-            <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
+            <Float speed={2} rotationIntensity={0.1} floatIntensity={0.5}>
               <mesh
                 onClick={() => handleFlip(card.id, card.pairId, card.type)}
                 rotation={[0, 0, 0]}
@@ -64,6 +61,8 @@ export function MemoryMatch({ words, onComplete, onMatch }) {
                   color={isFlipped ? '#fff' : '#0a0b2e'}
                   emissive={isFlipped ? '#fff' : '#00f0b5'}
                   emissiveIntensity={isFlipped ? 0.2 : 0.5}
+                  metalness={0.6}
+                  roughness={0.2}
                 />
 
                 {isFlipped && (
@@ -75,6 +74,7 @@ export function MemoryMatch({ words, onComplete, onMatch }) {
                     anchorY="middle"
                     maxWidth={1.8}
                     textAlign="center"
+                    fontWeight="bold"
                   >
                     {card.content}
                   </Text>

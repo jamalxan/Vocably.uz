@@ -1,23 +1,24 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useKeyboardControls } from '@react-three/drei'; // Note: Need to wrap app in KeyboardControls
+import { useGLTF, useAnimations } from '@react-three/drei';
 import * as THREE from 'three';
 
 export function Player({ gameState, onInteract }) {
-  const meshRef = useRef();
-  const velocity = useRef(new THREE.Vector3());
-  const position = useRef(new THREE.Vector3(0, 1, 0));
+  const group = useRef();
+  // Using a placeholder professional humanoid model (standard GLB)
+  // In a real production env, this path would point to our specific S3 asset
+  const { scene, animations } = useGLTF('https://vazxxyzbcoksbooxsfg//models/humanoid.glb');
+  const { actions } = useAnimations(animations, group);
 
-  // Simple Input State
+  const velocity = useRef(new THREE.Vector3());
   const [input, setInput] = useState({
-    forward: false,
-    backward: false,
-    left: false,
-    right: false,
+    forward: false, backward: false, left: false, right: false,
   });
 
-  // Input Listener
   useEffect(() => {
+    // Initialize animations
+    if (actions.idle) actions.idle.play();
+
     const handleKeyDown = (e) => {
       if (e.code === 'KeyW') setInput(prev => ({ ...prev, forward: true }));
       if (e.code === 'KeyS') setInput(prev => ({ ...prev, backward: true }));
@@ -39,47 +40,53 @@ export function Player({ gameState, onInteract }) {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [onInteract]);
+  }, [actions, onInteract]);
 
   useFrame((state, delta) => {
     if (gameState !== 'in_progress' && gameState !== 'ready') return;
 
     const moveSpeed = 5 * delta;
-    const rotationSpeed = 2 * delta;
-
-    // Movement Vector
     const direction = new THREE.Vector3();
+
     if (input.forward) direction.z -= 1;
     if (input.backward) direction.z += 1;
     if (input.left) direction.x -= 1;
     if (input.right) direction.x += 1;
 
+    const isMoving = direction.length() > 0;
     direction.normalize().multiplyScalar(moveSpeed);
 
-    // Simple rotation to face movement direction
-    if (direction.length() > 0) {
-      const targetRotation = Math.atan2(direction.x, direction.z);
-      meshRef.current.rotation.y = THREE.MathUtils.lerp(
-        meshRef.current.rotation.y,
-        targetRotation,
-        0.1
-      );
+    // Animation State Transition
+    if (isMoving) {
+      if (actions.walk && !actions.walk.isRunning()) {
+        actions.idle.fadeOut(0.2);
+        actions.walk.reset().fadeIn(0.2).play();
+      }
+    } else {
+      if (actions.idle && !actions.idle.isRunning()) {
+        actions.walk.fadeOut(0.2);
+        actions.idle.reset().fadeIn(0.2).play();
+      }
     }
 
-    // Apply movement
-    meshRef.current.position.add(direction);
+    // Movement and Rotation
+    if (isMoving) {
+      const targetRotation = Math.atan2(direction.x, direction.z);
+      group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, targetRotation, 0.1);
+    }
 
-    // Camera follow (Simple lerp)
+    group.current.position.add(direction);
+
+    // Professional Camera Follow
     const camOffset = new THREE.Vector3(0, 5, 10);
-    const targetCamPos = meshRef.current.position.clone().add(camOffset);
+    const targetCamPos = group.current.position.clone().add(camOffset);
     state.camera.position.lerp(targetCamPos, 0.1);
-    state.camera.lookAt(meshRef.current.position);
+    state.camera.lookAt(group.current.position);
   });
 
   return (
-    <mesh ref={meshRef} position={[0, 1, 0]} castShadow>
-      <capsuleGeometry args={[0.5, 1, 4, 8]} />
-      <meshStandardMaterial color="#00f0b5" emissive="#00f0b5" emissiveIntensity={0.5} />
-    </mesh>
+    <group ref={group} dispose={null}>
+      <primitive object={scene} scale={1} position={[0, 0, 0]} castShadow />
+    </group>
   );
 }
