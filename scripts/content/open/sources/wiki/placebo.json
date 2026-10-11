@@ -1,0 +1,45 @@
+{
+ "article": "Placebo",
+ "url": "https://en.wikipedia.org/w/index.php?title=Placebo&oldid=1376281766",
+ "revid": 1376281766,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "Placebos are used in randomized clinical trials to test the efficacy of medical treatments. In a placebo-controlled trial, any change in the control group is known as the placebo response, and the difference between this and the result of no treatment is the placebo effect. Placebos in clinical trials should ideally be indistinguishable from so-called verum treatments under investigation, except for the latter's particular hypothesized medicinal effect. This is to shield test participants (with their consent) from knowing who is getting the placebo and who is getting the treatment under test, as patients' and clinicians' expectations of efficacy can influence results."
+  },
+  {
+   "label": "B",
+   "text": "The idea of a \"placebo effect\" was discussed in 18th century psychology, but became more prominent in the 20th century. Modern studies find that placebos can affect some outcomes such as pain and nausea, but otherwise do not generally have important clinical effects. Improvements that patients experience after being treated with a placebo can also be due to unrelated factors, such as regression to the mean (a statistical effect where an unusually high or low measurement is likely to be followed by a less extreme one). The use of placebos in clinical medicine raises ethical concerns, especially if they are disguised as an active treatment, as this introduces dishonesty into the doctor–patient relationship and bypasses informed consent."
+  },
+  {
+   "label": "C",
+   "text": "The placebo effect is a well-documented phenomenon, though it remains widely misunderstood and surrounded by misconceptions. Several studies have questioned its clinical relevance, fueling ongoing debate about its actual effectiveness. A 2001 meta-analysis of the placebo effect looked at trials in 40 different medical conditions, and concluded the only one where it had been shown to have a significant effect was for pain. Another Cochrane review in 2010 suggested that placebo effects are apparent only in subjective, continuous measures, and in the treatment of pain and related conditions. The review found that placebos do not appear to affect the actual diseases, or outcomes that are not dependent on a patient's perception. The authors, Asbjørn Hróbjartsson and Peter C. Gøtzsche, concluded that their study \"did not find that placebo interventions have important clinical effects in general.\" This interpretation has been subject to criticism, particularly due to concerns about the adequacy of the methodology used. Recent research has linked placebo interventions to improved motor functions in patients with Parkinson's disease."
+  },
+  {
+   "label": "D",
+   "text": "Some studies have investigated the use of placebos where the patient is fully aware that the treatment is inert, known as an open-label placebo. Clinical trials found that open-label placebos may have positive effects in comparison to no treatment, which may open new avenues for treatments, but a review of such trials noted that they were done with a small number of participants and hence should be interpreted with \"caution\" until further, better-controlled trials are conducted. An updated 2021 systematic review and meta-analysis based on 11 studies also found a significant, albeit slightly smaller overall effect of open-label placebos, while noting that \"research on OLPs is still in its infancy.\""
+  },
+  {
+   "label": "E",
+   "text": "In 2008, a meta-analysis led by psychologist Irving Kirsch, analyzing data from the Food and Drug Administration (FDA), concluded that 82% of the response to antidepressants was accounted for by placebos. However, other authors expressed doubts about the used methods and the interpretation of the results, especially the use of 0.5 as the cut-off point for the effect size. A complete reanalysis and recalculation based on the same FDA data found that the Kirsch study had \"important flaws in the calculations.\" The authors concluded that although a large percentage of the placebo response was due to expectancy, this was not true for the active drug. Besides confirming drug effectiveness, they found that the drug effect was not related to depression severity."
+  },
+  {
+   "label": "F",
+   "text": "A phenomenon opposite to the placebo effect has also been observed. When an inactive substance or treatment is administered to a recipient who has an expectation of it having a negative impact, this intervention is known as a nocebo (Latin nocebo = \"I shall harm\"). A nocebo effect occurs when the recipient of an inert substance reports a negative effect or a worsening of symptoms, with the outcome resulting not from the substance itself, but from negative expectations about the treatment."
+  },
+  {
+   "label": "G",
+   "text": "The practice of doctors prescribing placebos that are disguised as real medication is controversial. A chief concern is that it is deceptive and could harm the doctor–patient relationship in the long run. While some say that blanket consent, or the general consent to unspecified treatment given by patients beforehand, is ethical, others argue that patients should always obtain specific information about the name of the drug they are receiving, its side effects, and other treatment options. This view is shared by some on the grounds of patient autonomy. There are also concerns that legitimate doctors and pharmacists could open themselves up to charges of fraud or malpractice by using a placebo. Critics also argued that using placebos can delay the proper diagnosis and treatment of serious medical conditions."
+  },
+  {
+   "label": "H",
+   "text": "The word placebo was used in a medicinal context in the late 18th century to describe a \"commonplace method or medicine\" and in 1811 it was defined as \"any medicine adapted more to please than to benefit the patient.\" Although this definition contained a derogatory implication it did not necessarily imply that the remedy had no effect."
+  },
+  {
+   "label": "I",
+   "text": "Clinical trials are often double-blinded so that the researchers also do not know which test subjects are receiving the active or placebo treatment. The placebo effect in such clinical trials is weaker than in normal therapy since the subjects are not sure whether the treatment they are receiving is active."
+  }
+ ],
+ "edited": true
+}

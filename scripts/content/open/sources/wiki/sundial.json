@@ -1,0 +1,44 @@
+{
+ "article": "Sundial",
+ "url": "https://en.wikipedia.org/w/index.php?title=Sundial&oldid=1374325260",
+ "revid": 1374325260,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A sundial is a horological device that tells the time of day (referred to as civil time in modern usage) when direct sunlight shines by the apparent position of the Sun in the sky. In the narrowest sense of the word, it consists of a flat plate (the dial) and a gnomon, which casts a shadow onto the dial. As the Sun appears to move through the sky, the shadow aligns with different hour-lines, which are marked on the dial to indicate the time of day. The style is the time-telling edge of the gnomon, though a single point or nodus may be used. The gnomon casts a broad shadow; the shadow of the style shows the time. The gnomon may be a rod, wire, or elaborately decorated metal casting. The style must be parallel to the axis of the Earth's rotation for the sundial to be accurate throughout the year. The style's angle from horizontal is equal to the sundial's geographical latitude."
+  },
+  {
+   "label": "B",
+   "text": "The passing of time can be observed by placing a stick in the sand or a nail in a board and placing markers at the edge of a shadow or outlining a shadow at intervals. It is common for inexpensive, mass-produced decorative sundials to have incorrectly aligned gnomons, shadow lengths, and hour-lines, which cannot be adjusted to tell the correct time."
+  },
+  {
+   "label": "C",
+   "text": "The shadow-casting object, known as a gnomon, may be a long thin rod or other object with a sharp tip or a straight edge. Sundials employ many types of gnomon. The gnomon may be fixed or moved according to the season. It may be oriented vertically, horizontally, aligned with the Earth's axis, or oriented in an altogether different direction determined by mathematics."
+  },
+  {
+   "label": "D",
+   "text": "Sundials differ in their portability and their need for orientation. The installation of many dials requires knowing the local latitude, the precise vertical direction (e.g., by a level or plumb-bob), and the direction to true north. Portable dials are self-aligning: for example, they may have two dials that operate on different principles, such as a horizontal and analemmatic dial, mounted together on one plate. In these designs, their times agree only when the plate is aligned properly."
+  },
+  {
+   "label": "E",
+   "text": "The earliest sundials known from the archaeological record are shadow clocks (1500 BC or BCE) from ancient Egyptian astronomy and Babylonian astronomy. By 240 BC, Eratosthenes had estimated the circumference of the world using an obelisk and a water well and a few centuries later, Ptolemy had charted the latitude of cities using the angle of the sun. The people of Kush created sun dials through geometry. The Roman writer Vitruvius lists dials and shadow clocks known at that time in his De architectura. The Tower of the Winds in Athens included both a sundial and a water clock for telling time. A canonical sundial is one that indicates the canonical hours of liturgical acts, and these were used from the 7th to the 14th centuries by religious orders. The Italian astronomer Giovanni Padovani published a treatise on the sundial in 1570, in which he included instructions for the manufacture and laying out of mural (vertical) and horizontal sundials. Giuseppe Biancani's Constructio instrumenti ad horologia solaria (c. 1620) discusses how to make a perfect sundial. They have been in common use since the 16th century."
+  },
+  {
+   "label": "F",
+   "text": "The time is indicated where a shadow or light falls on the dial face, which is usually inscribed with hour lines. Although usually straight, these hour lines may also be curved, depending on the design of the sundial (see below). In some designs, it is possible to determine the date of the year, or it may be required to know the date to find the correct time. In such cases, there may be multiple sets of hour lines for different months, or there may be mechanisms for setting/calculating the month. In addition to the hour lines, the dial face may offer other data—such as the horizon, the equator and the tropics—which are referred to collectively as the dial furniture."
+  },
+  {
+   "label": "G",
+   "text": "By tradition, many sundials have a motto. The motto is usually in the form of an epigram: sometimes sombre reflections on the passing of time and the brevity of life, but equally often humorous witticisms of the dial maker. One such quip is, I am a sundial, and I make a botch, Of what is done much better by a watch."
+  },
+  {
+   "label": "H",
+   "text": "A sundial at a particular latitude in one hemisphere must be reversed for use at the opposite latitude in the other hemisphere. A vertical direct south sundial in the Northern Hemisphere becomes a vertical direct north sundial in the Southern Hemisphere. To position a horizontal sundial correctly, one has to find true north or south. The same process can be used to do both. The gnomon, set to the correct latitude, has to point to the true south in the Southern Hemisphere as in the Northern Hemisphere it has to point to the true north. The hour numbers also run in opposite directions, so on a horizontal dial they run anticlockwise (US: counterclockwise) rather than clockwise."
+  },
+  {
+   "label": "I",
+   "text": "Some areas of the world practice daylight saving time, which changes the official time, usually by one hour. This shift must be added to the sundial's time to make it agree with the official time."
+  }
+ ]
+}

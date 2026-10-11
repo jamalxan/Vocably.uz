@@ -177,6 +177,19 @@ export interface SpeakingSection {
   part1Questions: string[];
   part2CueCard: { topic: string; bulletPoints: string[]; prepSec: number; speakSec: number };
   part3Questions: string[];
+  // Ixtiyoriy namuna javoblar (masalan SpeakUp kitobidan) — savollar massivlari bilan
+  // indeks bo'yicha mos. Foydalanuvchi savolga javob yozib olgandan keyingina
+  // ko'rsatiladi (ModelAnswer.tsx), shuning uchun mijozga yuborilishi xavfsiz.
+  modelAnswers?: {
+    part1?: (SpeakingModelAnswer | null)[];
+    part2?: SpeakingModelAnswer | null;
+    part3?: (SpeakingModelAnswer | null)[];
+  };
+}
+
+export interface SpeakingModelAnswer {
+  answer: string;
+  vocab?: { phrase: string; meaning?: string; uz?: string }[];
 }
 
 // Attempt tarafida bitta yozib olingan javobga havola — `part`+`questionIndex`

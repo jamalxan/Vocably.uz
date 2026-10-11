@@ -8,6 +8,7 @@ import ExamShell from '../shell/ExamShell';
 import PartGap from '../listening/PartGap';
 import CueCard from './CueCard';
 import RecordingPane from './RecordingPane';
+import ModelAnswer from './ModelAnswer';
 import MicCheck, { type MicCheckStatus } from './MicCheck';
 import ConfirmFinishModal from '../mock/ConfirmFinishModal';
 import { ExamLoadError, ExamLoading, SubmitErrorBanner } from '../shell/ExamStatus';
@@ -204,6 +205,10 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
 
   const cueCard = test.sections.speaking.part2CueCard;
   const step = steps[stepIndex];
+  // Namuna javob — faqat shu savolga javob yozib olingandan keyin (avval o'zi gapirsin).
+  const models = test.sections.speaking.modelAnswers;
+  const model = !models ? null : step.part === 2 ? models.part2 : (step.part === 1 ? models.part1 : models.part3)?.[step.questionIndex];
+  const showModel = !!model?.answer && recordedKeys.has(stepKey(step));
   const partLabel = { 1: 'Part 1 — Kirish savollari', 2: 'Part 2 — Cue card', 3: 'Part 3 — Muhokama' }[step.part];
   const partSteps = steps.filter((s) => s.part === step.part);
   const positionInPart = partSteps.findIndex((s) => s.questionIndex === step.questionIndex) + 1;
@@ -309,6 +314,7 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
               />
             </>
           )}
+          {showModel && model && <ModelAnswer key={stepKey(step)} model={model} />}
         </div>
       </div>
       {submitError && <SubmitErrorBanner message={submitError} onRetry={retrySubmit} retrying={submitting} />}
