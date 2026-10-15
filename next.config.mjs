@@ -79,6 +79,59 @@ const securityHeaders = [
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
 ];
 
+
+// 2026-10-16 — URL'lar inglizchaga o'tkazildi (/app/oyinlar → /app/games va h.k.). Eski manzillar
+// (bookmark, Telegram xabarlari, Google indeksi, bildirishnoma havolalari) 301 bilan yangisiga yo'naltiriladi.
+const LEGACY_REDIRECTS = [
+  ['/app/lugat/jadval', '/app/vocabulary/words'],
+  ['/app/lugat/takrorlash', '/app/vocabulary/review'],
+  ['/app/lugat/kartochka', '/app/vocabulary/flashcards'],
+  ['/app/lugat/test', '/app/vocabulary/quiz'],
+  ['/app/lugat/yozish', '/app/vocabulary/spelling'],
+  ['/app/lugat/juftlik', '/app/vocabulary/match'],
+  ['/app/lugat/tezkor', '/app/vocabulary/speed'],
+  ['/app/lugat/tinglab-yozish', '/app/vocabulary/dictation'],
+  ['/app/lugat/cloze', '/app/vocabulary/context'],
+  ['/app/lugat/kollokatsiya', '/app/vocabulary/collocations'],
+  ['/app/lugat/soz-oilasi', '/app/vocabulary/word-family'],
+  ['/app/lugat/jumla-qurish', '/app/vocabulary/sentence-builder'],
+  ['/app/lugat/mnemonika', '/app/vocabulary/mnemonics'],
+  ['/app/lugat/antonim', '/app/vocabulary/antonyms'],
+  ['/app/lugat/zaif-sozlar', '/app/vocabulary/weak-words'],
+  ['/app/lugat/kutubxona', '/app/vocabulary/library'],
+  ['/app/lugat/soz/:wordId', '/app/vocabulary/word/:wordId'],
+  ['/app/lugat', '/app/vocabulary'],
+  ['/app/oyinlar/:path*', '/app/games/:path*'],
+  ['/app/oyinlar', '/app/games'],
+  ['/app/mashq', '/app/practice'],
+  ['/app/dostlar/:path*', '/app/friends/:path*'],
+  ['/app/dostlar', '/app/friends'],
+  ['/app/profil', '/app/profile'],
+  ['/app/reyting', '/app/leaderboard'],
+  ['/app/tolov', '/app/billing'],
+  ['/app/xatolar', '/app/mistakes'],
+  ['/app/oqish/mashq/:path*', '/app/reading/practice/:path*'],
+  ['/app/oqish/mashq', '/app/reading/practice'],
+  ['/app/oqish/:path*', '/app/reading/:path*'],
+  ['/app/oqish', '/app/reading'],
+  ['/app/tinglash/mashq/:path*', '/app/listening/practice/:path*'],
+  ['/app/tinglash/mashq', '/app/listening/practice'],
+  ['/app/tinglash/:path*', '/app/listening/:path*'],
+  ['/app/tinglash', '/app/listening'],
+  ['/app/gapirish/:path*', '/app/speaking/:path*'],
+  ['/app/gapirish', '/app/speaking'],
+  ['/app/yozish/mashq/:path*', '/app/writing/practice/:path*'],
+  ['/app/yozish/mashq', '/app/writing/practice'],
+  ['/app/yozish/:path*', '/app/writing/:path*'],
+  ['/app/yozish', '/app/writing'],
+  ['/kirish', '/login'],
+  ['/royxat', '/register'],
+  ['/narxlar', '/pricing'],
+  ['/lugat/:word', '/dictionary/:word'],
+  ['/lugat', '/dictionary'],
+  ['/ielts/band-kalkulyator', '/ielts/band-calculator'],
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Uy papkasidagi begona package-lock.json workspace ildizi deb adashtirmasin (Next 15 ogohlantirishi).
@@ -87,6 +140,9 @@ const nextConfig = {
   poweredByHeader: false,
   // Next 15 dev-indikatori (pastki-chap "N" belgisi) mobil pastki tab-bar'ning birinchi tugmasini yopib qo'yadi (E2E va qo'lda sinov); production'ga ta'siri yo'q.
   devIndicators: false,
+  async redirects() {
+    return LEGACY_REDIRECTS.map(([source, destination]) => ({ source, destination, permanent: true }));
+  },
   async headers() {
     return [
       {
