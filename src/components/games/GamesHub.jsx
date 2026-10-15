@@ -327,6 +327,29 @@ export default function GamesHub() {
             <span className="text-xs text-muted">{t('hub.todayCount', { a: games.sessionsToday, b: games.dailyLimit })}</span>
           )}
         </div>
+        {/* Vocabulary World (3D hub) — portallar shu ro'yxatdagi o'yinlarga olib boradi */}
+        <div className="mb-4 p-5 rounded-2xl bg-gradient-to-r from-[#0a0b2e] via-[#1e1b4b] to-[#0f172a] border border-[#00f0b5]/40 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="relative z-10">
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#00f0b5]/20 text-[#00f0b5] border border-[#00f0b5]/30 mb-2">
+              {t('world.bannerBadge')}
+            </span>
+            <h3 className="text-xl font-bold font-display text-white">Vocabulary World 3D</h3>
+            <p className="text-xs text-slate-300 max-w-md mt-1">{t('world.bannerBody')}</p>
+          </div>
+          <Link
+            href="/app/vocabulary-world"
+            className="relative z-10 px-5 py-2.5 bg-[#00f0b5] hover:bg-[#00d6a2] text-[#0a0b2e] font-extrabold rounded-xl transition-transform shadow-lg motion-safe:hover:scale-105 active:scale-95 text-sm inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            <Gamepad2 size={18} aria-hidden="true" />
+            {t('world.bannerCta')}
+          </Link>
+          <div
+            className="absolute right-0 top-0 bottom-0 w-1/3 pointer-events-none"
+            style={{ background: 'radial-gradient(circle at center, rgba(0,240,181,0.12), transparent 70%)' }}
+            aria-hidden="true"
+          />
+        </div>
+
         <div className="grid sm:grid-cols-2 gap-3">
           {(games?.games || []).map((g) => (
             <GameCard key={g.key} game={g} />
