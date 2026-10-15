@@ -1,11 +1,12 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpenText, Ear, Mic, PenLine, Loader2, ChevronRight, RotateCcw, Shuffle, Timer, Sparkles, Highlighter } from 'lucide-react';
+import { BookOpenText, Ear, Mic, PenLine, Loader2, ChevronRight, RotateCcw, Shuffle, Timer, Sparkles, Highlighter, Search } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useT } from '@/context/LocaleContext';
 import { createAttempt, createPracticeAttempt, fetchSectionStatuses } from '../state/attemptsApi';
 import ExamBackLink from './ExamBackLink';
+import { countByKind, countByStatus, filterTests } from './testListFilter';
 
 // One page per skill (2026-09-29, user request: "no separate practice section —
 // entering Reading IS practising"). The old /app/<skill>/mashq pages are
@@ -123,11 +124,109 @@ function ModeSwitch({ mode, onChange }) {
   );
 }
 
+// Ro'yxat filtri (2026-10-16): 11 ta to'liq test + 100 Reading + 100 Listening
+// bo'lim mashqlari bitta ro'yxatda — turi (to'liq 40 savol / qisqa bitta passage
+// yoki audio), holati (boshlanmagan / davom etmoqda / tugallangan) va sarlavha
+// bo'yicha qidiruv. Tur tanlovi localStorage'da saqlanadi; raqamlar filtrdan
+// qat'i nazar asl tartibda qoladi, shunda "12-test" doim bir xil test.
+const KIND_FILTERS = [
+  { key: 'all', label: 'sk.filter.all' },
+  { key: 'full', label: 'sk.filter.full' },
+  { key: 'short', label: 'sk.filter.short' },
+];
+const STATUS_FILTERS = [
+  { key: 'all', label: 'sk.filter.all' },
+  { key: 'notStarted', label: 'sk.filter.notStarted' },
+  { key: 'inProgress', label: 'sk.filter.inProgress' },
+  { key: 'done', label: 'sk.filter.done' },
+];
+
+function useStoredKind(skill) {
+  const [kind, setKind] = useState('all');
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`vocably_skill_kind_${skill}`);
+      if (KIND_FILTERS.some((k) => k.key === saved)) setKind(saved);
+    } catch {}
+  }, [skill]);
+  const update = (k) => {
+    setKind(k);
+    try {
+      localStorage.setItem(`vocably_skill_kind_${skill}`, k);
+    } catch {}
+  };
+  return [kind, update];
+}
+
+function FilterChips({ label, options, value, onChange, counts }) {
+  const { t } = useT();
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+      {options.map((o) => {
+        const active = value === o.key;
+        const n = counts?.[o.key];
+        return (
+          <button
+            key={o.key}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(o.key)}
+            className={`inline-flex items-center gap-1.5 min-h-9 px-3 rounded-full border text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              active ? 'bg-accent text-on-accent border-accent' : 'bg-surface text-muted border-border hover:text-ink hover:border-accent/50'
+            }`}
+          >
+            {t(o.label)}
+            {n != null && <span className={`tabular-nums ${active ? 'text-on-accent/80' : 'text-muted'}`}>{n}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TestFilters({ skill, tests, statuses, kind, onKind, status, onStatus, query, onQuery, shown }) {
+  const { t } = useT();
+  const kindCounts = useMemo(() => countByKind(tests, skill), [tests, skill]);
+  const statusCounts = useMemo(() => countByStatus(tests, statuses), [tests, statuses]);
+  // Faqat ikkala tur ham bo'lsa (masalan Reading'da to'liq va qisqa) tur filtri ko'rsatiladi.
+  const showKind = kindCounts.full > 0 && kindCounts.short > 0;
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+      <div className="flex flex-col gap-2">
+        {showKind && <FilterChips label={t('sk.filter.kind')} options={KIND_FILTERS} value={kind} onChange={onKind} counts={kindCounts} />}
+        <FilterChips label={t('sk.filter.status')} options={STATUS_FILTERS} value={status} onChange={onStatus} counts={statusCounts} />
+      </div>
+      <div className="flex items-center gap-3">
+        <label className="relative flex-1 sm:w-64">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            placeholder={t('sk.search')}
+            aria-label={t('sk.search')}
+            className="w-full min-h-10 pl-9 pr-3 rounded-xl bg-surface border border-border text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+        </label>
+        <span className="text-xs text-muted whitespace-nowrap tabular-nums" aria-live="polite">
+          {t('sk.count', { n: shown })}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function TestGrid({ skill, mode, busyId, onPick }) {
   const { t } = useT();
   const [tests, setTests] = useState(null);
   const [statuses, setStatuses] = useState({});
   const [error, setError] = useState('');
+  const [kind, setKind] = useStoredKind(skill);
+  const [status, setStatus] = useState('all');
+  const [query, setQuery] = useState('');
+
+  const visible = useMemo(() => filterTests(tests, statuses, { kind, status, query }, skill), [tests, statuses, kind, status, query, skill]);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,8 +263,22 @@ function TestGrid({ skill, mode, busyId, onPick }) {
   if (tests.length === 0) return <p className="text-sm text-muted">{t('sk.noTests')}</p>;
 
   return (
+    <>
+    <TestFilters
+      skill={skill}
+      tests={tests}
+      statuses={statuses}
+      kind={kind}
+      onKind={setKind}
+      status={status}
+      onStatus={setStatus}
+      query={query}
+      onQuery={setQuery}
+      shown={visible.length}
+    />
+    {visible.length === 0 && <p className="text-sm text-muted">{t('sk.noMatch')}</p>}
     <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-      {tests.map((test, i) => {
+      {visible.map(({ test, index: i }) => {
         const st = statuses[test.id];
         const badge = st ? STATUS_BADGE[st.status] : null;
         const busy = busyId === test.id;
@@ -209,6 +322,7 @@ function TestGrid({ skill, mode, busyId, onPick }) {
         );
       })}
     </ul>
+    </>
   );
 }
 
