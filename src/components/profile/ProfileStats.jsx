@@ -132,8 +132,14 @@ function TrendChart({ points, target }) {
   const first = points[0];
   const last = points[points.length - 1];
   const delta = last.value - first.value;
+  // Keng diapazonda (masalan 0.0 → 8.0) har 2 bandda bitta chiziq — aks holda 9 ta chiziq zich chiqadi.
+  const gridStep = max - min > 4 ? 2 : 1;
   const gridBands = [];
-  for (let v = min; v <= max + 1e-9; v += 1) gridBands.push(Math.round(v * 2) / 2);
+  for (let v = min; v <= max + 1e-9; v += gridStep) gridBands.push(Math.round(v * 2) / 2);
+  // Nuqta yorliqlari: birinchi, oxirgi va eng yuqori — qo'shni mock yorliqlari ustma-ust tushmasin.
+  const peakIndex = points.reduce((best, p, i) => (p.value > points[best].value ? i : best), 0);
+  const labelled = new Set([0, points.length - 1]);
+  if (peakIndex > 1 && peakIndex < points.length - 2) labelled.add(peakIndex); // chetdagi nuqtalarga yopishib qolmasin
   const fmtShort = (iso) => {
     const dt = new Date(iso);
     return `${dt.getDate()}/${dt.getMonth() + 1}`;
@@ -172,7 +178,7 @@ function TrendChart({ points, target }) {
               <circle cx={x(i)} cy={y(p.value)} r={p.mock ? 5 : 3.5} className={p.mock ? 'fill-accent' : 'fill-surface stroke-accent'} strokeWidth="2">
                 <title>{`${p.title} — ${band(p.value)} (${formatUzDate(p.date)})`}</title>
               </circle>
-              {(isLast || i === 0 || p.mock) && (
+              {labelled.has(i) && (
                 <text
                   x={x(i)}
                   y={y(p.value) - (p.mock ? 11 : 9)}
