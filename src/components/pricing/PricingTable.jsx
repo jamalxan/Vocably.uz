@@ -112,7 +112,7 @@ export default function PricingTable() {
             >
               {opt.label}
               {opt.key === 'yearly' && (
-                <span className="ml-1.5 text-[10px] font-semibold text-emerald-500">{t('pr.saving')}</span>
+                <span className="ml-1.5 text-[10px] font-semibold text-success">{t('pr.saving')}</span>
               )}
             </button>
           ))}

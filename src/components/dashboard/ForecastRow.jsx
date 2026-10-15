@@ -7,21 +7,31 @@ export default function ForecastRow({ forecast }) {
   const { t } = useT();
   const DAY_SHORT = t('dash.daysAbbr').split('|');
   const max = Math.max(1, ...forecast.map((f) => f.dueCount));
+  const total = forecast.reduce((s, f) => s + (f.dueCount || 0), 0);
+  const peak = forecast.reduce((m, f) => (f.dueCount > (m?.dueCount || 0) ? f : m), null);
 
   return (
     <div className="bg-surface rounded-2xl shadow-card border border-border p-5">
-      <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-4">{t('dash.forecast')}</p>
+      <div className="flex items-baseline justify-between gap-3 mb-4">
+        <p className="text-xs font-semibold text-accent uppercase tracking-wider">{t('dash.forecast')}</p>
+        <p className="text-xs text-muted tabular-nums">
+          <span className="font-display text-base font-bold text-ink">{total}</span>
+        </p>
+      </div>
       <div className="flex items-end gap-2 h-24">
         {forecast.map((f) => {
           const d = new Date(`${f.date}T00:00:00`);
           const heightPct = f.dueCount > 0 ? Math.max(8, (f.dueCount / max) * 100) : 4;
+          const isPeak = peak && f.date === peak.date && f.dueCount > 0;
           return (
             <div key={f.date} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-              <span className="text-[11px] leading-none tabular-nums text-muted">{f.dueCount || ''}</span>
+              <span className={`text-[11px] leading-none tabular-nums ${isPeak ? 'text-ink font-semibold' : 'text-muted'}`}>{f.dueCount || ''}</span>
               {/* Foiz balandlik faqat ustun maydoniga nisbatan — yorliqlar hisobga kirmasin. */}
               <div className="flex-1 min-h-0 w-full flex items-end">
                 <div
-                  className={`w-full rounded-md ${f.dueCount > 0 ? 'bg-accent/50' : 'bg-bg'}`}
+                  className={`w-full rounded-md transition-[height] duration-500 ${
+                    f.dueCount > 0 ? (isPeak ? 'bg-accent' : 'bg-accent/55') : 'bg-bg-sunken/80 border border-border/60'
+                  }`}
                   style={{ height: `${heightPct}%` }}
                   title={`${DAY_SHORT[d.getDay()]}: ${f.dueCount}`}
                 />

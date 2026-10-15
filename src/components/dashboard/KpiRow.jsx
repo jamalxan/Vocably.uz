@@ -1,45 +1,25 @@
 'use client';
+import { CalendarCheck, CalendarRange, Repeat, CheckCircle2 } from 'lucide-react';
+import StatTile from '@/components/ui/StatTile';
 import { useT } from '@/context/LocaleContext';
 
-function DeltaBadge({ pct }) {
-  if (pct === null || pct === undefined) return null;
-  // Pasayish jazolovchi rangda emas — foydalanuvchini ayblamaslik uchun (spec §5.2 Blok 3).
-  const color = pct >= 0 ? 'text-accent' : 'text-muted';
-  const arrow = pct >= 0 ? '↑' : '↓';
-  return (
-    <span className={`text-xs font-semibold ${color}`}>
-      {arrow} {Math.abs(pct)}%
-    </span>
-  );
-}
-
-function KpiCard({ label, value, sub, delta }) {
-  return (
-    <div className="bg-surface rounded-xl border border-border p-4">
-      {/* Mobil 2 ustunli gridda uzun yorliq 2 qatorga o'tadi — qiymatlar bir qatorda turishi uchun min 2 qator. */}
-      <p className="text-[11px] leading-tight min-h-[2.5em] sm:min-h-0 font-semibold text-muted uppercase tracking-wider mb-1.5">{label}</p>
-      <div className="flex items-baseline gap-2 flex-wrap">
-        <p className="text-2xl font-bold text-ink tabular-nums leading-none">{value}</p>
-        <DeltaBadge pct={delta} />
-      </div>
-      {sub && <p className="text-xs text-muted mt-1">{sub}</p>}
-    </div>
-  );
-}
-
+// To'rtta asosiy ko'rsatkich — umumiy StatTile (components/ui/StatTile.jsx) orqali,
+// profil va o'yinlar markazidagi raqamlar bilan bir xil ko'rinishda.
+// Pasayish jazolovchi rangda emas (spec §5.2 Blok 3) — DeltaChip buni o'zi hal qiladi.
 export default function KpiRow({ today, deltas, totals }) {
   const { t } = useT();
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <KpiCard
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-tabular>
+      <StatTile
+        icon={CalendarCheck}
         label={t('dash.kpiToday')}
         value={today.reviews}
         sub={t('dash.kpiAccuracy', { n: today.accuracyPct })}
         delta={deltas.reviewsVsYesterdayPct}
       />
-      <KpiCard label={t('dash.kpiWeek')} value={totals.thisWeekReviews} delta={deltas.weekVsLastWeekPct} sub={t('dash.kpiWeekSub')} />
-      <KpiCard label={t('dash.kpiTotal')} value={totals.reviews} />
-      <KpiCard label={t('dash.kpiMastered')} value={totals.mastered} sub={t('dash.kpiOf', { n: totals.words })} />
+      <StatTile icon={CalendarRange} label={t('dash.kpiWeek')} value={totals.thisWeekReviews} delta={deltas.weekVsLastWeekPct} sub={t('dash.kpiWeekSub')} />
+      <StatTile icon={Repeat} label={t('dash.kpiTotal')} value={totals.reviews} />
+      <StatTile icon={CheckCircle2} label={t('dash.kpiMastered')} value={totals.mastered} sub={t('dash.kpiOf', { n: totals.words })} />
     </div>
   );
 }

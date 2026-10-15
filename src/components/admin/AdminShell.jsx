@@ -79,7 +79,7 @@ function NavLink({ item, pathname, onClick, badge }) {
       <Icon size={17} strokeWidth={2} />
       <span>{item.label}</span>
       {badge > 0 && (
-        <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-warning text-white text-[11px] font-bold grid place-items-center" aria-label={`${badge} ta kutilmoqda`}>
+        <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-warning text-on-warning text-[11px] font-bold grid place-items-center" aria-label={`${badge} ta kutilmoqda`}>
           {badge}
         </span>
       )}

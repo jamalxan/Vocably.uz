@@ -1,20 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Loader2, Users, ShieldCheck, Ban, Crown, MessagesSquare, Mail, Flag, TrendingUp } from 'lucide-react';
+import StatTile from '@/components/ui/StatTile';
 
 const TYPE_LABELS = { text: 'Matn', image: 'Rasm', video: 'Video', voice: 'Ovozli', file: 'Fayl', sticker: 'Stiker' };
-
-function StatCard({ icon: Icon, label, value }) {
-  return (
-    <div className="min-w-0 rounded-2xl bg-surface border border-border p-4 sm:p-5 shadow-card hover:border-accent/40 transition-colors duration-300">
-      <div className="w-11 h-11 rounded-xl bg-accent-soft border border-accent/20 text-accent flex items-center justify-center mb-4">
-        <Icon size={19} strokeWidth={2} />
-      </div>
-      <p className="font-luxury text-2xl sm:text-3xl text-ink tabular-nums leading-tight break-words">{value}</p>
-      <p className="text-xs text-muted mt-2 tracking-wide">{label}</p>
-    </div>
-  );
-}
 
 function SectionLabel({ children }) {
   return (
@@ -24,6 +13,8 @@ function SectionLabel({ children }) {
     </div>
   );
 }
+
+const fmt = (n) => (typeof n === 'number' ? n.toLocaleString('uz-UZ') : n ?? '—');
 
 export default function AdminStats() {
   const [stats, setStats] = useState(null);
@@ -61,37 +52,61 @@ export default function AdminStats() {
   }
   if (error || !stats) return <p className="text-sm text-muted text-center py-8">{error || 'Statistika yuklanmadi'}</p>;
 
+  const breakdown = Object.entries(stats.typeBreakdown || {});
+  const breakdownTotal = breakdown.reduce((s, [, n]) => s + (n || 0), 0);
+
   return (
-    <div className="space-y-9">
+    <div className="space-y-9" data-tabular>
       <div>
         <SectionLabel>Foydalanuvchilar</SectionLabel>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <StatCard icon={Users} label="Jami foydalanuvchi" value={stats.totalUsers} />
-          <StatCard icon={ShieldCheck} label="Do'stlar ruxsati bor" value={stats.chatAccessUsers} />
-          <StatCard icon={Ban} label="Bloklangan (chat)" value={stats.bannedUsers} />
-          <StatCard icon={Crown} label="Adminlar" value={stats.adminCount} />
-          <StatCard icon={TrendingUp} label="Bugun ro'yxatdan o'tgan" value={stats.newToday} />
+          <StatTile icon={Users} label="Jami foydalanuvchi" value={fmt(stats.totalUsers)} />
+          <StatTile icon={ShieldCheck} label="Do'stlar ruxsati bor" value={fmt(stats.chatAccessUsers)} />
+          <StatTile icon={Ban} label="Bloklangan (chat)" value={fmt(stats.bannedUsers)} />
+          <StatTile icon={Crown} label="Adminlar" value={fmt(stats.adminCount)} />
+          <StatTile icon={TrendingUp} label="Bugun ro'yxatdan o'tgan" value={fmt(stats.newToday)} />
         </div>
       </div>
 
       <div>
         <SectionLabel>Do'stlar bo'limi faolligi</SectionLabel>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <StatCard icon={MessagesSquare} label="Jami suhbatlar" value={stats.totalConversations} />
-          <StatCard icon={Mail} label="Jami xabarlar" value={stats.totalMessages} />
-          <StatCard icon={Flag} label="Ko'rilmagan reportlar" value={stats.openReports} />
+          <StatTile icon={MessagesSquare} label="Jami suhbatlar" value={fmt(stats.totalConversations)} />
+          <StatTile icon={Mail} label="Jami xabarlar" value={fmt(stats.totalMessages)} />
+          <StatTile
+            icon={Flag}
+            label="Ko'rilmagan reportlar"
+            value={fmt(stats.openReports)}
+            sub={stats.openReports > 0 ? 'navbatda' : 'navbat bo\'sh'}
+            className={stats.openReports > 0 ? 'border-warning/40' : ''}
+          />
         </div>
       </div>
 
-      {Object.keys(stats.typeBreakdown || {}).length > 0 && (
+      {breakdown.length > 0 && (
         <div>
           <SectionLabel>Xabar turlari bo'yicha</SectionLabel>
-          <div className="flex flex-wrap gap-2.5">
-            {Object.entries(stats.typeBreakdown).map(([type, count]) => (
-              <span key={type} className="px-4 py-2 bg-surface border border-border rounded-xl text-xs text-muted">
-                {TYPE_LABELS[type] || type}: <span className="font-bold text-ink">{count}</span>
-              </span>
-            ))}
+          <div className="rounded-2xl bg-surface border border-border shadow-card p-4 sm:p-5">
+            <div className="flex h-2.5 rounded-full overflow-hidden bg-bg-sunken/70 gap-px mb-4" aria-hidden="true">
+              {breakdown.map(([type, count], i) => (
+                <div
+                  key={type}
+                  className="bg-accent first:rounded-l-full last:rounded-r-full"
+                  style={{ width: `${breakdownTotal ? (count / breakdownTotal) * 100 : 0}%`, opacity: 1 - i * 0.13 }}
+                  title={`${TYPE_LABELS[type] || type}: ${count}`}
+                />
+              ))}
+            </div>
+            <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2">
+              {breakdown.map(([type, count], i) => (
+                <li key={type} className="flex items-center gap-2 text-xs text-muted min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-accent flex-shrink-0" style={{ opacity: 1 - i * 0.13 }} aria-hidden="true" />
+                  <span className="truncate">{TYPE_LABELS[type] || type}</span>
+                  <span className="ml-auto font-semibold text-ink tabular-nums">{fmt(count)}</span>
+                  <span className="w-9 text-right tabular-nums text-[11px]">{breakdownTotal ? Math.round((count / breakdownTotal) * 100) : 0}%</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}

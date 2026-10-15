@@ -81,7 +81,7 @@ export default function TeacherHomePage() {
           Yangi sinf yaratish
         </button>
       </form>
-      {error && <p className="text-sm text-red-500 -mt-4">{error}</p>}
+      {error && <p className="text-sm text-danger -mt-4">{error}</p>}
 
       {loading ? (
         <div className="flex justify-center py-16">

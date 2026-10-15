@@ -136,7 +136,7 @@ export default function PaymentsQueue() {
                 type="button"
                 disabled={busy === r.id}
                 onClick={() => act(r, 'approve')}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 rounded-xl bg-success text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 rounded-xl bg-success text-on-success text-sm font-semibold hover:bg-success/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 {busy === r.id ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Tasdiqlash
               </button>

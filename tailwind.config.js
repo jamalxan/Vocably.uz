@@ -74,6 +74,11 @@ module.exports = {
         },
         'on-accent': 'rgb(var(--color-on-accent) / <alpha-value>)',
         'on-danger': 'rgb(var(--color-on-danger) / <alpha-value>)',
+        // To'ldirilgan success/warning/info fon ustidagi matn — light'da oq, dark'da to'q
+        // (globals.css'dagi izohga q.). `text-white` o'rniga shular ishlatilsin.
+        'on-success': 'rgb(var(--color-on-success) / <alpha-value>)',
+        'on-warning': 'rgb(var(--color-on-warning) / <alpha-value>)',
+        'on-info': 'rgb(var(--color-on-info) / <alpha-value>)',
         'on-primary': 'rgb(var(--color-on-primary) / <alpha-value>)',
         // TZ-vocably-v2.md §B2 nomlanishi: brend rangidagi sarlavha/katta raqam uchun
         // mustaqil token (text-ink'dan farqli — dark-mode'da atayin aksent tusiga

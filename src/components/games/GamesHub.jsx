@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import {
   Award,
   BookOpen,
+  CheckCircle2,
+  Circle,
   CloudRain,
   Crown,
   Ear,
@@ -30,6 +32,7 @@ import {
 import Badge from '@/components/ui/Badge';
 import Button, { buttonClasses } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
+import StatTile from '@/components/ui/StatTile';
 import CoachCard from './CoachCard';
 import CefrPathCard from './CefrPathCard';
 import DiagnosticCard from './DiagnosticCard';
@@ -58,22 +61,86 @@ function ProgressBar({ value, tone = 'bg-accent', label }) {
   );
 }
 
+// Bitta vazifa qatori: holat ikonkasi (chizilgan, unicode "✓" emas), sarlavha,
+// progress va mukofot chipi. Bajarilgan qator success tusida, lekin ro'yxatdan
+// yo'qolmaydi — foydalanuvchi nimaga erishganini ko'rib turadi.
 function QuestRow({ quest }) {
-  const { ts } = useT();
+  const { t, ts } = useT();
+  const title = ts(quest.title);
+  const pct = Math.round(Math.max(0, Math.min(1, quest.ratio)) * 100);
   return (
-    <li className="py-2.5">
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <p className={`text-sm font-medium ${quest.done ? 'text-success' : 'text-ink'}`}>
-          {quest.done && <span aria-hidden="true">✓ </span>}
-          {ts(quest.title)}
-        </p>
-        <span className="text-xs text-muted tabular-nums whitespace-nowrap">
-          {quest.progress}/{quest.target}
-          {quest.rewardXp ? ` · +${quest.rewardXp} XP` : ''}
-        </span>
+    <li className={`flex items-start gap-3 py-3 ${quest.done ? '' : ''}`}>
+      <span className={`mt-0.5 flex-shrink-0 ${quest.done ? 'text-success' : 'text-muted'}`} aria-hidden="true">
+        {quest.done ? <CheckCircle2 size={20} /> : <Circle size={20} strokeWidth={1.75} />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <p className={`text-sm font-medium leading-snug ${quest.done ? 'text-muted line-through decoration-success/60' : 'text-ink'}`}>
+            {quest.done && <span className="sr-only">{t('dash.done')}: </span>}
+            {title}
+          </p>
+          {quest.rewardXp ? (
+            <span
+              className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold tabular-nums ${
+                quest.done ? 'bg-success-soft text-success' : 'bg-accent-soft text-accent'
+              }`}
+            >
+              +{quest.rewardXp} XP
+            </span>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-3 mt-2">
+          <div className="flex-1">
+            <ProgressBar value={quest.ratio} tone={quest.done ? 'bg-success' : 'bg-accent'} label={`${title}: ${quest.progress}/${quest.target}`} />
+          </div>
+          <span className={`text-xs tabular-nums whitespace-nowrap w-12 text-right ${quest.done ? 'text-success font-semibold' : 'text-muted'}`}>
+            {quest.progress}/{quest.target}
+          </span>
+        </div>
+        <span className="sr-only">{pct}%</span>
       </div>
-      <ProgressBar value={quest.ratio} tone={quest.done ? 'bg-success' : 'bg-accent'} label={ts(quest.title)} />
     </li>
+  );
+}
+
+// Kunlik/haftalik blok: sarlavha + "bajarildi/jami" + to'plangan XP xulosasi.
+function QuestBlock({ title, hint, list }) {
+  const { t } = useT();
+  const done = list.filter((q) => q.done).length;
+  const earnedXp = list.filter((q) => q.done).reduce((s, q) => s + (q.rewardXp || 0), 0);
+  const totalXp = list.reduce((s, q) => s + (q.rewardXp || 0), 0);
+  const allDone = list.length > 0 && done === list.length;
+  return (
+    <div className={`bg-surface border rounded-2xl p-5 shadow-card ${allDone ? 'border-success/40' : 'border-border'}`}>
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div className="min-w-0">
+          <h2 className="text-base font-bold text-ink font-display">{title}</h2>
+          <p className="text-xs text-muted mt-0.5">{hint}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="font-display text-xl font-bold text-ink tabular-nums leading-none">
+            {done}
+            <span className="text-sm text-muted font-semibold">/{list.length}</span>
+          </p>
+          <p className="text-[11px] text-muted tabular-nums mt-1">
+            {earnedXp}/{totalXp} XP
+          </p>
+        </div>
+      </div>
+      <div className="h-1 rounded-full bg-bg-sunken overflow-hidden mt-3 mb-1" aria-hidden="true">
+        <div className={`h-full ${allDone ? 'bg-success' : 'bg-accent'} motion-safe:transition-[width] duration-500`} style={{ width: `${list.length ? (done / list.length) * 100 : 0}%` }} />
+      </div>
+      <ul className="divide-y divide-border/70">
+        {list.map((q) => (
+          <QuestRow key={q.key} quest={q} />
+        ))}
+      </ul>
+      {allDone && (
+        <p className="mt-3 text-xs font-semibold text-success flex items-center gap-1.5">
+          <CheckCircle2 size={14} aria-hidden="true" /> {t('coach.allDone')}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -214,27 +281,12 @@ export default function GamesHub() {
         )}
         {streak?.brokenPreview && <p className="mt-3 text-xs text-muted">{t('hub.streakBroken')}</p>}
 
-        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-          {[
-            { label: t('hub.statTotal'), value: overview.total },
-            { label: t('hub.statMastered'), value: overview.mastered },
-            { label: t('hub.statLearning'), value: overview.learning },
-            { label: t('hub.statWeak'), value: overview.weak, href: '/app/lugat/zaif-sozlar' },
-          ].map((s) => (
-            <div key={s.label} className="bg-bg-sunken rounded-xl px-4 py-3">
-              <dd className="text-xl font-bold text-ink font-display tabular-nums">{s.value}</dd>
-              <dt className="text-xs text-muted">
-                {s.href ? (
-                  <Link href={s.href} className="hover:text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
-                    {s.label}
-                  </Link>
-                ) : (
-                  s.label
-                )}
-              </dt>
-            </div>
-          ))}
-        </dl>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5" data-tabular>
+          <StatTile tone="sunken" icon={BookOpen} label={t('hub.statTotal')} value={overview.total} />
+          <StatTile tone="sunken" icon={Trophy} label={t('hub.statMastered')} value={overview.mastered} sub={overview.total ? `${Math.round((overview.mastered / overview.total) * 100)}%` : null} />
+          <StatTile tone="sunken" icon={Sparkles} label={t('hub.statLearning')} value={overview.learning} />
+          <StatTile tone="sunken" icon={Target} label={t('hub.statWeak')} value={overview.weak} href="/app/lugat/zaif-sozlar" />
+        </div>
       </section>
 
       <CefrPathCard cefrPath={profile.cefrPath} ieltsPath={profile.ieltsPath} targetBand={profile.targetBand} />
@@ -245,21 +297,25 @@ export default function GamesHub() {
           <h2 id="hub-plan" className="text-lg font-bold text-ink font-display">
             {t('hub.plan')}
           </h2>
-          <div role="group" aria-label={t('hub.dailyTime')} className="inline-flex rounded-xl border border-border overflow-hidden">
-            {MINUTE_OPTIONS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                disabled={savingMinutes}
-                aria-pressed={plan?.plan?.minutes === m}
-                onClick={() => changeMinutes(m)}
-                className={`px-3 py-2 min-h-11 md:min-h-0 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
-                  plan?.plan?.minutes === m ? 'bg-accent-soft text-accent-hover' : 'bg-surface text-muted hover:bg-bg-sunken'
-                }`}
-              >
-                {t('hub.minShort', { n: m === 45 ? '45+' : m })}
-              </button>
-            ))}
+          {/* Mobilda to'liq kenglik, har tugma teng — "5 daq" ikki qatorga bo'linmaydi. */}
+          <div role="group" aria-label={t('hub.dailyTime')} className="flex w-full sm:w-auto rounded-xl border border-border bg-bg-sunken/60 p-0.5 gap-0.5">
+            {MINUTE_OPTIONS.map((m) => {
+              const active = plan?.plan?.minutes === m;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  disabled={savingMinutes}
+                  aria-pressed={active}
+                  onClick={() => changeMinutes(m)}
+                  className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-2 min-h-11 md:min-h-0 rounded-[9px] text-xs font-semibold whitespace-nowrap tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 ${
+                    active ? 'bg-accent text-on-accent shadow-glow' : 'text-muted hover:text-ink hover:bg-surface'
+                  }`}
+                >
+                  {t('hub.minShort', { n: m === 45 ? '45+' : m })}
+                </button>
+              );
+            })}
           </div>
         </div>
         {plan?.plan?.items?.length ? (
@@ -302,19 +358,8 @@ export default function GamesHub() {
 
       {/* --- Vazifalar --- */}
       <section className="grid md:grid-cols-2 gap-4" aria-label={t('hub.quests')}>
-        {[
-          { title: t('hub.questsDaily'), list: quests.daily },
-          { title: t('hub.questsWeekly'), list: quests.weekly },
-        ].map((block) => (
-          <div key={block.title} className="bg-surface border border-border rounded-2xl p-5 shadow-card">
-            <h2 className="text-base font-bold text-ink font-display mb-1">{block.title}</h2>
-            <ul className="divide-y divide-border">
-              {block.list.map((q) => (
-                <QuestRow key={q.key} quest={q} />
-              ))}
-            </ul>
-          </div>
-        ))}
+        <QuestBlock title={t('hub.questsDaily')} hint={t('hub.questsDailyHint')} list={quests.daily} />
+        <QuestBlock title={t('hub.questsWeekly')} hint={t('hub.questsWeeklyHint')} list={quests.weekly} />
       </section>
 
       {/* --- O'yinlar --- */}
@@ -328,26 +373,27 @@ export default function GamesHub() {
           )}
         </div>
         {/* Vocabulary World (3D hub) — portallar shu ro'yxatdagi o'yinlarga olib boradi */}
-        <div className="mb-4 p-5 rounded-2xl bg-gradient-to-r from-[#0a0b2e] via-[#1e1b4b] to-[#0f172a] border border-[#00f0b5]/40 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="relative z-10">
-            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#00f0b5]/20 text-[#00f0b5] border border-[#00f0b5]/30 mb-2">
-              {t('world.bannerBadge')}
-            </span>
-            <h3 className="text-xl font-bold font-display text-white">Vocabulary World 3D</h3>
-            <p className="text-xs text-slate-300 max-w-md mt-1">{t('world.bannerBody')}</p>
+        {/* Brend yuzasi (--color-primary — ikkala temada ham to'q), AppShell sidebar'i bilan bir
+            oilada. Avvalgi neon-navy banner sahifadagi yagona "begona" rang bloki edi. */}
+        <div className="mb-4 p-5 rounded-2xl bg-primary text-on-primary border border-accent/25 shadow-premium relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(120% 140% at 100% 0%, rgb(var(--color-accent) / .35), transparent 55%), linear-gradient(160deg, rgb(var(--color-primary)), rgb(var(--color-primary-hover)))' }}
+            aria-hidden="true"
+          />
+          <Gamepad2 size={120} strokeWidth={1} className="absolute -right-4 -bottom-8 text-on-primary/10 pointer-events-none" aria-hidden="true" />
+          <div className="relative z-10 min-w-0">
+            <Badge tone="accent" className="mb-2">{t('world.bannerBadge')}</Badge>
+            <h3 className="text-xl font-bold font-display text-on-primary">Vocabulary World 3D</h3>
+            <p className="text-xs text-on-primary/75 max-w-md mt-1 leading-relaxed">{t('world.bannerBody')}</p>
           </div>
           <Link
             href="/app/vocabulary-world"
-            className="relative z-10 px-5 py-2.5 bg-[#00f0b5] hover:bg-[#00d6a2] text-[#0a0b2e] font-extrabold rounded-xl transition-transform shadow-lg motion-safe:hover:scale-105 active:scale-95 text-sm inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className={`${buttonClasses({ variant: 'primary', size: 'md' })} relative z-10 flex-shrink-0 focus-visible:ring-offset-primary`}
           >
             <Gamepad2 size={18} aria-hidden="true" />
             {t('world.bannerCta')}
           </Link>
-          <div
-            className="absolute right-0 top-0 bottom-0 w-1/3 pointer-events-none"
-            style={{ background: 'radial-gradient(circle at center, rgba(0,240,181,0.12), transparent 70%)' }}
-            aria-hidden="true"
-          />
         </div>
 
         <div className="grid sm:grid-cols-2 gap-3">
@@ -401,13 +447,15 @@ export default function GamesHub() {
           {STATUS_KEYS.map((key) => {
             const label = t(`hub.status.${key}`);
             const n = overview.byStatus?.[key] || 0;
+            const pct = overview.total ? Math.round((n / overview.total) * 100) : 0;
             return (
               <li key={key} className="flex items-center gap-3 text-sm">
-                <span className="w-28 text-muted">{label}</span>
+                <span className="w-28 text-muted truncate" title={label}>{label}</span>
                 <div className="flex-1">
-                  <ProgressBar value={overview.total ? n / overview.total : 0} label={label} tone={key === 'mastered' ? 'bg-success' : 'bg-accent'} />
+                  <ProgressBar value={overview.total ? n / overview.total : 0} label={`${label}: ${n}`} tone={key === 'mastered' ? 'bg-success' : 'bg-accent'} />
                 </div>
-                <span className="w-10 text-right tabular-nums text-ink">{n}</span>
+                <span className="w-9 text-right tabular-nums text-ink font-semibold">{n}</span>
+                <span className="w-10 text-right tabular-nums text-xs text-muted">{pct}%</span>
               </li>
             );
           })}

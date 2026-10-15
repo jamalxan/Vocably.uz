@@ -14,7 +14,7 @@ const SECTION_LABELS = {
 const STATUS_META = {
   not_started: { label: 'Boshlanmagan', className: 'bg-bg border border-border text-muted' },
   in_progress: { label: 'Jarayonda', className: 'bg-accent-soft border border-accent/25 text-accent' },
-  graded: { label: 'Baholangan', className: 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600' },
+  graded: { label: 'Baholangan', className: 'bg-success-soft border border-success/30 text-success' },
 };
 
 export default function TeacherClassroomPage() {
@@ -161,7 +161,7 @@ export default function TeacherClassroomPage() {
           </button>
         </form>
         <p className="text-xs text-muted">O'quvchi taklifni o'z profilida (Sozlamalar) qabul qilgandan keyin sinfga qo'shiladi.</p>
-        {studentError && <p className="text-sm text-red-500">{studentError}</p>}
+        {studentError && <p className="text-sm text-danger">{studentError}</p>}
 
         {classroom.invited?.length > 0 && (
           <div>
@@ -173,7 +173,7 @@ export default function TeacherClassroomPage() {
                   <button
                     onClick={() => removeStudent(s.id)}
                     aria-label={`${s.username} taklifini bekor qilish`}
-                    className="p-2 min-w-11 min-h-11 flex items-center justify-center text-muted hover:text-red-500 rounded-lg transition-colors"
+                    className="p-2 min-w-11 min-h-11 flex items-center justify-center text-muted hover:text-danger hover:bg-danger-soft rounded-lg transition-colors"
                   >
                     <X size={15} />
                   </button>
@@ -196,7 +196,7 @@ export default function TeacherClassroomPage() {
                 <button
                   onClick={() => removeStudent(s.id)}
                   aria-label={`${s.username}ni sinfdan olib tashlash`}
-                  className="p-2 min-w-11 min-h-11 flex items-center justify-center text-muted hover:text-red-500 rounded-lg transition-colors"
+                  className="p-2 min-w-11 min-h-11 flex items-center justify-center text-muted hover:text-danger hover:bg-danger-soft rounded-lg transition-colors"
                 >
                   <X size={15} />
                 </button>
@@ -252,7 +252,7 @@ export default function TeacherClassroomPage() {
             </button>
           </div>
         </form>
-        {assignmentError && <p className="text-sm text-red-500">{assignmentError}</p>}
+        {assignmentError && <p className="text-sm text-danger">{assignmentError}</p>}
         {tests.length === 0 && <p className="text-xs text-muted">Hozircha nashr qilingan test yo'q</p>}
 
         {assignments.length === 0 ? (

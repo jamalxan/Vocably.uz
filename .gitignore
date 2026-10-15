@@ -30,3 +30,6 @@ public/emojibase/
 # IDE
 .idea/
 .claude/
+
+# local design-QA scratch (screenshots, launchers)
+.tmp-design/

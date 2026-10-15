@@ -54,6 +54,12 @@
   --color-border-strong: 199 184 176;  /* #C7B8B0 — kuchliroq chegara (masalan faol input, ajratgich) */
   --color-on-accent: 255 255 255;      /* accent fon ustidagi matn */
   --color-on-danger: 255 255 255;      /* danger fon ustidagi matn (dark'da to'q — pastga q.) */
+  /* success/warning/info TO'LDIRILGAN fon ustidagi matn. Light'da semantik ranglar to'q (oq
+     matn 4.5:1+), dark'da esa ular och (#5FC49B/#E0AC5B/#7FB6DA) — oq matn ~2:1 bo'lib
+     o'qilmas edi, shuning uchun dark'da to'q (pastga q.). `text-on-danger` bilan bir xil naqsh. */
+  --color-on-success: 255 255 255;
+  --color-on-warning: 255 255 255;
+  --color-on-info: 255 255 255;
   --shadow-rgb: 74 18 38;              /* soyalar rangi (tailwind boxShadow, .card-hover) */
   --color-on-primary: 250 246 242;     /* primary (to'q) fon ustidagi matn */
   --color-brand-text: 74 18 38;        /* #4A1226 — TZ §B2 "brand-text" roli: sarlavha/katta raqam. Light'da
@@ -109,6 +115,9 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
     --color-on-danger: 20 9 13;          /* #14090D — och danger fonida oq matn 2.3:1 edi */
+    --color-on-success: 20 9 13;
+    --color-on-warning: 20 9 13;
+    --color-on-info: 20 9 13;
     --shadow-rgb: 0 0 0;
     /* BUG-003 tuzatilishi (TZ-vocably-v2.md §B2): sirt darajalari orasidagi ΔL juda
        kichik edi (bg/bg-sunken/surface deyarli bir xil qora bo'lib ko'rinardi) —
@@ -150,6 +159,9 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-on-danger: 20 9 13;
+  --color-on-success: 20 9 13;
+  --color-on-warning: 20 9 13;
+  --color-on-info: 20 9 13;
   --shadow-rgb: 0 0 0;
   --color-bg: 20 9 13;
   --color-bg-sunken: 13 5 8;
@@ -196,6 +208,34 @@ body {
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: 'cv11', 'ss01';
   text-rendering: optimizeLegibility;
+  background: rgb(var(--color-bg));
+  color: rgb(var(--color-ink));
+}
+
+/* Brauzerning o'z yuzalari ham palitraga ergashadi: matn belgilash, kursor (caret),
+   native checkbox/radio/range (accent-color — aks holda OS ko'k rangi), Firefox
+   scrollbar rangi. Imtihon ekrani ([data-exam]) o'z accent'ini ishlatadi. */
+::selection {
+  background: rgb(var(--color-accent) / .28);
+  color: rgb(var(--color-ink));
+}
+:root {
+  accent-color: rgb(var(--color-accent));
+  caret-color: rgb(var(--color-accent));
+  scrollbar-color: rgb(var(--color-border)) transparent;
+}
+[data-exam] ::selection {
+  background: var(--exam-highlight);
+  color: var(--exam-text);
+}
+[data-exam] {
+  accent-color: var(--exam-accent);
+  caret-color: var(--exam-accent);
+}
+/* Jadval/statistika raqamlari bir ustunda tursin — tabular-nums sinfi bo'lmagan
+   joylarda ham (masalan Recharts o'qlari, <table>). */
+table, [data-tabular] {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Sarlavhalar — Sora (display), zich harf oralig'i. Exam ekranlaridagi
@@ -217,6 +257,11 @@ h1, h2, h3 {
 ::-webkit-scrollbar-thumb {
   background: rgb(var(--color-border));
   border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--color-border-strong));
 }
 ::-webkit-scrollbar-track {
   background: transparent;
