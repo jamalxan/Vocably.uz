@@ -4,8 +4,13 @@
 // hisoblandi" bo'lib chiqmasligi uchun. Har bir izohdagi qo'shtirnoqli dalil
 // manba matnida (locatorParagraph bo'lsa — aynan o'sha paragrafda) so'zma-so'z
 // borligi ham tekshiriladi, ya'ni izoh to'qib chiqarilmagan.
-//   node scripts/content/open/verify.mjs            # barcha open-test-N.mjs
-import { readdirSync } from 'node:fs';
+//
+// Uch xil kontent fayli bor (hammasi bir xil tekshiruvdan o'tadi):
+//   open-test-N.mjs           — to'liq test: Reading 3 passage + Listening 4 part + Writing
+//   reading/reading-N.mjs     — faqat Reading: 1 passage, 13-14 savol (20 daqiqa)
+//   listening/listening-N.mjs — faqat Listening: 1 part (VOA hikoyasi), 10 savol
+//   node scripts/content/open/verify.mjs [--series=open|reading|listening]
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderChartSvg } from '../../../src/lib/chartSvg.js';
@@ -52,6 +57,10 @@ export function verifyOpenTest(t) {
   const errors = [];
   const err = (where, msg) => errors.push(`${t.slug} ${where}: ${msg}`);
   const groupIds = new Set();
+
+  if (!/^[a-z0-9-]+$/.test(t.slug || '')) err('slug', "slug faqat kichik lotin harf/raqam/'-'");
+  if (!t.title?.trim()) err('title', "sarlavha bo'sh");
+  if (!t.reading && !t.listening && !t.writing) err('sections', "kamida bitta bo'lim (reading/listening/writing) kerak");
 
   const checkGroups = (sectionLabel, groups, sourceAll, paraMap, labels) => {
     for (const g of groups) {
@@ -116,70 +125,104 @@ export function verifyOpenTest(t) {
   };
 
   const numbersOf = (containers) => containers.flatMap((c) => c.questionGroups.flatMap((g) => g.questions.map((qq) => qq.number)));
-  const expectSeq = (label, nums) => {
-    const want = Array.from({ length: 40 }, (_, i) => i + 1);
-    if (nums.length !== 40 || nums.some((n, i) => n !== want[i])) err(label, `savol raqamlari 1-40 ketma-ket emas: ${nums.join(',')}`);
+  const expectSeq = (label, nums, total) => {
+    const want = Array.from({ length: total }, (_, i) => i + 1);
+    if (nums.length !== total || nums.some((n, i) => n !== want[i])) err(label, `savol raqamlari 1-${total} ketma-ket emas: ${nums.join(',')}`);
   };
 
-  // Reading
-  const passages = t.reading?.passages || [];
-  if (passages.length !== 3) err('reading', `3 ta passage kerak, ${passages.length} bor`);
-  let rWords = 0;
-  for (const p of passages) {
-    const paraMap = Object.fromEntries(p.paragraphs.map((x) => [x.label, norm(x.html)]));
-    const all = norm(p.paragraphs.map((x) => x.html).join(' '));
-    rWords += words(p.paragraphs.map((x) => x.html.replace(/<[^>]+>/g, ' ')).join(' '));
-    const nums = numbersOf([p]);
-    if (!p.subtitle?.includes(`questions ${nums[0]}-${nums[nums.length - 1]}`)) err(`reading.p${p.order}`, `subtitle raqamlari (${nums[0]}-${nums[nums.length - 1]}) mos emas`);
-    checkGroups(`reading.p${p.order}`, p.questionGroups, all, paraMap, p.paragraphs.map((x) => x.label));
+  // Reading — 3 passage (to'liq test, 40 savol) yoki 1 passage (bo'lim mashqi, 13-14 savol)
+  if (t.reading) {
+    const passages = t.reading.passages || [];
+    const full = passages.length === 3;
+    if (passages.length !== 3 && passages.length !== 1) err('reading', `1 yoki 3 ta passage kerak, ${passages.length} bor`);
+    if (!(t.reading.durationSec > 0)) err('reading', "durationSec yo'q");
+    let rWords = 0;
+    for (const p of passages) {
+      const paraMap = Object.fromEntries(p.paragraphs.map((x) => [x.label, norm(x.html)]));
+      const all = norm(p.paragraphs.map((x) => x.html).join(' '));
+      rWords += words(p.paragraphs.map((x) => x.html.replace(/<[^>]+>/g, ' ')).join(' '));
+      const nums = numbersOf([p]);
+      if (!p.subtitle?.includes(`questions ${nums[0]}-${nums[nums.length - 1]}`)) err(`reading.p${p.order}`, `subtitle raqamlari (${nums[0]}-${nums[nums.length - 1]}) mos emas`);
+      if (!full && !(nums.length >= 13 && nums.length <= 14)) err(`reading.p${p.order}`, `13-14 savol kerak, ${nums.length} bor`);
+      if (p.paragraphs.length < 5) err(`reading.p${p.order}`, `kamida 5 paragraf kerak, ${p.paragraphs.length} bor`);
+      checkGroups(`reading.p${p.order}`, p.questionGroups, all, paraMap, p.paragraphs.map((x) => x.label));
+    }
+    const nums = numbersOf(passages);
+    expectSeq('reading', nums, full ? 40 : nums.length);
+    if (full && (rWords < 2150 || rWords > 2750)) err('reading', `jami so'z soni ${rWords} (mock uchun 2150-2750)`);
+    if (!full && (rWords < 650 || rWords > 1000)) err('reading', `passage so'z soni ${rWords} (650-1000 kerak)`);
   }
-  expectSeq('reading', numbersOf(passages));
-  if (rWords < 2150 || rWords > 2750) err('reading', `jami so'z soni ${rWords} (mock uchun 2150-2750)`);
 
-  // Listening
-  const parts = t.listening?.parts || [];
-  if (parts.length !== 4) err('listening', `4 ta part kerak, ${parts.length} bor`);
-  for (const p of parts) {
-    if (!p.source?.mp3) err(`listening.part${p.order}`, "mp3 manbasi yo'q");
-    if (!p.transcript || words(p.transcript) < 150) err(`listening.part${p.order}`, 'transkript juda qisqa');
-    const n = numbersOf([p]);
-    if (n.length !== 10) err(`listening.part${p.order}`, `10 ta savol kerak, ${n.length} bor`);
-    checkGroups(`listening.part${p.order}`, p.questionGroups, norm(p.transcript), null, []);
+  // Listening — 4 part (to'liq test) yoki 1 part (bo'lim mashqi); har partda 10 savol
+  if (t.listening) {
+    const parts = t.listening.parts || [];
+    if (parts.length !== 4 && parts.length !== 1) err('listening', `1 yoki 4 ta part kerak, ${parts.length} bor`);
+    if (!(t.listening.checkTimeSec >= 0)) err('listening', "checkTimeSec yo'q");
+    for (const p of parts) {
+      if (!p.source?.mp3) err(`listening.part${p.order}`, "mp3 manbasi yo'q");
+      if (!p.transcript || words(p.transcript) < 150) err(`listening.part${p.order}`, 'transkript juda qisqa');
+      const n = numbersOf([p]);
+      if (n.length !== 10) err(`listening.part${p.order}`, `10 ta savol kerak, ${n.length} bor`);
+      checkGroups(`listening.part${p.order}`, p.questionGroups, norm(p.transcript), null, []);
+    }
+    expectSeq('listening', numbersOf(parts), parts.length * 10);
   }
-  expectSeq('listening', numbersOf(parts));
 
-  // Writing
-  const w = t.writing;
-  if (!w?.task1?.promptHtml || !w?.task2?.promptHtml) err('writing', "task1/task2 promptHtml bo'sh");
-  try {
-    const svg = renderChartSvg(w.task1.chart);
-    if (!svg.trim().startsWith('<svg')) err('writing.task1', 'grafik SVG bo\'lib chizilmadi');
-    for (const s of w.task1.chart.series) if (s.data.length !== w.task1.chart.categories.length) err('writing.task1', `${s.name}: data uzunligi categories bilan mos emas`);
-  } catch (e) {
-    err('writing.task1', `grafik xatosi: ${e.message}`);
+  // Writing — to'liq testda majburiy, bo'lim mashqida yo'q
+  const isFull = t.reading?.passages?.length === 3 && t.listening?.parts?.length === 4;
+  if (isFull && !t.writing) err('writing', "to'liq testda Writing bo'limi kerak");
+  if (t.writing) {
+    const w = t.writing;
+    if (!w?.task1?.promptHtml || !w?.task2?.promptHtml) err('writing', "task1/task2 promptHtml bo'sh");
+    try {
+      const svg = renderChartSvg(w.task1.chart);
+      if (!svg.trim().startsWith('<svg')) err('writing.task1', 'grafik SVG bo\'lib chizilmadi');
+      for (const s of w.task1.chart.series) if (s.data.length !== w.task1.chart.categories.length) err('writing.task1', `${s.name}: data uzunligi categories bilan mos emas`);
+    } catch (e) {
+      err('writing.task1', `grafik xatosi: ${e.message}`);
+    }
   }
   return errors;
 }
 
-export async function loadOpenTests() {
-  const files = readdirSync(DIR)
-    .map((f) => /^open-test-(\d+)\.mjs$/.exec(f))
-    .filter(Boolean)
-    .sort((a, b) => Number(a[1]) - Number(b[1]));
+/** Barcha kontent fayllari: open-test-N.mjs (series 'open'), reading/reading-N.mjs
+ * ('reading'), listening/listening-N.mjs ('listening'). Har bir testga `series` va `n`
+ * qo'shiladi. `series` berilsa faqat o'sha seriya yuklanadi. */
+export async function loadOpenTests(series) {
+  const SERIES = [
+    { name: 'open', dir: DIR, re: /^open-test-(\d+)\.mjs$/ },
+    { name: 'reading', dir: path.join(DIR, 'reading'), re: /^reading-(\d+)\.mjs$/ },
+    { name: 'listening', dir: path.join(DIR, 'listening'), re: /^listening-(\d+)\.mjs$/ },
+  ];
   const out = [];
-  for (const m of files) out.push((await import(pathToFileURL(path.join(DIR, m[0])).href)).default);
+  for (const s of SERIES) {
+    if (series && s.name !== series) continue;
+    if (!existsSync(s.dir)) continue;
+    const files = readdirSync(s.dir).map((f) => s.re.exec(f)).filter(Boolean).sort((a, b) => Number(a[1]) - Number(b[1]));
+    for (const m of files) {
+      const t = (await import(pathToFileURL(path.join(s.dir, m[0])).href)).default;
+      out.push({ ...t, series: s.name, n: Number(m[1]) });
+    }
+  }
   return out;
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  const tests = await loadOpenTests();
+  const series = (process.argv.find((a) => a.startsWith('--series=')) || '').split('=')[1] || undefined;
+  const tests = await loadOpenTests(series);
   let total = 0;
+  const slugs = new Set();
   for (const t of tests) {
     const e = verifyOpenTest(t);
+    if (slugs.has(t.slug)) e.push(`${t.slug}: slug takrorlangan`);
+    slugs.add(t.slug);
+    const expected = t.series === 'open' ? `vocably-open-test-${t.n}` : `vocably-${t.series}-${t.n}`;
+    if (t.slug !== expected) e.push(`${t.slug}: slug fayl nomiga mos emas (${expected} kutilgan)`);
     total += e.length;
     console.log(`${e.length ? '✗' : '✓'} ${t.slug}${e.length ? ` — ${e.length} xato` : ''}`);
     e.forEach((x) => console.log('   ', x));
   }
+  console.log(`\n${tests.length} ta test, ${total} ta xato`);
   if (total) process.exit(1);
 }

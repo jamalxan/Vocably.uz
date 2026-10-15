@@ -28,3 +28,44 @@ Each test's `rights.licenceNote` in the database lists every source URL.
 5. Run again without `--dry` to upload (GridFS, sha256 read-back) and publish.
 
 `openTests.test.ts` re-runs the static, validator and scoring checks in the normal test suite.
+
+## Reading series (`reading/reading-N.mjs`) and Listening series (`listening/listening-N.mjs`)
+
+Section-only practice tests (added 2026-10-15; 100 + 100 planned). Same source rules and
+the same `verify.mjs` / `load-open-tests.mts` / `openTests.test.ts` pipeline as the full tests.
+
+| Series | File | Slug / title | Content | Timing |
+|---|---|---|---|---|
+| reading | `reading/reading-N.mjs` | `vocably-reading-N`, `Reading N: <Topic>` | **1** `wikiPassage()` (650-1000 words, ≥5 paragraphs), **13-14** questions numbered 1..13/14 in **3** question groups of different types | `reading.durationSec: 1200` |
+| listening | `listening/listening-N.mjs` | `vocably-listening-N`, `Listening N: <Topic>` | **1** `voaPart()` (one VOA story, 3-9 min), **10** questions numbered 1..10 in 2-3 groups | `listening.checkTimeSec: 60`, `listening.audio: 'static'` |
+
+Listening audio for this series is stored as a **static file** `public/audio/exam/open/<key>.mp3`
+(Atlas has no room for more GridFS audio) — commit + push the mp3 first, the loader refuses to
+publish a test whose audio URL is not live (`HEAD` must return 200 `audio/mpeg`).
+
+Shape of a question group (see `reading/reading-1.mjs`, `open-test-11.mjs`, `open-test-5.mjs`):
+
+```js
+{ id: 'r7-tfng', type: 'true_false_notgiven', instructionHtml: TFNG_INSTRUCTION, questions: [ q(6, 'statement', 'TRUE', 'Paragraph C: "verbatim quote".', 'C'), … ] }
+{ id: 'r7-sent', type: 'sentence_completion', wordLimit: { maxWords: 2, maxNumbers: 1, label: 'NO MORE THAN TWO WORDS AND/OR A NUMBER' }, instructionHtml: '…', questions: [ q(10, 'The ______ was …', ['answer', 'alt answer'], 'Paragraph D: "…".', 'D') ] }
+{ id: 'r7-notes', type: 'note_completion', wordLimit: W1, instructionHtml: '…', stemHtml: '<p><strong>Title</strong></p><ul><li>… {{q11}} …</li></ul>', questions: [ q(11, null, 'answer', 'Paragraph E: "…".', 'E') ] }
+{ id: 'r7-mc', type: 'multiple_choice_single', instructionHtml: 'Choose the correct letter, <strong>A, B, C or D</strong>.', questions: [ mc(3, 'Question?', ['opt A', 'opt B', 'opt C', 'opt D'], 'B', 'Paragraph B: "…".', 'B') ] }   // mc() from ../../_html.mjs
+{ id: 'r7-people', type: 'matching_features', bankReusable: false, instructionHtml: '…', bank: bank(['Name 1', 'Name 2', …]), questions: [ q(1, 'statement', 'B', 'Paragraph A: "…".', 'A') ] }
+{ id: 'r7-info', type: 'matching_information', bankReusable: true, instructionHtml: 'The passage has seven paragraphs, A-G. Which paragraph contains…', questions: [ q(1, 'description', 'E', 'Paragraph E: "…".', 'E') ] }
+{ id: 'r7-head', type: 'matching_headings', instructionHtml: '…', bank: bank(['Heading i', 'Heading ii', …], true), questions: [ q(1, 'Paragraph B', 'iii', 'Paragraph B: "…".', 'B') ] }
+```
+
+Hard rules enforced by `verify.mjs` (run it until it prints `0 ta xato`):
+- numbering contiguous from 1; group ids unique across the file (prefix `rN-` / `lN-`);
+- every explanation must contain the evidence in **double quotes, verbatim** from the cited
+  paragraph (`locatorParagraph`) — reading: from `sources/wiki/<slug>.json`; listening: from the
+  transcript in `sources/voa/<key>.json` (and the loader then checks it is actually *spoken*);
+- gap answers (sentence/note/summary/table/flowchart/short_answer) must appear verbatim in the
+  source and respect `wordLimit`; `stemHtml` must contain `{{qN}}` for every question and nothing extra;
+- TFNG/YNNG answers only `TRUE|FALSE|NOT GIVEN` / `YES|NO|NOT GIVEN`; MC answer must be an option
+  key; matching answers must be bank keys / paragraph labels; `sentence_completion` prompt needs `______`.
+Authoring rules (not machine-checked — this is what makes the tests good):
+- IELTS Academic style: paraphrase the passage in stems, never copy a sentence; distractors
+  plausible; every question needs the passage (no general-knowledge answers); answers spread
+  through the text in order where the type expects it (TFNG, completion); at least one real
+  NOT GIVEN per TFNG group; MC with 4 options; vary the type mix between tests.

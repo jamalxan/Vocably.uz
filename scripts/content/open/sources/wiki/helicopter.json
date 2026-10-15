@@ -1,0 +1,52 @@
+{
+ "article": "Helicopter",
+ "url": "https://en.wikipedia.org/w/index.php?title=Helicopter&oldid=1373885559",
+ "revid": 1373885559,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A helicopter is a type of rotorcraft in which lift and thrust are supplied by horizontally spinning rotors. This allows the helicopter to take off and land vertically, to hover, and to fly forward, backward and laterally. These attributes allow helicopters to be used in congested or isolated areas where fixed-wing aircraft and many forms of short take-off and landing (STOL) or short take-off and vertical landing (STOVL) aircraft cannot perform without a runway."
+  },
+  {
+   "label": "B",
+   "text": "The Focke-Wulf Fw 61 was the first successful, practical, and fully controllable helicopter in 1936, while in 1942, the Sikorsky R-4 became the first helicopter to reach full-scale production. Starting in 1939 and through 1943, Igor Sikorsky worked on the development of the VS-300, which over four iterations, became the basis for modern helicopters with a single main rotor and a single tail rotor."
+  },
+  {
+   "label": "C",
+   "text": "Although most earlier designs used more than one main rotor, the configuration of a single main rotor accompanied by a vertical anti-torque tail rotor (i.e. unicopter, not to be confused with the single-blade monocopter) has become the most common helicopter configuration. However, twin-rotor helicopters (bicopters), in either tandem or transverse rotors configurations, are sometimes in use due to their greater payload capacity than the monorotor design, and coaxial-rotor, tiltrotor and compound helicopters are also all flying today. Four-rotor helicopters (quadcopters) were pioneered as early as 1907 in France, and along with other types of multicopters, have been developed mainly for specialized applications such as commercial unmanned aerial vehicles (drones) due to the rapid expansion of drone racing and aerial photography markets in the early 21st century, as well as recently weaponized utilities such as artillery spotting, aerial bombing and kamikaze drones."
+  },
+  {
+   "label": "D",
+   "text": "The English word helicopter is adapted from the French word hélicoptère, coined by Gustave Ponton d'Amécourt in 1861, which is composed of the Ancient Greek roots helix (ἕλιξ, genitive helikos (ἕλῐκος), \"helix, spiral, whirl, convolution\"), and pteron (πτερόν, \"wing\")."
+  },
+  {
+   "label": "E",
+   "text": "The word is often (erroneously, from an etymological point of view) rebracketed by English speakers as consisting of heli- and -copter, leading to words like helipad and quadcopter. English language nicknames for \"helicopter\" include \"chopper\", \"copter\", \"heli\", and \"whirlybird\". In the United States military, a common military slang term used is \"helo\"."
+  },
+  {
+   "label": "F",
+   "text": "A helicopter is a type of rotorcraft in which lift and thrust are supplied by one or more horizontally-spinning rotors. By contrast the autogyro (or gyroplane) and gyrodyne have a free-spinning rotor for all or part of the flight envelope, relying on a separate thrust system to propel the craft forwards, so that the airflow sets the rotor spinning to provide lift. The compound helicopter also has a separate thrust system, but continues to supply power to the rotor throughout normal flight. U.S. federal regulations state that \"helicopter\" means a rotorcraft that, for its horizontal motion, depends principally on its engine-driven rotors."
+  },
+  {
+   "label": "G",
+   "text": "The rotor system, or more simply rotor, is the rotating part of a helicopter that generates lift. A rotor system may be mounted horizontally, as main rotors are, providing lift vertically, or it may be mounted vertically, such as a tail rotor, to provide horizontal thrust to counteract torque from the main rotors. The rotor consists of a mast, hub and rotor blades."
+  },
+  {
+   "label": "H",
+   "text": "The mast is a cylindrical metal shaft that extends upwards from the transmission. At the top of the mast is the attachment point for the rotor blades called the hub. Main rotor systems are classified according to how the rotor blades are attached and move relative to the hub. There are three basic types: hingeless, fully articulated, and teetering; although some modern rotor systems use a combination of these."
+  },
+  {
+   "label": "I",
+   "text": "Most helicopters have a single main rotor, but torque created by its aerodynamic drag must be countered by an opposed torque. The design that Igor Sikorsky settled on for his VS-300 was a smaller tail rotor. The tail rotor pushes or pulls against the tail to counter the torque effect, and this has become the most common configuration for helicopter design, usually at the end of a tail boom."
+  },
+  {
+   "label": "J",
+   "text": "Some helicopters use other anti-torque controls instead of the tail rotor, such as the ducted fan (called Fenestron or FANTAIL) and NOTAR. NOTAR provides anti-torque similar to the way a wing develops lift through the use of the Coandă effect on the tail boom."
+  },
+  {
+   "label": "K",
+   "text": "The use of two or more horizontal rotors turning in opposite directions is another configuration used to counteract the effects of torque on the aircraft without relying on an anti-torque tail rotor. This allows the power normally required to be diverted for the tail rotor to be applied fully to the main rotors, increasing the aircraft's power efficiency and lifting capacity. There are several common configurations that use the counter-rotating effect to benefit the rotorcraft:"
+  }
+ ]
+}

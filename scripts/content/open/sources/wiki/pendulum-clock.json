@@ -1,0 +1,40 @@
+{
+ "article": "Pendulum clock",
+ "url": "https://en.wikipedia.org/w/index.php?title=Pendulum_clock&oldid=1376560094",
+ "revid": 1376560094,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A pendulum clock is a clock that uses a swinging weight known as a pendulum as its timekeeping element. The pendulum is an approximate harmonic oscillator that swings in a time interval that depends on its length, and that resists swinging at other rates. From its invention in 1656 by Christiaan Huygens, inspired by Galileo Galilei, until the 1930s, the pendulum clock was the world's most precise type of timekeeper. Throughout the 18th and 19th centuries, pendulum clocks in homes, factories, offices, and railroad stations served as primary time standards for scheduling daily life activities, work shifts, and public transportation. Their accuracy allowed for the fast pace of life during the Industrial Revolution. The home pendulum clock, which was replaced by cheaper synchronous electric clocks in the 1930s and 1940s, are now kept mostly for their decorative and antique value."
+  },
+  {
+   "label": "B",
+   "text": "The pendulum clock was invented on 25 December 1656 by Dutch scientist and inventor Christiaan Huygens. The invention was patented the following year. Huygens described it in his manuscript Horologium (1658). Huygens contracted the construction of his clock to Salomon Coster."
+  },
+  {
+   "label": "C",
+   "text": "Huygens was inspired by investigations of pendulums by Galileo Galilei in around 1602, who had discovered the key property that makes pendulums useful timekeepers—they behave isochronically, so that they swing with a period that is independent of the size of the swing. In 1637, Galileo described a mechanism to his son, Vincenzo that could keep a pendulum swinging. The mechanism was partly constructed by his son in 1649."
+  },
+  {
+   "label": "D",
+   "text": "Prior to the discovery of the pendulum many clock makers during the 1580s were given commission to create clocks showing minutes and second on them, this was not possible though since clocks mechanisms at the time were not accurate enough to add these markers. Before the use of pendulums in clocks, they were accurate to about 15 minutes per day. The introduction of the pendulum, the first harmonic oscillator used in timekeeping, increased their accuracy to 15 seconds per day, an improvement that led to their rapid spread. Many existing \"verge and foliot\" clocks were fitted with pendulums. By 1659 pendulum clocks were being manufactured by the French clockmaker Nicolaus Hanet, and in England by Ahasuerus Fromanteel."
+  },
+  {
+   "label": "E",
+   "text": "The 18th and 19th century wave of horological innovation that followed the invention of the pendulum brought many improvements to pendulum clocks. The deadbeat escapement invented in 1675 by Richard Towneley and popularized by George Graham around 1715 in his precision \"regulator\" clocks gradually replaced the anchor escapement and is now used in most modern pendulum clocks. Observation that pendulum clocks slowed down in summer brought the realization that thermal expansion and contraction of the pendulum rod with changes in temperature was a source of error. This was solved by the invention of temperature-compensated pendulums; the mercury pendulum by Graham in 1721 and the gridiron pendulum by John Harrison in 1726. With these improvements, by the mid-18th century precision pendulum clocks achieved accuracies of a few seconds per week."
+  },
+  {
+   "label": "F",
+   "text": "Until the 19th century, clocks were handmade by individual craftsmen and were very expensive. The rich ornamentation of pendulum clocks of this period indicates their value as status symbols of the wealthy. The clockmakers of each country and region in Europe developed their own distinctive styles. By the 19th century, factory production of clock parts gradually made pendulum clocks affordable by middle-class families."
+  },
+  {
+   "label": "G",
+   "text": "During the Industrial Revolution, the faster pace of life and scheduling of shifts and public transportation like trains depended on the more accurate timekeeping made possible by the pendulum. Daily life was organized around the home pendulum clock. More accurate pendulum clocks, called regulators, were installed in places of business and railroad stations and used to schedule work and set other clocks. The need for extremely accurate timekeeping in celestial navigation to determine longitude on ships during long sea voyages drove the development of the most accurate pendulum clocks, called astronomical regulators. These precision instruments, installed in clock vaults in naval observatories and kept accurate within a fraction of a second by observation of star transits overhead, were used to set marine chronometers on naval and commercial vessels. Beginning in the 19th century, astronomical regulators in naval observatories served as primary standards for national time distribution services that distributed time signals over telegraph wires. From 1909, US National Bureau of Standards (now NIST) based the US time standard on Riefler pendulum clocks, accurate to about 10 milliseconds per day. In 1929 it switched to the Shortt-Synchronome free pendulum clock before phasing in quartz standards in the 1930s."
+  },
+  {
+   "label": "H",
+   "text": "Pendulum clocks remained the world standard for accurate timekeeping for 270 years, until the invention of the quartz clock in 1927, and were used as time standards through World War II. The French Time Service included pendulum clocks in their ensemble of standard clocks until 1954. The home pendulum clock began to be replaced as domestic timekeeper during the 1930s and 1940s by the synchronous electric clock, which kept more accurate time because it was synchronized to the oscillation of the electric power grid. Behind the Iron Curtain, where quartz technology was unavailable, experiments with pendulum clocks continued for much longer, with corresponding developments in accuracy: the AChF-3 isochronous pendulum clock developed by physicist Feodosii Fedchenko in 1955 has an accuracy in the range of quartz clocks and is the most accurate pendulum clock ever to have gone into production. The most accurate experimental pendulum clock ever made may be the Littlemore Clock built by Edward T. Hall in the 1990s"
+  }
+ ]
+}

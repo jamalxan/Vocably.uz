@@ -1,0 +1,24 @@
+{
+ "key": "nasa-extends-laser-communication-in-space-to-226-million-kilometers",
+ "title": "NASA Extends Laser Communication in Space to 226 Million Kilometers",
+ "url": "https://learningenglish.voanews.com/a/nasa-extends-laser-communication-in-space-to-226-million-kilometers/7596239.html",
+ "mp3": "https://voa-audio.voanews.eu/vle/2024/05/03/01000000-0aff-0242-0406-08dc6b78e43e_hq.mp3",
+ "published": "2024-05-05",
+ "licence": "Public domain (VOA Learning English, U.S. Government work)",
+ "credit": "Bryan Lynn wrote this story for VOA Learning English, based on reports from NASA.",
+ "paragraphs": [
+  "The American space agency NASA has completed a new experiment that sent data over 226 million kilometers in space. The result marks a major improvement over previous tests that measured data transfers over 31 million kilometers.",
+  "The method is known as Deep Space Optical Communications (DSOC). The high-speed transfer technology uses lasers to send large data files over very long distances. NASA is looking to the method to improve, or upgrade, existing communication technology.",
+  "Traditionally, NASA has depended on radio communications to send data back and forth through space. But this method has a limited bandwidth, meaning at a certain point the system can no longer effectively process data. So, the agency is seeking to use the new method to support new technologies and planned trips to the moon and other places.",
+  "NASA officials say the DSOC system will be able to transfer huge amounts of science data through space. This is especially needed for large data files, as well as high-quality images and videos sent from space.",
+  "The DSOC system is based on laser technology. Laser communications are also known as optical communications. NASA explains that the technology will permit “up to 100 times more data” to be sent back to Earth than current radio wave systems.",
+  "“Much like fiber optics replacing old telephone lines on Earth as demand for data grows, going from radio communications to laser, or optical, communications will allow increased data rates throughout the solar system,” NASA said in a statement.",
+  "NASA said the laser system works with signals that exist at near-infrared wavelengths. Data transferred by laser takes the form of bits – the smallest pieces of data a computer can process. These bits are contained within the laser’s photons.",
+  "NASA is testing the DSOC on its Psyche spacecraft. Psyche was launched in October 2023 on its way to observe a mostly metal asteroid. The experiments involved a device aboard Psyche. It was able to send data to and receive data from a telescope in California.",
+  "The agency estimates it would take about nine weeks to transmit a complete map of Mars back to Earth with current radio frequency systems. But with a laser-based method, the time would be cut to nine days. Also, laser communications equipment is smaller and requires less energy.",
+  "Laser-based communication has already been demonstrated in low Earth orbit and on the moon. But the research team working on the DSOC project said this is the first time the method has been successfully tested in deep space.",
+  "Meera Srinivasan is a project leader at NASA’s Jet Propulsion Laboratory in Southern California. She said in a statement the system was able to transfer about 10 minutes of data during an experiment on April 8. Srinivasan said the result represented an important new “milestone” for the project.",
+  "The asteroid Psyche is traveling to is also called Psyche. It is believed to be made mostly of metal. NASA expects the spacecraft to travel about 3.6 million kilometers over six years to reach the asteroid. Developers of the system say when Psyche is at its farthest point from our planet, the DSOC system’s photons will take about 20 minutes to travel back to Earth.",
+  "I’m Bryan Lynn"
+ ]
+}

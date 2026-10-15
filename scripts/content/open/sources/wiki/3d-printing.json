@@ -1,0 +1,40 @@
+{
+ "article": "3D printing",
+ "url": "https://en.wikipedia.org/w/index.php?title=3D_printing&oldid=1379209858",
+ "revid": 1379209858,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "3D printing, also called additive manufacturing, is the construction of a three-dimensional object from a CAD model or a digital 3D model. It can be done in a variety of processes in which material is deposited, joined or solidified under computer control, with the material being added together (e.g. plastics, liquids, or powder grains being fused), typically layer by layer."
+  },
+  {
+   "label": "B",
+   "text": "In the 1980s, 3D printing techniques were considered suitable only for the production of functional or aesthetic prototypes, and a more appropriate term for it at the time was rapid prototyping. As of 2019, the precision, repeatability, and material range of 3D printing have increased to the point that some 3D printing processes are considered viable as an industrial-production technology; in this context, the term additive manufacturing can be used synonymously with 3D printing. One of the key advantages of 3D printing is the ability to produce very complex shapes or geometries that would be otherwise infeasible to construct by hand, including hollow parts or parts with internal truss structures to reduce weight while creating less material waste. Fused deposition modeling (FDM), which uses a continuous filament of a thermoplastic material, is the most common 3D printing process in use as of 2020."
+  },
+  {
+   "label": "C",
+   "text": "The umbrella term additive manufacturing (AM) gained popularity in the 2000s, inspired by the theme of material being added together (in any of various ways). In contrast, the term subtractive manufacturing appeared as a retronym for the large family of machining processes with material removal as their common process. The term 3D printing still referred only to the polymer technologies in most minds, and the term AM was more likely to be used in metalworking and end-use part production contexts than among polymer, inkjet, or stereolithography enthusiasts."
+  },
+  {
+   "label": "D",
+   "text": "By the early 2010s, the terms 3D printing and additive manufacturing evolved senses in which they were alternate umbrella terms for additive technologies, one being used in popular language by consumer-maker communities and the media, and the other used more formally by industrial end-use part producers, machine manufacturers, and global technical standards organizations. Until recently, the term 3D printing has been associated with machines low in price or capability. 3D printing and additive manufacturing reflect that the technologies share the theme of material addition or joining throughout a 3D work envelope under automated control. Peter Zelinski, the editor-in-chief of Additive Manufacturing magazine, pointed out in 2017 that the terms are still often synonymous in casual usage, but some manufacturing industry experts are trying to make a distinction whereby additive manufacturing comprises 3D printing plus other technologies or other aspects of a manufacturing process."
+  },
+  {
+   "label": "E",
+   "text": "Other terms that have been used as synonyms or hypernyms have included desktop manufacturing, rapid manufacturing (as the logical production-level successor to rapid prototyping), and on-demand manufacturing (which echoes on-demand printing in the 2D sense of printing). The fact that the application of the adjectives rapid and on-demand to the noun manufacturing was novel in the 2000s reveals the long-prevailing mental model of the previous industrial era during which almost all production manufacturing had involved long lead times for laborious tooling development. Today, the term subtractive has not replaced the term machining, instead complementing it when a term that covers any removal method is needed. Agile tooling is the use of modular means to design tooling that is produced by additive manufacturing or 3D printing methods to enable quick prototyping and responses to tooling and fixture needs. Agile tooling uses a cost-effective and high-quality method to quickly respond to customer and market needs, and it can be used in hydroforming, stamping, injection moulding and other manufacturing processes."
+  },
+  {
+   "label": "F",
+   "text": "Although the terms 3D printing and additive manufacturing can both be seen as the same thing, some standards organizations make a distinction between them. The American National Standards Institute (ANSI) says that international standards such as IS0/ASTM 52900 define additive manufacturing as the process of building parts from 3D model data and adding material layer by layer. In comparison, 3D printing is described as creating objects by depositing material through a print head or some variation of a nozzle type of device. In industrial and technical settings, additive manufacturing is often the preferred term, and 3D printing is used more by the general public."
+  },
+  {
+   "label": "G",
+   "text": "The general concept of and procedure to be used in 3D-printing was first described by Murray Leinster in his 1945 short story \"Things Pass By\": \"But this constructor is both efficient and flexible. I feed magnetronic plastics — the stuff they make houses and ships of nowadays — into this moving arm. It makes drawings in the air following drawings it scans with photo-cells. But plastic comes out of the end of the drawing arm and hardens as it comes... following drawings only\"."
+  },
+  {
+   "label": "H",
+   "text": "It was also described by Raymond F. Jones in his story, \"Tools of the Trade\", published in the November 1950 issue of Astounding Science Fiction magazine. He referred to it as a \"molecular spray\" in that story."
+  }
+ ]
+}

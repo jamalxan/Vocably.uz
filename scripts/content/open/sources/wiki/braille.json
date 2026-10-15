@@ -1,0 +1,48 @@
+{
+ "article": "Braille",
+ "url": "https://en.wikipedia.org/w/index.php?title=Braille&oldid=1376308063",
+ "revid": 1376308063,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "Braille ( BRAYL; French: [bʁaj] ) is a tactile writing system used by blind or visually impaired people. It can be read either on embossed paper or by using refreshable braille displays that connect to computers and smartphone devices. Braille can be written using a slate and stylus, a braille writer, an electronic braille notetaker or with the use of a computer connected to a braille embosser. For blind readers, braille is an independent writing system, rather than a code of printed orthography."
+  },
+  {
+   "label": "B",
+   "text": "Braille is named after its creator, Louis Braille, a Frenchman who lost his sight as a result of a childhood accident. In 1824, at the age of fifteen, he developed the braille code based on the French alphabet as an improvement on night writing. He published his system, which subsequently included musical notation, in 1829. The second revision, published in 1837, was the first binary form of writing developed in the modern era."
+  },
+  {
+   "label": "C",
+   "text": "Braille characters are formed using a combination of six raised dots arranged in a 3 × 2 matrix, called the braille cell. The number and arrangement of these dots distinguishes one character from another. Since the various braille alphabets originated as transcription codes for printed writing, the mappings (sets of character designations) vary from language to language, and even within one; in English braille there are three levels: uncontracted – a letter-by-letter transcription used for basic literacy; contracted – an addition of abbreviations and contractions used as a space-saving mechanism; and grade 3 – various non-standardized personal stenographies that are less commonly used."
+  },
+  {
+   "label": "D",
+   "text": "In addition to braille text (letters, punctuation, contractions), it is also possible to create embossed illustrations and graphs, with the lines either solid or made of series of dots, arrows, and bullets that are larger than braille dots. A full braille cell includes six raised dots arranged in two columns, each column having three dots. The dot positions are identified by numbers from one to six. There are 64 possible combinations, including no dots at all for a word space. Dot configurations can be used to represent a letter, digit, punctuation mark, or even a word."
+  },
+  {
+   "label": "E",
+   "text": "Early braille education is crucial to literacy, education and employment among the blind. Despite the evolution of new technologies, including screen reader software that reads information aloud, braille provides blind people with access to spelling, punctuation and other aspects of written language less accessible through audio alone."
+  },
+  {
+   "label": "F",
+   "text": "While some have suggested that audio-based technologies will decrease the need for braille, technological advancements such as braille displays have continued to make braille more accessible and available. Braille users highlight that braille remains as essential as print is to the sighted."
+  },
+  {
+   "label": "G",
+   "text": "Braille was based on a tactile code, now known as night writing, developed by Charles Barbier. The name \"night writing\" was later given when it was considered as a means for soldiers to communicate silently without a light source. Barbier's writings do not use this term, instead suggesting that braille was originally designed as a simpler form of writing for the visually impaired. In Barbier's system, sets of 12 embossed dots were used to encode 36 different sounds. Braille identified three major defects of the code: first, the symbols represented phonetic sounds and not letters of the alphabet – thus the code was unable to render the orthography of the words. Second, the 12-dot symbols could not easily fit beneath the pad of the reading finger. This required the reading finger to move in order to perceive the whole symbol, which slowed the reading process. (This was because Barbier's system was based only on the number of dots in each of two 6-dot columns, not the pattern of the dots.) Third, the code did not include symbols for numerals or punctuation. Braille's solution was to use 6-dot cells and to assign a specific pattern to each letter of the alphabet. Braille also developed symbols for representing numerals and punctuation."
+  },
+  {
+   "label": "H",
+   "text": "In English, some variations in the braille codes have traditionally existed among English-speaking countries. In 1991, work to standardize the braille codes used in the English-speaking world began. Unified English Braille (UEB) has been adopted in all seven member countries of the International Council on English Braille (ICEB) as well as Nigeria."
+  },
+  {
+   "label": "I",
+   "text": "Braille is derived from the Latin alphabet, albeit indirectly. In Braille's original system, the dot patterns were assigned to letters according to their position within the alphabetic order of the French alphabet of the time, with accented letters and w sorted at the end."
+  },
+  {
+   "label": "J",
+   "text": "Unlike print, which consists of mostly arbitrary symbols, the braille alphabet follows a logical sequence. The first ten letters of the alphabet, a–j, use the upper four dot positions: ⠁⠃⠉⠙⠑⠋⠛⠓⠊⠚ (filled circles in the table below). These stand for the ten digits 1–9 and 0 in an alphabetic numeral system similar to Greek numerals (as well as derivations of it, including Hebrew numerals, Cyrillic numerals, Abjad numerals, also Hebrew gematria and Greek isopsephy)."
+  }
+ ]
+}

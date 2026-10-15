@@ -1,0 +1,48 @@
+{
+ "article": "Compass",
+ "url": "https://en.wikipedia.org/w/index.php?title=Compass&oldid=1376670463",
+ "revid": 1376670463,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A compass is a device that shows the cardinal directions used for navigation and geographic orientation. It typically consists of a magnetized needle or another element, such as a compass card or compass rose, that pivots to align itself with magnetic north. Other methods may be used, including gyroscopes, magnetometers, and GPS receivers."
+  },
+  {
+   "label": "B",
+   "text": "Compasses often show angles in degrees: north corresponds to 0°, and the angles increase clockwise, so east is 90°, south is 180°, and west is 270°. These numbers allow the compass to show azimuths or bearings which are commonly stated in degrees. If local variation between magnetic north and true north is known, then direction of magnetic north also gives direction of true north."
+  },
+  {
+   "label": "C",
+   "text": "Among the Four Great Inventions, the magnetic compass was first invented as a device for divination as early as the Chinese Han dynasty (since c. 206 BC), and later adopted for navigation by the Song dynasty Chinese during the 11th century. The first usage of a compass recorded in Western Europe occurred around 1190 and in the Islamic world in the 13th century."
+  },
+  {
+   "label": "D",
+   "text": "The magnetic compass is the most familiar compass type. It functions as a pointer to \"magnetic north\", the local magnetic meridian, because the magnetized needle at its heart aligns itself with the horizontal component of the Earth's magnetic field. The magnetic field exerts a torque on the needle, pulling the North end or pole of the needle approximately toward the Earth's North magnetic pole, and pulling the other toward the Earth's South magnetic pole. The needle is mounted on a low-friction pivot point, in better compasses a jewel bearing, so it can turn easily. When the compass is held level, the needle turns until, after a few seconds to allow oscillations to die out, it settles into its equilibrium orientation."
+  },
+  {
+   "label": "E",
+   "text": "In navigation, directions on maps are usually expressed with reference to geographical or true north, the direction toward the Geographical North Pole, the rotation axis of the Earth. Depending on where the compass is located on the surface of the Earth the angle between true north and magnetic north, called magnetic declination can vary widely with geographic location. The local magnetic declination is given on most maps, to allow the map to be oriented with a compass parallel to true north. The locations of the Earth's magnetic poles slowly change with time, which is referred to as geomagnetic secular variation. The effect of this means a map with the latest declination information should be used. Some magnetic compasses include means to manually compensate for the magnetic declination, so that the compass shows true directions."
+  },
+  {
+   "label": "F",
+   "text": "One of the earliest known references to lodestone's magnetic properties was made by 6th century BC Greek philosopher Thales of Miletus, whom the ancient Greeks credited with discovering lodestone's attraction to iron and other lodestones. The name magnet may come from lodestones found in Magnesia, Anatolia. The ancient Indian medical text Sushruta Samhita describes using magnetic properties of the lodestone to remove arrows embedded in a person's body."
+  },
+  {
+   "label": "G",
+   "text": "Some claims state that the first devices utilising lodestone's natural magnetic properties were in ancient Han dynasty China. The earliest mention of a needle's attraction appears in a work composed between 20 and 100 AD, the Lunheng (Balanced Inquiries): \"A lodestone attracts a needle.\" In the 2nd century BC, Chinese geomancers were experimenting with the magnetic properties of lodestone to make a \"south-pointing spoon\" for divination. When it is placed on a smooth bronze plate, the spoon would invariably rotate to a north–south axis. While this has been shown to work, archaeologists have yet to discover an actual spoon made of magnetite in a Han tomb."
+  },
+  {
+   "label": "H",
+   "text": "The first compasses used for navigation appeared in China by 1088 during the Song dynasty, as described by Shen Kuo. These compasses were made of iron needles, magnetized by striking them with a lodestone. Dry compasses began to appear around 1300 in Medieval Europe and the Islamic world. This was supplanted in the early 20th century by the liquid-filled magnetic compass."
+  },
+  {
+   "label": "I",
+   "text": "Some historians believe that a compass that used an iron fish to point north in a vessel of oil was use in 4th century Southern India, although others believe that evidence of compasses being used prior to the 11th century is very weak."
+  },
+  {
+   "label": "J",
+   "text": "Modern compasses usually use a magnetized needle or dial inside a capsule completely filled with a liquid (lamp oil, mineral oil, white spirits, purified kerosene, or ethyl alcohol are common). While older designs commonly incorporated a flexible rubber diaphragm or airspace inside the capsule to allow for volume changes caused by temperature or altitude, some modern liquid compasses use smaller housings and/or flexible capsule materials to accomplish the same result. The liquid inside the capsule serves to damp the movement of the needle, reducing oscillation time and increasing stability. Key points on the compass, including the north end of the needle are often marked with phosphorescent, photoluminescent, or self-luminous materials to enable the compass to be read at night or in poor light. As the compass fill liquid is noncompressible under pressure, many ordinary liquid-filled compasses will operate accurately underwater to considerable depths."
+  }
+ ]
+}

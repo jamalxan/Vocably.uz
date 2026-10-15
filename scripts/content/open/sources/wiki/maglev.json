@@ -1,0 +1,48 @@
+{
+ "article": "Maglev",
+ "url": "https://en.wikipedia.org/w/index.php?title=Maglev&oldid=1378291381",
+ "revid": 1378291381,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "Compared to conventional railways, maglev trains can have higher top speeds, superior acceleration and deceleration, lower maintenance costs, improved gradient handling, and lower noise. However, they are more expensive to build, cannot use existing infrastructure, and use more energy at high speeds."
+  },
+  {
+   "label": "B",
+   "text": "Maglev trains have set several speed records. The train speed record of 603 km/h (375 mph) was set by the experimental Japanese L0 Series maglev in 2015. From 2002 until 2021, the record for the highest operational speed of a passenger train of 431 kilometres per hour (268 mph) was held by the Shanghai maglev train, which uses German Transrapid technology. The service connects Shanghai Pudong International Airport and the outskirts of central Pudong, Shanghai. At its historical top speed, it covered the distance of 30.5 kilometres (19 mi) in just 7 minutes and 20 seconds."
+  },
+  {
+   "label": "C",
+   "text": "Different maglev systems achieve levitation in different ways, which broadly fall into two categories: electromagnetic suspension (EMS) and electrodynamic suspension (EDS). Propulsion is typically provided by a linear motor. The power needed for levitation is typically not a large percentage of the overall energy consumption of a high-speed maglev system. Instead, overcoming drag takes the most energy. Vactrain technology has been proposed as a means to overcome this limitation."
+  },
+  {
+   "label": "D",
+   "text": "In the late 1940s, the British electrical engineer Eric Laithwaite, a professor at Manchester University, developed the first full-size working model of the linear induction motor. He became a professor of heavy electrical engineering at Imperial College London in 1964, where he continued his successful development of the linear motor. Since linear motors do not require physical contact between the vehicle and guideway, they became a common fixture on advanced transportation systems in the 1960s and 1970s. Laithwaite joined one such project, the Tracked Hovercraft RTV-31, based near Cambridge, UK, although the project was canceled in 1973."
+  },
+  {
+   "label": "E",
+   "text": "The linear motor was naturally suited to use with maglev systems as well. In the early 1970s, Laithwaite discovered a new arrangement of magnets, the magnetic river, that allowed a single linear motor to produce both lift and forward thrust, allowing a maglev system to be built with a single set of magnets. Working at the British Rail Research Division in Derby, along with teams at several civil engineering firms, the \"transverse-flux\" system was developed into a working system."
+  },
+  {
+   "label": "F",
+   "text": "The first commercial maglev people mover was simply called \"MAGLEV\" and officially opened in 1984 near Birmingham, England. It operated on an elevated 600 metres (2,000 ft) section of monorail track between Birmingham Airport and Birmingham International railway station, running at speeds up to 42 kilometres per hour (26 mph). The system was closed in 1995 due to reliability problems."
+  },
+  {
+   "label": "G",
+   "text": "High-speed transportation patents were granted to various inventors throughout the world. The first relevant patent, U.S. patent 714,851 (2 December 1902), issued to Albert C. Albertson, used magnetic levitation to take part of the weight off of the wheels while using conventional propulsion."
+  },
+  {
+   "label": "H",
+   "text": "Early United States patents for a linear motor propelled train were awarded to German inventor Alfred Zehden. The inventor was awarded U.S. patent 782,312 (14 February 1905) and U.S. patent RE12700 (21 August 1907). In 1907, another early electromagnetic transportation system was developed by F. S. Smith. In 1908, Cleveland mayor Tom L. Johnson filed a patent for a wheel-less \"high-speed railway\" levitated by an induced magnetic field. Jokingly known as \"Greased Lightning,\" the suspended car operated on a 90-foot test track in Johnson's basement \"absolutely noiseless[ly] and without the least vibration.\" A series of German patents for magnetic levitation trains propelled by linear motors were awarded to Hermann Kemper between 1937 and 1941. An early maglev train was described in U.S. patent 3,158,765, \"Magnetic system of transportation\", by G. R. Polgreen on 25 August 1959. The first use of \"maglev\" in a United States patent was in \"Magnetic levitation guidance system\" by Canadian Patents and Development Limited."
+  },
+  {
+   "label": "I",
+   "text": "In 1912, French-American inventor Émile Bachelet demonstrated a model train with electromagnetic levitation and propulsion in Mount Vernon, New York. Bachelet's first related patent, U.S. patent 1,020,942 was granted in 1912. The electromagnetic propulsion was by attraction of iron in the train by direct current solenoids spaced along the track. The electromagnetic levitation was due to the repulsion between the train's aluminum base plate and the pulsating-current electromagnets beneath the track. The pulses were generated by Bachelet's own Synchronizing-interrupter U.S. patent 986,039 supplied with 220 VAC. As the train moved, it switched power to the section of track that it was on. Bachelet went on to demonstrate his model in London, England in 1914, which resulted in the registration of Bachelet Levitated Railway Syndicate Limited July 9 in London, just weeks before the start of WWI."
+  },
+  {
+   "label": "J",
+   "text": "Bachelet's second related patent, U.S. patent 1,020,943, granted the same day as the first, featured levitation electromagnets in the train, with the track as an aluminum plate. In the patent, he stated that this was a much cheaper construction, but he did not demonstrate it."
+  }
+ ]
+}

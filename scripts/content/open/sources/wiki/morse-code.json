@@ -1,0 +1,44 @@
+{
+ "article": "Morse code",
+ "url": "https://en.wikipedia.org/w/index.php?title=Morse_code&oldid=1379801618",
+ "revid": 1379801618,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "Morse code is a telecommunications method which encodes text characters as standardized sequences of two different signal durations, called dots and dashes, or dits and dahs. It is named after Samuel Morse, one of several developers of the system. Morse's preliminary proposal for a telegraph code was replaced by an alphabet-based code developed by Alfred Vail, the engineer working with Morse. Vail's version was used for commercial telegraphy in North America. Friedrich Gerke simplified Vail's code to produce the code adopted in Europe, and most of the alphabetic part of the (ITU) \"Morse\" is copied from Gerke's revision."
+  },
+  {
+   "label": "B",
+   "text": "The ITU International Morse code encodes the 26 basic Latin letters A to Z, one accented Latin letter É, the Indo-Arabic numerals 0 to 9, and some punctuation and messaging procedural signals (prosigns). There is no distinction between upper and lower case letters. Each code symbol is formed by a sequence of dits and dahs. The dit duration can vary for signal clarity and operator skill, but for any one message, once the rhythm is established, a half-beat is the basic unit of time measurement. The duration of a dah is three times the duration of a dit. Each dit or dah within an encoded character is followed by a period of signal absence, called a space, equal to the dit duration. The letters of a word are separated by a space of duration equal to three dits, and words are separated by a space equal to seven dits."
+  },
+  {
+   "label": "C",
+   "text": "Morse code can be memorized and sent in a form perceptible to the human senses, e.g. via sound waves or visible light, such that it can be directly interpreted by persons trained in it. Morse code is usually transmitted by on-off keying of an information-carrying medium such as electric current, radio waves, visible light, or sound waves. The current or wave is present during the time period of the dit or dah and absent during the time between dits and dahs. Since many natural languages use more than the 26 letters of the Latin alphabet, Morse alphabets have been developed for those, largely by transliteration of existing codes."
+  },
+  {
+   "label": "D",
+   "text": "To increase transmission efficiency, Vail designed the original alphabetic code so the duration of each symbol was approximately inverse to the frequency that the character it represents occurs in English text. After revisions that led to ITU Morse code, the assignment of codes to characters in a few cases became non-optimal, although many encodings are. For instance, the most common letter in English, E, has the shortest code – a single dit. Because code elements are specified relatively, by proportion, rather than fixed duration, the code is usually sent at the highest rate the receiver is capable of decoding."
+  },
+  {
+   "label": "E",
+   "text": "Early in the nineteenth century, European experimenters made progress with electrical signalling systems, using a variety of techniques including static electricity and electricity from Voltaic piles producing electrochemical and electromagnetic changes. These experimental designs were precursors to practical telegraphic applications."
+  },
+  {
+   "label": "F",
+   "text": "Following the discovery of electromagnetism by Hans Christian Ørsted in 1820 and the invention of the electromagnet by William Sturgeon in 1824, there were developments in electromagnetic telegraphy in Europe and America. Pulses of electric current were sent along wires to control an electromagnet in the receiving instrument. Many of the earliest telegraph systems used a single-needle system which gave a very simple and robust instrument. However, it was slow because the receiving operator had to alternate between looking at the needle and writing down the message. In Morse code, a deflection of the needle to the left corresponded to a dit and a deflection to the right to a dah. The needle clicked each time it moved to the right or left. By making the two clicks sound different (by installing one ivory and one metal stop), transmissions on the single needle device became audible as well as visible, which led in turn to the Double Plate Sounder System."
+  },
+  {
+   "label": "G",
+   "text": "William Cooke and Charles Wheatstone in Britain developed an electrical telegraph that used electromagnets in its receivers. They obtained an English patent in June 1837 and demonstrated it on the London and Birmingham Railway, making it the first commercial telegraph. Carl Friedrich Gauss and Wilhelm Eduard Weber (1833) as well as Carl August von Steinheil (1837) used codes with varying word lengths for their telegraph systems. In 1841, Cooke and Wheatstone built a telegraph that printed the letters from a wheel of typefaces struck by a hammer."
+  },
+  {
+   "label": "H",
+   "text": "The American artist Samuel Morse, the American physicist Joseph Henry, and mechanical engineer Alfred Vail developed an electrical telegraph system. The simple \"on or off\" nature of its signals made it desirable to find a method of transmitting natural language using only electrical pulses and the silence between them. Around 1837, Morse therefore developed such a method, an early forerunner to the modern International Morse code."
+  },
+  {
+   "label": "I",
+   "text": "The Morse system for telegraphy was designed to make indentations on a paper tape when electric currents were received. Morse's original telegraph receiver used a mechanical clockwork to move a paper tape. When an electrical current was received, an electromagnet engaged an armature that pushed a stylus onto the moving paper tape, making an indentation on the tape. When the current was interrupted, a spring retracted the stylus and that portion of the moving tape remained unmarked."
+  }
+ ]
+}
