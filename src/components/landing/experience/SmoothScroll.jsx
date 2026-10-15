@@ -26,6 +26,7 @@ export default function SmoothScroll() {
     let tick = null;
     if (!reduced && !coarse) {
       lenis = new Lenis({ lerp: 0.09, wheelMultiplier: 1 });
+      experience.lenis = lenis;
       lenis.on('scroll', ScrollTrigger.update);
       tick = (time) => lenis.raf(time * 1000);
       gsap.ticker.add(tick);
@@ -91,6 +92,7 @@ export default function SmoothScroll() {
       window.removeEventListener('resize', onResize);
       if (tick) gsap.ticker.remove(tick);
       lenis?.destroy();
+      experience.lenis = null;
     };
   }, []);
 

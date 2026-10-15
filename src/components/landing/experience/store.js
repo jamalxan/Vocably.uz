@@ -13,7 +13,29 @@ export const experience = {
   story: { progress: 0 },
   isMobile: false,
   reducedMotion: false,
+  // SmoothScroll o'rnatgan Lenis instansiyasi (desktop) — bob reli va boshqa
+  // "sahifa ichida sakrash" UI'lari native scrollIntoView o'rniga shundan foydalanadi.
+  lenis: null,
 };
+
+// Bob reli (ChapterRail) uchun ko'rsatiladigan boblar — tartib sahifadagi tartib.
+// `hero` ataylab yo'q (relning o'zi hero'da ko'rinmaydi), `faq`/`final` ham.
+export const CHAPTER_NAV = [
+  { name: 'manifesto', label: 'Nega Vocably' },
+  { name: 'story', label: "So'z → ko'nikma" },
+  { name: 'srs', label: 'SRS' },
+  { name: 'skills', label: "4 ko'nikma" },
+  { name: 'ai', label: 'AI tutor' },
+  { name: 'progress', label: 'Progress' },
+  { name: 'mock', label: 'Mock' },
+  { name: 'faq', label: 'FAQ' },
+];
+
+export function getChapterElement(name) {
+  for (const c of chapters) if (c.name === name) return c.el;
+  return null;
+}
+
 
 // Where the Learning Core sits for each chapter of the page. vx/vy are in
 // [-1, 1] of the visible half-width/half-height at the core's depth, s is the
@@ -82,4 +104,10 @@ export function collectDarkRanges(out, canvasHeight) {
     coverage += (Math.min(r.bottom, canvasHeight) - Math.max(r.top, 0)) / canvasHeight;
   }
   return { n, coverage: Math.min(coverage, 1) };
+}
+
+// Inspection hook for the scroll story (Playwright/console) — only when the build was
+// made with NEXT_PUBLIC_LANDING_DEBUG=1 (local QA), never in the Vercel build.
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_LANDING_DEBUG === '1') {
+  window.__vocablyExperience = { experience, chapters, collectDarkRanges, PRESETS };
 }

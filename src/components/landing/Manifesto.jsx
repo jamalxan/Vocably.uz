@@ -58,10 +58,12 @@ export default function Manifesto() {
   return (
     <section ref={sectionRef} className="relative z-10 px-4 sm:px-6 py-24 lg:py-36">
       <div className="max-w-6xl mx-auto">
-        <h2 className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-8 flex items-center gap-3">
-          <span className="h-px w-10 bg-accent" /> Nega Vocably boshqacha
-        </h2>
-        <p
+        {/* Semantika: bo'limning asl bayonoti h2 (avval kichik yorliq h2, bayonot esa <p> edi —
+            qidiruv tizimlari uchun bo'lim sarlavhasi "Nega Vocably boshqacha" degan yorliq bo'lib qolardi). */}
+        <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-8 flex items-center gap-3">
+          <span className="h-px w-10 bg-accent" aria-hidden="true" /> Nega Vocably boshqacha
+        </p>
+        <h2
           ref={textRef}
           className="font-landing-display font-semibold tracking-[-0.03em] leading-[1.12] text-[30px] sm:text-[44px] lg:text-[60px] text-ink"
         >
@@ -73,7 +75,7 @@ export default function Manifesto() {
               {i < words.length - 1 ? ' ' : ''}
             </span>
           ))}
-        </p>
+        </h2>
 
         <div ref={cardsRef} className="mt-16 lg:mt-24 grid md:grid-cols-3 gap-5">
           {DIFFERENTIATORS.map((d, i) => (

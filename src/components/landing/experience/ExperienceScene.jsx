@@ -62,7 +62,14 @@ function applyPalette(uniforms, palette) {
   }
 }
 
+// R3F 9 copies every entry of the `uniforms` prop into the material ({ ...uniform }),
+// so mutating the memoized object's scalar `.value`s never reached the GPU: the silk
+// never moved with time or scroll and the dark chapter bands never appeared (light
+// theme showed cream text on cream). Vector uniforms survived only because the
+// Vector instances are shared by reference. Every per-frame write below therefore
+// goes through the material ref (`mat.current.uniforms`), never the memoized object.
 function Backdrop({ palette, lite, reducedMotion }) {
+  const mat = useRef(null);
   const uniforms = useMemo(
     () =>
       withPalette(
@@ -81,32 +88,35 @@ function Backdrop({ palette, lite, reducedMotion }) {
     [],
   );
 
-  useEffect(() => applyPalette(uniforms, palette), [uniforms, palette]);
+  useEffect(() => applyPalette(mat.current?.uniforms || uniforms, palette), [uniforms, palette]);
 
   useFrame((state, delta) => {
+    const u = mat.current?.uniforms;
+    if (!u) return;
     const dt = Math.min(delta, 0.05);
-    if (!reducedMotion) uniforms.uTime.value += dt;
-    uniforms.uScroll.value = damp(uniforms.uScroll.value, experience.scroll, 3, dt);
+    if (!reducedMotion) u.uTime.value += dt;
+    u.uScroll.value = damp(u.uScroll.value, experience.scroll, 3, dt);
     // Measured every frame (not only on scroll events) so the active chapter
     // and dark bands stay correct through Lenis easing and GSAP pin
     // release — a scroll-event-only check can run before a pin repositions
     // its element on the same tick and then never re-run.
     updateActiveChapter();
-    const { n, coverage } = collectDarkRanges(uniforms.uDarkRanges.value, state.size.height);
-    uniforms.uDarkCount.value = n;
+    const { n, coverage } = collectDarkRanges(u.uDarkRanges.value, state.size.height);
+    u.uDarkCount.value = n;
     // Single writer of experience.dark (particles/halo intensity).
     experience.dark = damp(experience.dark, coverage, reducedMotion ? 30 : 4, dt);
     experience.velocity = damp(experience.velocity, 0, 3, dt);
-    uniforms.uVelocity.value = damp(uniforms.uVelocity.value, Math.min(Math.abs(experience.velocity) / 2500, 1), 4, dt);
-    uniforms.uRes.value.set(state.size.width, state.size.height);
-    uniforms.uMouse.value.x = damp(uniforms.uMouse.value.x, experience.pointer.x, 2, dt);
-    uniforms.uMouse.value.y = damp(uniforms.uMouse.value.y, experience.pointer.y, 2, dt);
+    u.uVelocity.value = damp(u.uVelocity.value, Math.min(Math.abs(experience.velocity) / 2500, 1), 4, dt);
+    u.uRes.value.set(state.size.width, state.size.height);
+    u.uMouse.value.x = damp(u.uMouse.value.x, experience.pointer.x, 2, dt);
+    u.uMouse.value.y = damp(u.uMouse.value.y, experience.pointer.y, 2, dt);
   });
 
   return (
     <mesh frustumCulled={false} renderOrder={-10}>
       <planeGeometry args={[2, 2]} />
       <shaderMaterial
+        ref={mat}
         vertexShader={backdropVertex}
         fragmentShader={backdropFragment}
         uniforms={uniforms}
@@ -119,6 +129,7 @@ function Backdrop({ palette, lite, reducedMotion }) {
 }
 
 function Particles({ palette, lite, reducedMotion }) {
+  const mat = useRef(null);
   const count = lite ? 140 : 360;
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -155,21 +166,25 @@ function Particles({ palette, lite, reducedMotion }) {
   );
 
   useEffect(() => {
-    uniforms.uColorA.value.copy(palette.uAccent);
-    uniforms.uColorB.value.copy(palette.uGold);
+    const u = mat.current?.uniforms || uniforms;
+    u.uColorA.value.copy(palette.uAccent);
+    u.uColorB.value.copy(palette.uGold);
   }, [uniforms, palette]);
 
   useFrame((state, delta) => {
+    const u = mat.current?.uniforms;
+    if (!u) return;
     const dt = Math.min(delta, 0.05);
-    if (!reducedMotion) uniforms.uTime.value += dt;
-    uniforms.uScroll.value = damp(uniforms.uScroll.value, experience.scroll, 3, dt);
-    uniforms.uDark.value = experience.dark;
-    uniforms.uPixelRatio.value = state.viewport.dpr;
+    if (!reducedMotion) u.uTime.value += dt;
+    u.uScroll.value = damp(u.uScroll.value, experience.scroll, 3, dt);
+    u.uDark.value = experience.dark;
+    u.uPixelRatio.value = state.viewport.dpr;
   });
 
   return (
     <points geometry={geometry} frustumCulled={false}>
       <shaderMaterial
+        ref={mat}
         vertexShader={particlesVertex}
         fragmentShader={particlesFragment}
         uniforms={uniforms}
@@ -211,6 +226,8 @@ function Core({ palette, colors, lite, reducedMotion }) {
   const tokenElRefs = useRef([]);
   const travelerRef = useRef(null);
   const travelerElRef = useRef(null);
+  const orbMatRef = useRef(null);
+  const haloMatRef = useRef(null);
   const anim = useRef({ init: false, rings: 1, labels: 1, tokens: 1, spin: 1, story: 0, cache: {}, active: -2 });
   const tmp = useMemo(() => new THREE.Vector3(), []);
 
@@ -231,8 +248,8 @@ function Core({ palette, colors, lite, reducedMotion }) {
   );
 
   useEffect(() => {
-    applyPalette(orbUniforms, palette);
-    haloUniforms.uColor.value.copy(palette.uAccent);
+    applyPalette(orbMatRef.current?.uniforms || orbUniforms, palette);
+    (haloMatRef.current?.uniforms || haloUniforms).uColor.value.copy(palette.uAccent);
   }, [orbUniforms, haloUniforms, palette]);
 
   useFrame((three, delta) => {
@@ -277,14 +294,16 @@ function Core({ palette, colors, lite, reducedMotion }) {
 
     const vel = Math.min(Math.abs(experience.velocity) / 2500, 1);
     const t = three.clock.elapsedTime;
+    const orbU = orbMatRef.current?.uniforms;
+    const haloU = haloMatRef.current?.uniforms;
     if (!reducedMotion) {
       spin.rotation.y += dt * (0.14 * a.spin + vel * 0.6);
-      orbUniforms.uTime.value += dt;
+      if (orbU) orbU.uTime.value += dt;
     }
     spin.rotation.x = damp(spin.rotation.x, 0.36 - experience.pointer.y * 0.12 * par, 2, dt);
     spin.rotation.z = damp(spin.rotation.z, -0.14 + experience.pointer.x * 0.08 * par, 2, dt);
-    orbUniforms.uAmp.value = damp(orbUniforms.uAmp.value, 0.05 + vel * 0.14, 3, dt);
-    haloUniforms.uIntensity.value = 0.32 + experience.dark * 0.38 + vel * 0.2;
+    if (orbU) orbU.uAmp.value = damp(orbU.uAmp.value, 0.05 + vel * 0.14, 3, dt);
+    if (haloU) haloU.uIntensity.value = 0.32 + experience.dark * 0.38 + vel * 0.2;
 
     ringRefs.current.forEach((ring, i) => {
       if (!ring) return;
@@ -354,6 +373,7 @@ function Core({ palette, colors, lite, reducedMotion }) {
       <mesh position={[0, 0, -0.6]} renderOrder={-1}>
         <planeGeometry args={[5, 5]} />
         <shaderMaterial
+          ref={haloMatRef}
           vertexShader={haloVertex}
           fragmentShader={haloFragment}
           uniforms={haloUniforms}
@@ -365,7 +385,7 @@ function Core({ palette, colors, lite, reducedMotion }) {
       <group ref={spinRef}>
         <mesh>
           <sphereGeometry args={[1, seg, seg]} />
-          <shaderMaterial vertexShader={orbVertex} fragmentShader={orbFragment} uniforms={orbUniforms} />
+          <shaderMaterial ref={orbMatRef} vertexShader={orbVertex} fragmentShader={orbFragment} uniforms={orbUniforms} />
         </mesh>
 
         {RING_RADII.map((R, i) => (

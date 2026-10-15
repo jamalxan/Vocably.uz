@@ -3,7 +3,10 @@ import { TIER_CONFIG, SUBSCRIPTION_TIERS } from '@/lib/entitlements';
 // One place for the facts search engines and AI answer engines read about
 // Vocably (JSON-LD on the landing/pricing pages and /llms.txt), so the two
 // never drift apart.
-export const SITE_URL = 'https://vocably.uz';
+// www — Vercel apex (vocably.uz) 308 bilan www'ga yo'naltiradi; canonical, OG, sitemap va
+// JSON-LD aynan xizmat qilayotgan hostga ishora qilishi shart, aks holda Google canonical'ni
+// redirect orqali topadi (2026-10-16 jonli tekshiruvda aniqlandi).
+export const SITE_URL = 'https://www.vocably.uz';
 export const SITE_NAME = 'Vocably';
 export const SITE_TAGLINE = "O'zbek tilida so'zlashuvchilar uchun ingliz tili va IELTS tayyorgarlik platformasi";
 export const SITE_SUMMARY_EN =
@@ -50,7 +53,7 @@ export function tierOffers() {
     price: String(TIER_CONFIG[t].priceMonthly),
     priceCurrency: 'UZS',
     category: t === 'free' ? 'free' : 'subscription',
-    url: `${SITE_URL}/narxlar`,
+    url: `${SITE_URL}/pricing`,
   }));
 }
 

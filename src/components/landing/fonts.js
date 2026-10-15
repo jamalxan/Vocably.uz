@@ -17,7 +17,8 @@ export const sora = localFont({
     { path: './font-files/sora-500.woff2', weight: '500', style: 'normal' },
     { path: './font-files/sora-600.woff2', weight: '600', style: 'normal' },
     { path: './font-files/sora-700.woff2', weight: '700', style: 'normal' },
-    { path: './font-files/sora-800.woff2', weight: '800', style: 'normal' },
+    // 800 (font-extrabold) hech qayerda display shrift bilan ishlatilmaydi — preload
+    // qilinmasin (har sahifada ~20 KB kamroq, LCP'ga ta'sir qiladi).
   ],
   variable: '--font-landing-display',
   display: 'swap',

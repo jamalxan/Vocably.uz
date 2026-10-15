@@ -14,12 +14,13 @@ import FaqSection from '@/components/landing/FaqSection';
 import FinalCTA from '@/components/landing/FinalCTA';
 import ExperienceLoader from '@/components/landing/experience/ExperienceLoader';
 import SmoothScroll from '@/components/landing/experience/SmoothScroll';
+import ChapterRail from '@/components/landing/experience/ChapterRail';
 import { FAQS } from '@/components/landing/faqData';
 import { landingFontVariables } from '@/components/landing/fonts';
 import { ldGraph, organizationLd, webApplicationLd, tierOffers, SITE_URL, SITE_NAME, SITE_TAGLINE } from '@/lib/seo/site';
 
 // VOCABLY-TZ.md §3.1 (IA) — '/' ochiq marketing landing (SEO uchun server
-// komponent), login formasi /kirish'da (src/app/kirish).
+// komponent), login formasi /login'da (src/app/kirish).
 //
 // PREMIUM 3D / MAXIMALISM REDESIGN — butun sahifa orqasida bitta fixed WebGL
 // canvas (src/components/landing/experience): "Deep Merlot" tokenlaridan
@@ -85,6 +86,7 @@ export default function LandingPage() {
 
       <ExperienceLoader />
       <SmoothScroll />
+      <ChapterRail />
 
       <LandingHeader floating />
 
