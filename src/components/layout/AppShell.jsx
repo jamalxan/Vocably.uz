@@ -44,7 +44,7 @@ export default function AppShell({ children }) {
   );
   const onLugat = pathname.startsWith('/app/vocabulary');
   // Mobilda ochiq chat o'z header'iga ega — ilova header'i yashiriladi (joy tejash).
-  const chatOpen = /^\/app\/dostlar\/[^/]+/.test(pathname);
+  const chatOpen = /^\/app\/friends\/[^/]+/.test(pathname);
 
   // Lug'at submenu ATAYLAB alohida holatga ega (faqat marshrutdan kelib
   // chiqmaydi) — 2026-09-10 so'rovi: "ustiga bosilganda kengayadi, yana ustiga

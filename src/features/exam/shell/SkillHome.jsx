@@ -9,7 +9,7 @@ import ExamBackLink from './ExamBackLink';
 import { countByKind, countByStatus, filterTests } from './testListFilter';
 
 // One page per skill (2026-09-29, user request: "no separate practice section —
-// entering Reading IS practising"). The old /app/<skill>/mashq pages are
+// entering Reading IS practising"). The old /app/<skill>/practice pages are
 // gone; the choice between an untimed practice run and a timed test under
 // exam conditions is a switch on this page, and Practice is the default.
 //
@@ -345,7 +345,7 @@ export default function SkillHome({ skill }) {
     try {
       if (practice) {
         const { attemptId } = await createPracticeAttempt(testId, skill, fresh);
-        router.push(`${cfg.base}/mashq/${attemptId}`);
+        router.push(`${cfg.base}/practice/${attemptId}`);
       } else {
         const { attemptId } = await createAttempt(testId, skill, fresh);
         router.push(`${cfg.base}/${attemptId}`);
