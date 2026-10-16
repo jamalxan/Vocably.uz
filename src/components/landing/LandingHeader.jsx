@@ -5,9 +5,9 @@ import { Menu, X, BookOpen } from 'lucide-react';
 
 const NAV_LINKS = [
   { href: '/ielts', label: 'IELTS' },
-  { href: '/lugat', label: "Lug'at" },
+  { href: '/dictionary', label: "Lug'at" },
   { href: '/blog', label: 'Blog' },
-  { href: '/narxlar', label: 'Narxlar' },
+  { href: '/pricing', label: 'Narxlar' },
 ];
 
 // Faqat mobil menyu ochiq/yopiqligi uchun client — qolgan butun landing sahifa
@@ -71,11 +71,11 @@ export default function LandingHeader({ floating = false }) {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link href="/kirish" className="text-sm font-medium text-ink hover:text-accent transition-colors px-2">
+          <Link href="/login" className="text-sm font-medium text-ink hover:text-accent transition-colors px-2">
             Kirish
           </Link>
           <Link
-            href="/royxat"
+            href="/register"
             className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-4 py-2 rounded-xl text-sm transition-colors shadow-glow"
           >
             Bepul boshlash
@@ -114,11 +114,11 @@ export default function LandingHeader({ floating = false }) {
               </Link>
             ))}
             <div className="h-px bg-border my-1.5" />
-            <Link href="/kirish" onClick={() => setOpen(false)} className="px-3 py-3 rounded-xl text-sm text-ink hover:bg-bg transition-colors">
+            <Link href="/login" onClick={() => setOpen(false)} className="px-3 py-3 rounded-xl text-sm text-ink hover:bg-bg transition-colors">
               Kirish
             </Link>
             <Link
-              href="/royxat"
+              href="/register"
               onClick={() => setOpen(false)}
               className="bg-accent text-on-accent font-semibold px-3 py-3 rounded-xl text-sm text-center mt-1"
             >

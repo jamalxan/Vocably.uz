@@ -10,7 +10,7 @@ import { useT } from '@/context/LocaleContext';
 // BILL-01/02 — haqiqiy (placeholder emas) pricing sahifasi. Narx/feature
 // ro'yxati src/lib/entitlements.js'dan keladi (TZ §46.2: hardcode qilinmaydi).
 //
-// STANDARD/PREMIUM CTA → /app/tolov (karta orqali to'lov + chek, admin
+// STANDARD/PREMIUM CTA → /app/billing (karta orqali to'lov + chek, admin
 // tasdiqlaydi; Payme/Click sozlansa o'sha sahifada o'zi paydo bo'ladi).
 
 const ORDER = ['free', 'standard', 'premium'];
@@ -170,7 +170,7 @@ export default function PricingTable() {
                     {t('pr.current')}
                   </span>
                   <Link
-                    href={`/app/tolov?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`}
+                    href={`/app/billing?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`}
                     className="inline-flex items-center justify-center text-sm font-semibold text-accent hover:underline py-1"
                   >
                     {t('pr.extend')}
@@ -182,19 +182,19 @@ export default function PricingTable() {
                 </span>
               ) : tier === 'free' ? (
                 <Link
-                  href={authState === 'in' ? '/app' : '/royxat'}
+                  href={authState === 'in' ? '/app' : '/register'}
                   className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold px-5 py-3 rounded-xl text-sm transition-colors shadow-glow"
                 >
                   {authState === 'loading' ? <Loader2 size={15} className="animate-spin" /> : t('pr.start')}
                 </Link>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {/* Checkout: card transfer + receipt today, Payme/Click once connected (/app/tolov). */}
+                  {/* Checkout: card transfer + receipt today, Payme/Click once connected (/app/billing). */}
                   <Link
                     href={
                       authState === 'in'
-                        ? `/app/tolov?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`
-                        : `/royxat?next=${encodeURIComponent(`/app/tolov?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`)}`
+                        ? `/app/billing?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`
+                        : `/register?next=${encodeURIComponent(`/app/billing?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`)}`
                     }
                     onClick={() => registerInterest(tier)}
                     className={`inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl text-sm transition-colors ${

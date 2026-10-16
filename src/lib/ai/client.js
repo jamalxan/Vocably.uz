@@ -180,7 +180,7 @@ async function checkMonthlyGradingLimit(userId) {
  * ham tekshiriladi (src/lib/entitlements.js TIER_CONFIG.free.monthlyAiGradingLimit).
  * Shu holatda rad javobi `{ allowed:false, monthlyLimitReached:true, message }`
  * ko'rinishida — chaqiruvchi `rl.message`ni to'g'ridan-to'g'ri foydalanuvchiga
- * ko'rsatadi (generic soatlik xabaridan farqli, /narxlar'ga yo'naltiradi). */
+ * ko'rsatadi (generic soatlik xabaridan farqli, /pricing'ga yo'naltiradi). */
 export async function checkAndIncrementAiRateLimit(userId, opts = {}) {
   const { feature = null } = opts;
   if (!userId) return { allowed: true };

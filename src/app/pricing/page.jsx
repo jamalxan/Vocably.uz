@@ -7,7 +7,7 @@ import { ldGraph, organizationLd, webApplicationLd } from '@/lib/seo/site';
 export const metadata = {
   title: 'Narxlar — Vocably',
   description: "Vocably tariflari: Bepul, Standard va Premium — narxlar va imkoniyatlar taqqoslash.",
-  alternates: { canonical: '/narxlar' },
+  alternates: { canonical: '/pricing' },
 };
 
 // BILL-01/02 (VOCABLY_TZ_FINAL...2026-09-20.md §46) — bu ilgari "Tariflar tez

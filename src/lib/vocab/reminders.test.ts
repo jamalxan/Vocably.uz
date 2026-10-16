@@ -81,11 +81,11 @@ describe('eslatma soati (mahalliy vaqt)', () => {
 });
 
 describe('Telegram matni', () => {
-  const r = { kind: 'due' as const, title: '🔔 8 ta <so\'z> & ko‘proq', body: 'Qisqa takrorlash', url: '/app/lugat/takrorlash' };
+  const r = { kind: 'due' as const, title: '🔔 8 ta <so\'z> & ko‘proq', body: 'Qisqa takrorlash', url: '/app/vocabulary/review' };
   it('HTML belgilarni ekranlaydi va to‘liq havola qo‘shadi', () => {
     const t = formatTelegramReminder(r, 'https://vocably.uz');
     expect(t).toContain('&lt;so\'z&gt; &amp; ko‘proq');
-    expect(t).toContain('<a href="https://vocably.uz/app/lugat/takrorlash">');
+    expect(t).toContain('<a href="https://vocably.uz/app/vocabulary/review">');
   });
   it('faqat bloklash/o‘chirilgan chat xatolarini aniqlaydi', () => {
     expect(isTelegramBlockedError('Forbidden: bot was blocked by the user')).toBe(true);

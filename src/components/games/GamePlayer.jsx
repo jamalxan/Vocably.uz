@@ -280,7 +280,7 @@ export default function GamePlayer({ gameKey }) {
     } catch {
       // abandon muvaffaqiyatsiz bo'lsa ham chiqamiz (sessiya o'zi eskiradi)
     }
-    router.push('/app/oyinlar');
+    router.push('/app/games');
   };
 
   const toggleNoTimer = (v) => {
@@ -321,7 +321,7 @@ export default function GamePlayer({ gameKey }) {
     const unavailable = meta && meta.unlocked && !meta.available;
     return (
       <div className="max-w-2xl mx-auto">
-        <Link href="/app/oyinlar" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
+        <Link href="/app/games" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
           <ArrowLeft size={14} aria-hidden="true" /> {t('game.allGames')}
         </Link>
         <h1 className="text-2xl font-bold text-ink font-display">{ts(meta?.title) || t('game.defaultTitle')}</h1>
@@ -337,7 +337,7 @@ export default function GamePlayer({ gameKey }) {
           <div className="mb-4 flex items-center gap-3 bg-warning-soft text-warning border border-warning/30 rounded-xl px-4 py-3 text-sm">
             <Lock size={16} aria-hidden="true" />
             <span className="flex-1">{ts(meta.lockedReason)}</span>
-            <Link href="/narxlar" className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+            <Link href="/pricing" className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
               {t('story.plans')}
             </Link>
           </div>

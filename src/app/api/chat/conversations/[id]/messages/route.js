@@ -269,7 +269,7 @@ export async function POST(req, props) {
     // ham hisobga oladi (src/lib/chatConstants.js#isConversationMuted).
     const recipientMuted = isConversationMuted(convo, otherId);
     if (!recipientMuted) {
-      const pushUrl = user.username ? `/app/dostlar/${user.username}` : '/app/dostlar';
+      const pushUrl = user.username ? `/app/friends/${user.username}` : '/app/friends';
       deliveries.push(sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }));
     }
 
@@ -335,7 +335,7 @@ async function notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipie
   const appUrl = process.env.APP_URL?.replace(/\/$/, '');
   const extra =
     appUrl && senderUsername
-      ? { reply_markup: { inline_keyboard: [[{ text: 'Suhbatni ochish', url: `${appUrl}/app/dostlar/${senderUsername}` }]] } }
+      ? { reply_markup: { inline_keyboard: [[{ text: 'Suhbatni ochish', url: `${appUrl}/app/friends/${senderUsername}` }]] } }
       : {};
 
   const results = await Promise.allSettled(

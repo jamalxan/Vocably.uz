@@ -291,7 +291,7 @@ const ru = {
     { uz: 'Imtihongacha {n} kun', tr: 'До экзамена {n} {n#день|дня|дней}' },
     { uz: "Kamida {min} ta so'z kerak (hozir {n})", tr: 'Нужно не менее {min} слов (сейчас {n})' },
     { uz: '{tier} rejada ochiladi', tr: 'Открывается в тарифе {tier}' },
-    { uz: "Bu o'yin {need} rejada ochiladi. /narxlar sahifasidan tarifni yangilang.", tr: 'Эта игра открывается в тарифе {need}. Обновите тариф на странице /narxlar.' },
+    { uz: "Bu o'yin {need} rejada ochiladi. /pricing sahifasidan tarifni yangilang.", tr: 'Эта игра открывается в тарифе {need}. Обновите тариф на странице /pricing.' },
     { uz: "{n} ta so'zni takrorlang", tr: 'Повторите {n} {n#слово|слова|слов}' },
     { uz: "{n} ta so'zning muddati o'tgan", tr: 'Просрочено слов: {n}' },
     { uz: "Zaif so'zlar ({n} ta) bilan mashq", tr: 'Практика со слабыми словами ({n})' },

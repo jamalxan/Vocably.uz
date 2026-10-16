@@ -30,7 +30,7 @@ export async function GET(req) {
       examDate: user.examDate ? new Date(user.examDate).toISOString() : null,
       currentLevel: user.currentLevel ?? null,
       dailyStudyMinutes: user.dailyStudyMinutes ?? null,
-      // BILL-01/02 — o'qish uchun (/narxlar joriy tarifni ko'rsatadi); bu route
+      // BILL-01/02 — o'qish uchun (/pricing joriy tarifni ko'rsatadi); bu route
       // faqat EDITABLE_FIELDS'ni PATCH qiladi, shuning uchun bu maydon orqali
       // o'zgartirib bo'lmaydi (faqat admin, UsersTable orqali).
       // EFFECTIVE tier: a lapsed plan (past expiry + grace) reads as free.

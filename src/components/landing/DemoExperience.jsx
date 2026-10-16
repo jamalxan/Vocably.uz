@@ -58,7 +58,7 @@ export default function DemoExperience() {
           so'zlaringiz Reading/Listening/Speaking mashqlarida ham qaytadan uchraydi.
         </p>
         <Link
-          href="/royxat"
+          href="/register"
           className="inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold px-6 py-3.5 rounded-xl text-sm transition-colors shadow-glow"
         >
           Bepul boshlash <ArrowRight size={16} />

@@ -36,7 +36,7 @@ export interface ReadingSectionProps {
   // barcha bo'limlarni birga baholaydi — attemptServer.ts).
   isFinal?: boolean;
   onSectionAdvanced?: () => void;
-  // Practice attempt (/app/oqish/mashq/[id]): same exam interface and
+  // Practice attempt (/app/reading/practice/[id]): same exam interface and
   // highlighting, but no countdown and no auto-submit on expiry.
   practice?: boolean;
 }

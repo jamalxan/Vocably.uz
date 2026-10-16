@@ -13,7 +13,7 @@ test.describe('kategoriyalar (desktop)', () => {
     const countBefore = wordsBefore.categories.reduce((n: number, c: any) => n + c.words.length, 0);
     const name = `E2E-kat-${Date.now() % 100000}`;
 
-    await page.goto('/app/lugat/jadval');
+    await page.goto('/app/vocabulary/words');
     await page.getByRole('button', { name: /so'z$/ }).first().click(); // kategoriya almashtirgich (nom + "N so'z")
     await page.getByLabel('Yangi kategoriya nomi').fill(name);
     await page.getByLabel('Yangi kategoriya nomi').press('Enter');

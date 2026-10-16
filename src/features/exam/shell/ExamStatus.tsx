@@ -19,7 +19,7 @@ export function ExamLoading({ label = 'Yuklanmoqda...' }: { label?: string }) {
 }
 
 // Urinish umuman yuklanmagan holat (test yo'q) — sahifani qayta yuklash yoki chiqish.
-export function ExamLoadError({ message, backHref = '/app/mashq' }: { message: string; backHref?: string }) {
+export function ExamLoadError({ message, backHref = '/app/practice' }: { message: string; backHref?: string }) {
   return (
     <div data-exam="" className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
       <p className="text-sm" role="alert" style={{ color: 'var(--exam-danger)' }}>

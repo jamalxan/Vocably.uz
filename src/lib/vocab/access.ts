@@ -46,7 +46,7 @@ export function checkGameAccess(tier: Tier, gameKey: string, sessionsStartedToda
   if (!def) return { allowed: false, code: 'unknown_game', message: "Noma'lum o'yin" };
   if (!tierAllows(tier, def.minTier)) {
     const need = def.minTier === 'premium' ? 'Premium' : 'Standard';
-    return { allowed: false, code: 'tier', message: `Bu o'yin ${need} rejada ochiladi. /narxlar sahifasidan tarifni yangilang.` };
+    return { allowed: false, code: 'tier', message: `Bu o'yin ${need} rejada ochiladi. /pricing sahifasidan tarifni yangilang.` };
   }
   const limit = TIER_VOCAB_LIMITS[tier].dailySessions;
   if (limit != null && sessionsStartedToday >= limit) {

@@ -18,6 +18,21 @@ import { NextResponse } from 'next/server';
 // XP suiiste'moliga qarshi (mijoz correct ni o'zi aytadi — server javobni tekshira olmaydi): so'rovlar tezligi, bir so'zga takroriy XP va
 // kunlik takrorlash-XP chegarasi. SRS/seriya hisobi o'zgarmaydi — faqat XP (reyting) cheklanadi.
 const REVIEW_XP_COOLDOWN_MS = 20_000;
+
+// Lug'at rejimi (mijoz yuboradigan `mode`) → mastery ko'nikmasi (TZ §6). Ilgari BARCHA rejimlar 'recall'ga
+// yozilar edi — Dictation/Spelling/In context/Collocations/Antonym natijalari listening/spelling/context/synonym
+// ko'nikmalariga tushmas, "format isbotlangan" soni oshmas va so'z hech qachon "mastered" bo'lmas edi.
+const MODE_SKILL = {
+  typing: 'spelling',
+  listening: 'listening',
+  cloze: 'context',
+  collocation: 'context',
+  sentence_builder: 'context',
+  antonim: 'synonym',
+};
+function skillForMode(m) {
+  return MODE_SKILL[m] || 'recall';
+}
 const REVIEW_XP_DAILY_CAP = 400;
 
 export async function PATCH(req) {
@@ -66,7 +81,7 @@ export async function PATCH(req) {
     const { prevCard, result } = applyWordReview(user, word, { correct, rating, now });
 
     // Mastery (TZ §6): takrorlash "recall" ko'nikmasi signali — SRS hisobiga tegmaydi.
-    const engineState = applySkillResult(engineBefore, 'recall', correct, responseMs, now);
+    const engineState = applySkillResult(engineBefore, skillForMode(mode), correct, responseMs, now);
     const mastery = computeMastery({
       skills: engineState.skills,
       avgResponseMs: engineState.avgResponseMs,
@@ -80,7 +95,7 @@ export async function PATCH(req) {
     word.stats.skills = engineState.skills;
     word.stats.avgResponseMs = engineState.avgResponseMs ?? null;
     word.stats.streakCount = engineState.streakCount || 0;
-    word.stats.lastFormat = 'recall';
+    word.stats.lastFormat = skillForMode(mode);
     word.stats.lastSeenAt = now;
     if (!correct) word.stats.lastWrongAt = now;
     word.stats.mastery = mastery.score;

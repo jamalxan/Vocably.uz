@@ -3,6 +3,7 @@ import { User, ReviewEvent, ExamAttempt } from '@/lib/models';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { cardFromStats, localDateWithCutoff, LEECH_THRESHOLD } from '@/lib/srs';
+import { isMasteredStats } from '@/lib/vocab/server/words';
 import { getSkillBandEstimate } from '@/lib/exam/attemptServer';
 import { NextResponse } from 'next/server';
 
@@ -87,7 +88,7 @@ export async function GET(req) {
           }
 
           if (card.state === 'learning' || card.state === 'relearning') learningCount++;
-          else if (card.intervalDays >= 21) {
+          else if (isMasteredStats(stats)) {
             mastered++;
             catMastered++;
           } else {

@@ -27,7 +27,7 @@ export async function approvePayment(requestId, { by = null, method } = {}) {
   const title = `${label} tarifi faollashtirildi`;
   const body = `To'lovingiz tasdiqlandi. ${label} imkoniyatlari ${until} gacha ochiq.`;
   await Promise.allSettled([
-    Notification.create({ userId: user._id, type: 'payment', title, body, link: '/narxlar' }),
+    Notification.create({ userId: user._id, type: 'payment', title, body, link: '/pricing' }),
     sendPushToUser(user._id, { title, body, url: '/app' }),
     user.telegramChatId ? sendTelegramMessage(user.telegramChatId, `✅ ${title}\n${body}`) : null,
   ]);
@@ -45,7 +45,7 @@ export async function rejectPayment(requestId, { by = null, reason = '' } = {}) 
   const title = "To'lov tasdiqlanmadi";
   const body = reason ? `Sabab: ${reason}. Iltimos, chekni qayta yuboring.` : "Chek tasdiqlanmadi. Iltimos, qayta yuboring yoki admin bilan bog'laning.";
   await Promise.allSettled([
-    Notification.create({ userId: req.userId, type: 'payment', title, body, link: '/app/tolov' }),
+    Notification.create({ userId: req.userId, type: 'payment', title, body, link: '/app/billing' }),
     user?.telegramChatId ? sendTelegramMessage(user.telegramChatId, `⚠️ ${title}\n${body}`) : null,
   ]);
   return { ok: true, request: req };

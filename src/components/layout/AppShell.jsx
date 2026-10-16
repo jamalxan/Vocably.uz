@@ -42,13 +42,13 @@ export default function AppShell({ children }) {
   const visibleBottomNav = BOTTOM_NAV.filter(
     (item) => (!item.requiresChatAccess || chatAccess) && (!item.requiresTeacherRole || chatRole === 'teacher')
   );
-  const onLugat = pathname.startsWith('/app/lugat');
+  const onLugat = pathname.startsWith('/app/vocabulary');
   // Mobilda ochiq chat o'z header'iga ega — ilova header'i yashiriladi (joy tejash).
   const chatOpen = /^\/app\/dostlar\/[^/]+/.test(pathname);
 
   // Lug'at submenu ATAYLAB alohida holatga ega (faqat marshrutdan kelib
   // chiqmaydi) — 2026-09-10 so'rovi: "ustiga bosilganda kengayadi, yana ustiga
-  // bosilsa yopiladi". Boshqa joydan /app/lugat'ga o'tilganda avtomatik ochiladi
+  // bosilsa yopiladi". Boshqa joydan /app/vocabulary'ga o'tilganda avtomatik ochiladi
   // (quyidagi effekt), lekin Lug'at allaqachon faol bo'lganda tugma navigatsiya
   // qilmaydi — faqat ochiq/yopiqni almashtiradi.
   const [lugatOpen, setLugatOpen] = useState(onLugat);
@@ -163,7 +163,7 @@ export default function AppShell({ children }) {
         </div>
 
         <div className="p-4 border-t border-on-primary/10 flex items-center justify-between">
-          <Link href="/app/profil" className="flex items-center gap-2.5 truncate pr-2 min-w-0">
+          <Link href="/app/profile" className="flex items-center gap-2.5 truncate pr-2 min-w-0">
             <Avatar userId={chatUserId} photoId={myPhotoId} name={displayName} username={username} size={32} />
             <div className="truncate">
               <p className="text-[11px] text-on-primary/70">Profil</p>
@@ -269,12 +269,12 @@ export default function AppShell({ children }) {
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <NotificationBell onOpenFriends={() => router.push('/app/dostlar')} />
+            <NotificationBell onOpenFriends={() => router.push('/app/friends')} />
           </div>
         </header>
         {/* TZ-vocably-v2.md BUG-023 (2026-09-12 haqiqiy brauzerda qayta topildi va
             tuzatildi): yuqoridagi konteyner ILGARI `min-h-dvh` edi — bu FAQAT pastki
-            chegara, "max" emas, shuning uchun /app/dostlar kabi ko'p xabarli sahifada
+            chegara, "max" emas, shuning uchun /app/friends kabi ko'p xabarli sahifada
             konteynerning haqiqiy balandligi kontent bo'yicha ~4000px'gacha o'sib
             ketardi. `main`ning `flex-1 min-h-0` zanjiri ishlashi uchun bu ota
             konteynerning ANIQ (min emas) balandligi bo'lishi SHART — aks holda

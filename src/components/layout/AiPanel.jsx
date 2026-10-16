@@ -16,11 +16,11 @@ import { useT } from '@/context/LocaleContext';
 // ENDI sahifadan chiqmasdan shu panelni to'liq ekranga yoyadi, ostidagi sahifa
 // o'zgarmaydi).
 function contextHintForPath(pathname) {
-  if (pathname.startsWith('/app/lugat')) return "Lug'at bo'limida, so'z mashq qilmoqda";
-  if (pathname.startsWith('/app/oqish')) return 'Reading (Oqish) bo\'limida';
-  if (pathname.startsWith('/app/tinglash')) return 'Listening (Tinglash) bo\'limida';
-  if (pathname.startsWith('/app/gapirish')) return 'Speaking (Gapirish) bo\'limida';
-  if (pathname.startsWith('/app/yozish')) return 'Writing (Yozish) bo\'limida';
+  if (pathname.startsWith('/app/vocabulary')) return "Lug'at bo'limida, so'z mashq qilmoqda";
+  if (pathname.startsWith('/app/reading')) return 'Reading (Oqish) bo\'limida';
+  if (pathname.startsWith('/app/listening')) return 'Listening (Tinglash) bo\'limida';
+  if (pathname.startsWith('/app/speaking')) return 'Speaking (Gapirish) bo\'limida';
+  if (pathname.startsWith('/app/writing')) return 'Writing (Yozish) bo\'limida';
   if (pathname.startsWith('/app/mock')) return 'Mock imtihon bo\'limida';
   if (pathname === '/app') return 'Bosh sahifada (Bugungi ish)';
   return null;
@@ -80,7 +80,7 @@ export default function AiPanel() {
   // TZ-vocably-v2.md BUG-027 — Do'stlar (chat) sahifasida bu suzuvchi tugma
   // composer'ning o'ng tarafidagi tugmalari (emoji/fayl/mikrofon/yuborish) ustiga
   // tushib qolardi. §E4: "AI FAB pozitsiyasi: chat sahifalarida yashiriladi".
-  const inDostlar = pathname.startsWith('/app/dostlar');
+  const inDostlar = pathname.startsWith('/app/friends');
   if (pathname.startsWith('/app/ai') || inMockSession || inDostlar) return null;
 
   return (

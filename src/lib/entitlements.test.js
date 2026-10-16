@@ -58,9 +58,9 @@ describe('hasReachedMonthlyLimit', () => {
 });
 
 describe('monthlyGradingLimitMessage', () => {
-  it('mentions the free limit number and points to /narxlar', () => {
+  it('mentions the free limit number and points to /pricing', () => {
     const msg = monthlyGradingLimitMessage();
     expect(msg).toContain(String(TIER_CONFIG.free.monthlyAiGradingLimit));
-    expect(msg).toMatch(/narxlar/);
+    expect(msg).toMatch(/pricing/);
   });
 });

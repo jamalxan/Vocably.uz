@@ -17,7 +17,7 @@ import type { AttemptResult, SanitizedTest, SpeakingRecording } from '@/lib/exam
 // TZ-vocably-v2.md §19 Faza 4 item 23 — Speaking bo'limi. §9.1'dagi eski TZ
 // qoidasi bo'yicha Mock orkestratsiyasidan (Listening->Reading->Writing)
 // TASHQARIDA — mustaqil `mode:'section'` urinish, xuddi eski (pre-exam-engine)
-// `/app/gapirish` kabi. Split-pane YO'Q (Reading/Listening/Writing'dan farqli) —
+// `/app/speaking` kabi. Split-pane YO'Q (Reading/Listening/Writing'dan farqli) —
 // bitta ustunli, savoldan-savolga o'tuvchi oqim, chunki Speaking'da "matn +
 // javob" emas, faqat "savol -> ovozli javob" bor.
 const HEARTBEAT_INTERVAL_MS = 15000;

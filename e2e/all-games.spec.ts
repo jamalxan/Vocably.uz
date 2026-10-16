@@ -99,7 +99,7 @@ async function answerCurrent(page: Page, waitMs = 15_000) {
 
 test("free foydalanuvchiga pullik o'yin qulflangan: boshlash tugmasi yo'q, Tariflar havolasi bor", async ({ page }) => {
   await loginAs(page, E2E_FREE_PHONE);
-  await page.goto('/app/oyinlar/sentence_builder');
+  await page.goto('/app/games/sentence_builder');
   await expect(page.getByRole('link', { name: 'Tariflar' })).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole('button', { name: "O'yinni boshlash" })).toHaveCount(0);
 });
@@ -119,7 +119,7 @@ test.describe("P0 o'yinlar (desktop)", () => {
         if (r.request().method() !== 'POST' || !r.url().includes('/api/games')) return;
         collectMemoryPairs(await r.json().catch(() => null));
       });
-      await page.goto(`/app/oyinlar/${game}`);
+      await page.goto(`/app/games/${game}`);
       const start = page.getByRole('button', { name: "O'yinni boshlash" });
       await expect(start).toBeVisible({ timeout: 45_000 });
       test.skip(await start.isDisabled(), `${game}: seed ma'lumotlari bilan mavjud emas`);

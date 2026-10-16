@@ -210,7 +210,7 @@ export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAdd
               <Button size="sm" variant="secondary" onClick={() => markKnown(false)} disabled={busy}>
                 {t('wp.hard')}
               </Button>
-              <Link href="/app/lugat/takrorlash" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-accent hover:underline min-h-11 md:min-h-0">
+              <Link href="/app/vocabulary/review" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-accent hover:underline min-h-11 md:min-h-0">
                 <RotateCw size={14} aria-hidden="true" /> {t('wp.review')}
               </Link>
             </div>

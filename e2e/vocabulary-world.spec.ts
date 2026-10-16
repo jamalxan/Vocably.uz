@@ -1,5 +1,5 @@
 // Vocabulary World (3D hub): sahna yuklanadi, personaj klaviatura bilan yuradi va
-// portal haqiqiy o'yin sahifasiga (/app/oyinlar/:key) olib boradi.
+// portal haqiqiy o'yin sahifasiga (/app/games/:key) olib boradi.
 import { expect, test } from '@playwright/test';
 import { E2E_PHONE } from './global-setup';
 import { loginAs } from './auth';

@@ -8,17 +8,17 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('o\'yinlar markazi ochiladi va o\'yinlar ko\'rinadi', async ({ page }) => {
-  await page.goto('/app/oyinlar');
+  await page.goto('/app/games');
   // Dev serverda API yo'llari birinchi so'rovda kompilyatsiya qilinadi — uzoqroq kutamiz.
   await expect(page.getByRole('heading', { name: "Lug'at sayohatingiz" })).toBeVisible({ timeout: 45_000 });
-  await expect(page.locator('a[href="/app/oyinlar/multiple_choice"]').first()).toBeVisible();
+  await expect(page.locator('a[href="/app/games/multiple_choice"]').first()).toBeVisible();
   // Gorizontal skroll yo'q (mobil/desktop)
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
 });
 
 test('multiple_choice sessiyasi boshdan oxirigacha o\'tadi, natija ko\'rinadi', async ({ page }) => {
-  await page.goto('/app/oyinlar/multiple_choice');
+  await page.goto('/app/games/multiple_choice');
   await page.getByRole('button', { name: "O'yinni boshlash" }).click();
 
   const counter = page.getByText(/Savol \d+ \/ \d+/);
@@ -40,7 +40,7 @@ test('multiple_choice sessiyasi boshdan oxirigacha o\'tadi, natija ko\'rinadi', 
 });
 
 test('sahifani yangilash faol sessiyani tiklaydi', async ({ page }) => {
-  await page.goto('/app/oyinlar/multiple_choice');
+  await page.goto('/app/games/multiple_choice');
   await page.getByRole('button', { name: "O'yinni boshlash" }).click();
   await expect(page.getByText(/Savol 1 \/ \d+/)).toBeVisible({ timeout: 45_000 });
   await page.reload();

@@ -1,4 +1,4 @@
-// VOCABLY-TZ.md §17.3 (SEO) — "Har so'z uchun ochiq sahifa: /lugat/resilient —
+// VOCABLY-TZ.md §17.3 (SEO) — "Har so'z uchun ochiq sahifa: /dictionary/resilient —
 // 'resilient tarjimasi, talaffuzi, misollar' → uzun dumli qidiruv trafigi".
 //
 // MUHIM ARXITEKTURA IZOHI: bu ro'yxat foydalanuvchining shaxsiy so'z bazasi
@@ -8,7 +8,7 @@
 // generatsiya qilinadi). Global "so'z banki" infratuzilmasi qurilmadi — bu
 // FAZA1 qaroriga zid bo'lardi; shu o'rniga chegaralangan, boshqarish oson bo'lgan
 // statik ro'yxat tanlandi. Ko'proq so'z qo'shish uchun shu massivga yangi obyekt
-// qo'shish kifoya (src/app/lugat/[word]/page.jsx generateStaticParams shu yerdan o'qiydi).
+// qo'shish kifoya (src/app/vocabulary/[word]/page.jsx generateStaticParams shu yerdan o'qiydi).
 export const SEO_WORDS = [
   {
     word: 'resilient',

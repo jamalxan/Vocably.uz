@@ -22,7 +22,9 @@ export default function GamesCard() {
 
   if (!profile) return null;
   const { level, xp, streak, plan, quests } = profile;
-  const items = plan?.plan?.items || [];
+  // profile.plan — DailyPlan'ning o'zi (src/lib/vocab/dailyPlan.ts), ichki `.plan` yo'q:
+  // avvalgi `plan?.plan?.items` doim bo'sh bo'lib, karta "reja bo'sh" deb turardi.
+  const items = plan?.items || [];
   const dailyDone = (quests?.daily || []).filter((q) => q.done).length;
   const dailyTotal = (quests?.daily || []).length;
 
@@ -47,7 +49,7 @@ export default function GamesCard() {
         {items.length > 0 ? t('dash.todayPlan', { items: items.map((i) => ts(i.label)).slice(0, 3).join(' · ') }) : t('dash.planDone')}
       </p>
       <p className="text-xs text-muted mt-1">{t('dash.dailyQuests', { a: dailyDone, b: dailyTotal })}</p>
-      <Link href="/app/oyinlar" className={`${buttonClasses({ variant: 'primary', size: 'md' })} mt-4`}>
+      <Link href="/app/games" className={`${buttonClasses({ variant: 'primary', size: 'md' })} mt-4`}>
         {t('dash.gamesHub')} <ArrowRight size={16} aria-hidden="true" />
       </Link>
     </section>

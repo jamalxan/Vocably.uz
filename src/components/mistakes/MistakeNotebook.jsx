@@ -37,7 +37,7 @@ export default function MistakeNotebook() {
   const drill = (ws) => {
     if (!ws.length) return;
     startPracticeQueue(ws.map((w) => w.id));
-    router.push('/app/lugat/takrorlash');
+    router.push('/app/vocabulary/review');
   };
 
   if (failed) return <p className="p-8 text-sm text-muted">{t('mn.loadFail')}</p>;
@@ -99,7 +99,7 @@ export default function MistakeNotebook() {
           {words.some((w) => !w.syns.length) && (
             <p className="text-xs text-muted mt-3">
               {t('mn.enrichPre')}{' '}
-              <Link href="/app/lugat/jadval" className="text-accent font-semibold hover:underline">
+              <Link href="/app/vocabulary/words" className="text-accent font-semibold hover:underline">
                 {t('mn.enrichLink')}
               </Link>
               {t('mn.enrichPost')}
@@ -132,10 +132,10 @@ export default function MistakeNotebook() {
           <p className="text-sm font-semibold text-ink mt-3">{t('mn.emptyTitle')}</p>
           <p className="text-xs text-muted mt-1">{t('mn.emptyText')}</p>
           <div className="flex justify-center gap-2 mt-4">
-            <Link href="/app/oqish" className="px-4 py-2 rounded-xl bg-accent text-on-accent text-sm font-semibold">
+            <Link href="/app/reading" className="px-4 py-2 rounded-xl bg-accent text-on-accent text-sm font-semibold">
               Reading
             </Link>
-            <Link href="/app/tinglash" className="px-4 py-2 rounded-xl border border-border text-sm font-semibold text-ink">
+            <Link href="/app/listening" className="px-4 py-2 rounded-xl border border-border text-sm font-semibold text-ink">
               Listening
             </Link>
           </div>

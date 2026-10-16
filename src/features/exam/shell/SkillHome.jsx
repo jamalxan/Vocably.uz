@@ -23,7 +23,7 @@ import { countByKind, countByStatus, filterTests } from './testListFilter';
 const SKILLS = {
   reading: {
     title: 'Reading',
-    base: '/app/oqish',
+    base: '/app/reading',
     icon: BookOpenText,
     picker: true,
     practice: true,
@@ -31,7 +31,7 @@ const SKILLS = {
   },
   listening: {
     title: 'Listening',
-    base: '/app/tinglash',
+    base: '/app/listening',
     icon: Ear,
     picker: true,
     practice: true,
@@ -39,7 +39,7 @@ const SKILLS = {
   },
   writing: {
     title: 'Writing',
-    base: '/app/yozish',
+    base: '/app/writing',
     icon: PenLine,
     picker: false,
     practice: true,
@@ -47,7 +47,7 @@ const SKILLS = {
   },
   speaking: {
     title: 'Speaking',
-    base: '/app/gapirish',
+    base: '/app/speaking',
     icon: Mic,
     picker: false,
     practice: false,

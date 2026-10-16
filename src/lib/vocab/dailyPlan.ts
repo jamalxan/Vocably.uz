@@ -81,7 +81,7 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
       label: `${count} ta so'zni takrorlang`,
       count,
       minutes: Math.ceil(count * cost.reviewWord),
-      href: '/app/lugat/takrorlash',
+      href: '/app/vocabulary/review',
       reason: input.overdueCount > 0 ? `${input.overdueCount} ta so'zning muddati o'tgan` : 'SRS navbati',
     });
   }
@@ -93,7 +93,7 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
       label: `Zaif so'zlar (${input.weakCount} ta) bilan mashq`,
       count: Math.min(input.weakCount, 10),
       minutes: cost.game,
-      href: '/app/lugat/zaif-sozlar',
+      href: '/app/vocabulary/weak-words',
       reason: "Xato qilingan so'zlarni mustahkamlash",
     });
   }
@@ -107,7 +107,7 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
       label: `${newTarget} ta yangi so'z`,
       count: newTarget,
       minutes: Math.ceil(newTarget * cost.newWord),
-      href: '/app/lugat/kartochka',
+      href: '/app/vocabulary/flashcards',
       reason: "Yangi so'zlar bilan tanishing",
     });
   }
@@ -123,7 +123,7 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
       label: 'O\'yin bilan mustahkamlash',
       count: 1,
       minutes: cost.game,
-      href: `/app/oyinlar/${key}`,
+      href: `/app/games/${key}`,
       gameKey: key,
       reason: GAME_SKILL[key] && input.profile?.[GAME_SKILL[key]]?.level === 'weak' ? "Zaif ko'nikmangiz" : undefined,
     });
@@ -131,13 +131,13 @@ export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
 
   // 5-6) ko'nikmalar integratsiyasi — faqat yetarli vaqt bo'lsa
   if (minutes >= 20 && budget >= cost.listening) {
-    push({ type: 'listening', label: '1 ta tinglash mashqi', count: 1, minutes: cost.listening, href: '/app/tinglash', reason: "Eshitib tanishni mustahkamlash" });
+    push({ type: 'listening', label: '1 ta tinglash mashqi', count: 1, minutes: cost.listening, href: '/app/listening', reason: "Eshitib tanishni mustahkamlash" });
   }
   if (minutes >= 30 && budget >= cost.writing) {
-    push({ type: 'writing', label: '1 ta yozish mashqi', count: 1, minutes: cost.writing, href: '/app/yozish', reason: "Yangi so'zlarni yozuvda ishlating" });
+    push({ type: 'writing', label: '1 ta yozish mashqi', count: 1, minutes: cost.writing, href: '/app/writing', reason: "Yangi so'zlarni yozuvda ishlating" });
   }
   if (minutes >= 45 && budget >= cost.speaking) {
-    push({ type: 'speaking', label: '1 ta gapirish mashqi', count: 1, minutes: cost.speaking, href: '/app/gapirish', reason: "So'zlarni og'zaki ishlating" });
+    push({ type: 'speaking', label: '1 ta gapirish mashqi', count: 1, minutes: cost.speaking, href: '/app/speaking', reason: "So'zlarni og'zaki ishlating" });
   }
 
   const sum = (t: PlanItemType) => items.filter((i) => i.type === t).reduce((s, i) => s + i.count, 0);

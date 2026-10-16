@@ -8,7 +8,7 @@ import LandingHeader from '@/components/landing/LandingHeader';
 
 // VOCABLY-TZ.md §17.3 — ochiq, statik generatsiya qilinadigan so'z sahifalari
 // (uzun-dumli qidiruv trafigi uchun). src/lib/seoWords.js'dagi izohga q.: bu
-// himoyalangan /app/lugat/soz/[wordId] (foydalanuvchining shaxsiy so'zi) BILAN
+// himoyalangan /app/vocabulary/word/[wordId] (foydalanuvchining shaxsiy so'zi) BILAN
 // ALOQASI YO'Q — butunlay ochiq, statik, login talab qilmaydigan sahifa.
 export function generateStaticParams() {
   return SEO_WORDS.map((w) => ({ word: w.slug }));
@@ -23,7 +23,7 @@ export async function generateMetadata(props) {
   return {
     title,
     description,
-    alternates: { canonical: `/lugat/${w.slug}` },
+    alternates: { canonical: `/dictionary/${w.slug}` },
     openGraph: {
       title,
       description,
@@ -54,7 +54,7 @@ export default async function SeoWordPage(props) {
       <LandingHeader />
 
       <main className="px-4 sm:px-6 pt-2 pb-6 max-w-2xl mx-auto">
-        <Link href="/lugat" className="inline-flex items-center gap-1.5 min-h-11 text-sm text-muted hover:text-accent transition-colors mb-2">
+        <Link href="/dictionary" className="inline-flex items-center gap-1.5 min-h-11 text-sm text-muted hover:text-accent transition-colors mb-2">
           <ArrowLeft size={15} /> Boshqa so'zlar
         </Link>
         <div className="bg-surface border border-border rounded-3xl shadow-card p-6 sm:p-8 mb-6">
@@ -139,7 +139,7 @@ export default async function SeoWordPage(props) {
             <Link href="/demo" className="bg-on-primary/10 hover:bg-on-primary/15 text-on-primary font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
               Ro'yxatdan o'tmasdan sinash
             </Link>
-            <Link href="/royxat" className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-glow">
+            <Link href="/register" className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-glow">
               Bepul boshlash
             </Link>
           </div>

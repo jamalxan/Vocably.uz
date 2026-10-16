@@ -9,7 +9,7 @@ import { useT } from '@/context/LocaleContext';
 // TZ-vocably-v2.md §19 Faza 4 item 23 — AI Speaking grader natijasi.
 // WritingResult.tsx bilan bir xil naqsh (result.speaking bo'lmasa "Qayta
 // baholash" tugmasi — AI vaqtincha band bo'lgan bo'lishi mumkin), lekin
-// mezon qatori/kartochka shakli eski (pre-exam-engine) /app/gapirish
+// mezon qatori/kartochka shakli eski (pre-exam-engine) /app/speaking
 // sahifasidagi natija ko'rinishidan ko'chirilgan (SpeakingScore turi ham
 // o'sha yerdagi javob shakli bilan ataylab bir xil — speakingGrader.ts'ga q.).
 const CRITERIA_LABEL: Record<string, string> = {

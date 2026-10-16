@@ -633,7 +633,7 @@ const RateLimitHitSchema = new mongoose.Schema({
 
 export const RateLimitHit = mongoose.models.RateLimitHit || mongoose.model('RateLimitHit', RateLimitHitSchema);
 
-// BILL-01/02 — /narxlar sahifasidagi STANDARD/PREMIUM "Bog'lanish" tugmasi
+// BILL-01/02 — /pricing sahifasidagi STANDARD/PREMIUM "Bog'lanish" tugmasi
 // bosilganda shu yerga yoziladi. HECH QANDAY to'lov maydoni yo'q (karta,
 // summa va h.k.) — bu checkout emas, faqat "kim qaysi tarifga qiziqdi"
 // degan belgi, admin keyin qo'lda (Telegram/telefon orqali) bog'lanadi va
@@ -871,8 +871,8 @@ export const SpeakingAttempt =
 // ============================================================================
 // Eski (Everest-Mock'dan portlangan) `ExamSession` dvigateli TZ §20 migratsiyasi
 // YAKUNLANGANDA (2026-09-12) shu yerdan o'chirildi — pastdagi `ExamTest`/
-// `ExamAttempt` uni to'liq almashtirdi (`/app/oqish`, `/app/tinglash`,
-// `/app/yozish`, `/app/mock`, `/app/gapirish` barchasi endi shularga ishlaydi).
+// `ExamAttempt` uni to'liq almashtirdi (`/app/reading`, `/app/listening`,
+// `/app/writing`, `/app/mock`, `/app/speaking` barchasi endi shularga ishlaydi).
 // ============================================================================
 // TZ-vocably-v2.md (IELTS CD Exam Engine v1.0) §3 — exam engine modellari
 // (eski `ExamSession`ni to'liq almashtirgan, yuqoridagi izohga q.). Model

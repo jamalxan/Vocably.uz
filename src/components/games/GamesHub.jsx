@@ -170,9 +170,9 @@ function GameCard({ game }) {
   const cls = `block p-4 bg-surface border border-border rounded-2xl shadow-card transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
     game.unlocked && game.available ? 'hover:shadow-premium motion-safe:hover:-translate-y-0.5' : game.unlocked ? 'opacity-70' : 'opacity-80'
   }`;
-  // Yopiq o'yinlar ham sahifaga olib boradi (u yerda sabab va /narxlar havolasi ko'rsatiladi).
+  // Yopiq o'yinlar ham sahifaga olib boradi (u yerda sabab va /pricing havolasi ko'rsatiladi).
   return (
-    <Link href={`/app/oyinlar/${game.key}`} className={cls} aria-label={`${ts(game.title)}${reason ? ` — ${reason}` : ''}`}>
+    <Link href={`/app/games/${game.key}`} className={cls} aria-label={`${ts(game.title)}${reason ? ` — ${reason}` : ''}`}>
       {body}
     </Link>
   );
@@ -239,7 +239,7 @@ export default function GamesHub() {
   }
 
   const { level, xp, streak, plan, overview, quests, badges } = profile;
-  const firstItem = plan?.plan?.items?.[0];
+  const firstItem = plan?.items?.[0];
   const earned = (badges || []).filter((b) => b.earned);
   const streakDays = streak?.streak || 0;
 
@@ -285,7 +285,7 @@ export default function GamesHub() {
           <StatTile tone="sunken" icon={BookOpen} label={t('hub.statTotal')} value={overview.total} />
           <StatTile tone="sunken" icon={Trophy} label={t('hub.statMastered')} value={overview.mastered} sub={overview.total ? `${Math.round((overview.mastered / overview.total) * 100)}%` : null} />
           <StatTile tone="sunken" icon={Sparkles} label={t('hub.statLearning')} value={overview.learning} />
-          <StatTile tone="sunken" icon={Target} label={t('hub.statWeak')} value={overview.weak} href="/app/lugat/zaif-sozlar" />
+          <StatTile tone="sunken" icon={Target} label={t('hub.statWeak')} value={overview.weak} href="/app/vocabulary/weak-words" />
         </div>
       </section>
 
@@ -300,7 +300,7 @@ export default function GamesHub() {
           {/* Mobilda to'liq kenglik, har tugma teng — "5 daq" ikki qatorga bo'linmaydi. */}
           <div role="group" aria-label={t('hub.dailyTime')} className="flex w-full sm:w-auto rounded-xl border border-border bg-bg-sunken/60 p-0.5 gap-0.5">
             {MINUTE_OPTIONS.map((m) => {
-              const active = plan?.plan?.minutes === m;
+              const active = plan?.minutes === m;
               return (
                 <button
                   key={m}
@@ -318,10 +318,10 @@ export default function GamesHub() {
             })}
           </div>
         </div>
-        {plan?.plan?.items?.length ? (
+        {plan?.items?.length ? (
           <>
             <ul className="grid gap-2 mb-4">
-              {plan.plan.items.map((item, i) => {
+              {plan.items.map((item, i) => {
                 const Icon = PLAN_ICON[item.type] || Star;
                 return (
                   <li key={`${item.type}-${i}`}>
@@ -349,7 +349,7 @@ export default function GamesHub() {
         ) : (
           <p className="text-sm text-muted">
             {t('hub.planEmpty')}{' '}
-            <Link href="/app/lugat/jadval" className="text-accent hover:underline">
+            <Link href="/app/vocabulary/words" className="text-accent hover:underline">
               {t('hub.addWords')}
             </Link>
           </p>
@@ -429,10 +429,10 @@ export default function GamesHub() {
           ))}
         </ul>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link href="/app/reyting" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+          <Link href="/app/leaderboard" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
             <Trophy size={14} aria-hidden="true" /> {t('hub.leaderboard')}
           </Link>
-          <Link href="/app/lugat/zaif-sozlar" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+          <Link href="/app/vocabulary/weak-words" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
             <Target size={14} aria-hidden="true" /> {t('hub.statWeak')}
           </Link>
         </div>

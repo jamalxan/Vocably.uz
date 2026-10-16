@@ -2,6 +2,7 @@
 // (src/lib/srs.ts:computeStreakUpdate) — bu yerda XP, darajalar va yutuqlar.
 import { XpEvent } from '@/lib/models';
 import { NEW_ACHIEVEMENT_DEFS } from '@/lib/vocab/achievements';
+import { isMasteredStats } from '@/lib/vocab/server/words';
 
 // "Har amal XP beradi: takrorlash 1, to'g'ri javob 2, yangi so'z 5, mock 100."
 // Takrorlash HAR DOIM 1 beradi (urinish uchun), + to'g'ri bo'lsa yana 2 —
@@ -94,7 +95,7 @@ export function countMasteredWords(user) {
   let count = 0;
   for (const cat of user.categories) {
     for (const w of cat.words) {
-      if ((w.stats?.level || 0) >= 5) count += 1;
+      if (isMasteredStats(w.stats || {})) count += 1;
     }
   }
   return count;

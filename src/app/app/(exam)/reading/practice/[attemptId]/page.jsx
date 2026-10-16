@@ -49,13 +49,13 @@ export default function OqishMashqAttemptPage() {
         <ReviewScreen detail={reviewDetail} />
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 pb-10">
           <Link
-            href="/app/oqish"
+            href="/app/reading"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-accent hover:underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             {t('ex.practiceMore')}
           </Link>
           <Link
-            href="/app/oqish"
+            href="/app/reading"
             className="inline-flex items-center min-h-11 px-3 rounded-lg text-sm text-muted hover:text-ink font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             {t('ex.toSkill', { skill: 'Reading' })}
@@ -69,7 +69,7 @@ export default function OqishMashqAttemptPage() {
     return (
       <div className="p-8 text-center space-y-3">
         <p className="text-sm text-danger">{reviewError}</p>
-        <Link href="/app/oqish" className="inline-flex items-center min-h-11 px-3 text-sm text-accent hover:underline font-semibold">
+        <Link href="/app/reading" className="inline-flex items-center min-h-11 px-3 text-sm text-accent hover:underline font-semibold">
           {t('ex.toSkill', { skill: 'Reading' })}
         </Link>
       </div>

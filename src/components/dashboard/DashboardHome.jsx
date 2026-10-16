@@ -60,12 +60,12 @@ export default function DashboardHome() {
   }, [isAuthed, load]);
 
   const goToReview = () => {
-    router.push('/app/lugat/takrorlash');
+    router.push('/app/vocabulary/review');
   };
 
   const openCategory = (idx) => {
     setActiveCatIndex(idx);
-    router.push('/app/lugat/kartochka');
+    router.push('/app/vocabulary/flashcards');
   };
 
   const practiceLeeches = (leeches) => {

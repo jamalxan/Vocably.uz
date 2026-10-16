@@ -27,22 +27,22 @@ Haqiqiy bandingizni bilish uchun Vocably'da to'liq mock test topshiring — javo
 export const metadata = {
   title: `${TITLE} | Vocably`,
   description: DESCRIPTION,
-  alternates: { canonical: '/ielts/band-kalkulyator' },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: '/ielts/band-kalkulyator' },
+  alternates: { canonical: '/ielts/band-calculator' },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: '/ielts/band-calculator' },
 };
 
 export default function BandCalculatorPage() {
   const crumbs = [
     ['Bosh sahifa', '/'],
     ['IELTS', '/ielts'],
-    ['Band kalkulyatori', '/ielts/band-kalkulyator'],
+    ['Band kalkulyatori', '/ielts/band-calculator'],
   ];
   const jsonLd = ldGraph([
     organizationLd,
     {
       '@type': 'WebApplication',
       name: 'IELTS band kalkulyatori',
-      url: `${SITE_URL}/ielts/band-kalkulyator`,
+      url: `${SITE_URL}/ielts/band-calculator`,
       applicationCategory: 'EducationalApplication',
       operatingSystem: 'Web',
       inLanguage: 'uz',

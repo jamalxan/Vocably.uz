@@ -103,7 +103,7 @@ export default function Hero() {
           >
             <Magnetic className="w-full sm:w-auto">
               <Link
-                href="/royxat"
+                href="/register"
                 className="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-full bg-accent pl-7 pr-2 py-2 text-sm font-landing-body font-semibold text-on-accent shadow-glow transition-colors duration-300 hover:bg-accent-hover"
               >
                 Bepul boshlash

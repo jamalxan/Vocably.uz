@@ -150,7 +150,7 @@ To'rt bo'lim bandining o'rtachasi olinadi va eng yaqin 0.5 ga yaxlitlanadi:
 - o'rtacha **6.75** → **7.0**
 - o'rtacha **6.125** → **6.0**
 
-O'z natijangizni tez hisoblash uchun [IELTS band kalkulyatori](/ielts/band-kalkulyator)dan foydalaning.`,
+O'z natijangizni tez hisoblash uchun [IELTS band kalkulyatori](/ielts/band-calculator)dan foydalaning.`,
   },
   {
     slug: 'sozlarni-unutmaslik-uchun-7-maslahat',

@@ -52,7 +52,7 @@ test.describe('imtihon va xavfsizlik (API + sahifalar)', () => {
     const api = await (await page.request.get(`/api/exam/attempts/${id}`)).text();
     for (const leak of ['accepted', 'explanationHtml', 'locatorParagraph']) expect(api, `API'da "${leak}" bo‘lmasligi kerak`).not.toContain(leak);
 
-    await page.goto(`/app/oqish/${id}`);
+    await page.goto(`/app/reading/${id}`);
     await page.waitForLoadState('networkidle', { timeout: 45_000 });
     if (!isMobile) await expect(page.getByText('The History of Public Libraries').first()).toBeVisible({ timeout: 30_000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
@@ -135,11 +135,11 @@ test.describe('imtihon va xavfsizlik (API + sahifalar)', () => {
     expect((await page.request.delete('/api/words', { data: { categoryId: cat._id, wordIds: ids } })).ok()).toBeTruthy();
   });
 
-  test('so‘z sahifasi (/app/lugat/soz/[id]) ochiladi va xatosiz', async ({ page }) => {
+  test('so‘z sahifasi (/app/vocabulary/word/[id]) ochiladi va xatosiz', async ({ page }) => {
     const errs = collectErrors(page);
     const { categories } = await (await page.request.get('/api/words')).json();
     const word = categories[0].words[0];
-    await page.goto(`/app/lugat/soz/${word._id}`);
+    await page.goto(`/app/vocabulary/word/${word._id}`);
     await page.waitForLoadState('networkidle', { timeout: 45_000 });
     await expect(page.getByText(word.word, { exact: false }).first()).toBeVisible({ timeout: 30_000 });
     expect(errs).toEqual([]);

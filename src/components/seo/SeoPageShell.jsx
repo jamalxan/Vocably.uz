@@ -42,7 +42,7 @@ export default function SeoPageShell({ crumbs, jsonLd, children, cta = true }) {
               <Link href="/demo" className="bg-on-primary/10 hover:bg-on-primary/15 text-on-primary font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
                 Avval sinab ko'rish
               </Link>
-              <Link href="/royxat" className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-glow">
+              <Link href="/register" className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-glow">
                 Bepul boshlash
               </Link>
             </div>

@@ -15,14 +15,14 @@ const AppContext = createContext(null);
 // Faqat quyidagi sahifalar `useApp().categories`/`reviewStreak`ga chindan
 // muhtoj (grep: `useApp\(\)` — FlashcardMode/TestMode/SpeedQuiz/MatchGame/
 // ListeningMode/WritingTest/SpacedRepetition/WordTable — barchasi
-// /app/lugat/* ostida; profil sahifasi `reviewStreak`ni, /app/ai to'liq
+// /app/vocabulary/* ostida; profil sahifasi `reviewStreak`ni, /app/ai to'liq
 // sahifasi esa AiChat orqali `categories`ni o'qiydi). Qolgan sahifalar
 // (imtihon guruhi, do'stlar, reyting, mashq menyusi) faqat `isAuthed`/
 // `displayName`/`chatAccess` kabi yengil holatni ishlatadi.
 function needsVocabulary(pathname) {
   if (!pathname) return true; // noaniq holatda xavfsiz standart — yuklaymiz
   if (pathname === '/app') return true;
-  return ['/app/lugat', '/app/profil', '/app/ai'].some((p) => pathname.startsWith(p));
+  return ['/app/vocabulary', '/app/profile', '/app/ai'].some((p) => pathname.startsWith(p));
 }
 
 // AUTH_MIGRATION_MAP.md (2026-09-17) — JWT endi localStorage'da SAQLANMAYDI va
@@ -117,7 +117,7 @@ export function AppProvider({ children }) {
     }
     // '/' endi ochiq marketing landing (VOCABLY-TZ.md T3 tuzatildi) — chiqqan
     // foydalanuvchi qayta kirish formasiga to'g'ridan-to'g'ri tushsin.
-    router.replace('/kirish'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /kirish ga tushib, tuzoq bo'lardi)
+    router.replace('/login'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /login ga tushib, tuzoq bo'lardi)
   }, [router]);
 
   const fetchUserData = useCallback(async () => {

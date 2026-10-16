@@ -6,7 +6,7 @@ import { clientIp } from '@/lib/clientIp';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
 
-// BILL-01/02 — /narxlar sahifasidagi STANDARD/PREMIUM "Bog'lanish" CTA'si shu
+// BILL-01/02 — /pricing sahifasidagi STANDARD/PREMIUM "Bog'lanish" CTA'si shu
 // yerga yozadi. Bu CHECKOUT EMAS: hech qanday to'lov maydoni yo'q, faqat "kim
 // qaysi tarifga qiziqdi" belgisi — admin keyin qo'lda (Telegram/telefon
 // orqali) bog'lanadi va src/components/admin/UsersTable.jsx'dan tarifni

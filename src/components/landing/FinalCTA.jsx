@@ -86,7 +86,7 @@ export default function FinalCTA() {
         <div data-ffade className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Magnetic className="w-full sm:w-auto">
             <Link
-              href="/royxat"
+              href="/register"
               className="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-full bg-on-primary pl-8 pr-2 py-2 text-base font-landing-body font-semibold text-primary shadow-premium transition-transform duration-300 hover:scale-[1.03]"
             >
               Ro'yxatdan o'tish

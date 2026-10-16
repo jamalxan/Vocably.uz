@@ -96,7 +96,7 @@ function MistakeItem({ mistake }) {
   );
 }
 
-export default function ResultScreen({ result, gameTitle, onPlayAgain, onContinueHref = '/app/oyinlar' }) {
+export default function ResultScreen({ result, gameTitle, onPlayAgain, onContinueHref = '/app/games' }) {
   const { t, ts } = useT();
   const [showMistakes, setShowMistakes] = useState(false);
   const headingRef = useRef(null);
@@ -209,7 +209,7 @@ export default function ResultScreen({ result, gameTitle, onPlayAgain, onContinu
           <RotateCcw size={16} aria-hidden="true" /> {t('res.playAgain')}
         </Button>
         {mistakes.length > 0 && (
-          <Link href="/app/lugat/zaif-sozlar" className={buttonClasses({ variant: 'secondary' })}>
+          <Link href="/app/vocabulary/weak-words" className={buttonClasses({ variant: 'secondary' })}>
             {t('hub.statWeak')}
           </Link>
         )}

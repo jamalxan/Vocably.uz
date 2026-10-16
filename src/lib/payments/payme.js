@@ -26,7 +26,7 @@ export function toTiyin(som) {
 export function paymeCheckoutUrl(request) {
   const cfg = paymeConfig();
   if (!cfg) return null;
-  const back = `${(process.env.APP_URL || 'https://vocably.uz').replace(/\/$/, '')}/app/tolov?paid=${request._id}`;
+  const back = `${(process.env.APP_URL || 'https://vocably.uz').replace(/\/$/, '')}/app/billing?paid=${request._id}`;
   const params = `m=${cfg.merchantId};ac.order_id=${request._id};a=${toTiyin(request.amount)};c=${back}`;
   return `${cfg.checkoutUrl}/${Buffer.from(params).toString('base64')}`;
 }

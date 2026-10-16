@@ -2,7 +2,7 @@
 // §46.2 aynan shunday talab qiladi: "narxlarni hard-code qilmaslik va
 // entitlement'larni alohida configuration sifatida saqlash kerak" — shuning
 // uchun narx/feature ro'yxati FAQAT shu bitta faylda yashaydi. Pricing sahifasi
-// (/narxlar), admin panel (tarif tayinlash) va AI limit tekshiruvi
+// (/pricing), admin panel (tarif tayinlash) va AI limit tekshiruvi
 // (src/lib/ai/client.js) barchasi shu yerdan o'qiydi, hech biri o'z nusxasini
 // hardcode qilmaydi.
 //
@@ -94,9 +94,9 @@ export function hasReachedMonthlyLimit(tier, currentCount) {
 }
 
 /** Foydalanuvchiga ko'rsatiladigan o'zbekcha xabar — FREE oylik AI grading
- * limitiga yetganda /narxlar'ga yo'naltiradi (TZ D1.3 uslubi: aniq, texnik
+ * limitiga yetganda /pricing'ga yo'naltiradi (TZ D1.3 uslubi: aniq, texnik
  * tafsilotsiz). */
 export function monthlyGradingLimitMessage() {
   const limit = TIER_CONFIG.free.monthlyAiGradingLimit;
-  return `Bepul reja oyligi AI baholash limitiga (${limit} ta) yetdingiz. Ko'proq uchun /narxlar sahifasidan STANDARD rejaga o'ting.`;
+  return `Bepul reja oyligi AI baholash limitiga (${limit} ta) yetdingiz. Ko'proq uchun /pricing sahifasidan STANDARD rejaga o'ting.`;
 }

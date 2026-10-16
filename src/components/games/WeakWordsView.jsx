@@ -60,7 +60,7 @@ export default function WeakWordsView() {
           <p className="text-sm text-muted mt-1">{data.total > 0 ? t('weak.count', { n: data.total }) : t('weak.none')}</p>
         </div>
         {data.total > 0 && (
-          <Link href="/app/oyinlar/multiple_choice?mode=weak" className={buttonClasses({ variant: 'primary' })}>
+          <Link href="/app/games/multiple_choice?mode=weak" className={buttonClasses({ variant: 'primary' })}>
             <Gamepad2 size={16} aria-hidden="true" /> {t('coach.actionWeak')}
           </Link>
         )}

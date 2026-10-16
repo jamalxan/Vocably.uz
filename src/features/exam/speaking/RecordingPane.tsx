@@ -6,7 +6,7 @@ import { useExamStore } from '../state/examStore';
 import { uploadSpeakingRecording } from '../state/attemptsApi';
 
 // TZ-vocably-v2.md §19 Faza 4 item 23 — bitta Speaking javobini yozib olish.
-// MediaRecorder oqimi eski (pre-exam-engine) `/app/gapirish/page.jsx`dan
+// MediaRecorder oqimi eski (pre-exam-engine) `/app/speaking/page.jsx`dan
 // ATAYLAB deyarli aynan ko'chirilgan (getUserMedia -> MediaRecorder -> Blob ->
 // yuklash) — bu pattern allaqachon production'da sinalgan, qayta ixtiro
 // qilishning hojati yo'q. Farq: natija shu yerda ko'rsatilmaydi (AI baholash

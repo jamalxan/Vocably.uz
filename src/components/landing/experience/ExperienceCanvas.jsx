@@ -27,6 +27,10 @@ export default function ExperienceCanvas() {
   const [dpr, setDpr] = useState(1.5);
   const [ready, setReady] = useState(false);
   const [hidden, setHidden] = useState(false);
+  // Kuchsiz qurilma (dasturiy WebGL, eski GPU): DPR pasaytirilgandan keyin ham kadr tezligi past qolsa —
+  // sahna butunlay o'chiriladi (CSS veil/fallback qoladi), aks holda asosiy oqim har kadrda ~500 ms band bo'lib,
+  // sahifa umuman skroll qilinmaydi (headless Chromium o'lchovi: 13 s dan boshlab uzluksiz 500 ms long task).
+  const [disabled, setDisabled] = useState(false);
 
   useEffect(() => {
     experience.isMobile = isMobile;
@@ -55,7 +59,7 @@ export default function ExperienceCanvas() {
     };
   }, []);
 
-  if (!colors) return null;
+  if (!colors || disabled) return null;
 
   return (
     <div
@@ -75,7 +79,7 @@ export default function ExperienceCanvas() {
           requestAnimationFrame(() => setReady(true));
         }}
       >
-        <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
+        <PerformanceMonitor iterations={5} flipflops={3} onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} onFallback={() => setDisabled(true)} />
         <ExperienceScene colors={colors} lite={isMobile} reducedMotion={reducedMotion} />
       </Canvas>
     </div>

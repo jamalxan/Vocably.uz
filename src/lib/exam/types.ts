@@ -4,8 +4,8 @@
 // MUHIM: bu — exam engine (`features/exam/`, `/api/exam/attempts/*`) uchun tur
 // tizimi. Eski Everest-Mock'dan portlangan dvigatel (`./engine.ts`, `./content.ts`,
 // `/api/exam/[id]/*`, `ExamSession` mongoose modeli) TZ §20 migratsiyasi
-// YAKUNLANGANDA (2026-09-12) butunlay o'chirildi — `/app/oqish`, `/app/tinglash`,
-// `/app/yozish`, `/app/mock`, `/app/gapirish` barchasi endi shu yerdagi tur
+// YAKUNLANGANDA (2026-09-12) butunlay o'chirildi — `/app/reading`, `/app/listening`,
+// `/app/writing`, `/app/mock`, `/app/speaking` barchasi endi shu yerdagi tur
 // tizimiga ishlaydi. Shu tarixiy sabab bilan bu yerdagi tur nomlari eski
 // `engine.ts`dagi (`ExamDoc`, `SectionState`, `SectionKey`) nomlar bilan
 // ATAYLAB bir xil emas edi va hozir ham shunday qolmoqda.

@@ -13,11 +13,11 @@ describe('AI Coach (real ma\'lumotga asoslangan)', () => {
   });
   it('xato yo\'q — takrorlashga yo\'naltiradi', () => {
     const c = buildCoachMessage({ ...base, dueCount: 6 });
-    expect(c.action.href).toBe('/app/lugat/takrorlash');
+    expect(c.action.href).toBe('/app/vocabulary/review');
   });
   it("hammasi bo'sh — yangi so'zlar yoki o'yin", () => {
-    expect(buildCoachMessage({ ...base, newAvailable: 4 }).action.href).toBe('/app/lugat/kartochka');
-    expect(buildCoachMessage(base).action.href).toBe('/app/oyinlar');
+    expect(buildCoachMessage({ ...base, newAvailable: 4 }).action.href).toBe('/app/vocabulary/flashcards');
+    expect(buildCoachMessage(base).action.href).toBe('/app/games');
   });
   it('kunlik vazifalar bajarilsa — tabrik', () => {
     const c = buildCoachMessage({ ...base, dailyDone: 4 });

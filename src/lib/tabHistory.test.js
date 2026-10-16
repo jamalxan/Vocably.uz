@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { decideTabNavigation, readBase, writeBase } from './tabHistory';
 
-const ROOTS = ['/app', '/app/mashq', '/app/ai', '/app/dostlar', '/app/profil'];
-const d = (over) => decideTabNavigation({ pathname: '/app', targetHref: '/app/profil', tabRoots: ROOTS, base: null, historyLength: 5, ...over });
+const ROOTS = ['/app', '/app/practice', '/app/ai', '/app/friends', '/app/profile'];
+const d = (over) => decideTabNavigation({ pathname: '/app', targetHref: '/app/profile', tabRoots: ROOTS, base: null, historyLength: 5, ...over });
 
 describe('decideTabNavigation', () => {
   it('bosilgan tab allaqachon faol — hech narsa', () => {
     expect(d({ pathname: '/app/ai', targetHref: '/app/ai' }).action).toBe('noop');
   });
   it('Bosh sahifa -> tab: push va "ostida Bosh sahifa bor" belgisi (uzunlik +1)', () => {
-    expect(d({ pathname: '/app', targetHref: '/app/mashq', historyLength: 5 })).toEqual({ action: 'push', nextBase: { len: 6 } });
+    expect(d({ pathname: '/app', targetHref: '/app/practice', historyLength: 5 })).toEqual({ action: 'push', nextBase: { len: 6 } });
   });
   it('tab -> tab: replace, belgi saqlanadi', () => {
     const base = { len: 6 };
-    expect(d({ pathname: '/app/mashq', targetHref: '/app/ai', base, historyLength: 6 })).toEqual({ action: 'replace', nextBase: base });
+    expect(d({ pathname: '/app/practice', targetHref: '/app/ai', base, historyLength: 6 })).toEqual({ action: 'replace', nextBase: base });
   });
   it('tab -> Bosh sahifa: belgi yaroqli (uzunlik o‘zgarmagan) bo‘lsa back', () => {
     expect(d({ pathname: '/app/ai', targetHref: '/app', base: { len: 6 }, historyLength: 6 })).toEqual({ action: 'back', nextBase: null });
@@ -23,7 +23,7 @@ describe('decideTabNavigation', () => {
     expect(d({ pathname: '/app/ai', targetHref: '/app', base: null, historyLength: 6 }).action).toBe('replace');
   });
   it('ichki sahifadan tab bosilsa — oddiy push, belgi tozalanadi', () => {
-    expect(d({ pathname: '/app/lugat/jadval', targetHref: '/app/profil', base: { len: 6 }, historyLength: 7 })).toEqual({ action: 'push', nextBase: null });
+    expect(d({ pathname: '/app/vocabulary/words', targetHref: '/app/profile', base: { len: 6 }, historyLength: 7 })).toEqual({ action: 'push', nextBase: null });
   });
   it('to‘liq ssenariy: Bosh -> Mashq -> AI -> Profil -> Bosh bitta "back" bilan', () => {
     let len = 4; // dastlabki tarix
@@ -36,7 +36,7 @@ describe('decideTabNavigation', () => {
       if (r.action !== 'noop') path = target;
       return r.action;
     };
-    expect([apply('/app/mashq'), apply('/app/ai'), apply('/app/profil'), apply('/app')]).toEqual(['push', 'replace', 'replace', 'back']);
+    expect([apply('/app/practice'), apply('/app/ai'), apply('/app/profile'), apply('/app')]).toEqual(['push', 'replace', 'replace', 'back']);
   });
 });
 

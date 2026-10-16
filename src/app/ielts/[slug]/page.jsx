@@ -100,7 +100,7 @@ export default async function IeltsGuidePage(props) {
               {o.short}
             </Link>
           ))}
-          <Link href="/ielts/band-kalkulyator" className="px-3.5 py-2 rounded-xl border border-accent/40 bg-accent-soft text-sm font-semibold text-accent">
+          <Link href="/ielts/band-calculator" className="px-3.5 py-2 rounded-xl border border-accent/40 bg-accent-soft text-sm font-semibold text-accent">
             Band kalkulyatori
           </Link>
         </div>

@@ -21,7 +21,7 @@ export default function EnrichmentEmptyState({ field = 'kerakli ma\'lumot' }) {
         {pre.replace(/<b>$/, '')}<strong>{ts(field)}</strong>{post.replace(/^<\/b>/, '')}
       </p>
       <Link
-        href="/app/lugat/jadval"
+        href="/app/vocabulary/words"
         className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-glow"
       >
         <Sparkles size={15} />

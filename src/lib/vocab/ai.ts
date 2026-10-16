@@ -64,14 +64,14 @@ export function buildCoachMessage(c: CoachContext, locale: string = 'uz'): Coach
   let tone: CoachMessage['tone'] = 'greeting';
 
   if (c.recentMistakes.length > 0 || c.weakCount >= 5) {
-    action = { label: t('coach.actionWeak'), href: '/app/oyinlar/multiple_choice?mode=weak' };
+    action = { label: t('coach.actionWeak'), href: '/app/games/multiple_choice?mode=weak' };
   } else if (c.dueCount > 0) {
-    action = { label: t('coach.actionReview'), href: '/app/lugat/takrorlash' };
+    action = { label: t('coach.actionReview'), href: '/app/vocabulary/review' };
   } else if (c.newAvailable > 0) {
-    action = { label: t('coach.actionNew'), href: '/app/lugat/kartochka' };
+    action = { label: t('coach.actionNew'), href: '/app/vocabulary/flashcards' };
     parts.push(t('coach.emptyQueue'));
   } else {
-    action = { label: t('coach.actionGames'), href: '/app/oyinlar' };
+    action = { label: t('coach.actionGames'), href: '/app/games' };
   }
 
   if (c.dailyTotal > 0 && c.dailyDone >= c.dailyTotal) {

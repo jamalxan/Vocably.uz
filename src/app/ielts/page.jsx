@@ -47,7 +47,7 @@ export default function IeltsHubPage() {
       <p className="text-base text-muted mt-3 leading-7">{DESCRIPTION}</p>
 
       <Link
-        href="/ielts/band-kalkulyator"
+        href="/ielts/band-calculator"
         className="mt-6 flex items-center gap-4 p-5 rounded-2xl bg-primary text-on-primary hover:opacity-95 transition-opacity"
       >
         <span className="w-11 h-11 rounded-xl bg-accent grid place-items-center flex-shrink-0">

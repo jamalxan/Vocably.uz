@@ -44,7 +44,7 @@ function validatePassword(password, t) {
 }
 
 // VOCABLY-TZ.md §3.1 (IA): T3 muammosi tuzatilgach ("Landing page yo'q, to'g'ridan-to'g'ri
-// login") bu forma endi '/' emas, /kirish va /royxat sahifalarida yashaydi (src/app/kirish,
+// login") bu forma endi '/' emas, /login va /register sahifalarida yashaydi (src/app/kirish,
 // src/app/royxat — ikkalasi ham shu komponentni turli `initialMode` bilan chaqiradi).
 // Ichki holat faqat login<->forgot<->newPassword orasidagi bosqichlar uchun — login<->register
 // almashishi endi haqiqiy navigatsiya (Link), shuning uchun manzil satri to'g'ri ko'rsatadi
@@ -80,7 +80,7 @@ export default function AuthForm({ initialMode = 'login' }) {
   // orqali), shuning uchun bu tezkor tekshiruv endi haqiqiy tokenga emas,
   // faqat login/register muvaffaqiyatida qo'yiladigan sezgir-bo'lmagan
   // bayroqqa (`vocably_authed`) qaraydi — agar cookie muddati o'tgan bo'lsa,
-  // `/app` o'zi darhol `/kirish`ga qaytaradi (AppContext#fetchUserData 401
+  // `/app` o'zi darhol `/login`ga qaytaradi (AppContext#fetchUserData 401
   // holatini logout() orqali qayta yo'naltiradi), shuning uchun bu yerda
   // noto'g'ri bo'lib qolishi xavfsizlik oqibatiga olib kelmaydi.
   useEffect(() => {
@@ -214,7 +214,7 @@ export default function AuthForm({ initialMode = 'login' }) {
         localStorage.setItem('vocably_authed', '1');
         localStorage.setItem('username', data.name || '');
         localStorage.setItem('phone', data.phone || phone);
-        router.replace(afterAuthPath()); // replace: /kirish tarixda qolmasin (orqaga bosilsa yana /app ga sakrab, tuzoqqa tushirardi)
+        router.replace(afterAuthPath()); // replace: /login tarixda qolmasin (orqaga bosilsa yana /app ga sakrab, tuzoqqa tushirardi)
       } else {
         setStep('newPassword');
         setInfo('');
@@ -278,7 +278,7 @@ export default function AuthForm({ initialMode = 'login' }) {
       localStorage.setItem('vocably_authed', '1');
       localStorage.setItem('username', data.name || '');
       localStorage.setItem('phone', data.phone || phone);
-      router.replace(afterAuthPath()); // replace: /kirish tarixda qolmasin (orqaga bosilsa yana /app ga sakrab, tuzoqqa tushirardi)
+      router.replace(afterAuthPath()); // replace: /login tarixda qolmasin (orqaga bosilsa yana /app ga sakrab, tuzoqqa tushirardi)
     } catch (err) {
       setError(errorMessage(err, t));
     } finally {
@@ -560,7 +560,7 @@ export default function AuthForm({ initialMode = 'login' }) {
               {mode === 'login' && (
                 <>
                   {t('auth.noAccount')}{' '}
-                  <Link href="/royxat" className="py-3 text-accent font-semibold hover:text-accent-hover">
+                  <Link href="/register" className="py-3 text-accent font-semibold hover:text-accent-hover">
                     {t('auth.signUpLink')}
                   </Link>
                 </>
@@ -568,7 +568,7 @@ export default function AuthForm({ initialMode = 'login' }) {
               {mode === 'register' && (
                 <>
                   {t('auth.haveAccount')}{' '}
-                  <Link href="/kirish" className="py-3 text-accent font-semibold hover:text-accent-hover">
+                  <Link href="/login" className="py-3 text-accent font-semibold hover:text-accent-hover">
                     {t('auth.toLogin')}
                   </Link>
                 </>

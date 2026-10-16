@@ -151,7 +151,7 @@ export default function WritingPracticeSection({ attemptId, onSubmitted }: Writi
     <div data-exam="" className="min-h-dvh">
       <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-6 space-y-4">
         <Link
-          href="/app/yozish"
+          href="/app/writing"
           className="inline-flex items-center gap-1.5 min-h-11 -ml-2 px-2 rounded-lg text-sm font-semibold focus-visible:outline-none focus-visible:shadow-[var(--exam-focus-ring)]"
           style={{ color: 'var(--exam-muted)' }}
         >

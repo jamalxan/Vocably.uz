@@ -15,11 +15,11 @@
 const SKILLS = ['listening', 'reading', 'writing', 'speaking'];
 
 const SKILL_TASK = {
-  reading: { title: '1 ta Reading passage', minutes: 20, href: '/app/oqish' },
-  listening: { title: '1 ta Listening part', minutes: 10, href: '/app/tinglash' },
-  writing: { title: 'Writing Task 2 insho', minutes: 40, href: '/app/yozish' },
-  writingShort: { title: 'Writing Task 1 (grafik tavsifi)', minutes: 20, href: '/app/yozish' },
-  speaking: { title: 'Speaking: Part 2 cue card', minutes: 10, href: '/app/gapirish' },
+  reading: { title: '1 ta Reading passage', minutes: 20, href: '/app/reading' },
+  listening: { title: '1 ta Listening part', minutes: 10, href: '/app/listening' },
+  writing: { title: 'Writing Task 2 insho', minutes: 40, href: '/app/writing' },
+  writingShort: { title: 'Writing Task 1 (grafik tavsifi)', minutes: 20, href: '/app/writing' },
+  speaking: { title: 'Speaking: Part 2 cue card', minutes: 10, href: '/app/speaking' },
 };
 
 export function weakestSkill(skillBands = {}) {
@@ -64,12 +64,12 @@ export function buildDailyPlan(p) {
       key: 'review',
       title: `${reviewCount} ta so‘zni takrorlash`,
       minutes: Math.max(5, Math.round(reviewCount / 4)),
-      href: '/app/lugat/takrorlash',
+      href: '/app/vocabulary/review',
       done: (p.reviewsToday || 0) >= reviewCount,
     });
   } else if ((p.newAvailable || 0) > 0) {
     const n = minutes >= 45 ? 20 : 10;
-    tasks.push({ key: 'new', title: `${n} ta yangi so‘z o‘rganish`, minutes: Math.round(n / 2), href: '/app/lugat/kartochka', done: false });
+    tasks.push({ key: 'new', title: `${n} ta yangi so‘z o‘rganish`, minutes: Math.round(n / 2), href: '/app/vocabulary/flashcards', done: false });
   }
 
   // 2. Mistakes
@@ -78,7 +78,7 @@ export function buildDailyPlan(p) {
       key: 'mistakes',
       title: `Xatolardan ${Math.min(p.mistakeWordsDue, 15)} ta so‘z`,
       minutes: 5,
-      href: '/app/xatolar',
+      href: '/app/mistakes',
       done: false,
     });
   }

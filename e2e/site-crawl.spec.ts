@@ -4,7 +4,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { E2E_ADMIN_PHONE, E2E_PHONE, E2E_TEACHER_PHONE } from './global-setup';
+import {
+  E2E_ADMIN_PHONE, E2E_CLASSROOM_ID, E2E_CONVERSATION_ID, E2E_FRIEND_USERNAME, E2E_FULL_TITLE, E2E_PHONE, E2E_TEACHER_PHONE, E2E_WORD_ID,
+} from './global-setup';
 import { loginAs } from './auth';
 
 // E2E_LANG=ru — barcha sahifalar ruscha rejimda (cookie) ko'riladi; xom i18n kalitlari va o'zbekcha qoldiqlar hisobotga tushadi.
@@ -26,7 +28,7 @@ const pageFiles: string[] = [];
 
 // Fayl yo'li -> URL (route guruhlari "(x)" tushiriladi). Dinamik segmentli sahifalar alohida namunalar bilan.
 const SAMPLES: Record<string, string> = {
-  '/oyinlar/[game]': '/app/oyinlar/multiple_choice',
+  '/oyinlar/[game]': '/app/games/multiple_choice',
   '/dashboard/[[...segments]]': '/dashboard',
 };
 const urls: string[] = [];
@@ -45,7 +47,39 @@ for (const f of pageFiles) {
 const { SEO_WORDS } = require('../src/lib/seoWords');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { BLOG_POSTS } = require('../src/lib/blogPosts');
-urls.push(`/lugat/${SEO_WORDS[0].slug}`, `/blog/${BLOG_POSTS[0].slug}`);
+urls.push(`/dictionary/${SEO_WORDS[0].slug}`, `/blog/${BLOG_POSTS[0].slug}`);
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { IELTS_GUIDES } = require('../src/lib/seo/ieltsGuides');
+for (const g of IELTS_GUIDES) urls.push(`/ielts/${g.slug}`);
+// Har bir o'yin sahifasi (kalitlar games.ts'dan — yangi o'yin qo'shilsa avtomatik kiradi).
+const GAME_KEYS = [...fs.readFileSync(path.resolve('src/lib/vocab/games.ts'), 'utf-8').matchAll(/^\s{4}key: '(\w+)'/gm)].map((m) => m[1]);
+for (const k of GAME_KEYS) urls.push(`/app/games/${k}`);
+// global-setup'da belgilangan ID bilan yaratilgan yozuvlar.
+urls.push(`/app/vocabulary/word/${E2E_WORD_ID}`, `/app/friends/${E2E_FRIEND_USERNAME}`, `/admin/c/${E2E_CONVERSATION_ID}`, `/teacher/classrooms/${E2E_CLASSROOM_ID}`);
+
+// Imtihon urinishi sahifalari: urinish test vaqtida API orqali (to'rt bo'limli E2E testda) yaratiladi.
+const ATTEMPT_PAGES: { prefix: string; section: string; mode: 'section' | 'practice' }[] = [
+  { prefix: '/app/reading/', section: 'reading', mode: 'section' },
+  { prefix: '/app/reading/practice/', section: 'reading', mode: 'practice' },
+  { prefix: '/app/listening/', section: 'listening', mode: 'section' },
+  { prefix: '/app/listening/practice/', section: 'listening', mode: 'practice' },
+  { prefix: '/app/writing/', section: 'writing', mode: 'section' },
+  { prefix: '/app/writing/practice/', section: 'writing', mode: 'practice' },
+  { prefix: '/app/speaking/', section: 'speaking', mode: 'section' },
+];
+
+async function attemptUrls(page: Page): Promise<string[]> {
+  const { tests } = await (await page.request.get('/api/exam/tests')).json();
+  const full = tests.find((t: any) => t.title === E2E_FULL_TITLE);
+  expect(full, "to'rt bo'limli E2E test ro'yxatda bo'lishi kerak").toBeTruthy();
+  const out: string[] = [];
+  for (const a of ATTEMPT_PAGES) {
+    const res = await page.request.post('/api/exam/attempts', { data: { testId: full.id, section: a.section, mode: a.mode, abandonExisting: true } });
+    expect(res.ok(), `${a.prefix}: ${await res.text()}`).toBeTruthy();
+    out.push(a.prefix + (await res.json()).attemptId);
+  }
+  return out;
+}
 
 const groupOf = (u: string): Group => (u.startsWith('/admin') ? 'admin' : u.startsWith('/teacher') ? 'teacher' : u.startsWith('/app') || u.startsWith('/dashboard') ? 'user' : 'guest');
 const byGroup: Record<Group, string[]> = { guest: [], user: [], admin: [], teacher: [] };
@@ -81,6 +115,9 @@ async function visit(page: Page, url: string, findings: Finding[]) {
     if (resp && resp.status() >= 500) add('http5xx', `${resp.status()} (sahifa)`);
     await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => add('slow', 'networkidle 20 s ichida kelmadi'));
     await page.waitForTimeout(400);
+    // Klient sahifalar (AppShell/admin) avval "Yuklanmoqda…" holatini ko'rsatadi — h1 tekshiruvi shu holatda
+    // o'lchanmasin (aks holda natija har yugurishda boshqacha chiqadi). Haqiqatan h1'siz sahifa faqat 8 s kutadi.
+    await page.waitForSelector('h1', { state: 'attached', timeout: 8_000 }).catch(() => {});
     // dev'dagi Fast Refresh / kech redirect sahifani qayta yuklashi mumkin ("Execution context was destroyed") — bir marta kutib qayta uriniladi.
     const evalInfo = () => page.evaluate((ru) => {
       const de = document.documentElement;
@@ -128,6 +165,7 @@ for (const group of ['guest', 'user', 'admin', 'teacher'] as Group[]) {
     if (group === 'admin') await loginAs(page, E2E_ADMIN_PHONE);
     if (group === 'teacher') await loginAs(page, E2E_TEACHER_PHONE);
     const findings: Finding[] = [];
+    if (group === 'user') byGroup.user.push(...(await attemptUrls(page)));
     for (const url of byGroup[group]) await visit(page, url, findings);
 
     fs.mkdirSync('test-results', { recursive: true });

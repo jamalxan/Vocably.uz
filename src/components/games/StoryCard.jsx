@@ -50,7 +50,7 @@ export default function StoryCard() {
         <div role="alert" className="mt-4 text-sm text-danger flex flex-wrap items-center gap-3">
           <span>{error.message}</span>
           {error.upgrade && (
-            <Link href="/narxlar" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+            <Link href="/pricing" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
               {t('story.plans')}
             </Link>
           )}

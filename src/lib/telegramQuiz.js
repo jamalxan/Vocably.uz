@@ -130,7 +130,7 @@ export async function handleQuizCallback(chatId, messageId, data, now = new Date
     await sendMessage(chatId, q.text, { reply_markup: q.reply_markup });
   } else {
     await sendMessage(chatId, `🏁 Natija: <b>${next.score}/${quiz.items.length}</b>. ${next.score === quiz.items.length ? 'Zo‘r!' : 'Ertaga yana davom etamiz.'}\nSeriya: ${user.reviewStreak || 0} kun 🔥`, {
-      reply_markup: { inline_keyboard: [[{ text: 'Ilovada davom etish', url: `${APP()}/app/lugat/takrorlash` }]] },
+      reply_markup: { inline_keyboard: [[{ text: 'Ilovada davom etish', url: `${APP()}/app/vocabulary/review` }]] },
     });
   }
   return correct ? 'To‘g‘ri!' : 'Noto‘g‘ri';

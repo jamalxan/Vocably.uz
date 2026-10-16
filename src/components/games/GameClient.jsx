@@ -13,7 +13,7 @@ import { TouchJoystick } from './world/TouchJoystick';
 import { BRIDGE, DOCK, PORTALS, SHORE, SPAWN, VILLAGE } from './world/worldLayout';
 
 /* Vocabulary World — 3D hub. Portallar mavjud server-authoritative o'yinlarga
-   (/app/oyinlar/:key) olib boradi: savollar, ball, XP va kunlik limit o'sha yerda
+   (/app/games/:key) olib boradi: savollar, ball, XP va kunlik limit o'sha yerda
    hisoblanadi. Bu yerda klient hech qanday XP/ball o'zi yozmaydi. */
 
 class CanvasErrorBoundary extends Component {
@@ -94,7 +94,7 @@ function WorldFallback({ games, ts, t }) {
             return (
               <li key={p.key}>
                 <Link
-                  href={`/app/oyinlar/${p.key}`}
+                  href={`/app/games/${p.key}`}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
                 >
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: p.color }} aria-hidden="true" />
@@ -149,7 +149,7 @@ export default function GameClient() {
   const lockedReason = activeGame ? ts(!activeGame.unlocked ? activeGame.lockedReason : activeGame.unavailableReason) : '';
 
   const enterPortal = useCallback(() => {
-    if (activePortal) router.push(`/app/oyinlar/${activePortal.key}`);
+    if (activePortal) router.push(`/app/games/${activePortal.key}`);
   }, [activePortal, router]);
 
   const handleNearPortalChange = useCallback((key) => {
@@ -255,7 +255,7 @@ export default function GameClient() {
           </div>
         )}
         <Link
-          href="/app/oyinlar"
+          href="/app/games"
           className="bg-slate-900/80 hover:bg-slate-800 backdrop-blur-md border border-white/20 p-2.5 rounded-2xl text-white shadow-xl transition-transform active:scale-95 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
           aria-label={t('world.exit')}
           title={t('world.exit')}

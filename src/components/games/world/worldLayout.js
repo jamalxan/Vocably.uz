@@ -13,7 +13,7 @@ export const SPAWN = { x: 0, z: 19 };
 
 export const PORTAL_RADIUS = 2.8;
 
-// Har bir portal mavjud, server-authoritative o'yinga (/app/oyinlar/:key) olib boradi —
+// Har bir portal mavjud, server-authoritative o'yinga (/app/games/:key) olib boradi —
 // ball, XP, kunlik limit va anti-cheat o'sha yerda hisoblanadi.
 export const PORTALS = [
   { key: 'memory', title: 'Xotira kartalari', x: -7, z: 12, color: '#00f0b5', shape: 'torus' },

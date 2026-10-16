@@ -7,10 +7,10 @@ import { useT } from '@/context/LocaleContext';
 // per skill so the estimate is explainable ("based on 2 of 4 skills").
 // Presentational only — all data arrives in the single /api/dashboard call.
 const SKILLS = [
-  { key: 'listening', label: 'Listening', Icon: Headphones, href: '/app/tinglash' },
-  { key: 'reading', label: 'Reading', Icon: BookOpen, href: '/app/oqish' },
-  { key: 'writing', label: 'Writing', Icon: PenLine, href: '/app/yozish' },
-  { key: 'speaking', label: 'Speaking', Icon: Mic, href: '/app/gapirish' },
+  { key: 'listening', label: 'Listening', Icon: Headphones, href: '/app/listening' },
+  { key: 'reading', label: 'Reading', Icon: BookOpen, href: '/app/reading' },
+  { key: 'writing', label: 'Writing', Icon: PenLine, href: '/app/writing' },
+  { key: 'speaking', label: 'Speaking', Icon: Mic, href: '/app/speaking' },
 ];
 
 function bandPct(band) {
@@ -34,7 +34,7 @@ export default function ExamPrepCard({ examPrep }) {
           {targetBand != null ? (
             <p className="text-xl font-bold text-ink tabular-nums">{targetBand.toFixed(1)}</p>
           ) : (
-            <Link href="/app/profil" className="text-xs text-accent font-semibold hover:underline">
+            <Link href="/app/profile" className="text-xs text-accent font-semibold hover:underline">
               {t('dash.setInProfile')}
             </Link>
           )}

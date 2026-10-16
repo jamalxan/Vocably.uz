@@ -1,6 +1,6 @@
 // Adds the Speaking section (Part 1 / Part 2 cue card / Part 3) to the 4
 // published Vocably Practice Tests that were seeded without one (audit N-04:
-// "/app/gapirish — Hozircha testlar yo'q"). Non-destructive: only sets
+// "/app/speaking — Hozircha testlar yo'q"). Non-destructive: only sets
 // `sections.speaking` where it is missing, never replaces the test document,
 // so admin-edited fields (rights metadata, availability, mock flags) survive.
 //   node --env-file=.env.local scripts/backfill-speaking-sections.mjs

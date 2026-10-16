@@ -6,7 +6,7 @@ import LandingHeader from '@/components/landing/LandingHeader';
 export const metadata = {
   title: "Ingliz tili so'zlari lug'ati — Vocably",
   description: "Ingliz tilidagi eng foydali so'zlarning tarjimasi, talaffuzi va misol jumlalari. Har bir so'z uchun batafsil sahifa.",
-  alternates: { canonical: '/lugat' },
+  alternates: { canonical: '/dictionary' },
 };
 
 // Ochiq, statik SEO indeks — src/lib/seoWords.js'dagi izohga q. (foydalanuvchi
@@ -22,7 +22,7 @@ export default function LugatIndexPage() {
           {SEO_WORDS.map((w) => (
             <Link
               key={w.slug}
-              href={`/lugat/${w.slug}`}
+              href={`/dictionary/${w.slug}`}
               className="flex items-center justify-between gap-2 p-4 bg-surface border border-border rounded-2xl shadow-card hover:shadow-premium hover:-translate-y-0.5 transition-all duration-200"
             >
               <div className="min-w-0">

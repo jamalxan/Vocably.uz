@@ -76,7 +76,7 @@ export async function coachForUser(user, now = new Date(), locale = 'uz') {
 async function aiGate(user) {
   const tier = tierOf(user);
   if (!TIER_VOCAB_LIMITS[tier].aiExercises) {
-    throw new ServiceError(403, "AI mashqlar va hikoyalar Premium rejada ochiladi. /narxlar sahifasidan tarifni yangilang.", 'tier');
+    throw new ServiceError(403, "AI mashqlar va hikoyalar Premium rejada ochiladi. /pricing sahifasidan tarifni yangilang.", 'tier');
   }
   const quota = AI_DAILY_QUOTA[tier];
   if (quota != null) {

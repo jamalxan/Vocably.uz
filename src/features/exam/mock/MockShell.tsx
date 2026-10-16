@@ -257,7 +257,7 @@ export default function MockShell({ testId, candidateName }: MockShellProps) {
       <div className="mx-auto max-w-md p-8 text-center text-sm">
         <p className="text-ink leading-relaxed">{t(previewError)}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
-          <Link href="/app/mashq" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-accent font-semibold text-on-accent hover:bg-accent-hover">
+          <Link href="/app/practice" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-accent font-semibold text-on-accent hover:bg-accent-hover">
             {t('mk.bySkill')}
           </Link>
           <Link href="/app" className="inline-flex items-center min-h-11 px-2 font-semibold text-accent hover:underline">

@@ -11,7 +11,7 @@ import { approvePayment } from './approve';
 export function clickCheckoutUrl(request) {
   const cfg = clickConfig();
   if (!cfg) return null;
-  const back = `${(process.env.APP_URL || 'https://vocably.uz').replace(/\/$/, '')}/app/tolov?paid=${request._id}`;
+  const back = `${(process.env.APP_URL || 'https://vocably.uz').replace(/\/$/, '')}/app/billing?paid=${request._id}`;
   const q = new URLSearchParams({
     service_id: cfg.serviceId,
     merchant_id: cfg.merchantId,

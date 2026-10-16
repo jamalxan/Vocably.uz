@@ -41,16 +41,16 @@ import {
   BookMarked,
 } from 'lucide-react';
 
-// Ko'nikma bo'limlari — /app/mashq menyusida va desktop sidebar'da ishlatiladi.
+// Ko'nikma bo'limlari — /app/practice menyusida va desktop sidebar'da ishlatiladi.
 export const SKILL_SECTIONS = [
-  { key: 'lugat', label: 'Vocabulary', href: '/app/lugat', icon: Layers, matchPrefix: true, description: "So'z boyligi va SRS takrorlash" },
-  { key: 'oyinlar', label: 'Games', href: '/app/oyinlar', icon: Gamepad2, matchPrefix: true, description: "Lug'at o'yinlari, kunlik reja va vazifalar" },
-  { key: 'oqish', label: 'Reading', href: '/app/oqish', icon: BookOpenText, matchPrefix: true, description: 'Reading — matn va tushunish savollari' },
-  { key: 'tinglash', label: 'Listening', href: '/app/tinglash', icon: Ear, matchPrefix: true, description: 'Listening — audio va tushunish savollari' },
-  { key: 'gapirish', label: 'Speaking', href: '/app/gapirish', icon: Mic, matchPrefix: true, description: 'Speaking — ovozli javob va AI baho' },
-  { key: 'yozish-skill', label: 'Writing', href: '/app/yozish', icon: PenLine, matchPrefix: true, description: 'Writing — insho va AI baho' },
+  { key: 'lugat', label: 'Vocabulary', href: '/app/vocabulary', icon: Layers, matchPrefix: true, description: "So'z boyligi va SRS takrorlash" },
+  { key: 'oyinlar', label: 'Games', href: '/app/games', icon: Gamepad2, matchPrefix: true, description: "Lug'at o'yinlari, kunlik reja va vazifalar" },
+  { key: 'oqish', label: 'Reading', href: '/app/reading', icon: BookOpenText, matchPrefix: true, description: 'Reading — matn va tushunish savollari' },
+  { key: 'tinglash', label: 'Listening', href: '/app/listening', icon: Ear, matchPrefix: true, description: 'Listening — audio va tushunish savollari' },
+  { key: 'gapirish', label: 'Speaking', href: '/app/speaking', icon: Mic, matchPrefix: true, description: 'Speaking — ovozli javob va AI baho' },
+  { key: 'yozish-skill', label: 'Writing', href: '/app/writing', icon: PenLine, matchPrefix: true, description: 'Writing — insho va AI baho' },
   { key: 'mock', label: 'Mock exam', href: '/app/mock', icon: Target, matchPrefix: true, description: "To'liq 4 bo'limli sinov imtihoni" },
-  { key: 'xatolar', label: 'Mistakes', href: '/app/xatolar', icon: BookX, matchPrefix: true, description: "Xatolar daftari — xato javoblar va ulardagi so'zlarni takrorlash" },
+  { key: 'xatolar', label: 'Mistakes', href: '/app/mistakes', icon: BookX, matchPrefix: true, description: "Xatolar daftari — xato javoblar va ulardagi so'zlarni takrorlash" },
 ];
 
 // Desktop sidebar / planshet rail — joy yetarli, hammasi alohida ko'rinadi.
@@ -59,13 +59,13 @@ export const SIDEBAR_NAV = [
   ...SKILL_SECTIONS,
   // "AI" ATAYLAB yo'q — o'ng-pastdagi suzuvchi AI tugmasi (AppShell) yetarli,
   // ikkalasi bir vaqtda bo'lishi ortiqcha edi (2026-09-10 foydalanuvchi so'rovi).
-  { key: 'reyting', label: 'Leaderboard', href: '/app/reyting', icon: Trophy },
-  { key: 'dostlar', label: 'Friends', href: '/app/dostlar', icon: Users, matchPrefix: true, requiresChatAccess: true },
+  { key: 'reyting', label: 'Leaderboard', href: '/app/leaderboard', icon: Trophy },
+  { key: 'dostlar', label: 'Friends', href: '/app/friends', icon: Users, matchPrefix: true, requiresChatAccess: true },
   // TCH-01/02 — faqat role === 'teacher' bo'lgan foydalanuvchilarga ko'rinadi
   // (AppShell.jsx'dagi `chatRole` filtri). Mobil pastki tab-bar'ga ATAYLAB
   // qo'shilmadi — u qat'iy 5 joy bilan cheklangan (pastdagi BOTTOM_NAV izohi).
   { key: 'teacher', label: 'Teacher panel', href: '/teacher', icon: GraduationCap, matchPrefix: true, requiresTeacherRole: true },
-  { key: 'profil', label: 'Profile', href: '/app/profil', icon: User },
+  { key: 'profil', label: 'Profile', href: '/app/profile', icon: User },
 ];
 
 // Mobil pastki tab bar — 5 ta joy (TZ 3.2). "Mashq" barcha ko'nikma bo'limlarini
@@ -76,35 +76,36 @@ export const BOTTOM_NAV = [
   {
     key: 'mashq',
     label: 'Practice',
-    href: '/app/mashq',
+    href: '/app/practice',
     icon: Dumbbell,
     matchPrefix: true,
     matchAny: SKILL_SECTIONS.map((s) => s.href),
   },
   { key: 'ai', label: 'AI', href: '/app/ai', icon: Sparkles },
-  { key: 'dostlar', label: 'Friends', href: '/app/dostlar', icon: Users, matchPrefix: true, requiresChatAccess: true },
-  { key: 'profil', label: 'Profile', href: '/app/profil', icon: User },
+  { key: 'dostlar', label: 'Friends', href: '/app/friends', icon: Users, matchPrefix: true, requiresChatAccess: true },
+  { key: 'profil', label: 'Profile', href: '/app/profile', icon: User },
 ];
 
-// Lug'at ichidagi rejimlar — Lug'at'ning o'z sahifasida menyu sifatida,
+// Lug'at ichidagi rejimlar — Lug'at'ning o'z sahifasida menyu sifatida (group: 'study' = faqat shu
+// bo'limda bor o'rganish usullari, 'drill' = ballsiz tez mashqlar; XP'li ko'rinishi /app/games'da),
 // desktop Sidebar'da "LUG'AT" bo'limi ostida ro'yxat sifatida ko'rinadi.
 export const LUGAT_MODES = [
-  { key: 'jadval', label: 'Word list', href: '/app/lugat/jadval', icon: BookOpen, description: "So'zlar ro'yxati va boshqaruvi" },
-  { key: 'takrorlash', label: 'Daily review', href: '/app/lugat/takrorlash', icon: RotateCw, description: "SRS navbati bo'yicha takrorlash" },
-  { key: 'kartochka', label: 'Flashcards', href: '/app/lugat/kartochka', icon: Layers, description: 'Aylantirib yodlash' },
-  { key: 'test', label: 'Quiz', href: '/app/lugat/test', icon: ListChecks, description: "Ko'p variantli savollar" },
-  { key: 'yozish', label: 'Spelling', href: '/app/lugat/yozish', icon: Edit3, description: "So'zni yozib mashq qilish" },
-  { key: 'juftlik', label: 'Match pairs', href: '/app/lugat/juftlik', icon: Grid, description: "Xotira o'yini" },
-  { key: 'tezkor', label: 'Speed round', href: '/app/lugat/tezkor', icon: Zap, description: 'Vaqt bilan tez javob' },
-  { key: 'tinglab-yozish', label: 'Dictation', href: '/app/lugat/tinglab-yozish', icon: Headphones, description: 'Audio orqali yozish' },
-  { key: 'cloze', label: 'In context', href: '/app/lugat/cloze', icon: PenSquare, description: "Jumladagi bo'sh joyni to'ldirish" },
-  { key: 'kollokatsiya', label: 'Collocations', href: '/app/lugat/kollokatsiya', icon: Link2, description: "To'g'ri sherik so'zni tanlash" },
-  { key: 'soz-oilasi', label: 'Word family', href: '/app/lugat/soz-oilasi', icon: GitBranch, description: "Bir o'zakdan turkumlarni ajratish" },
-  { key: 'jumla-qurish', label: 'Sentence builder', href: '/app/lugat/jumla-qurish', icon: Rows, description: "So'zlardan jumla yig'ish" },
-  { key: 'mnemonika', label: 'Mnemonics', href: '/app/lugat/mnemonika', icon: Lightbulb, description: "O'z eslab qolish usulingizni yozing" },
-  { key: 'antonim', label: 'Antonym battle', href: '/app/lugat/antonim', icon: Swords, description: "Qarama-qarshi so'zni tez topish" },
-  { key: 'zaif-sozlar', label: 'Weak words', href: '/app/lugat/zaif-sozlar', icon: Crosshair, description: "Xato qilingan so'zlar va sabablari" },
-  { key: 'kutubxona', label: 'Library', href: '/app/lugat/kutubxona', icon: BookMarked, description: "Tekshirilgan so'zlar to'plami — lug'atga qo'shing" },
+  { key: 'jadval', label: 'Word list', group: 'study', href: '/app/vocabulary/words', icon: BookOpen, description: "So'zlar ro'yxati va boshqaruvi" },
+  { key: 'takrorlash', label: 'Daily review', group: 'study', href: '/app/vocabulary/review', icon: RotateCw, description: "SRS navbati bo'yicha takrorlash" },
+  { key: 'kartochka', label: 'Flashcards', group: 'study', href: '/app/vocabulary/flashcards', icon: Layers, description: 'Aylantirib yodlash' },
+  { key: 'test', label: 'Quiz', group: 'drill', href: '/app/vocabulary/quiz', icon: ListChecks, description: "Ko'p variantli savollar" },
+  { key: 'yozish', label: 'Spelling', group: 'drill', href: '/app/vocabulary/spelling', icon: Edit3, description: "So'zni yozib mashq qilish" },
+  { key: 'juftlik', label: 'Match pairs', group: 'drill', href: '/app/vocabulary/match', icon: Grid, description: "Xotira o'yini" },
+  { key: 'tezkor', label: 'Speed round', group: 'drill', href: '/app/vocabulary/speed', icon: Zap, description: 'Vaqt bilan tez javob' },
+  { key: 'tinglab-yozish', label: 'Dictation', group: 'drill', href: '/app/vocabulary/dictation', icon: Headphones, description: 'Audio orqali yozish' },
+  { key: 'cloze', label: 'In context', group: 'drill', href: '/app/vocabulary/context', icon: PenSquare, description: "Jumladagi bo'sh joyni to'ldirish" },
+  { key: 'kollokatsiya', label: 'Collocations', group: 'drill', href: '/app/vocabulary/collocations', icon: Link2, description: "To'g'ri sherik so'zni tanlash" },
+  { key: 'soz-oilasi', label: 'Word family', group: 'drill', href: '/app/vocabulary/word-family', icon: GitBranch, description: "Bir o'zakdan turkumlarni ajratish" },
+  { key: 'jumla-qurish', label: 'Sentence builder', group: 'drill', href: '/app/vocabulary/sentence-builder', icon: Rows, description: "So'zlardan jumla yig'ish" },
+  { key: 'mnemonika', label: 'Mnemonics', group: 'study', href: '/app/vocabulary/mnemonics', icon: Lightbulb, description: "O'z eslab qolish usulingizni yozing" },
+  { key: 'antonim', label: 'Antonym battle', group: 'drill', href: '/app/vocabulary/antonyms', icon: Swords, description: "Qarama-qarshi so'zni tez topish" },
+  { key: 'zaif-sozlar', label: 'Weak words', group: 'study', href: '/app/vocabulary/weak-words', icon: Crosshair, description: "Xato qilingan so'zlar va sabablari" },
+  { key: 'kutubxona', label: 'Library', group: 'study', href: '/app/vocabulary/library', icon: BookMarked, description: "Tekshirilgan so'zlar to'plami — lug'atga qo'shing" },
 ];
 
 // href aynan yoki prefiks sifatida (yoki matchAny ro'yxatidagilardan biri prefiks

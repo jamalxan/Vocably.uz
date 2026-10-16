@@ -142,5 +142,5 @@ export function dueNotice(user, now = new Date(), { tierLabel = (t) => t } = {})
     };
   }
   if (!notice || sent.has(notice.key)) return null;
-  return { ...notice, status: state.status, link: '/narxlar' };
+  return { ...notice, status: state.status, link: '/pricing' };
 }

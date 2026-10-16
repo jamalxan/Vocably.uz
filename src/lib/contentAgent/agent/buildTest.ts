@@ -99,7 +99,7 @@ function buildSpeaking(speaking: SpeakingSectionOutput): SpeakingSection {
 
 /** Faqat HAQIQATDA topilgan bo'limlar qo'shiladi — bo'sh bo'lim (masalan
  * kitobda Speaking yo'q) hech qachon "bo'sh qobiq" sifatida yozilmaydi,
- * aks holda `/app/gapirish` ro'yxatida mazmunsiz test paydo bo'lardi. */
+ * aks holda `/app/speaking` ro'yxatida mazmunsiz test paydo bo'lardi. */
 export function buildSections(parsed: ParsedSections) {
   const sections: {
     reading?: ReadingSection;

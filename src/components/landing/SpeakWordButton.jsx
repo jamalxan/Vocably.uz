@@ -2,7 +2,7 @@
 import { Volume2 } from 'lucide-react';
 import { speakText } from '@/lib/speech';
 
-// /lugat/[word] server komponent — talaffuz tugmasi onClick talab qilgani
+// /dictionary/[word] server komponent — talaffuz tugmasi onClick talab qilgani
 // uchun shu kichik client "island" ga ajratilgan (qolgan sahifa to'liq statik
 // qoladi, generateStaticParams orqali build vaqtida generatsiya qilinadi).
 export default function SpeakWordButton({ word }) {

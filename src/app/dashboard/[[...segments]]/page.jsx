@@ -12,7 +12,7 @@ export default async function LegacyDashboardRedirect(props) {
 
   if (list[0] === 'friends') {
     const rest = list.slice(1);
-    redirect(rest.length ? `/app/dostlar/${rest.join('/')}` : '/app/dostlar');
+    redirect(rest.length ? `/app/friends/${rest.join('/')}` : '/app/friends');
   }
   redirect('/app');
 }

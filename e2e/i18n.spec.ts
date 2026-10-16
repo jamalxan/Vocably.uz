@@ -6,7 +6,7 @@ import { loginAs } from './auth';
 test('til Sozlamalarda almashadi, qayta yuklanganda saqlanadi, <html lang> mos, orqaga uz', async ({ page, context }) => {
   test.setTimeout(420_000); // to'rt sahifa ketma-ket — sovuq dev serverda har biri alohida kompilyatsiya qilinadi
   await loginAs(page, E2E_PHONE);
-  await page.goto('/app/profil');
+  await page.goto('/app/profile');
   await page.getByRole('button', { name: 'Sozlamalar' }).click();
   const dialog = page.getByRole('dialog', { name: 'Sozlamalar' });
   await expect(dialog).toBeVisible({ timeout: 60_000 });
@@ -20,7 +20,7 @@ test('til Sozlamalarda almashadi, qayta yuklanganda saqlanadi, <html lang> mos, 
   expect(cookie?.value).toBe('ru');
 
   // Mashq sahifasi va yangi kartalar ruscha (qayta yuklashdan keyin ham)
-  await page.goto('/app/mashq');
+  await page.goto('/app/practice');
   await expect(page.getByRole('heading', { name: 'Практика' })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText('Над каким навыком будете работать?')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Офлайн-повторение' })).toBeVisible();
@@ -28,11 +28,11 @@ test('til Sozlamalarda almashadi, qayta yuklanganda saqlanadi, <html lang> mos, 
   await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
 
   // O'yinlar markazidagi hikoya kartasi ham ruscha
-  await page.goto('/app/oyinlar');
+  await page.goto('/app/games');
   await expect(page.getByRole('region', { name: 'ИИ-рассказ' })).toBeVisible({ timeout: 60_000 });
 
   // Orqaga o'zbekchaga
-  await page.goto('/app/profil');
+  await page.goto('/app/profile');
   await page.getByRole('button', { name: /Настройки/ }).click();
   await page.getByRole('dialog', { name: 'Настройки' }).getByRole('button', { name: "O'zbekcha" }).click();
   await expect(page.getByRole('dialog', { name: 'Sozlamalar' })).toBeVisible();
@@ -40,7 +40,7 @@ test('til Sozlamalarda almashadi, qayta yuklanganda saqlanadi, <html lang> mos, 
 });
 
 test('kirish/ro‘yxat sahifasi: tizimga kirmasdan til tanlanadi, forma va xatolar ruscha', async ({ page }) => {
-  await page.goto('/kirish');
+  await page.goto('/login');
   await expect(page.getByRole('heading', { name: 'Tizimga kirish' })).toBeVisible({ timeout: 60_000 });
   await page.getByRole('button', { name: 'Русский' }).click();
   await expect(page.getByRole('heading', { name: 'Вход в систему' })).toBeVisible();
@@ -52,7 +52,7 @@ test('kirish/ro‘yxat sahifasi: tizimga kirmasdan til tanlanadi, forma va xatol
   // Parolni tiklash bosqichi va ro'yxatdan o'tish sahifasi ham ruscha (til cookie'da saqlanadi)
   await page.getByRole('button', { name: 'Забыли пароль?' }).click();
   await expect(page.getByRole('heading', { name: 'Восстановление пароля' })).toBeVisible();
-  await page.goto('/royxat');
+  await page.goto('/register');
   await expect(page.getByRole('heading', { name: 'Регистрация' })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText('Нет аккаунта?')).toHaveCount(0); // faqat kirish sahifasida
   await expect(page.getByText('Уже есть аккаунт?')).toBeVisible();
@@ -63,7 +63,7 @@ test('o‘yinlar markazi ruscha: sarlavhalar, server matnlari (o‘yin/daraja/va
   test.setTimeout(420_000);
   await loginAs(page, E2E_PHONE);
   await context.addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
-  await page.goto('/app/oyinlar');
+  await page.goto('/app/games');
   await expect(page.getByRole('heading', { name: 'Ваш путь по словарю' })).toBeVisible({ timeout: 90_000 });
   // Statik sarlavhalar
   for (const h of ['План на сегодня', 'Игры', 'Достижения', 'Этапы освоения']) {
@@ -117,7 +117,7 @@ test('o‘yin oqimi ruscha: sozlama → savollar → natija ekrani', async ({ pa
   test.setTimeout(420_000);
   await loginAs(page, E2E_PHONE);
   await context.addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
-  await page.goto('/app/oyinlar/multiple_choice');
+  await page.goto('/app/games/multiple_choice');
   await expect(page.getByRole('heading', { name: 'Тест с вариантами ответа' })).toBeVisible({ timeout: 90_000 }); // server nomi tarjima qilingan
   await expect(page.getByText('Сложность', { exact: true })).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Авто (рекомендуется)' })).toBeVisible();
@@ -146,24 +146,24 @@ test('Lug‘at bo‘limi ruscha: menyu, jadval, test rejimi, takrorlash holati',
   await loginAs(page, E2E_PHONE);
   await context.addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
 
-  await page.goto('/app/lugat');
+  await page.goto('/app/vocabulary');
   await expect(page.getByRole('heading', { name: 'Словарь' })).toBeVisible({ timeout: 90_000 });
   await expect(page.getByText('В каком режиме хотите заниматься?')).toBeVisible();
   await expect(page.getByText('Игра на память')).toBeVisible();
   await expect(page.getByText('Категории', { exact: true })).toBeVisible(); // CategorySwitcher
 
-  await page.goto('/app/lugat/jadval');
+  await page.goto('/app/vocabulary/words');
   await expect(page.getByText('Новое слово', { exact: true })).toBeVisible({ timeout: 90_000 });
   await expect(page.getByRole('columnheader', { name: 'Слово' })).toBeVisible();
   if (!isMobile) await expect(page.getByRole('columnheader', { name: 'Синонимы / переводы' })).toBeVisible(); // mobilda ustun yashirin
   await expect(page.getByPlaceholder('Поиск по слову или переводам...')).toBeVisible();
 
-  await page.goto('/app/lugat/takrorlash');
+  await page.goto('/app/vocabulary/review');
   await expect(page.getByText('Просмотрено сегодня')).toBeVisible({ timeout: 90_000 });
   // Navbat holatiga qarab: bo'sh xabar YOKI karta ("Нажмите, чтобы увидеть")
   await expect(page.getByText('На сегодня слов для повторения не осталось!').or(page.getByText(/Нажмите, чтобы увидеть/))).toBeVisible();
 
-  await page.goto('/app/lugat/test');
+  await page.goto('/app/vocabulary/quiz');
   await expect(page.getByRole('heading', { name: 'Диапазон теста' })).toBeVisible({ timeout: 90_000 });
   await expect(page.getByText('От:', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Начать', exact: true }).click();
@@ -174,7 +174,7 @@ test('Lug‘at bo‘limi ruscha: menyu, jadval, test rejimi, takrorlash holati',
 
   // O'zbekchaga qaytganda avvalgidek
   await context.addCookies([{ name: 'vocably_lang', value: 'uz', url: 'http://localhost:3100' }]);
-  await page.goto('/app/lugat');
+  await page.goto('/app/vocabulary');
   await expect(page.getByText('Qaysi rejimda mashq qilmoqchisiz?')).toBeVisible({ timeout: 60_000 });
 });
 
@@ -183,26 +183,26 @@ test('Zaif so‘zlar, Kutubxona, Reyting ruscha', async ({ page, context }) => {
   await loginAs(page, E2E_PHONE);
   await context.addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
 
-  await page.goto('/app/lugat/zaif-sozlar');
+  await page.goto('/app/vocabulary/weak-words');
   await expect(page.getByRole('heading', { name: 'Слабые слова' })).toBeVisible({ timeout: 90_000 });
 
-  await page.goto('/app/lugat/kutubxona');
+  await page.goto('/app/vocabulary/library');
   await expect(page.getByRole('heading', { name: 'Библиотека слов' })).toBeVisible({ timeout: 90_000 });
   await expect(page.getByPlaceholder('Слово или перевод…')).toBeVisible();
 
-  await page.goto('/app/reyting');
+  await page.goto('/app/leaderboard');
   await expect(page.getByRole('button', { name: 'Эта неделя' })).toBeVisible({ timeout: 90_000 });
   await expect(page.getByRole('heading', { name: 'Рейтинг' })).toBeVisible();
 
   await context.addCookies([{ name: 'vocably_lang', value: 'uz', url: 'http://localhost:3100' }]);
-  await page.goto('/app/reyting');
+  await page.goto('/app/leaderboard');
   await expect(page.getByRole('button', { name: 'Bu hafta' })).toBeVisible({ timeout: 60_000 });
 });
 
 test('noto‘g‘ri cookie qiymati uz ga tushadi (inyeksiya/yiqilish yo‘q)', async ({ page, context }) => {
   await loginAs(page, E2E_PHONE);
   await context.addCookies([{ name: 'vocably_lang', value: 'xx"<script>', url: 'http://localhost:3100' }]).catch(() => {});
-  await page.goto('/app/mashq');
+  await page.goto('/app/practice');
   await expect(page.getByRole('heading', { name: 'Mashq' })).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('html')).toHaveAttribute('lang', 'uz');
 });

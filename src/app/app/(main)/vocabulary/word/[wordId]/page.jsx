@@ -9,7 +9,7 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import IconButton from '@/components/ui/IconButton';
 
-// So'z sahifasi ("deep dive") — VOCABLY-TZ.md §3.1 IA'dagi /lugat/soz/[id]. So'z
+// So'z sahifasi ("deep dive") — VOCABLY-TZ.md §3.1 IA'dagi /dictionary/soz/[id]. So'z
 // alohida so'rov bilan emas, allaqachon yuklangan `categories`dan (AppContext)
 // topiladi — dashboard ochilganda bir marta yuklanadi, shuning uchun bu yerda
 // qo'shimcha so'rov shart emas.
@@ -46,7 +46,7 @@ export default function SozPage() {
     return (
       <div className="w-full max-w-2xl mx-auto text-center py-16">
         <p className="text-sm text-muted mb-4">{t('vm.wordNotFound')}</p>
-        <Button variant="secondary" onClick={() => router.push('/app/lugat/jadval')}>
+        <Button variant="secondary" onClick={() => router.push('/app/vocabulary/words')}>
           {t('vm.backToTable')}
         </Button>
       </div>
@@ -54,7 +54,7 @@ export default function SozPage() {
   }
 
   // To'g'ridan-to'g'ri havola bilan ochilganda orqaga — ilovadan chiqib ketmasin.
-  const goBack = () => (window.history.length > 1 ? router.back() : router.push('/app/lugat/jadval'));
+  const goBack = () => (window.history.length > 1 ? router.back() : router.push('/app/vocabulary/words'));
 
   const { word, category } = found;
   const e = word.enrichment || {};

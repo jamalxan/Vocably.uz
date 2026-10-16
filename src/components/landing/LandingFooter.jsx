@@ -7,7 +7,7 @@ const COLUMNS = [
     title: "O'rganish",
     links: [
       { href: '/demo', label: 'Bepul sinov' },
-      { href: '/lugat', label: "So'zlar lug'ati" },
+      { href: '/dictionary', label: "So'zlar lug'ati" },
       { href: '/blog', label: 'Blog' },
     ],
   },
@@ -15,7 +15,7 @@ const COLUMNS = [
     title: 'IELTS',
     links: [
       { href: '/ielts', label: "IELTS qo'llanma" },
-      { href: '/ielts/band-kalkulyator', label: 'Band kalkulyatori' },
+      { href: '/ielts/band-calculator', label: 'Band kalkulyatori' },
       { href: '/ielts/mock-test', label: 'Mock test onlayn' },
       { href: '/ielts/reading', label: 'Reading' },
       { href: '/ielts/writing', label: 'Writing' },
@@ -24,9 +24,9 @@ const COLUMNS = [
   {
     title: 'Hisob',
     links: [
-      { href: '/kirish', label: 'Kirish' },
-      { href: '/royxat', label: "Ro'yxatdan o'tish" },
-      { href: '/narxlar', label: 'Narxlar' },
+      { href: '/login', label: 'Kirish' },
+      { href: '/register', label: "Ro'yxatdan o'tish" },
+      { href: '/pricing', label: 'Narxlar' },
     ],
   },
 ];

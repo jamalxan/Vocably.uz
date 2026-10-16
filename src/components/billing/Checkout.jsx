@@ -298,7 +298,7 @@ export default function Checkout() {
 
       <p className="text-xs text-muted text-center">
         {t('co.helpPre')}{' '}
-        <Link href="/narxlar" className="text-accent hover:underline">
+        <Link href="/pricing" className="text-accent hover:underline">
           {t('co.helpLink')}
         </Link>{' '}
         {t('co.helpPost')}

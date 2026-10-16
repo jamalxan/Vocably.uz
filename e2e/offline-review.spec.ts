@@ -38,7 +38,7 @@ test('offline: yuklash → internetsiz 3 javob → ulanganda yuboriladi, XP o‘
   await loginAs(page, E2E_PHONE);
   const card = page.getByRole('region', { name: 'Offline takrorlash' });
   // Isitish: sovuq dev serverda Next "Fast Refresh full reload" qiladi — offline holatda bu sahifani uzib qo'yardi (production'da yo'q).
-  await page.goto('/app/mashq');
+  await page.goto('/app/practice');
   await expect(card).toBeVisible({ timeout: 90_000 });
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(2000);
@@ -79,7 +79,7 @@ test('logout offline ma‘lumotni tozalaydi (umumiy qurilma)', async ({ page, is
   test.skip(isMobile, '"Chiqish" tugmasi desktop sidebar\'ida');
   await makeThreeWordsDue();
   await loginAs(page, E2E_PHONE);
-  await page.goto('/app/mashq');
+  await page.goto('/app/practice');
   const card = page.getByRole('region', { name: 'Offline takrorlash' });
   await expect(card).toBeVisible({ timeout: 60_000 });
   await card.getByRole('button', { name: /Navbatni yuklash/ }).click();

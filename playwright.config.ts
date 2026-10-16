@@ -22,7 +22,8 @@ export default defineConfig({
   webServer: {
     command: `npx next dev -p ${PORT}`,
     url: `http://localhost:${PORT}/`,
-    reuseExistingServer: false,
+    // E2E_REUSE_SERVER=1 — oldindan ishga tushirilgan `next dev -p 3100` ishlatiladi (birinchi kompilyatsiya 180 s limitdan oshib ketmasin).
+    reuseExistingServer: !!process.env.E2E_REUSE_SERVER,
     timeout: 180_000,
     env: { MONGODB_URI: uri, JWT_SECRET: process.env.JWT_SECRET || 'e2e-secret' },
   },

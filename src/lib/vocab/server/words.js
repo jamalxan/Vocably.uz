@@ -4,10 +4,20 @@
 import mongoose from 'mongoose';
 import { User } from '@/lib/models';
 import { cardFromStats, levelFromIntervalDays, nextReviewState, ratingFromOutcome } from '@/lib/srs';
-import { computeMastery, applySkillResult } from '@/lib/vocab/mastery';
+import { computeMastery, applySkillResult, statusForScore } from '@/lib/vocab/mastery';
+import { MASTERY_ALGORITHM_VERSION } from '@/lib/vocab/config';
 import { analyzeWeakness } from '@/lib/vocab/weakness';
 
 const HIGH_CEFR = new Set(['B2', 'C1', 'C2']);
+
+/** Yagona "o'zlashtirilgan" ta'rifi — dashboard, profil, yutuqlar va o'yinlar hubi shu funksiyani ishlatadi (TZ §6 mastery). */
+export function isMasteredStats(stats = {}) {
+  // Tez yo'l: hali hech qanday javob yo'q — 'new', hisoblash shart emas (takrorlash har safar barcha so'zlarni sanaydi).
+  if (!stats.reps && !stats.correct && !stats.wrong && !stats.skills) return false;
+  // Saqlangan ball joriy algoritm versiyasida bo'lsa — qayta hisoblamaymiz.
+  if (typeof stats.mastery === 'number' && stats.masteryVersion === MASTERY_ALGORITHM_VERSION) return statusForScore(stats.mastery) === 'mastered';
+  return computeMastery(statsToInput(stats)).status === 'mastered';
+}
 
 /** Mongoose/lean `stats` -> mastery/weakness hisoblash uchun oddiy obyekt. */
 export function statsToInput(stats = {}) {
@@ -37,6 +47,8 @@ export function toSelectableWord(word, category, now = new Date()) {
   const input = statsToInput(stats);
   const mastery = computeMastery(input).score;
   const weak = analyzeWeakness(input, now);
+  // Eski (SM-2 dan oldingi) progressli so'zlar dashboard bilan bir xil ko'chiriladi (srs.ts#cardFromStats).
+  const card = cardFromStats(stats);
   return {
     wordId: String(word._id),
     categoryId: String(category._id),
@@ -53,9 +65,9 @@ export function toSelectableWord(word, category, now = new Date()) {
     imageUrl: e.imageUrl || '',
     // SRS / tanlov signallari
     nextReview: stats.nextReview || null,
-    srsState: stats.srsState || 'new',
-    lapses: stats.lapses || 0,
-    reps: stats.reps || 0,
+    srsState: card.state,
+    lapses: card.lapses,
+    reps: card.reps,
     isLeech: !!stats.isLeech,
     mastery,
     weakness: weak.score,

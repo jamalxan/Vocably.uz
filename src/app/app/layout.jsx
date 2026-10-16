@@ -8,7 +8,7 @@ import { AppProvider, useApp } from '@/context/AppContext';
 //
 // VOCABLY-TZ.md §1.5 auditi — bu yerda ILGARI `<AppShell>` (sidebar, AI FAB,
 // bildirishnomalar) HAM o'ralar edi, shuning uchun imtihon sahifalari
-// (/app/mock, /app/oqish, ...) ham AppShell ichida qolib ketar, natijada
+// (/app/mock, /app/reading, ...) ham AppShell ichida qolib ketar, natijada
 // imtihon "fixed inset-0" qatlami ostida sidebar/AI/notifications TIRIK qolar,
 // noto'g'ri fokus tuzog'i va ortiqcha tarmoq so'rovlariga sabab bo'lar edi.
 // AppShell endi FAQAT `(main)/layout.jsx`da — bu yerda faqat yuklanish holati.

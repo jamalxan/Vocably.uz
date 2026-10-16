@@ -8,7 +8,7 @@ export const metadata = {
   robots: { index: false },
 };
 
-// Noma'lum manzillar (masalan eskirgan /lugat/* yoki /blog/* havola) uchun
+// Noma'lum manzillar (masalan eskirgan /dictionary/* yoki /blog/* havola) uchun
 // brendli, o'zbekcha 404 sahifa.
 export default function NotFound() {
   return (
@@ -32,7 +32,7 @@ export default function NotFound() {
             Bosh sahifa <ArrowRight size={16} />
           </Link>
           <Link
-            href="/lugat"
+            href="/dictionary"
             className="inline-flex items-center justify-center bg-surface border border-border hover:border-accent/40 text-ink font-semibold px-6 py-3.5 rounded-xl text-sm transition-colors"
           >
             So'zlar lug'ati

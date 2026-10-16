@@ -14,10 +14,10 @@ import { formatUzDate } from '@/lib/uzDate';
 // the numbers always agree with the rest of the app.
 
 const SKILLS = [
-  { key: 'listening', label: 'Listening', icon: Headphones, href: '/app/tinglash' },
-  { key: 'reading', label: 'Reading', icon: BookOpen, href: '/app/oqish' },
-  { key: 'writing', label: 'Writing', icon: PenLine, href: '/app/yozish' },
-  { key: 'speaking', label: 'Speaking', icon: Mic, href: '/app/gapirish' },
+  { key: 'listening', label: 'Listening', icon: Headphones, href: '/app/listening' },
+  { key: 'reading', label: 'Reading', icon: BookOpen, href: '/app/reading' },
+  { key: 'writing', label: 'Writing', icon: PenLine, href: '/app/writing' },
+  { key: 'speaking', label: 'Speaking', icon: Mic, href: '/app/speaking' },
 ];
 
 const band = (v) => (v == null ? '—' : Number(v).toFixed(1));
@@ -308,7 +308,7 @@ export default function ProfileStats() {
         ) : (
           <p className="text-xs text-muted">
             Hali so'z qo'shilmagan.{' '}
-            <Link href="/app/lugat/jadval" className="text-accent font-semibold hover:underline">
+            <Link href="/app/vocabulary/words" className="text-accent font-semibold hover:underline">
               Birinchi so'zlaringizni qo'shing
             </Link>
           </p>

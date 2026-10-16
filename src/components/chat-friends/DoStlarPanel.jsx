@@ -21,13 +21,13 @@ function DoStlarShell({ onActiveChange }) {
   const router = useRouter();
   const { ts } = useT();
 
-  // /app/dostlar/[username] — chatAccess'i bor HAR QANDAY (mavjud username'li)
+  // /app/friends/[username] — chatAccess'i bor HAR QANDAY (mavjud username'li)
   // foydalanuvchi uchun to'g'ridan-to'g'ri havola: /api/chat/conversations POST
   // username bo'yicha suhbatni topadi yoki yaratadi, shuning uchun bu username
   // qidiruv orqali "Yozish"ni bosishning aynan o'zi — faqat URL orqali ham
   // ishga tushiriladi. Ilgari (yagona catch-all route paytida) bu qiymat
   // params.segments'dan ajratib olinardi; endi haqiqiy dinamik route bor
-  // (src/app/app/dostlar/[username]/page.jsx), shuning uchun to'g'ridan-to'g'ri
+  // (src/app/app/friends/[username]/page.jsx), shuning uchun to'g'ridan-to'g'ri
   // params.username.
   const routeUsername = params?.username || null;
   const prevActiveUsernameRef = useRef(null);
@@ -39,7 +39,7 @@ function DoStlarShell({ onActiveChange }) {
     const prevRoute = prevRouteUsernameRef.current;
     prevRouteUsernameRef.current = routeUsername;
     if (!routeUsername) {
-      // Panel endi layout'da (qayta mount bo'lmaydi) — /app/dostlar/x dan /app/dostlar'ga
+      // Panel endi layout'da (qayta mount bo'lmaydi) — /app/friends/x dan /app/friends'ga
       // (orqaga tugmasi yoki nav havolasi) o'tilsa, ochiq suhbatni yopamiz.
       if (prevRoute && activeConversation) closeConversation();
       return undefined;
@@ -49,7 +49,7 @@ function DoStlarShell({ onActiveChange }) {
     openConversationByUsername(routeUsername).then((res) => {
       if (!cancelled && res?.error) {
         alert(ts(res.error));
-        router.replace('/app/dostlar');
+        router.replace('/app/friends');
       }
     });
     return () => {
@@ -76,9 +76,9 @@ function DoStlarShell({ onActiveChange }) {
     const uname = activeConversation?.otherUser?.username || null;
     const timer = setTimeout(() => {
       if (uname) {
-        if (uname !== routeUsername) router.replace(`/app/dostlar/${uname}`);
+        if (uname !== routeUsername) router.replace(`/app/friends/${uname}`);
       } else if (prevActiveUsernameRef.current && routeUsername) {
-        router.replace('/app/dostlar');
+        router.replace('/app/friends');
       }
       prevActiveUsernameRef.current = uname;
     }, 150);

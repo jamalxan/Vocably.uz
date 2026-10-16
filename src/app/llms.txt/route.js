@@ -17,7 +17,7 @@ export function GET() {
   const tiers = SUBSCRIPTION_TIERS.map((t) => `- ${TIER_CONFIG[t].label}: ${price(TIER_CONFIG[t].priceMonthly)}`).join('\n');
   const posts = BLOG_POSTS.map((p) => `- [${p.title}](${SITE_URL}/blog/${p.slug}): ${p.excerpt}`).join('\n');
   const guides = IELTS_GUIDES.map((g) => `- [${g.title}](${SITE_URL}/ielts/${g.slug}): ${g.description}`).join('\n');
-  const words = SEO_WORDS.map((w) => `- [${w.word}](${SITE_URL}/lugat/${w.slug}): ${w.translations.join(', ')}`).join('\n');
+  const words = SEO_WORDS.map((w) => `- [${w.word}](${SITE_URL}/dictionary/${w.slug}): ${w.translations.join(', ')}`).join('\n');
 
   const body = `# Vocably
 
@@ -30,11 +30,11 @@ Audience: Uzbek speakers preparing for IELTS (Academic) or improving general Eng
 
 - [Home](${SITE_URL}/): overview of the platform
 - [Free demo](${SITE_URL}/demo): try the flashcard (SRS) mode without signing up
-- [Pricing](${SITE_URL}/narxlar): plans and what each includes
+- [Pricing](${SITE_URL}/pricing): plans and what each includes
 - [Blog](${SITE_URL}/blog): articles on learning vocabulary and IELTS preparation
-- [Dictionary](${SITE_URL}/lugat): English words with Uzbek translations, IPA and examples
+- [Dictionary](${SITE_URL}/dictionary): English words with Uzbek translations, IPA and examples
 - [IELTS guide](${SITE_URL}/ielts): IELTS format and strategy in Uzbek
-- [IELTS band calculator](${SITE_URL}/ielts/band-kalkulyator): raw score → band for Listening/Reading, overall band
+- [IELTS band calculator](${SITE_URL}/ielts/band-calculator): raw score → band for Listening/Reading, overall band
 - [Full text for LLMs](${SITE_URL}/llms-full.txt): all guides and articles in one file
 
 ## Key facts

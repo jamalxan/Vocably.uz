@@ -107,7 +107,7 @@ export function decideReminder(input: ReminderInput): Reminder | null {
       kind: 'streak',
       title: `🔥 ${eff.streak} kunlik seriyangizni saqlang`,
       body: `Bugun 5 daqiqa mashq qilsangiz yetarli.${due}`,
-      url: '/app/oyinlar',
+      url: '/app/games',
     };
   }
   if (input.dueCount >= REMINDER_CONFIG.minDue) {
@@ -115,7 +115,7 @@ export function decideReminder(input: ReminderInput): Reminder | null {
       kind: 'due',
       title: `🔔 ${input.dueCount} ta so'z takrorlashga tayyor`,
       body: "Qisqa takrorlash so'zlarni uzoq muddat eslab qolishga yordam beradi.",
-      url: '/app/lugat/takrorlash',
+      url: '/app/vocabulary/review',
     };
   }
   return null;

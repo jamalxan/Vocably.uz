@@ -342,7 +342,7 @@ export default function WordTable() {
                   <td className="hidden sm:table-cell py-3.5 px-4 sm:px-6 text-muted tabular-nums text-xs">{w.idx + 1}</td>
                   <td className="py-3.5 px-3 sm:px-6 min-w-0 [overflow-wrap:anywhere]">
                     <Link
-                      href={`/app/lugat/soz/${w._id}`}
+                      href={`/app/vocabulary/word/${w._id}`}
                       className="font-semibold text-ink hover:text-accent hover:underline inline-flex flex-wrap items-center gap-1.5 py-2.5 -my-2.5 md:py-0 md:my-0"
                     >
                       {w.word}

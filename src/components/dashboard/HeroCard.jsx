@@ -34,10 +34,10 @@ export default function HeroCard({ due, newAvailable, reviews, goal, goalPct, on
             <p className="text-base font-semibold text-ink mb-1">{t('dash.emptyVocabTitle')}</p>
             <p className="text-sm text-muted mb-3">{t('dash.emptyVocabText')}</p>
             <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-              <Link href="/app/lugat/jadval" className="inline-flex items-center min-h-10 px-4 rounded-xl bg-accent text-on-accent text-sm font-semibold hover:bg-accent-hover">
+              <Link href="/app/vocabulary/words" className="inline-flex items-center min-h-10 px-4 rounded-xl bg-accent text-on-accent text-sm font-semibold hover:bg-accent-hover">
                 {t('hub.addWords')}
               </Link>
-              <Link href="/app/mashq" className="inline-flex items-center min-h-10 px-4 rounded-xl border border-border text-sm font-semibold text-ink hover:border-accent/40">
+              <Link href="/app/practice" className="inline-flex items-center min-h-10 px-4 rounded-xl border border-border text-sm font-semibold text-ink hover:border-accent/40">
                 {t('dash.ieltsPractice')}
               </Link>
             </div>

@@ -23,8 +23,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
     shortcuts: [
-      { name: 'Bugungi takrorlash', url: '/app/lugat/takrorlash' },
-      { name: "Tezkor o'yin", url: '/app/lugat/tezkor' },
+      { name: 'Bugungi takrorlash', url: '/app/vocabulary/review' },
+      { name: "Tezkor o'yin", url: '/app/vocabulary/speed' },
     ],
   };
 }

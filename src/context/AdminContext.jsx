@@ -23,13 +23,13 @@ export function AdminProvider({ children }) {
         // 401 — umuman login qilinmagan (cookie yo'q/muddati o'tgan): oldingi
         // xatti-harakat bilan bir xil, to'g'ridan-to'g'ri login sahifasiga.
         if (r.status === 401) {
-          router.replace('/kirish'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /kirish ga tushib, tuzoq bo'lardi)
+          router.replace('/login'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /login ga tushib, tuzoq bo'lardi)
           return null;
         }
         return r.json();
       })
       .then((d) => {
-        if (!d) return; // yuqorida allaqachon /kirish'ga yo'naltirildi
+        if (!d) return; // yuqorida allaqachon /login'ga yo'naltirildi
         if (d.role === 'admin') {
           setAdminName(d.username || d.name || 'Admin');
           setStatus('ok');

@@ -80,7 +80,7 @@ export default function ProfilPage() {
             <span className="text-sm font-semibold text-ink">
               {gami.level.current.label} ({gami.level.current.key})
             </span>
-            <Link href="/app/reyting" className="flex items-center gap-1 min-h-11 md:min-h-0 text-xs text-accent font-semibold hover:underline">
+            <Link href="/app/leaderboard" className="flex items-center gap-1 min-h-11 md:min-h-0 text-xs text-accent font-semibold hover:underline">
               <Trophy size={13} /> {gami.xp} XP
             </Link>
           </div>
