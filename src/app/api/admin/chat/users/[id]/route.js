@@ -4,6 +4,7 @@ import { serverError } from '@/lib/apiError';
 import { User } from '@/lib/models';
 import { SUBSCRIPTION_TIERS } from '@/lib/entitlements';
 import { activationUpdate, subscriptionState } from '@/lib/subscription';
+import { notifySubscriptionActivated } from '@/lib/subscriptionNotify';
 import { NextResponse } from 'next/server';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
@@ -25,6 +26,7 @@ export async function PATCH(req, props) {
 
     const body = await req.json();
     const diff = {};
+    let gift = null;
 
     if (typeof body.chatAccess === 'boolean') {
       diff.chatAccess = { from: target.chatAccess, to: body.chatAccess };
@@ -82,10 +84,13 @@ export async function PATCH(req, props) {
         };
       }
       Object.assign(target, update);
+      // Admin bergan pullik tarif — foydalanuvchiga "sovg'a" xabari boradi.
+      if (body.subscriptionTier !== 'free') gift = { tier: body.subscriptionTier, months, expiresAt: update.subscriptionExpiresAt };
     }
 
     await target.save();
     await writeAuditLog(req, admin._id, 'chat.user.update', 'User', target._id, diff);
+    if (gift) await notifySubscriptionActivated(target, { kind: 'gift', ...gift });
 
     return NextResponse.json({
       user: {

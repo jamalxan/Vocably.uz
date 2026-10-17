@@ -1,9 +1,7 @@
 import { PaymentRequest, User, Notification } from '@/lib/models';
 import { activationUpdate } from '@/lib/subscription';
-import { TIER_CONFIG } from '@/lib/entitlements';
-import { formatUzDate } from '@/lib/uzDate';
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
-import { sendPushToUser } from '@/lib/webPush';
+import { notifySubscriptionActivated } from '@/lib/subscriptionNotify';
 
 // The single place a payment turns into an active plan — used by the admin
 // "Tasdiqlash" button today and by the Payme/Click callbacks later. The
@@ -17,20 +15,17 @@ export async function approvePayment(requestId, { by = null, method } = {}) {
   );
   if (!req) return { ok: false, reason: 'not_pending' };
 
-  const user = await User.findById(req.userId).select('subscriptionTier subscriptionExpiresAt subscriptionStartedAt telegramChatId');
+  const user = await User.findById(req.userId).select('name subscriptionTier subscriptionExpiresAt subscriptionStartedAt telegramChatId');
   if (!user) return { ok: false, reason: 'no_user' };
   const update = activationUpdate(user, req.tier, { months: req.months, by });
   await User.updateOne({ _id: user._id }, { $set: update });
 
-  const label = TIER_CONFIG[req.tier]?.label || req.tier;
-  const until = formatUzDate(update.subscriptionExpiresAt, { year: true });
-  const title = `${label} tarifi faollashtirildi`;
-  const body = `To'lovingiz tasdiqlandi. ${label} imkoniyatlari ${until} gacha ochiq.`;
-  await Promise.allSettled([
-    Notification.create({ userId: user._id, type: 'payment', title, body, link: '/pricing' }),
-    sendPushToUser(user._id, { title, body, url: '/app' }),
-    user.telegramChatId ? sendTelegramMessage(user.telegramChatId, `✅ ${title}\n${body}`) : null,
-  ]);
+  await notifySubscriptionActivated(user, {
+    kind: 'purchase',
+    tier: req.tier,
+    months: req.months,
+    expiresAt: update.subscriptionExpiresAt,
+  });
   return { ok: true, request: req, expiresAt: update.subscriptionExpiresAt };
 }
 

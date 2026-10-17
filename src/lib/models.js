@@ -707,7 +707,7 @@ export const AiUsage = mongoose.models.AiUsage || mongoose.model('AiUsage', AiUs
 
 const NotificationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment', 'vocab_reminder'], required: true },
+  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment', 'gift', 'vocab_reminder'], required: true },
   title: { type: String, required: true, trim: true },
   body: { type: String, default: '', trim: true },
   // 'chat_message' uchun suhbat ID'si, 'announcement' uchun Announcement ID'si —
