@@ -39,7 +39,7 @@ export function buildActivationMessages({ kind, tier, months, expiresAt, name })
     const telegram = [
       "🎁 <b>Sizga sovg'a!</b>",
       '━━━━━━━━━━━━━━',
-      first ? `Salom, <b>${escapeHtml(first)}</b>! Vocably jamoasi sizga tarif sovg'a qildi:` : "Vocably jamoasi sizga tarif sovg'a qildi:",
+      `${first ? `Salom, <b>${escapeHtml(first)}</b>! ` : ''}Vocably jamoasi sizga <b>${escapeHtml(label)}</b> tarifini sovg'a qildi:`,
       '',
       `${emoji} Tarif: <b>${escapeHtml(label)}</b>`,
       `⏳ Muddat: <b>${term}</b>`,
