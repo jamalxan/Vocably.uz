@@ -4,6 +4,7 @@ import { serverError } from '@/lib/apiError';
 import { User } from '@/lib/models';
 import { normalizePhone } from '@/lib/phone';
 import { checkRateLimit } from '@/lib/chatAuth';
+import { clientIp } from '@/lib/clientIp';
 import { NextResponse } from 'next/server';
 
 // Bir martalik: birinchi adminni tayinlash uchun. Mavjud ADMIN_SETUP_SECRET
@@ -16,7 +17,7 @@ export async function POST(req) {
     // cheksiz taxmin qilishga yo'l qo'yardi. IP bo'yicha cheklov — vaqtinchalik
     // yechim; secret sizib chiqsa buning o'zi yetarli emas, lekin brute-force'ni
     // to'sadi.
-    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const ip = clientIp(req);
     if (!(await checkRateLimit(ip, 'admin-bootstrap', 5))) {
       return NextResponse.json({ error: 'Juda ko\'p urinish. Biroz kuting.' }, { status: 429 });
     }

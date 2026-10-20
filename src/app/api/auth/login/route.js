@@ -46,17 +46,17 @@ export async function POST(req) {
 
     const user = await User.findOne({ phone });
     if (!user) {
-      return NextResponse.json({ error: 'Bu raqam bilan hisob topilmadi' }, { status: 400 });
+      return NextResponse.json({ error: "Telefon yoki parol noto'g'ri" }, { status: 400 });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return NextResponse.json({ error: "Parol noto'g'ri" }, { status: 400 });
+      return NextResponse.json({ error: "Telefon yoki parol noto'g'ri" }, { status: 400 });
     }
 
     const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
-    return setAuthCookie(NextResponse.json({ token, name: user.name, phone: user.phone }), token);
+    return setAuthCookie(NextResponse.json({ name: user.name, phone: user.phone }), token);
   } catch (err) {
     return serverError(err, 'auth/login');
   }

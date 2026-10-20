@@ -222,8 +222,26 @@ function checkCopyright(rights: Test['rights'], issues: ValidationIssue[]) {
   }
 }
 
+// Admin/AI-import kontenti `dangerouslySetInnerHTML` bilan hamma o'quvchiga ko'rsatiladi
+// (features/exam/**) — shuning uchun *Html maydonlarida xavfli markup nashrga yo'l qo'ymaydi.
+const UNSAFE_HTML = /<\s*(script|iframe|object|embed|style|link|meta|base|form|svg|math)(?![a-z])|\son[a-z]+\s*=|javascript\s*:|data\s*:\s*text\/html/i;
+
+function checkUnsafeHtml(node: unknown, path: string, issues: ValidationIssue[]) {
+  if (Array.isArray(node)) return node.forEach((v, i) => checkUnsafeHtml(v, `${path}[${i}]`, issues));
+  if (!node || typeof node !== 'object') return;
+  for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+    if (typeof v === 'string' && /html$/i.test(k)) {
+      if (UNSAFE_HTML.test(v)) issues.push({ severity: 'error', path: `${path}.${k}`, message: `'${k}' xavfli HTML (script/on*=/javascript:) o'z ichiga oladi` });
+    } else if (v && typeof v === 'object') {
+      checkUnsafeHtml(v, `${path}.${k}`, issues);
+    }
+  }
+}
+
 export function validateTest(test: Partial<Test>): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+
+  checkUnsafeHtml(test.sections, 'sections', issues);
 
   checkCopyright(test.rights, issues);
 

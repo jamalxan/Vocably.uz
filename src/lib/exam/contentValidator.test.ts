@@ -481,3 +481,14 @@ describe('Mini mock (lengthNorms: false)', () => {
     expect(isSectionMockEligible('reading', twoPassages, { lengthNorms: false })).toBe(false);
   });
 });
+
+describe('validateTest: xavfli HTML', () => {
+  it('promptHtml ichidagi <script>/on*= ni blokirovka qiladi, oddiy <b> ni emas', () => {
+    const mk = (promptHtml: string) =>
+      ({ sections: { writing: { tasks: [{ order: 1, promptHtml }] } } }) as any;
+    const bad = validateTest(mk('<img src=x onerror=alert(1)>')).filter((i) => i.path.endsWith('promptHtml'));
+    expect(bad.some((i) => i.severity === 'error')).toBe(true);
+    expect(validateTest(mk('<script>1</script>')).some((i) => i.path.endsWith('promptHtml') && i.severity === 'error')).toBe(true);
+    expect(validateTest(mk('<p>Hello <b>world</b></p>')).some((i) => i.path.endsWith('promptHtml'))).toBe(false);
+  });
+});

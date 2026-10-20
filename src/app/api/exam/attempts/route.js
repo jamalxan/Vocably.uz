@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/db';
-import { ExamTest, ExamAttempt } from '@/lib/models';
+import { ExamTest, ExamAttempt, User } from '@/lib/models';
+import { effectiveTier } from '@/lib/subscription';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getOrCreateTestVersion } from '@/lib/exam/attemptServer';
 import { normalizeMockKind } from '@/lib/exam/mockKind';
@@ -129,6 +130,9 @@ export async function POST(req) {
     }
 
     if (mode === 'mock') {
+      // Tarif cheklovi serverda: Free faqat Mini Mock (to'liq mock — Standard/Premium).
+      const tierUser = await User.findById(userId).select('subscriptionTier subscriptionExpiresAt').lean();
+      const miniOnly = effectiveTier(tierUser) === 'free';
       if (!testId) {
         const existing = await ExamAttempt.findOne({ userId, mode: 'mock', status: 'in_progress' });
         // VOCABLY-TZ.md §1.1/"Attempt boshqaruvi" auditi — ILGARI mavjud
@@ -165,7 +169,7 @@ export async function POST(req) {
           .limit(5)
           .lean();
 
-        const composed = await composeRandomMock(recentMocks.map((a) => String(a.testId)));
+        const composed = await composeRandomMock(recentMocks.map((a) => String(a.testId)), { miniOnly });
         if (!composed) return NextResponse.json({ error: "Hozircha mock uchun test yo'q." }, { status: 404 });
 
         const { attempt, error } = await createMockAttemptForTest(userId, composed, mockKind);
@@ -180,6 +184,10 @@ export async function POST(req) {
       // same gate as the random-selection path above.
       if (!test.isMockEligible) {
         return NextResponse.json({ error: 'Bu test to‘liq Mock imtihon uchun mos emas (mini practice test).' }, { status: 400 });
+      }
+
+      if (miniOnly && test.mockFormat !== 'mini') {
+        return NextResponse.json({ error: "To'liq Mock imtihon Standard yoki Premium tarifda ochiladi.", code: 'tier_required' }, { status: 403 });
       }
 
       const existing = await ExamAttempt.findOne({ userId, testId, mode: 'mock', status: 'in_progress' });

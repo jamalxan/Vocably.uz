@@ -42,8 +42,8 @@ function viableModules(byModule) {
 /** Full-format mock first; only if no module has a complete full-format set,
  * fall back to a structurally complete "Mini mock". Returns null when not
  * even that is possible (no fake half-mocks). */
-export async function resolveMockPools() {
-  const full = viableModules(await buildMockPools({ lengthNorms: true }));
+export async function resolveMockPools({ miniOnly = false } = {}) {
+  const full = miniOnly ? [] : viableModules(await buildMockPools({ lengthNorms: true }));
   if (full.length) return { format: 'full', viable: full };
   const mini = viableModules(await buildMockPools({ lengthNorms: false }));
   if (mini.length) return { format: 'mini', viable: mini };
@@ -51,8 +51,8 @@ export async function resolveMockPools() {
 }
 
 /** Test-like object for createMockAttemptForTest, or null. */
-export async function composeRandomMock(avoidTestIds) {
-  const resolved = await resolveMockPools();
+export async function composeRandomMock(avoidTestIds, { miniOnly = false } = {}) {
+  const resolved = await resolveMockPools({ miniOnly });
   if (!resolved) return null;
   const [moduleKey, pools] = resolved.viable[Math.floor(Math.random() * resolved.viable.length)];
   const composed = composeMock(pools, { avoidTestIds });
