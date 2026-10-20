@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, BookOpen } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import BrandLogo from '@/components/BrandLogo';
 
 const NAV_LINKS = [
   { href: '/ielts', label: 'IELTS' },
@@ -54,12 +55,7 @@ export default function LandingHeader({ floating = false }) {
     >
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center text-on-accent shadow-glow">
-            <BookOpen size={18} />
-          </div>
-          <span className="font-luxury text-xl font-bold text-ink">
-            Voc<span className="text-accent">ably</span>
-          </span>
+          <BrandLogo height={32} />
         </Link>
 
         <nav aria-label="Asosiy menyu" className="hidden md:flex items-center gap-7">

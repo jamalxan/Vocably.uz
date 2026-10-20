@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef, useId, cloneElement } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import BrandLogo from '@/components/BrandLogo';
 import {
-  BookOpen, Loader2, Send, ShieldCheck, ArrowLeft,
+  Loader2, Send, ShieldCheck, ArrowLeft,
   CheckCircle2, ExternalLink, Sparkles, Eye, EyeOff, KeyRound,
 } from 'lucide-react';
 import { normalizePhone } from '@/lib/phone';
@@ -326,11 +327,8 @@ export default function AuthForm({ initialMode = 'login' }) {
 
         {/* Brend */}
         <Link href="/" className="flex flex-col items-center w-fit mx-auto mb-6 sm:mb-8 rounded-2xl">
-          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-on-accent shadow-glow mb-4">
-            <BookOpen size={26} />
-          </div>
-          <h1 className="font-luxury text-3xl font-bold text-ink tracking-tight">
-            Voc<span className="text-accent">ably</span>
+          <h1 className="mb-1">
+            <BrandLogo variant="stacked" height={96} />
           </h1>
           <p className="text-xs text-muted mt-1">{t('auth.tagline')}</p>
         </Link>

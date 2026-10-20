@@ -674,3 +674,12 @@ html.lenis, html.lenis body { height: auto; }
 ::highlight(vocab-known) {
   text-decoration: underline dotted rgba(99, 102, 241, 0.8);
 }
+
+/* BrandLogo (src/components/BrandLogo.jsx): tema bo'yicha och/to'q variant */
+.brand-logo-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-logo-light { display: none; }
+  :root:not([data-theme="light"]) .brand-logo-dark { display: block; }
+}
+:root[data-theme="dark"] .brand-logo-light { display: none; }
+:root[data-theme="dark"] .brand-logo-dark { display: block; }

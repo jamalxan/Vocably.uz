@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import BrandLogo from '@/components/BrandLogo';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sun, Moon, Monitor, ChevronRight, ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
@@ -105,12 +106,9 @@ export default function AppShell({ children }) {
       >
         <div className="p-5 overflow-y-auto flex-1">
           <Link href="/app" className="flex items-center gap-3 mb-8">
-            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-on-accent font-bold text-lg font-display shadow-glow flex-shrink-0">
-              V
-            </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-bold text-on-primary tracking-wide font-luxury leading-tight">
-                Voc<span className="text-accent">ably</span>
+              <h1 className="leading-tight">
+                <BrandLogo tone="dark-bg" height={28} />
               </h1>
               <p className="text-[11px] text-on-primary/70 leading-tight">{t('auth.tagline')}</p>
             </div>
@@ -186,11 +184,9 @@ export default function AppShell({ children }) {
       >
         <div className="p-3 flex-1 overflow-y-auto overflow-x-hidden">
           <Link href="/app" className="flex items-center gap-3 mb-6 px-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label={t('shell.homeAria')}>
-            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-on-accent font-bold text-lg font-display shadow-glow flex-shrink-0">
-              V
-            </div>
-            <span className={`text-lg font-bold text-on-primary font-luxury ${railLabelClass}`} aria-hidden="true">
-              Voc<span className="text-accent">ably</span>
+            <BrandLogo variant="mark" tone="dark-bg" height={32} alt="" className="flex-shrink-0" />
+            <span className={railLabelClass} aria-hidden="true">
+              <BrandLogo variant="horizontal" tone="dark-bg" height={22} alt="" />
             </span>
           </Link>
           <nav className="space-y-1" aria-label={t('shell.mainNav')}>
@@ -260,12 +256,7 @@ export default function AppShell({ children }) {
             className="md:hidden flex items-center gap-2 min-h-11 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             aria-label={t('shell.homeAria')}
           >
-            <span className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-on-accent font-bold text-lg font-display shadow-glow" aria-hidden="true">
-              V
-            </span>
-            <span className="text-lg font-bold text-ink font-luxury" aria-hidden="true">
-              Voc<span className="text-accent">ably</span>
-            </span>
+            <span aria-hidden="true"><BrandLogo height={26} alt="" /></span>
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />

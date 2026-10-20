@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BookOpen } from 'lucide-react';
+import BrandLogo from '@/components/BrandLogo';
 import CurrentYear from './CurrentYear';
 
 const COLUMNS = [
@@ -38,12 +38,7 @@ export default function LandingFooter() {
         <div className="flex flex-col sm:flex-row justify-between gap-10 mb-10">
           <div className="max-w-xs">
             <Link href="/" className="flex items-center gap-2.5 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-on-accent">
-                <BookOpen size={16} />
-              </div>
-              <span className="font-luxury text-lg font-bold text-ink">
-                Voc<span className="text-accent">ably</span>
-              </span>
+              <BrandLogo height={28} />
             </Link>
             <p className="text-xs text-muted leading-relaxed">
               O'zbek tilida so'zlashuvchilar uchun ingliz tili platformasi — so'z boyligini ilmiy
