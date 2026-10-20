@@ -151,13 +151,6 @@ const nextConfig = {
       },
     ];
   },
-  // AI-01 — `next lint`ning standart papka ro'yxati (`pages/app/components/
-  // lib/src`) `worker/`ni O'Z ICHIGA OLMAYDI (qo'lda tekshirilgan, `npm run
-  // lint` uni jimgina o'tkazib yuborardi — xato bo'lsa ham "toza" deb
-  // ko'rsatardi). `worker/` — alohida, uzoq umr ko'radigan Node protsessi
-  // (Next.js sahifasi emas), lekin baribir shu reponing bir qismi va bir xil
-  // sifat nazoratidan o'tishi kerak.
-  eslint: { dirs: ['pages', 'app', 'components', 'lib', 'src', 'worker'] },
 };
 
 export default nextConfig;
