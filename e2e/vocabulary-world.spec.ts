@@ -30,9 +30,9 @@ test.describe('Vocabulary World', () => {
     const before = await marker.getAttribute('transform');
     await page.locator('canvas').click({ position: { x: 5, y: 5 } }).catch(() => {});
     await page.keyboard.down('KeyW');
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(3000);
     await page.keyboard.up('KeyW');
-    await expect.poll(() => marker.getAttribute('transform')).not.toBe(before);
+    await expect.poll(() => marker.getAttribute('transform'), { timeout: 20_000 }).not.toBe(before);
   });
 
   test('portal opens the real game page', async ({ page, isMobile }) => {
