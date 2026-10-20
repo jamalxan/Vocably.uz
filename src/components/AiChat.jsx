@@ -12,7 +12,6 @@ import { useT } from '@/context/LocaleContext';
 const RECOGNITION_LANGS = [
   { code: 'en-US', label: 'EN', name: 'ai.lang.en' },
   { code: 'uz-UZ', label: 'UZ', name: 'ai.lang.uz' },
-  { code: 'ru-RU', label: 'RU', name: 'ai.lang.ru' },
 ];
 const DEFAULT_RECOGNITION_LANG = 'en-US';
 const MAX_ATTACHED_IMAGES = 10;

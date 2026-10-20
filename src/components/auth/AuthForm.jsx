@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { normalizePhone } from '@/lib/phone';
 import { useT } from '@/context/LocaleContext';
-import { LOCALES, LOCALE_LABELS } from '@/lib/i18n';
 
 // Where to go after login/registration: `?next=/app/...` (e.g. from the
 // pricing page's "Sotib olish") — only in-app paths, never another origin.
@@ -54,7 +53,7 @@ function validatePassword(password, t) {
 // register/forgot ichidagi bosqichlar: 'form' -> 'telegram' -> 'code' -> (forgot uchun) 'newPassword'
 export default function AuthForm({ initialMode = 'login' }) {
   const router = useRouter();
-  const { t, locale, setLocale } = useT();
+  const { t } = useT();
   const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'forgot'
   const [step, setStep] = useState('form');
 
@@ -307,24 +306,6 @@ export default function AuthForm({ initialMode = 'login' }) {
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* Til tanlash — tizimga kirmasdan ham ishlaydi (cookie `vocably_lang`) */}
-        <div role="group" aria-label={t('lang.title')} className="flex justify-end gap-1 mb-3">
-          {LOCALES.map((l) => (
-            <button
-              key={l}
-              type="button"
-              lang={l}
-              onClick={() => setLocale(l)}
-              aria-pressed={locale === l}
-              className={`px-3 min-h-9 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                locale === l ? 'bg-accent text-on-accent' : 'text-muted hover:bg-bg-sunken'
-              }`}
-            >
-              {LOCALE_LABELS[l]}
-            </button>
-          ))}
-        </div>
-
         {/* Brend */}
         <Link href="/" className="flex flex-col items-center w-fit mx-auto mb-6 sm:mb-8 rounded-2xl">
           <h1 className="mb-1">

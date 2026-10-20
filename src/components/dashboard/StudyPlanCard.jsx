@@ -8,7 +8,7 @@ const SKILL_LABEL = { listening: 'Listening', reading: 'Reading', writing: 'Writ
 
 // "Bugungi reja" — today's concrete tasks (src/lib/studyPlan.js), built from
 // the same dashboard response, so it costs no extra request.
-// Reja matnlari (sarlavha, vazifalar) uz tilida quriladi va mijozda `ts()` bilan tarjima qilinadi (src/lib/i18n/serverTextRu.js).
+// Reja matnlari (sarlavha, vazifalar) uz tilida quriladi va mijozda `ts()` bilan tarjima qilinadi (src/lib/i18n/serverTextEn.js).
 export default function StudyPlanCard({ data }) {
   const { t, ts } = useT();
   const plan = buildDailyPlan({

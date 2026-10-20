@@ -3,35 +3,35 @@
 // bu esa haqiqiy sababni (masalan qurilma band, yoki Windows darajasidagi bloklash)
 // yashirib, foydalanuvchini noto'g'ri yo'lga (faqat brauzer sayt-ruxsatini qayta
 // tekshirish) yo'naltirardi.
-const RU_DEVICE = { Mikrofon: 'Микрофон', Kamera: 'Камера', 'Kamera/mikrofon': 'Камера/микрофон', 'Mikrofon/kamera': 'Микрофон/камера' };
+const EN_DEVICE = { Mikrofon: 'Microphone', Kamera: 'Camera', 'Kamera/mikrofon': 'Camera/microphone', 'Mikrofon/kamera': 'Microphone/camera' };
 
-function mediaErrorMessageRu(err, deviceLabel) {
-  const label = RU_DEVICE[deviceLabel] || deviceLabel;
+function mediaErrorMessageEn(err, deviceLabel) {
+  const label = EN_DEVICE[deviceLabel] || deviceLabel;
   switch (err?.name || '') {
     case 'NotAllowedError':
     case 'PermissionDeniedError':
       return (
-        `Доступ запрещён: ${label}. Нажмите на значок замка (🔒) в адресной строке, измените разрешение для сайта на «Разрешить» и обновите страницу. ` +
-        'Если там уже разрешено — возможно, это ограничение операционной системы ' +
-        '(Windows: Параметры → Конфиденциальность и безопасность → Микрофон/Камера → проверьте, что «Разрешить приложениям доступ» включено).'
+        `${label} access was denied. Click the lock icon (🔒) in the address bar, set the site permission to "Allow" and reload the page. ` +
+        'If it already shows as allowed, it may be an operating-system restriction ' +
+        '(Windows: Settings → Privacy & security → Microphone/Camera → make sure "Let apps access" is on).'
       );
     case 'NotFoundError':
     case 'DevicesNotFoundError':
-      return `${label}: устройство не найдено. Проверьте, что оно подключено.`;
+      return `${label}: device not found. Check that it is connected.`;
     case 'NotReadableError':
     case 'TrackStartError':
-      return `${label}: устройство занято — возможно, его использует другая программа (Zoom, Teams и т. д.).`;
+      return `${label}: the device is busy — another app (Zoom, Teams, etc.) may be using it.`;
     case 'SecurityError':
-      return 'Требуется безопасное соединение (HTTPS).';
+      return 'A secure connection (HTTPS) is required.';
     case 'OverconstrainedError':
-      return `${label}: устройство не поддерживает запрошенные настройки.`;
+      return `${label}: the device does not support the requested settings.`;
     default:
-      return err?.message ? `Не удалось запустить (${label}): ${err.message}` : `Не удалось запустить (${label}).`;
+      return err?.message ? `Could not start (${label}): ${err.message}` : `Could not start (${label}).`;
   }
 }
 
-export function mediaErrorMessage(err, deviceLabel = 'Mikrofon/kamera', locale = 'uz') {
-  if (locale === 'ru') return mediaErrorMessageRu(err, deviceLabel);
+export function mediaErrorMessage(err, deviceLabel = 'Mikrofon/kamera', locale = 'en') {
+  if (locale !== 'uz') return mediaErrorMessageEn(err, deviceLabel);
   const name = err?.name || '';
   switch (name) {
     case 'NotAllowedError':

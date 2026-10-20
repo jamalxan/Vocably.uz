@@ -9,38 +9,36 @@ import { WEAK_REASON_LABELS } from '../vocab/weakness';
 import { buildDailyPlan } from '../vocab/dailyPlan';
 import { buildDailyPlan as studyPlan } from '../studyPlan';
 
-describe('ko‘plik (ruscha)', () => {
-  const f = ['слово', 'слова', 'слов'];
-  it.each([
-    [1, 'слово'], [2, 'слова'], [4, 'слова'], [5, 'слов'], [11, 'слов'], [12, 'слов'], [21, 'слово'], [22, 'слова'], [25, 'слов'], [101, 'слово'], [0, 'слов'],
-  ])('%i → %s', (n, expected) => expect(pluralForm('ru', n, f)).toBe(expected));
+describe('ko‘plik (inglizcha)', () => {
+  const f = ['word', 'words'];
+  it.each([[1, 'word'], [2, 'words'], [5, 'words'], [0, 'words'], [101, 'words']])('%i → %s', (n, expected) => expect(pluralForm('en', n, f)).toBe(expected));
 
   it('uz da birinchi shakl; renderTemplate o‘rinbosar va ko‘plikni birga qo‘llaydi', () => {
-    expect(pluralForm('uz', 5, f)).toBe('слово');
-    expect(renderTemplate('ru', 'Повторите {n} {n#слово|слова|слов}', { n: 3 })).toBe('Повторите 3 слова');
-    expect(renderTemplate('ru', '{a} и {b}', { a: 1 })).toBe('1 и {b}'); // berilmagani o'zi qoladi
+    expect(pluralForm('uz', 5, f)).toBe('word');
+    expect(renderTemplate('en', 'Review {n} {n#word|words}', { n: 3 })).toBe('Review 3 words');
+    expect(renderTemplate('en', '{a} and {b}', { a: 1 })).toBe('1 and {b}'); // berilmagani o'zi qoladi
   });
 });
 
 describe('translateServerText', () => {
   it('aniq moslik, shablon (ko‘plik bilan), uz va noma’lum matn', () => {
-    expect(translateServerText('ru', "So'z juftligi")).toBe('Пары слов');
-    expect(translateServerText('ru', "5 ta so'zni takrorlang")).toBe('Повторите 5 слов');
-    expect(translateServerText('ru', "1 ta so'zni takrorlang")).toBe('Повторите 1 слово');
-    expect(translateServerText('ru', "22 ta yangi so'z")).toBe('22 новых слова'.replace('новых слова', 'новых слова'));
-    expect(translateServerText('ru', 'Premium rejada ochiladi')).toBe('Открывается в тарифе Premium');
+    expect(translateServerText('en', "So'z juftligi")).toBe('Word Pairs');
+    expect(translateServerText('en', "5 ta so'zni takrorlang")).toBe('Review 5 words');
+    expect(translateServerText('en', "1 ta so'zni takrorlang")).toBe('Review 1 word');
+    expect(translateServerText('en', "22 ta yangi so'z")).toBe('22 new words');
+    expect(translateServerText('en', 'Premium rejada ochiladi')).toBe('Unlocks on the Premium plan');
     expect(translateServerText('uz', "So'z juftligi")).toBe("So'z juftligi");
-    expect(translateServerText('ru', 'noma’lum matn')).toBe('noma’lum matn');
-    expect(translateServerText('ru', undefined as any)).toBeUndefined();
+    expect(translateServerText('en', 'noma’lum matn')).toBe('noma’lum matn');
+    expect(translateServerText('en', undefined as any)).toBeUndefined();
   });
 
   it('shablon regex belgilaridan xavfsiz (matn ichida maxsus belgilar)', () => {
-    expect(() => translateServerText('ru', 'Kamida (.*+?) ta so\'z kerak (hozir [x])')).not.toThrow();
+    expect(() => translateServerText('en', 'Kamida (.*+?) ta so\'z kerak (hozir [x])')).not.toThrow();
   });
 });
 
 describe('qamrov: serverdagi har bir ko‘rinadigan matn tarjima qilingan', () => {
-  const missing = (texts: (string | undefined)[]) => [...new Set(texts.filter((t): t is string => !!t))].filter((t) => !hasServerTranslation('ru', t));
+  const missing = (texts: (string | undefined)[]) => [...new Set(texts.filter((t): t is string => !!t))].filter((t) => !hasServerTranslation('en', t));
 
   it('o‘yinlar (nom + tavsif)', () => {
     expect(missing(GAME_CATALOG.flatMap((g) => [g.title, g.description]))).toEqual([]);
@@ -98,20 +96,20 @@ describe('qamrov: serverdagi har bir ko‘rinadigan matn tarjima qilingan', () =
 });
 
 describe('tarif va mock matnlari', () => {
-  it('mock tavsiyasi va tarif imkoniyatlari ruscha', () => {
-    expect(translateServerText('ru', "Reading bo'limingiz eng past ko'rsatkichga ega (6.5) — shu bo'limga ko'proq mashq qiling.")).toBe(
-      'Ваш раздел Reading имеет самый низкий показатель (6.5) — потренируйтесь в нём больше.',
+  it('mock tavsiyasi va tarif imkoniyatlari inglizcha', () => {
+    expect(translateServerText('en', "Reading bo'limingiz eng past ko'rsatkichga ega (6.5) — shu bo'limga ko'proq mashq qiling.")).toBe(
+      'Your Reading section has the lowest score (6.5) — practice it more.',
     );
-    expect(translateServerText('ru', "To'liq Mock testlar")).toBe('Полные пробные тесты');
+    expect(translateServerText('en', "To'liq Mock testlar")).toBe('Full Mock tests');
     expect(translateServerText('uz', "To'liq Mock testlar")).toBe("To'liq Mock testlar");
   });
 });
 
 describe('chat matnlari', () => {
-  it('nisbiy vaqt va oxirgi faollik ruscha ko‘plik bilan', () => {
-    expect(translateServerText('ru', '5 daqiqa oldin')).toBe('5 минут назад');
-    expect(translateServerText('ru', '1 soat oldin')).toBe('1 час назад');
-    expect(translateServerText('ru', "oxirgi marta ko'rilgan 2 kun oldin")).toBe('был(а) 2 дня назад');
-    expect(translateServerText('ru', '📷 Rasm')).toBe('📷 Фото');
+  it('nisbiy vaqt va oxirgi faollik inglizcha ko‘plik bilan', () => {
+    expect(translateServerText('en', '5 daqiqa oldin')).toBe('5 minutes ago');
+    expect(translateServerText('en', '1 soat oldin')).toBe('1 hour ago');
+    expect(translateServerText('en', "oxirgi marta ko'rilgan 2 kun oldin")).toBe('last seen 2 days ago');
+    expect(translateServerText('en', '📷 Rasm')).toBe('📷 Photo');
   });
 });

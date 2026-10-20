@@ -158,7 +158,7 @@ function MediaGallery({ conversationId, type }) {
         {visibleMessages.map((m) => (
           <div key={m.id || m._id} className="w-fit max-w-full rounded-xl border border-border bg-bg p-2 flex flex-col gap-1">
             <Bubble media={m.media} />
-            <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString(locale === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
+            <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString(locale === 'uz' ? 'uz-UZ' : 'en-US')}</p>
           </div>
         ))}
       </div>

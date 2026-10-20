@@ -1,10 +1,10 @@
 // Serverdan o'zbekcha tayyor holda keladigan matnlar (o'yin/vazifa/yutuq nomlari, daraja, reja, sabablar) uchun mijoz tomonidagi tarjimon.
-// Server kodiga tegmaydi: aniq moslik (`exact`) yoki shablon (`patterns`: "{n} ta so'zni takrorlang" → ruscha ko'plik bilan).
+// Server kodiga tegmaydi: aniq moslik (`exact`) yoki shablon (`patterns`: "{n} ta so'zni takrorlang" → inglizcha ko'plik bilan).
 // Tarjimasi yo'q matn o'zgarmay qaytadi (uz asos). Qamrov testi: src/lib/i18n/serverText.test.ts — konfiguratsiyalardagi har bir matn tarjima qilinganini tekshiradi.
 import { renderTemplate, normalizeLocale } from './index';
-import RU from './serverTextRu';
+import EN from './serverTextEn';
 
-const DATA = { ru: RU };
+const DATA = { en: EN };
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // "{n} ta so'z" → /^(?<n>.+?) ta so'z$/ (kompilyatsiya bir marta)
@@ -31,7 +31,7 @@ function compile(locale) {
 /** Server matnini tanlangan tilga o'giradi; til uz yoki tarjima yo'q bo'lsa — matn o'zgarmaydi. */
 export function translateServerText(locale, text) {
   const l = normalizeLocale(locale);
-  if (l === 'uz' || typeof text !== 'string' || !text) return text;
+  if (l !== 'en' || typeof text !== 'string' || !text) return text;
   const hit = DATA[l]?.exact?.[text];
   if (hit !== undefined) return hit;
   for (const p of compile(l)) {

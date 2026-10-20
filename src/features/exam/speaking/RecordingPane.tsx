@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Square, Loader2, RotateCcw, Check } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
+import { useT } from '@/context/LocaleContext';
 import { useExamStore } from '../state/examStore';
 import { uploadSpeakingRecording } from '../state/attemptsApi';
 
@@ -29,6 +30,7 @@ export default function RecordingPane({
   onUploaded,
   onRecordingChange,
 }: RecordingPaneProps) {
+  const { locale } = useT();
   const attemptId = useExamStore((s) => s.attemptId);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -120,7 +122,7 @@ export default function RecordingPane({
         if (maxDurationSec && secondsRef.current >= maxDurationSec) stopRecording();
       }, 1000);
     } catch (err) {
-      setError(mediaErrorMessage(err, 'Mikrofon'));
+      setError(mediaErrorMessage(err, 'Mikrofon', locale));
     }
   };
 

@@ -12,7 +12,7 @@ function formatPhotoDate(iso, locale) {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  if (locale === 'ru') return formatDateLocale('ru', d, { year: true });
+  if (locale !== 'uz') return formatDateLocale('en', d, { year: true });
   return `${d.getDate()}-${UZ_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 

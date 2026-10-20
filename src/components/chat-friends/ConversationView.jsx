@@ -40,7 +40,7 @@ function formatDaySeparator(dateStr, t, locale) {
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return t('cv.yesterday');
-  if (locale === 'ru') return formatDateLocale(locale, d, { year: d.getFullYear() !== now.getFullYear() });
+  if (locale !== 'uz') return formatDateLocale(locale, d, { year: d.getFullYear() !== now.getFullYear() });
   const label = `${d.getDate()}-${UZ_MONTHS[d.getMonth()]}`;
   return d.getFullYear() === now.getFullYear() ? label : `${label} ${d.getFullYear()}`;
 }

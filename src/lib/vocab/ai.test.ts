@@ -5,50 +5,44 @@ const base = { dueCount: 0, overdueCount: 0, weakCount: 0, recentMistakes: [], s
 
 describe('AI Coach (real ma\'lumotga asoslangan)', () => {
   it("due va yaqindagi xatolar haqida aniq xabar", () => {
-    const c = buildCoachMessage({ ...base, name: 'Ali', dueCount: 18, overdueCount: 5, recentMistakes: ['significant', 'maintain'], hourLocal: 9 });
+    const c = buildCoachMessage({ ...base, name: 'Ali', dueCount: 18, overdueCount: 5, recentMistakes: ['significant', 'maintain'], hourLocal: 9 }, 'uz');
     expect(c.message).toContain('Xayrli tong, Ali!');
     expect(c.message).toContain('18 ta');
     expect(c.message).toContain('"significant" va "maintain"');
     expect(c.action.href).toContain('mode=weak');
   });
   it('xato yo\'q — takrorlashga yo\'naltiradi', () => {
-    const c = buildCoachMessage({ ...base, dueCount: 6 });
+    const c = buildCoachMessage({ ...base, dueCount: 6 }, 'uz');
     expect(c.action.href).toBe('/app/vocabulary/review');
   });
   it("hammasi bo'sh — yangi so'zlar yoki o'yin", () => {
-    expect(buildCoachMessage({ ...base, newAvailable: 4 }).action.href).toBe('/app/vocabulary/flashcards');
-    expect(buildCoachMessage(base).action.href).toBe('/app/games');
+    expect(buildCoachMessage({ ...base, newAvailable: 4 }, 'uz').action.href).toBe('/app/vocabulary/flashcards');
+    expect(buildCoachMessage(base, 'uz').action.href).toBe('/app/games');
   });
   it('kunlik vazifalar bajarilsa — tabrik', () => {
-    const c = buildCoachMessage({ ...base, dailyDone: 4 });
+    const c = buildCoachMessage({ ...base, dailyDone: 4 }, 'uz');
     expect(c.tone).toBe('celebrate');
     expect(c.message).toContain('Ajoyib');
   });
   it('seriya xavfda — yumshoq eslatma, jazolamaydi', () => {
-    const c = buildCoachMessage({ ...base, streak: 12, streakAtRisk: true });
+    const c = buildCoachMessage({ ...base, streak: 12, streakAtRisk: true }, 'uz');
     expect(c.tone).toBe('nudge');
     expect(c.message).toContain('12 kunlik');
     expect(c.message.toLowerCase()).not.toContain('yo\'qot');
   });
 });
 
-describe('AI Coach — ruscha (server tomonida lokalizatsiya)', () => {
-  it('salomlashuv, due/overdue, xato so‘zlar va tugma ruscha; uz o‘zgarmaydi', () => {
+describe('AI Coach — inglizcha (server tomonida lokalizatsiya)', () => {
+  it('salomlashuv, due/overdue, xato so‘zlar va tugma inglizcha (standart); uz alohida', () => {
     const ctx = { ...base, name: 'Ali', dueCount: 18, overdueCount: 5, recentMistakes: ['significant', 'maintain'], hourLocal: 9 };
-    const ru = buildCoachMessage(ctx, 'ru');
-    expect(ru.message).toContain('Доброе утро, Ali!');
-    expect(ru.message).toContain('готовых к повторению: 18 (просрочено: 5)');
-    expect(ru.message).toContain('"significant" и "maintain"');
-    expect(ru.action.label).toBe('Практика со слабыми словами');
-    expect(ru.action.href).toContain('mode=weak'); // yo'l tilga bog'liq emas
-    expect(buildCoachMessage(ctx).message).toContain('Xayrli tong, Ali!');
-    expect(buildCoachMessage(ctx, 'xx').message).toContain('Xayrli tong, Ali!'); // noma'lum til → uz
-  });
-  it('seriya xabarida ruscha ko‘plik (день/дня/дней)', () => {
-    expect(buildCoachMessage({ ...base, streak: 21, streakAtRisk: true }, 'ru').message).toContain('серию в 21 день');
-    expect(buildCoachMessage({ ...base, streak: 12, streakAtRisk: true }, 'ru').message).toContain('серию в 12 дней');
-    expect(buildCoachMessage({ ...base, streak: 7 }, 'ru').message).toContain('7 дней подряд');
-    expect(buildCoachMessage({ ...base, streak: 23 }, 'ru').message).toContain('23 дня подряд');
+    const en = buildCoachMessage(ctx, 'en');
+    expect(en.message).toContain('Good morning, Ali!');
+    expect(en.message).toContain('18 words ready for review today (5 overdue)');
+    expect(en.message).toContain('"significant" and "maintain"');
+    expect(en.action.href).toContain('mode=weak'); // yo'l tilga bog'liq emas
+    expect(buildCoachMessage(ctx).message).toContain('Good morning, Ali!');
+    expect(buildCoachMessage(ctx, 'xx').message).toContain('Good morning, Ali!'); // noma'lum til → en
+    expect(buildCoachMessage(ctx, 'uz').message).toContain('Xayrli tong, Ali!');
   });
 });
 

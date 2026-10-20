@@ -14,7 +14,12 @@ export default defineConfig({
   // Testlar bitta test foydalanuvchi (faol sessiya, kunlik limit) holatini bo'lishadi — ketma-ket yuradi.
   workers: 1,
   reporter: [['list']],
-  use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure' },
+  // Standart til — inglizcha; mavjud spec'lar o'zbekcha matnga tayanadi, shuning uchun har kontekst `vocably_lang=uz` bilan boshlanadi (i18n.spec.ts buni o'zi almashtiradi).
+  use: {
+    baseURL: `http://localhost:${PORT}`,
+    trace: 'retain-on-failure',
+    storageState: { cookies: [{ name: 'vocably_lang', value: 'uz', domain: 'localhost', path: '/', expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' }], origins: [] },
+  },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile', use: { ...devices['Pixel 7'] } },

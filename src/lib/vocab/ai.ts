@@ -46,8 +46,8 @@ function joinWords(words: string[], and: string): string {
   return w.length === 2 ? `${w[0]} ${and} ${w[1]}` : w[0] || '';
 }
 
-/** Murabbiy xabari. `locale` — 'uz' (asos) yoki 'ru'; matnlar src/lib/i18n/messages dan (server tomonida, cookie `vocably_lang` bo'yicha). */
-export function buildCoachMessage(c: CoachContext, locale: string = 'uz'): CoachMessage {
+/** Murabbiy xabari. `locale` — 'en' (standart) yoki 'uz'; matnlar src/lib/i18n/messages dan (server tomonida, cookie `vocably_lang` bo'yicha). */
+export function buildCoachMessage(c: CoachContext, locale: string = 'en'): CoachMessage {
   const t = (key: string, vars?: Record<string, string | number>) => translate(locale, key, vars);
   const hello =
     c.hourLocal != null ? (c.hourLocal < 12 ? t('coach.helloMorning') : c.hourLocal < 18 ? t('coach.helloDay') : t('coach.helloEvening')) : t('coach.hello');

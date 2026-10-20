@@ -1125,7 +1125,6 @@ const uz = {
   'as.wipeConfirm': "Hammasini o'chirish",
   'ai.lang.en': "Ingliz tili",
   'ai.lang.uz': "O'zbek tili",
-  'ai.lang.ru': "Rus tili",
   'ai.qa.explain': "Bu so'zni tushuntir",
   'ai.qa.explain.msg': "\"{w}\" so'zini tushuntirib ber.",
   'ai.qa.examples': "Misol jumla ber",

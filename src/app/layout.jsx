@@ -89,7 +89,7 @@ export default function RootLayout({ children }) {
     // suppressHydrationWarning: <body> boshidagi bloklovchi skript hydration'dan oldin
     // data-theme atributini o'rnatishi mumkin — bu server/klient farqi kutilgan va
     // zararsiz, React shu haqidagi ogohlantirishni shu yerda bosib qo'ymasa bo'ladi.
-    <html lang="uz" className={landingFontVariables} suppressHydrationWarning>
+    <html lang="en" className={landingFontVariables} suppressHydrationWarning>
       <head>
         {/* AI javob tizimlari (ChatGPT/Claude/Perplexity) uchun sayt xaritasi — https://llmstxt.org.
             robots.ts ularga /llms.txt'ga ruxsat beradi; bu havola uni sahifadan topishni osonlashtiradi. */}

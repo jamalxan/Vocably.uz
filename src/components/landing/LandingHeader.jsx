@@ -3,13 +3,35 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import BrandLogo from '@/components/BrandLogo';
+import { useT } from '@/context/LocaleContext';
+import { LOCALES, LOCALE_LABELS } from '@/lib/i18n';
 
-const NAV_LINKS = [
-  { href: '/ielts', label: 'IELTS' },
-  { href: '/dictionary', label: "Lug'at" },
-  { href: '/blog', label: 'Blog' },
-  { href: '/pricing', label: 'Narxlar' },
-];
+const NAV_HREFS = ['/ielts', '/dictionary', '/blog', '/pricing'];
+const TEXT = {
+  en: { nav: ['IELTS', 'Dictionary', 'Blog', 'Pricing'], login: 'Log in', start: 'Start free', menu: 'Main menu', mobile: 'Mobile menu', open: 'Open menu', close: 'Close menu', lang: 'Language' },
+  uz: { nav: ['IELTS', "Lug'at", 'Blog', 'Narxlar'], login: 'Kirish', start: 'Bepul boshlash', menu: 'Asosiy menyu', mobile: 'Mobil menyu', open: 'Menyuni ochish', close: 'Menyuni yopish', lang: 'Til' },
+};
+
+function LangSwitch({ locale, setLocale, label, className = '' }) {
+  return (
+    <div role="group" aria-label={label} className={`flex gap-1 ${className}`}>
+      {LOCALES.map((l) => (
+        <button
+          key={l}
+          type="button"
+          lang={l}
+          onClick={() => setLocale(l)}
+          aria-pressed={locale === l}
+          className={`px-2.5 min-h-9 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            locale === l ? 'bg-accent text-on-accent' : 'text-muted hover:bg-bg-sunken'
+          }`}
+        >
+          {LOCALE_LABELS[l]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // Faqat mobil menyu ochiq/yopiqligi uchun client — qolgan butun landing sahifa
 // server komponent (statik generatsiya, tezroq LCP).
@@ -20,6 +42,9 @@ const NAV_LINKS = [
 // sahifalar (lugat, narxlar, blog, demo) bu prop'ni bermaydi — ular avvalgi
 // statik ko'rinishida qoladi, hech narsa buzilmaydi.
 export default function LandingHeader({ floating = false }) {
+  const { locale, setLocale } = useT();
+  const tx = TEXT[locale] || TEXT.en;
+  const NAV_LINKS = NAV_HREFS.map((href, i) => ({ href, label: tx.nav[i] }));
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(!floating);
 
@@ -58,7 +83,7 @@ export default function LandingHeader({ floating = false }) {
           <BrandLogo height={32} />
         </Link>
 
-        <nav aria-label="Asosiy menyu" className="hidden md:flex items-center gap-7">
+        <nav aria-label={tx.menu} className="hidden md:flex items-center gap-7">
           {NAV_LINKS.map((l) => (
             <Link key={l.href} href={l.href} className="text-sm text-muted hover:text-accent transition-colors">
               {l.label}
@@ -67,21 +92,22 @@ export default function LandingHeader({ floating = false }) {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
+          <LangSwitch locale={locale} setLocale={setLocale} label={tx.lang} />
           <Link href="/login" className="text-sm font-medium text-ink hover:text-accent transition-colors px-2">
-            Kirish
+            {tx.login}
           </Link>
           <Link
             href="/register"
             className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-4 py-2 rounded-xl text-sm transition-colors shadow-glow"
           >
-            Bepul boshlash
+            {tx.start}
           </Link>
         </div>
 
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-label={open ? 'Menyuni yopish' : 'Menyuni ochish'}
+          aria-label={open ? tx.close : tx.open}
           aria-expanded={open}
           aria-controls="landing-mobile-menu"
           className="md:hidden w-11 h-11 -mr-2 inline-flex items-center justify-center rounded-lg text-ink"
@@ -96,7 +122,7 @@ export default function LandingHeader({ floating = false }) {
           <div className="md:hidden fixed inset-0 -z-10" aria-hidden="true" onClick={() => setOpen(false)} />
           <nav
             id="landing-mobile-menu"
-            aria-label="Mobil menyu"
+            aria-label={tx.mobile}
             className="md:hidden absolute left-4 right-4 sm:left-6 sm:right-6 top-full bg-surface border border-border rounded-2xl shadow-card p-4 flex flex-col gap-1"
           >
             {NAV_LINKS.map((l) => (
@@ -111,15 +137,16 @@ export default function LandingHeader({ floating = false }) {
             ))}
             <div className="h-px bg-border my-1.5" />
             <Link href="/login" onClick={() => setOpen(false)} className="px-3 py-3 rounded-xl text-sm text-ink hover:bg-bg transition-colors">
-              Kirish
+              {tx.login}
             </Link>
             <Link
               href="/register"
               onClick={() => setOpen(false)}
               className="bg-accent text-on-accent font-semibold px-3 py-3 rounded-xl text-sm text-center mt-1"
             >
-              Bepul boshlash
+              {tx.start}
             </Link>
+            <LangSwitch locale={locale} setLocale={setLocale} label={tx.lang} className="px-1 pt-2" />
           </nav>
         </>
       )}

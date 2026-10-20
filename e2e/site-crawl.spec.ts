@@ -10,7 +10,7 @@ import {
 import { loginAs } from './auth';
 
 // E2E_LANG=ru — barcha sahifalar ruscha rejimda (cookie) ko'riladi; xom i18n kalitlari va o'zbekcha qoldiqlar hisobotga tushadi.
-const LANG_RU = process.env.E2E_LANG === 'ru';
+const LANG_EN = process.env.E2E_LANG === 'en';
 
 type Group = 'guest' | 'user' | 'admin' | 'teacher';
 
@@ -134,7 +134,7 @@ async function visit(page: Page, url: string, findings: Finding[]) {
         rawKey: (text.match(/(?:ch|vm|av|ai|as|cv|mb|mi|mk|mr|rs|rv|sk|sp|wp|aw|an|em|wpk|pw|qz|cm|pr|co|en|mn|lg|auth|app|nav|sub|res|cat|wt|lib|practice|skill)\.[a-zA-Z][\w.]*/g) || []).slice(0, 5),
         uzLeft: ru ? (text.match(/[a-z]+['ʻ‘’][a-z]+/g) || []).filter((w) => /^(bo|o|g|to|so|qo|yo|ma|ko|ru)['ʻ‘’]/.test(w)).slice(0, 8) : [],
       };
-    }, LANG_RU);
+    }, LANG_EN);
     const info = await evalInfo().catch(async () => {
       await page.waitForLoadState('load', { timeout: 20_000 }).catch(() => {});
       await page.waitForTimeout(800);
@@ -160,7 +160,7 @@ async function visit(page: Page, url: string, findings: Finding[]) {
 for (const group of ['guest', 'user', 'admin', 'teacher'] as Group[]) {
   test(`crawl: ${group} (${byGroup[group].length} sahifa)`, async ({ page }, testInfo) => {
     test.setTimeout(30 * 60_000);
-    if (LANG_RU) await page.context().addCookies([{ name: 'vocably_lang', value: 'ru', url: 'http://localhost:3100' }]);
+    if (LANG_EN) await page.context().addCookies([{ name: 'vocably_lang', value: 'en', url: 'http://localhost:3100' }]);
     if (group === 'user') await loginAs(page, E2E_PHONE);
     if (group === 'admin') await loginAs(page, E2E_ADMIN_PHONE);
     if (group === 'teacher') await loginAs(page, E2E_TEACHER_PHONE);
