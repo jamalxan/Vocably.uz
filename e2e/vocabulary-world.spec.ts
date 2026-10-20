@@ -43,6 +43,6 @@ test.describe('Vocabulary World', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: /O'yinga kirish|Batafsil/ }).click();
-    await expect(page).toHaveURL(/\/app\/oyinlar\/memory$/, { timeout: 90_000 });
+    await expect(page).toHaveURL(/\/app\/games\/memory$/, { timeout: 90_000 });
   });
 });
