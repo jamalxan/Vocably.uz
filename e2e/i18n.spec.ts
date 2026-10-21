@@ -17,7 +17,8 @@ test('kirish va ro‘yxat sahifalarida til tanlagich yo‘q; standart til ingliz
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible({ timeout: 60_000 });
 });
 
-test('landing menyusida til almashadi va cookie’da saqlanadi', async ({ page, context }) => {
+test('landing menyusida til almashadi va cookie’da saqlanadi', async ({ page, context, isMobile }) => {
+  test.skip(isMobile, 'landing sarlavhasi mobilda gamburger menyuda — desktop');
   await page.goto('/');
   const header = page.getByRole('banner');
   await expect(header.getByRole('link', { name: 'Pricing' }).first()).toBeVisible({ timeout: 60_000 });

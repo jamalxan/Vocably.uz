@@ -12,7 +12,7 @@ test('premium: "Hikoya yaratish" hikoya, ajratilgan so‘zlar va AI belgisini ko
   await card.getByRole('button', { name: /Hikoya yaratish/ }).click();
   await expect(card.getByRole('article')).toBeVisible({ timeout: 60_000 });
   await expect(card.getByRole('heading', { level: 3 })).not.toBeEmpty();
-  await expect(card.getByText(/AI tomonidan yaratilgan|AI hozir band/)).toBeVisible();
+  await expect(card.getByText(/AI tomonidan yaratilgan|AI hozir band/).first()).toBeVisible();
   await expect(card.getByRole('button', { name: /Yangisi/ })).toBeVisible();
 });
 
