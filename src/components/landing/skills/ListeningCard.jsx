@@ -17,14 +17,13 @@ export default function ListeningCard() {
 
         <div className="bg-bg border border-border rounded-xl p-4">
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              tabIndex={-1}
+            {/* Dekorativ "play" belgisi (mock UI) — haqiqiy tugma emas, shuning uchun <button> emas: nomsiz tugma a11y skanerida xato beradi. */}
+            <span
               aria-hidden="true"
               className="w-10 h-10 rounded-full bg-accent text-on-accent flex items-center justify-center flex-shrink-0 shadow-glow"
             >
               <Play size={15} fill="currentColor" />
-            </button>
+            </span>
             <div className="flex items-end gap-[3px] h-9 flex-1" aria-hidden="true">
               {BAR_HEIGHTS.map((h, i) => (
                 <span

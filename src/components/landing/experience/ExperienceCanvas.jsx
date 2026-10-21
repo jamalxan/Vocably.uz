@@ -28,8 +28,13 @@ export default function ExperienceCanvas() {
   const [ready, setReady] = useState(false);
   const [hidden, setHidden] = useState(false);
   // Kuchsiz qurilma (dasturiy WebGL, eski GPU): DPR pasaytirilgandan keyin ham kadr tezligi past qolsa —
-  // sahna butunlay o'chiriladi (CSS veil/fallback qoladi), aks holda asosiy oqim har kadrda ~500 ms band bo'lib,
-  // sahifa umuman skroll qilinmaydi (headless Chromium o'lchovi: 13 s dan boshlab uzluksiz 500 ms long task).
+  // sahna TO'XTATILADI (frameloop="never" + yashirin; CSS veil/fallback qoladi), aks holda asosiy oqim har
+  // kadrda ~500 ms band bo'lib, sahifa umuman skroll qilinmaydi (headless Chromium o'lchovi: 13 s dan boshlab
+  // uzluksiz 500 ms long task).
+  //
+  // MUHIM: Canvas unmount QILINMAYDI. `onFallback` R3F'ning `useFrame` ichidan (rAF kadri o'rtasida) chaqiriladi;
+  // o'sha paytda `<Canvas>`ni daraxtdan olib tashlash React DOM'da "Failed to execute 'removeChild' on 'Node'"
+  // xatosiga olib kelardi (R3F canvas o'ramini ikki marta o'chirishga urinish) — e2e/site-crawl shuni ushlagan.
   const [disabled, setDisabled] = useState(false);
 
   useEffect(() => {
@@ -37,13 +42,14 @@ export default function ExperienceCanvas() {
     experience.reducedMotion = reducedMotion;
   }, [isMobile, reducedMotion]);
 
-  // The shader now darkens the dark chapters itself — lighten their CSS veil.
+  // The shader now darkens the dark chapters itself — lighten their CSS veil
+  // (sahna to'xtatilganda veil yana to'liq kuchga qaytadi).
   useEffect(() => {
-    if (!ready) return undefined;
+    if (!ready || disabled) return undefined;
     const root = document.documentElement;
     root.style.setProperty('--landing-veil', '0.18');
     return () => root.style.removeProperty('--landing-veil');
-  }, [ready]);
+  }, [ready, disabled]);
 
   useEffect(() => {
     const onPointer = (e) => {
@@ -59,27 +65,38 @@ export default function ExperienceCanvas() {
     };
   }, []);
 
-  if (!colors || disabled) return null;
+  if (!colors) return null;
+
+  const paused = hidden || disabled;
 
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[100lvh] transition-opacity duration-1000 ease-out"
-      style={{ opacity: ready ? 1 : 0 }}
+      style={{ opacity: ready && !disabled ? 1 : 0, visibility: disabled ? 'hidden' : undefined }}
     >
       <Canvas
         flat
         dpr={isMobile ? Math.min(dpr, 1) : dpr}
         gl={{ antialias: !isMobile, alpha: false, powerPreference: 'high-performance' }}
         camera={{ position: [0, 0, 6], fov: 40 }}
-        frameloop={hidden ? 'never' : 'always'}
+        frameloop={paused ? 'never' : 'always'}
         style={{ pointerEvents: 'none' }}
         onCreated={({ gl }) => {
           gl.setClearColor(colors.bg);
           requestAnimationFrame(() => setReady(true));
         }}
       >
-        <PerformanceMonitor iterations={5} flipflops={3} onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} onFallback={() => setDisabled(true)} />
+        <PerformanceMonitor
+          iterations={5}
+          flipflops={3}
+          onDecline={() => setDpr(1)}
+          onIncline={() => setDpr(1.5)}
+          onFallback={() => {
+            console.warn('[landing] 3D experience paused: low frame rate');
+            setDisabled(true);
+          }}
+        />
         <ExperienceScene colors={colors} lite={isMobile} reducedMotion={reducedMotion} />
       </Canvas>
     </div>
