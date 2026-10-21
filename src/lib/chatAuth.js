@@ -69,6 +69,28 @@ export async function requireTeacherUser(req) {
   return { user };
 }
 
+// Material (kitob) yuklash route'lari uchun: admin YOKI o'qituvchi. O'qituvchi
+// faqat o'zi yuklagan materiallar bilan ishlaydi — buni chaqiruvchi route
+// `canAccessBook` bilan tekshiradi.
+export async function requireContentUploader(req) {
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) return { error: 'Ruxsat berilmagan', status: 401 };
+
+  await connectToDatabase();
+
+  const user = await User.findById(userId).select('username role name phone').lean();
+  if (!user) return { error: 'Foydalanuvchi topilmadi', status: 404 };
+  if (user.role !== 'admin' && user.role !== 'teacher') return { error: 'Ruxsat berilmagan', status: 403 };
+
+  return { user };
+}
+
+// Admin hamma materialni, o'qituvchi faqat o'zi yaratganini ko'radi/boshqaradi.
+export function canAccessBook(user, book) {
+  if (user.role === 'admin') return true;
+  return !!book.createdBy && String(book.createdBy) === String(user._id);
+}
+
 // Infratuzilmasiz (Redis'siz) oddiy tezlik cheklash: 60 soniyalik oynada
 // (userId, action) juftligi uchun `limit` martadan ko'p urinishga yo'l qo'ymaydi.
 // RateLimitHit hujjati TTL indeks orqali 60s'dan keyin o'zi o'chadi (src/lib/models.js).

@@ -76,13 +76,16 @@ const LICENCE_LABEL = {
   third_party_copyright: 'Uchinchi tomon',
 };
 
-export default function ContentBooksPanel() {
+// `newHref`/`showAutopilot` — o'qituvchi paneli (/teacher/materials) ham shu ro'yxatni
+// ishlatadi: avtopilot bannerisiz va o'z "yangi material" sahifasiga havola bilan.
+export default function ContentBooksPanel({ newHref = '/admin/content/books/new', showAutopilot = true }) {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // Dastlabki yuklash: `loading` allaqachon true, shuning uchun setState faqat
+  // fetch tugagach chaqiriladi (effect ichida sinxron setState yo'q).
+  const fetchBooks = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/books');
       const data = await res.json();
@@ -92,9 +95,15 @@ export default function ContentBooksPanel() {
     }
   }, []);
 
+  // Qayta yuklash: spinner'ni ko'rsatadi.
+  const load = useCallback(async () => {
+    setLoading(true);
+    await fetchBooks();
+  }, [fetchBooks]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchBooks();
+  }, [fetchBooks]);
 
   const remove = async (book) => {
     if (!confirm(`"${book.title}" kitobini o'chirishni tasdiqlaysizmi? Bu qaytarib bo'lmaydi (R2'dagi fayllar ham o'chadi).`)) return;
@@ -109,7 +118,7 @@ export default function ContentBooksPanel() {
 
   return (
     <div className="space-y-6">
-      <AutopilotStatusBanner />
+      {showAutopilot && <AutopilotStatusBanner />}
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">
@@ -119,10 +128,10 @@ export default function ContentBooksPanel() {
           </p>
         </div>
         <Link
-          href="/admin/content/books/new"
+          href={newHref}
           className="flex-shrink-0 self-start sm:self-auto flex items-center gap-2 whitespace-nowrap px-4 py-2.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-semibold transition-colors"
         >
-          <Plus size={16} /> Yangi kitob
+          <Plus size={16} /> Material yuklash
         </Link>
       </div>
 

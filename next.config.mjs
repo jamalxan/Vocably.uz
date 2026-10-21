@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 function buildConnectSrc() {
   const extra = [];
-  for (const raw of [process.env.NEXT_PUBLIC_REALTIME_URL, process.env.S3_ENDPOINT]) {
+  for (const raw of [process.env.NEXT_PUBLIC_REALTIME_URL, process.env.S3_ENDPOINT, process.env.R2_ENDPOINT]) {
     if (!raw) continue;
     try {
       const origin = new URL(raw).origin;

@@ -1,5 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
-import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
+import { requireContentUploader, canAccessBook, writeAuditLog } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { ContentBook, IngestJob } from '@/lib/models';
 import { enqueueIngestJob } from '@/lib/queue/contentQueue';
@@ -29,12 +29,12 @@ const STAGES = [
 export async function POST(req, props) {
   const params = await props.params;
   try {
-    const { error, status, user: admin } = await requireAdminUser(req);
+    const { error, status, user: admin } = await requireContentUploader(req);
     if (error) return NextResponse.json({ error }, { status });
 
     await connectToDatabase();
     const book = await ContentBook.findById(params.id);
-    if (!book) return NextResponse.json({ error: 'Kitob topilmadi' }, { status: 404 });
+    if (!book || !canAccessBook(admin, book)) return NextResponse.json({ error: 'Kitob topilmadi' }, { status: 404 });
 
     const body = await req.json().catch(() => ({}));
     const requestedStages = Array.isArray(body.stages) && body.stages.length > 0 ? body.stages : STAGES;

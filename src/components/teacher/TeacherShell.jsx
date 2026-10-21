@@ -22,6 +22,14 @@ export default function TeacherShell({ children }) {
             <p className="text-xs text-muted truncate mt-0.5">@{teacherName}</p>
           </div>
         </Link>
+        <nav className="flex items-center gap-1 ml-auto mr-2" aria-label="O'qituvchi bo'limlari">
+          <Link href="/teacher" className="px-3 py-2.5 min-h-11 inline-flex items-center rounded-lg text-sm text-muted hover:text-ink hover:bg-surface-2 transition-colors">
+            Sinflar
+          </Link>
+          <Link href="/teacher/materials" className="px-3 py-2.5 min-h-11 inline-flex items-center rounded-lg text-sm text-muted hover:text-ink hover:bg-surface-2 transition-colors">
+            Materiallar
+          </Link>
+        </nav>
         <Link
           href="/app"
           className="inline-flex items-center gap-2 px-3 py-2.5 min-h-11 rounded-lg text-sm text-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/db';
-import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
+import { requireContentUploader, writeAuditLog } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { ContentBook, ContentAsset } from '@/lib/models';
 import { validateSourceUpload, buildSourceKey, presignSourceUpload } from '@/lib/storage/r2';
@@ -17,27 +17,31 @@ import { NextResponse } from 'next/server';
 // (kimdir to'g'ridan-to'g'ri API'ga so'rov yuborsa ham himoyalangan bo'lsin).
 export async function POST(req) {
   try {
-    const { error, status, user: admin } = await requireAdminUser(req);
+    const { error, status, user: admin } = await requireContentUploader(req);
     if (error) return NextResponse.json({ error }, { status });
 
     await connectToDatabase();
 
     const body = await req.json().catch(() => ({}));
     const {
-      title,
       publisher = '',
       series = '',
       volume = null,
       module = 'academic',
-      licence,
+      licence = 'own', // oddiy yuklash: ko'rsatilmasa "o'zimniki"
       licenceNote = '',
-      publishScope = 'private',
       pdf, // { mimeType, size, filename? } — tarixiy nom, endi PDF YOKI DOCX bo'lishi mumkin (§50.2)
       audio = [], // [{ mimeType, size }]
     } = body;
+    // O'qituvchi ommaviy (public) nashr qila olmaydi — faqat admin.
+    const publishScope = admin.role === 'admin' ? body.publishScope || 'private' : 'private';
+    // Sarlavha berilmasa fayl nomidan olinadi ("Cambridge_IELTS_19.pdf" -> "Cambridge IELTS 19").
+    const title =
+      (typeof body.title === 'string' && body.title.trim()) ||
+      (pdf?.filename || '').replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
 
-    if (!title || !licence) {
-      return NextResponse.json({ error: "title va licence majburiy" }, { status: 400 });
+    if (!title) {
+      return NextResponse.json({ error: "Sarlavha majburiy" }, { status: 400 });
     }
     if (licence === 'third_party_copyright' && publishScope === 'public') {
       return NextResponse.json(
@@ -130,7 +134,7 @@ export async function POST(req) {
 
 export async function GET(req) {
   try {
-    const { error, status } = await requireAdminUser(req);
+    const { error, status, user } = await requireContentUploader(req);
     if (error) return NextResponse.json({ error }, { status });
 
     await connectToDatabase();
@@ -139,6 +143,7 @@ export async function GET(req) {
     const statusFilter = searchParams.get('status');
     const licenceFilter = searchParams.get('licence');
     const query = {};
+    if (user.role !== 'admin') query.createdBy = user._id;
     if (statusFilter) query.status = statusFilter;
     if (licenceFilter) query.licence = licenceFilter;
 

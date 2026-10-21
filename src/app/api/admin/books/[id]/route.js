@@ -1,5 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
-import { requireAdminUser, writeAuditLog } from '@/lib/chatAuth';
+import { requireAdminUser, requireContentUploader, canAccessBook, writeAuditLog } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { ContentBook, ContentAsset, IngestJob } from '@/lib/models';
 import { deleteSourceObject } from '@/lib/storage/r2';
@@ -72,12 +72,12 @@ export async function PATCH(req, props) {
 export async function DELETE(req, props) {
   const params = await props.params;
   try {
-    const { error, status, user: admin } = await requireAdminUser(req);
+    const { error, status, user: admin } = await requireContentUploader(req);
     if (error) return NextResponse.json({ error }, { status });
 
     await connectToDatabase();
     const book = await ContentBook.findById(params.id);
-    if (!book) return NextResponse.json({ error: 'Kitob topilmadi' }, { status: 404 });
+    if (!book || !canAccessBook(admin, book)) return NextResponse.json({ error: 'Kitob topilmadi' }, { status: 404 });
 
     // Kaskad: R2'dagi haqiqiy fayllar ham o'chiriladi (chat media'dan farqli
     // — bu yerda "yumshoq o'chirish" audit talabi yo'q, kitob manbasi shaxsiy
