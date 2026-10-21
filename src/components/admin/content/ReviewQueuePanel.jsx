@@ -45,8 +45,8 @@ export default function ReviewQueuePanel() {
   const [actionError, setActionError] = useState('');
   const detailRef = useRef(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // Sinxron setState yo'q: effekt ichidan xavfsiz chaqiriladi.
+  const fetchItems = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/review?status=${statusFilter}`);
       const data = await res.json();
@@ -60,9 +60,15 @@ export default function ReviewQueuePanel() {
     }
   }, [statusFilter]);
 
+  // Qayta yuklash: spinner'ni ko'rsatadi.
+  const load = useCallback(async () => {
+    setLoading(true);
+    await fetchItems();
+  }, [fetchItems]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchItems();
+  }, [fetchItems]);
 
   const selected = items.find((i) => i.id === selectedId) || null;
   const selectedIndex = items.findIndex((i) => i.id === selectedId);
@@ -148,7 +154,10 @@ export default function ReviewQueuePanel() {
         {['open', 'fixed', 'accepted', 'rejected', 'all'].map((s) => (
           <button
             key={s}
-            onClick={() => setStatusFilter(s)}
+            onClick={() => {
+              setStatusFilter(s);
+              setLoading(true);
+            }}
             aria-pressed={statusFilter === s}
             className={`px-3 py-1.5 min-h-11 md:min-h-0 rounded-lg text-xs font-semibold transition-colors ${
               statusFilter === s ? 'bg-accent text-on-accent' : 'text-muted hover:bg-bg'

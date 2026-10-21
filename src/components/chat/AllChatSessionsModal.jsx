@@ -30,13 +30,12 @@ export default function AllChatSessionsModal({ open, onClose, onSelect }) {
   // Barchasini o'chirish ikki bosqichli: avval ogohlantirish paneli, keyin tasdiq modali.
   const [wipeStep, setWipeStep] = useState(0);
 
-  useEffect(() => {
-    if (!open) {
-      setQuery('');
-      setRenamingId(null);
-      setWipeStep(0);
-    }
-  }, [open]);
+  // Yopilganda holat render vaqtida tozalanadi.
+  if (!open && (query !== '' || renamingId !== null || wipeStep !== 0)) {
+    setQuery('');
+    setRenamingId(null);
+    setWipeStep(0);
+  }
 
   useEffect(() => {
     if (!open) return;

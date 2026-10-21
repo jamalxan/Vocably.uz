@@ -55,12 +55,15 @@ export default function RecordingPane({
     onRecordingChangeRef.current?.(recording);
   }, [recording]);
 
-  useEffect(() => {
+  // Savol (part/questionIndex) o'zgarganda holat qayta boshlanadi (render paytida moslash).
+  const questionKey = `${part}:${questionIndex}`;
+  const [prevQuestionKey, setPrevQuestionKey] = useState(questionKey);
+  if (prevQuestionKey !== questionKey) {
+    setPrevQuestionKey(questionKey);
     setDone(alreadyRecorded);
     setSeconds(0);
     setError('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [part, questionIndex]);
+  }
 
   useEffect(
     () => () => {

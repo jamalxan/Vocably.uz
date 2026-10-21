@@ -75,7 +75,8 @@ export default function TextMarker({ storageKey, className, children }: TextMark
 
   useEffect(() => {
     supported.current = !!highlightApi();
-    setSpans(load(key));
+    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
+    Promise.resolve().then(() => setSpans(load(key)));
   }, [key]);
 
   // Paint (and re-paint when React replaces text nodes underneath).

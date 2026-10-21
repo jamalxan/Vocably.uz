@@ -54,7 +54,6 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
 
   useEffect(() => {
     let active = true;
-    setCategoriesError(false);
     authedFetch('/api/words')
       .then((r) => {
         if (!r.ok) throw new Error();
@@ -216,7 +215,10 @@ export default function AddWordModal({ word, context, onClose, onAdded }: AddWor
                 <p className="text-xs text-danger">{t('aw.catFail')}</p>
                 <button
                   type="button"
-                  onClick={() => setCategoriesReload((n) => n + 1)}
+                  onClick={() => {
+                    setCategoriesError(false);
+                    setCategoriesReload((n) => n + 1);
+                  }}
                   className="min-h-9 px-2 text-xs font-semibold text-accent hover:underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {t('aw.retry')}

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useId, cloneElement } from 'react';
+import { useState, useEffect, useRef, useId, cloneElement, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import BrandLogo from '@/components/BrandLogo';
@@ -17,6 +17,8 @@ function afterAuthPath() {
   const next = new URLSearchParams(window.location.search).get('next') || '';
   return /^\/app(\/[\w\-/?=&%.]*)?$/.test(next) && !next.startsWith('//') ? next : '/app';
 }
+
+const noopSubscribe = () => () => {};
 
 async function readJson(res) {
   try {
@@ -72,7 +74,12 @@ export default function AuthForm({ initialMode = 'login' }) {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   // Hydration va token tekshiruvi tugamaguncha forma bosilmaydi
-  const [ready, setReady] = useState(false);
+  // localStorage bayrog'i: serverda false, brauzerda bayroq yo'q bo'lsa true.
+  const ready = useSyncExternalStore(
+    noopSubscribe,
+    () => !localStorage.getItem('vocably_authed'),
+    () => false
+  );
 
   const pollRef = useRef(null);
 
@@ -86,9 +93,7 @@ export default function AuthForm({ initialMode = 'login' }) {
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('vocably_authed')) {
       router.replace(afterAuthPath());
-      return;
     }
-    setReady(true);
   }, [router]);
 
   useEffect(() => () => clearInterval(pollRef.current), []);

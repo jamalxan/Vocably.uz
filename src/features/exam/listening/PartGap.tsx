@@ -27,9 +27,14 @@ function formatTime(sec: number): string {
 
 export default function PartGap({ durationSec, message, onComplete, variant = 'full' }: PartGapProps) {
   const [remaining, setRemaining] = useState(durationSec);
+  // durationSec o'zgarganda qoldiq vaqt qayta boshlanadi (render paytida moslash).
+  const [prevDuration, setPrevDuration] = useState(durationSec);
+  if (prevDuration !== durationSec) {
+    setPrevDuration(durationSec);
+    setRemaining(durationSec);
+  }
 
   useEffect(() => {
-    setRemaining(durationSec);
     const start = Date.now();
     const id = setInterval(() => {
       const left = Math.max(0, durationSec - Math.floor((Date.now() - start) / 1000));

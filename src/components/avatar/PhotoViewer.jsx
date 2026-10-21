@@ -46,10 +46,10 @@ export default function PhotoViewer({
   const [toast, setToast] = useState('');
 
   // Rasmlar ro'yxati tashqaridan o'zgarsa (o'chirildi / asosiy qilindi) indeks chegarada qolsin.
+  if (photos.length > 0 && index > photos.length - 1) setIndex(photos.length - 1);
   useEffect(() => {
     if (photos.length === 0) onClose?.();
-    else if (index > photos.length - 1) setIndex(photos.length - 1);
-  }, [photos, index, onClose]);
+  }, [photos, onClose]);
 
   const photo = photos[index];
   const count = photos.length;

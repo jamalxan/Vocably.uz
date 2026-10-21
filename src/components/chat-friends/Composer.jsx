@@ -55,18 +55,18 @@ export default function Composer() {
   // (kutilayotgan biriktirma bo'lsa — konflikt bo'lmasligi uchun bekor qilinadi).
   // Tahrirlash tashqaridan bekor qilinsa (javob berish, suhbat almashishi) — eski matn
   // inputda qolib, yangi xabar sifatida yuborilib ketmasin.
-  const prevEditingIdRef = useRef(null);
-  useEffect(() => {
-    const prevId = prevEditingIdRef.current;
-    prevEditingIdRef.current = editingMessage?.id ?? null;
+  const [prevEditing, setPrevEditing] = useState(null);
+  if (prevEditing !== editingMessage) {
+    setPrevEditing(editingMessage);
     if (!editingMessage) {
-      if (prevId != null) setText('');
-      return;
+      if (prevEditing != null) setText('');
+    } else {
+      setText(editingMessage.text);
+      clearPendingAttachment();
     }
-    setText(editingMessage.text);
-    textInputRef.current?.focus();
-    clearPendingAttachment();
-     
+  }
+  useEffect(() => {
+    if (editingMessage) textInputRef.current?.focus();
   }, [editingMessage]);
 
   // Javob berish rejimiga o'tilganda (xabardagi "Reply" tugmasi) inputga fokus

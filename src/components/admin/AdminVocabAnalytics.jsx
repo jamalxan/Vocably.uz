@@ -39,9 +39,15 @@ export default function AdminVocabAnalytics() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Davr almashganda yuklanish holatini render vaqtida qaytaramiz.
+  const [prevDays, setPrevDays] = useState(days);
+  if (prevDays !== days) {
+    setPrevDays(days);
+    setLoading(true);
+  }
+
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     (async () => {
       try {
         const res = await fetch(`/api/admin/vocab-analytics?days=${days}`);

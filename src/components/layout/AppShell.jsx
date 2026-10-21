@@ -53,9 +53,11 @@ export default function AppShell({ children }) {
   // (quyidagi effekt), lekin Lug'at allaqachon faol bo'lganda tugma navigatsiya
   // qilmaydi — faqat ochiq/yopiqni almashtiradi.
   const [lugatOpen, setLugatOpen] = useState(onLugat);
-  useEffect(() => {
+  const [prevOnLugat, setPrevOnLugat] = useState(onLugat);
+  if (prevOnLugat !== onLugat) {
+    setPrevOnLugat(onLugat);
     if (onLugat) setLugatOpen(true);
-  }, [onLugat]);
+  }
 
   // Mobil pastki tablar: tarix qoidasi (src/lib/tabHistory.js) — "orqaga" doim Bosh sahifaga olib borsin, tasodifiy oldingi tabga emas.
   const onTabClick = (e, item) => {
@@ -81,9 +83,11 @@ export default function AppShell({ children }) {
   // Planshet rail: sensorli ekranda hover yo'q — yorliqlarni ko'rish uchun
   // aniq "kengaytirish" tugmasi. Sahifa o'zgarganda yoki Escape'da yopiladi.
   const [railOpen, setRailOpen] = useState(false);
-  useEffect(() => {
+  const [railPath, setRailPath] = useState(pathname);
+  if (railPath !== pathname) {
+    setRailPath(pathname);
     setRailOpen(false);
-  }, [pathname]);
+  }
   useEffect(() => {
     if (!railOpen) return undefined;
     const onKey = (e) => {

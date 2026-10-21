@@ -1,10 +1,21 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CloudOff, DownloadCloud, RefreshCw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useApp } from '@/context/AppContext';
 import { useT } from '@/context/LocaleContext';
 import { downloadDueQueue, isOfflineReviewSupported, listPending, loadDueQueue, recordAnswer, syncPending } from '@/lib/offlineReview';
+
+const subscribeNoop = () => () => {};
+function subscribeOnline(cb) {
+  window.addEventListener('online', cb);
+  window.addEventListener('offline', cb);
+  return () => {
+    window.removeEventListener('online', cb);
+    window.removeEventListener('offline', cb);
+  };
+}
+const getOnline = () => navigator.onLine;
 
 // Offline takrorlash (B2): metro/avtobusda internetsiz. Bugungi navbat oldindan yuklanadi, javoblar qurilmada saqlanadi va
 // ulanganda yuboriladi. Offline javoblar XP BERMAYDI (faqat so'z holati va seriya) — server shunday hal qiladi.
@@ -12,8 +23,8 @@ export default function OfflineReviewCard() {
   const { phone } = useApp();
   const { t } = useT();
   const userKey = phone || '';
-  const [supported, setSupported] = useState(false);
-  const [online, setOnline] = useState(true);
+  const supported = useSyncExternalStore(subscribeNoop, isOfflineReviewSupported, () => false);
+  const online = useSyncExternalStore(subscribeOnline, getOnline, () => true);
   const [queue, setQueue] = useState({ words: [], fetchedAt: null, stale: false });
   const [pending, setPending] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -51,23 +62,16 @@ export default function OfflineReviewCard() {
   );
 
   useEffect(() => {
-    setSupported(isOfflineReviewSupported());
-    setOnline(navigator.onLine);
-    const on = () => {
-      setOnline(true);
-      sync(false);
-    };
-    const off = () => setOnline(false);
+    const on = () => sync(false);
     window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => {
-      window.removeEventListener('online', on);
-      window.removeEventListener('offline', off);
-    };
+    return () => window.removeEventListener('online', on);
   }, [sync]);
 
   useEffect(() => {
-    refresh().then(() => sync(true));
+    (async () => {
+      await refresh();
+      sync(true);
+    })();
   }, [refresh, sync]);
 
   if (!supported || !userKey) return null;

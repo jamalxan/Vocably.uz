@@ -13,11 +13,17 @@ export default function DeleteMessageModal({ open, canDeleteForEveryone, otherUs
   const confirmRef = useRef(null);
   const titleId = useId();
 
+  // Ochilganda holatni render paytida tiklaymiz.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) setForEveryone(false);
+  }
+
   // Ochilganda fokus tasdiqlash tugmasiga, yopilganda avvalgi elementga qaytadi.
   useEffect(() => {
     if (!open) return undefined;
     const prevFocus = document.activeElement;
-    setForEveryone(false);
     confirmRef.current?.focus();
     return () => {
       if (prevFocus instanceof HTMLElement) prevFocus.focus();

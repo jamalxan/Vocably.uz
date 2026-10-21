@@ -62,10 +62,17 @@ function MediaGallery({ conversationId, type }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const Bubble = GALLERY_BUBBLE[type];
 
-  useEffect(() => {
-    let cancelled = false;
+  // Suhbat/tur/qayta urinish o'zgarsa, ma'lumotni render paytida tozalaymiz.
+  const fetchKey = `${conversationId}|${type}|${reloadKey}`;
+  const [prevFetchKey, setPrevFetchKey] = useState(fetchKey);
+  if (prevFetchKey !== fetchKey) {
+    setPrevFetchKey(fetchKey);
     setData(null);
     setError(false);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
     fetch(`/api/chat/conversations/${conversationId}/messages?type=${type}&order=desc`)
       .then((r) => {
         if (!r.ok) throw new Error();
@@ -208,11 +215,17 @@ export default function UserProfileModal({ open, onClose }) {
     };
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    setTab('image');
-    setNicknameInput(activeConversation?.otherUser?.nickname || '');
-  }, [open, activeConversation?.id, activeConversation?.otherUser?.nickname]);
+  // Ochilganda / suhbat yoki laqab o'zgarganda tab va input'ni render paytida tiklaymiz.
+  const nickname = activeConversation?.otherUser?.nickname;
+  const resetKey = open ? `${activeConversation?.id}|${nickname}` : null;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
+    if (open) {
+      setTab('image');
+      setNicknameInput(nickname || '');
+    }
+  }
 
   useEffect(() => {
     if (!open) return;

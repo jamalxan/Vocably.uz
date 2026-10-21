@@ -81,15 +81,18 @@ export default function WordPicker({
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  useEffect(() => {
-    if (!open) return;
-    setCategoryId(defaultCategoryId || categories?.[0]?._id || '');
-    setSearch('');
-    setFilter('all');
-    setSelectedIds([]);
-    setCapHit(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  // Modal ochilganda holatni render paytida boshlang'ich qiymatga qaytaramiz.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) {
+      setCategoryId(defaultCategoryId || categories?.[0]?._id || '');
+      setSearch('');
+      setFilter('all');
+      setSelectedIds([]);
+      setCapHit(false);
+    }
+  }
 
   // Ochilganda fokus qidiruvga o'tadi, yopilganda avvalgi elementga qaytadi.
   // Escape capture fazasida ushlanadi — AiPanel'ning window tinglovchisi panelni yopmasin.

@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Loader2, AlertTriangle, Upload, Download, Plus, Search, Trash2, X } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -25,6 +25,13 @@ const EX_LABEL = { AI_GENERATED: 'AI yaratgan', APPROVED: 'Tasdiqlangan', REJECT
 const EX_TONE = { AI_GENERATED: 'info', APPROVED: 'success', REJECTED: 'danger' };
 const inputCls = 'w-full bg-bg-sunken border border-border rounded-xl px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
 
+// URL'dagi ?status= qiymati (faqat brauzerda; serverda '' — SSR bilan mos).
+const noopSubscribe = () => () => {};
+function readUrlStatus() {
+  const s = new URLSearchParams(window.location.search).get('status') || '';
+  return Object.prototype.hasOwnProperty.call(STATUS_LABEL, s) ? s : '';
+}
+
 async function api(url, options) {
   const res = await fetch(url, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...options });
   const data = await res.json().catch(() => ({}));
@@ -47,10 +54,12 @@ export default function AdminVocabLibrary() {
   const imageRef = useRef(null);
 
   // ?status=AI_GENERATED bilan ochilsa (masalan fabrikadan) filtr oldindan tanlanadi — SSR bilan mos kelishi uchun mount'dan keyin.
-  useEffect(() => {
-    const s = new URLSearchParams(window.location.search).get('status') || '';
-    if (Object.prototype.hasOwnProperty.call(STATUS_LABEL, s)) setStatus(s);
-  }, []);
+  const urlStatus = useSyncExternalStore(noopSubscribe, readUrlStatus, () => '');
+  const [appliedUrlStatus, setAppliedUrlStatus] = useState('');
+  if (appliedUrlStatus !== urlStatus) {
+    setAppliedUrlStatus(urlStatus);
+    if (urlStatus) setStatus(urlStatus);
+  }
 
   const load = useCallback(async () => {
     try {

@@ -41,9 +41,13 @@ export default function FlashcardMode() {
     [activeCategory.words, activeCatIndex]
   );
 
-  useEffect(() => {
+  // Kategoriya almashganda yoki reset signali kelganda oraliq tanlashga qaytamiz.
+  const resetKey = `${activeCatIndex}:${writeResetNonce}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
     setActive(false);
-  }, [activeCatIndex, writeResetNonce]);
+  }
 
   const beginSession = (selected) => {
     if (selected.length === 0) return setSetupError(t('lg.addWordsFirst'));
@@ -130,10 +134,11 @@ export default function FlashcardMode() {
   }, [active, complete, flipped, answer]);
 
   // So'zlar soni o'zgarganda (masalan o'chirilganda) kartochka indexini to'g'irlash.
-  useEffect(() => {
+  const [prevCategories, setPrevCategories] = useState(categories);
+  if (prevCategories !== categories) {
+    setPrevCategories(categories);
     if (cardIndex >= words.length && words.length > 0) setCardIndex(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories]);
+  }
 
   if (!active) {
     return (

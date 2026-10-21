@@ -140,15 +140,11 @@ function categoryTop(viewport, headerNode) {
 
 function PickerBody({ onPick, headerRefs, viewportRef, columns }) {
   const { t, ts } = useT();
-  const [recents, setRecents] = useState([]);
+  const [recents, setRecents] = useState(() => loadRecents());
   const [searching, setSearching] = useState(false);
   const [activeCategory, setActiveCategory] = useState(CATEGORY_ORDER[0]);
   const searchInputRef = useRef(null);
   const jumpRef = useRef(null);
-
-  useEffect(() => {
-    setRecents(loadRecents());
-  }, []);
 
   // Frimousse.Search'ning ichki filtrlash mantig'iga aralashmaslik uchun onChange
   // prop orqali emas, xom DOM 'input' hodisasi orqali kuzatiladi — faqat
@@ -362,10 +358,9 @@ function StickerButton({ sticker, onPick }) {
 function StickerBody({ onPickSticker }) {
   const { t } = useT();
   const { stickerPacks, loadStickers } = useChat();
-  const [recents, setRecents] = useState([]);
+  const [recents, setRecents] = useState(() => loadStickerRecents());
   const sectionRefs = useRef({});
 
-  useEffect(() => setRecents(loadStickerRecents()), []);
   // Admin yangi to'plam qo'shgan bo'lsa — sahifani yangilamasdan ko'rinsin.
   useEffect(() => {
     loadStickers();

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 let cached = null;
 
@@ -14,9 +14,10 @@ export function detectWebGL() {
   return cached;
 }
 
+const subscribe = () => () => {};
+const getServerSnapshot = () => null;
+
 // null until mounted (SSR has no answer), then true/false.
 export default function useWebGLSupport() {
-  const [supported, setSupported] = useState(null);
-  useEffect(() => setSupported(detectWebGL()), []);
-  return supported;
+  return useSyncExternalStore(subscribe, detectWebGL, getServerSnapshot);
 }

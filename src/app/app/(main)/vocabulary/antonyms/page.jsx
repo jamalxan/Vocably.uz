@@ -65,6 +65,7 @@ function AntonimQuiz() {
             return i;
           }
           setSelected(null);
+          setTimeLeft(TIME_MS);
           return i + 1;
         });
       }, 600);
@@ -76,7 +77,6 @@ function AntonimQuiz() {
 
   useEffect(() => {
     if (!current || selected || finished) return undefined;
-    setTimeLeft(TIME_MS);
     const start = Date.now();
     const interval = setInterval(() => {
       const remaining = TIME_MS - (Date.now() - start);
@@ -101,6 +101,7 @@ function AntonimQuiz() {
     clearTimeout(advanceRef.current);
     setIdx(0);
     setSelected(null);
+    setTimeLeft(TIME_MS);
     setScore(0);
     setFinished(false);
     setResultClosed(false);

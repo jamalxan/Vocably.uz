@@ -41,19 +41,26 @@ export default function PaymentsQueue() {
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/admin/payments?status=${status}`);
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error);
-      setData(d);
-    } catch (e) {
-      setError(e.message || 'Yuklanmadi');
-    }
-  }, [status]);
+  const load = useCallback(
+    () =>
+      fetch(`/api/admin/payments?status=${status}`)
+        .then(async (res) => {
+          const d = await res.json();
+          if (!res.ok) throw new Error(d.error);
+          setData(d);
+        })
+        .catch((e) => setError(e.message || 'Yuklanmadi')),
+    [status]
+  );
+
+  // Filtr almashganda eski ro'yxatni render vaqtida tozalaymiz.
+  const [prevStatus, setPrevStatus] = useState(status);
+  if (prevStatus !== status) {
+    setPrevStatus(status);
+    setData(null);
+  }
 
   useEffect(() => {
-    setData(null);
     load();
   }, [load]);
 

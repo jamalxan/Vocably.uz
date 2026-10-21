@@ -37,10 +37,16 @@ export default function SpeakingSectionEditor({ testId, onSaved }) {
   const [saveIssues, setSaveIssues] = useState([]);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  // testId o'zgarsa, yuklanish holatini render paytida tiklaymiz.
+  const [prevTestId, setPrevTestId] = useState(testId);
+  if (prevTestId !== testId) {
+    setPrevTestId(testId);
     setLoading(true);
     setLoadError('');
+  }
+
+  useEffect(() => {
+    let active = true;
     fetch(`/api/admin/exam-tests/${testId}`)
       .then((r) => r.json())
       .then((data) => {

@@ -79,12 +79,18 @@ export default function WordPopupCard({ surface, owned, x, y, onClose, onOpenAdd
   const [error, setError] = useState('');
   const [added, setAdded] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  // Qidiruv kaliti o'zgarganda (lug'atda yo'q so'z) yuklanish holati qayta yoqiladi (render paytida moslash).
+  const lookupKey = owned ? null : surface;
+  const [prevLookupKey, setPrevLookupKey] = useState(lookupKey);
+  if (prevLookupKey !== lookupKey) {
+    setPrevLookupKey(lookupKey);
+    if (lookupKey !== null) setLoading(true);
+  }
 
   // Lug'atda bo'lmasa — kutubxonadan qidiramiz (bepul).
   useEffect(() => {
     if (owned) return undefined;
     let active = true;
-    setLoading(true);
     jsonFetch(`/api/vocabulary/lookup?word=${encodeURIComponent(surface)}`)
       .then((d) => active && setEntry(d.entry || null))
       .catch(() => {})

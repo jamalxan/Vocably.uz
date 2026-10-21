@@ -1,5 +1,5 @@
 'use client';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BookOpenText, Ear, Mic, PenLine, Brain } from 'lucide-react';
 import { ScrollTrigger } from './gsapConfig';
 import useChapter from './experience/useChapter';
@@ -39,6 +39,14 @@ const STEPS = [
   },
 ];
 
+const REDUCED_QUERY = '(prefers-reduced-motion: reduce)';
+const subscribeReduced = (cb) => {
+  const mq = window.matchMedia(REDUCED_QUERY);
+  mq.addEventListener('change', cb);
+  return () => mq.removeEventListener('change', cb);
+};
+const getReduced = () => window.matchMedia(REDUCED_QUERY).matches;
+
 // Pinned for ~3 screens of scroll. Progress drives both the DOM step panels
 // and (via the experience store) the 3D token hopping between skill nodes
 // around the Learning Core, which sits in the middle column.
@@ -47,16 +55,14 @@ export default function ProductStory() {
   const barRef = useRef(null);
   const activeRef = useRef(0);
   const [active, setActive] = useState(0);
-  const [pinned, setPinned] = useState(true);
+  const reduced = useSyncExternalStore(subscribeReduced, getReduced, () => false);
+  const pinned = !reduced;
   // Unpinned (reduced motion) the steps are a plain centered list, so the
   // core parks in a corner instead of sitting behind the text.
   useChapter(sectionRef, pinned ? 'story' : 'manifesto', { dark: true });
 
   useLayoutEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setPinned(false);
-      return undefined;
-    }
+    if (reduced) return undefined;
     const st = ScrollTrigger.create({
       trigger: sectionRef.current,
       start: 'top top',
@@ -75,7 +81,7 @@ export default function ProductStory() {
       },
     });
     return () => st.kill();
-  }, []);
+  }, [reduced]);
 
   if (!pinned) {
     return (

@@ -149,17 +149,24 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
   // Sahifa yangilansa — birinchi HALI yozib olinmagan savolga qaytadi (barchasi
   // yozib olingan bo'lsa oxirgisida qoladi, foydalanuvchi erkin ko'rib chiqadi/
   // qayta yozadi).
-  useEffect(() => {
-    if (steps.length === 0) return;
-    const firstUnrecorded = steps.findIndex((s) => !recordedKeys.has(stepKey(s)));
-    setStepIndex(firstUnrecorded === -1 ? steps.length - 1 : firstUnrecorded);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steps.length > 0]);
+  // (render paytida moslash: savollar birinchi marta paydo bo'lganda)
+  const hasSteps = steps.length > 0;
+  const [prevHasSteps, setPrevHasSteps] = useState(hasSteps);
+  if (prevHasSteps !== hasSteps) {
+    setPrevHasSteps(hasSteps);
+    if (hasSteps) {
+      const firstUnrecorded = steps.findIndex((s) => !recordedKeys.has(stepKey(s)));
+      setStepIndex(firstUnrecorded === -1 ? steps.length - 1 : firstUnrecorded);
+    }
+  }
 
-  useEffect(() => {
+  // 2-qism: qadam/savollar/yozilganlar o'zgarganda tayyorgarlik bosqichiga qaytadi (render paytida moslash).
+  const [prevPart2Deps, setPrevPart2Deps] = useState({ stepIndex, steps, recordedKeys });
+  if (prevPart2Deps.stepIndex !== stepIndex || prevPart2Deps.steps !== steps || prevPart2Deps.recordedKeys !== recordedKeys) {
+    setPrevPart2Deps({ stepIndex, steps, recordedKeys });
     const step = steps[stepIndex];
     if (step?.part === 2 && !recordedKeys.has(stepKey(step))) setPart2Phase('prep');
-  }, [stepIndex, steps, recordedKeys]);
+  }
 
   // task item 4 — pre-flight mic gate. Ataylab test yuklanishidan MUSTAQIL
   // (parallel) ishga tushadi — foydalanuvchi ruxsat dialogini ilovaning
@@ -178,7 +185,8 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
   }, []);
 
   useEffect(() => {
-    checkMic();
+    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
+    Promise.resolve().then(checkMic);
   }, [checkMic]);
 
   if (micStatus !== 'ok') {

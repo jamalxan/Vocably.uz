@@ -28,11 +28,19 @@ export default function CategorySwitcher() {
     .map((c, i) => ({ ...c, i }))
     .filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()));
 
+  // Popover ochilganda maydonlarni render vaqtida tozalaymiz.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) {
+      setQuery('');
+      setEditingIdx(null);
+      setAddingName('');
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setQuery('');
-    setEditingIdx(null);
-    setAddingName('');
     const t = setTimeout(() => searchRef.current?.focus(), 0);
     return () => clearTimeout(t);
   }, [open]);

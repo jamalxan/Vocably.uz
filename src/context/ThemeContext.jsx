@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useCallback, useEffect, useState } from 'react';
+import { createContext, useContext, useCallback, useEffect, useSyncExternalStore } from 'react';
 
 // Uch holatli tema: 'light' | 'dark' | 'system'. localStorage'da saqlanadi va
 // <html data-theme="..."> ga qo'yiladi — haqiqiy rang qiymatlari globals.css'dagi
@@ -30,23 +30,35 @@ function syncThemeColor(theme) {
 
 const ThemeContext = createContext(null);
 
+// Tashqi do'kon: localStorage'dan o'qiydi; yozib bo'lmasa ham shu sessiya uchun `themeOverride` saqlanadi.
+let themeOverride = null;
+const themeListeners = new Set();
+function subscribeTheme(cb) {
+  themeListeners.add(cb);
+  return () => themeListeners.delete(cb);
+}
+function getThemeSnapshot() {
+  if (themeOverride) return themeOverride;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === 'light' || stored === 'dark') return stored;
+  } catch {
+    // localStorage yopiq (private rejim va h.k.) — 'system' bilan davom etamiz
+  }
+  return 'system';
+}
+const getThemeServerSnapshot = () => 'system';
+
 export function ThemeProvider({ children }) {
-  const [theme, setThemeState] = useState('system');
+  const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'light' || stored === 'dark') {
-        setThemeState(stored);
-        syncThemeColor(stored);
-      }
-    } catch {
-      // localStorage yopiq (private rejim va h.k.) — 'system' bilan davom etamiz
-    }
-  }, []);
+    if (theme !== 'system') syncThemeColor(theme);
+  }, [theme]);
 
   const setTheme = useCallback((next) => {
-    setThemeState(next);
+    themeOverride = next;
+    themeListeners.forEach((cb) => cb());
     try {
       if (next === 'system') localStorage.removeItem(STORAGE_KEY);
       else localStorage.setItem(STORAGE_KEY, next);

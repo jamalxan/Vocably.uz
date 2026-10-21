@@ -47,8 +47,8 @@ export default function AiSettingsPanel() {
   // qaytadi.
   const [expertMode, setExpertMode] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // Sinxron setState yo'q: effekt ichidan xavfsiz chaqiriladi.
+  const fetchAll = useCallback(async () => {
     try {
       const [configRes, costsRes] = await Promise.all([
         fetch('/api/admin/ai/config'),
@@ -66,9 +66,15 @@ export default function AiSettingsPanel() {
     }
   }, []);
 
+  // Qayta yuklash: spinner'ni ko'rsatadi.
+  const load = useCallback(async () => {
+    setLoading(true);
+    await fetchAll();
+  }, [fetchAll]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchAll();
+  }, [fetchAll]);
 
   const updateDraft = (taskKey, field, value) => {
     setDrafts((prev) => ({ ...prev, [taskKey]: { ...prev[taskKey], [field]: value } }));

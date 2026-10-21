@@ -10,8 +10,7 @@ export default function TeacherHomePage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const fetchClassrooms = useCallback(async () => {
     try {
       const res = await fetch('/api/teacher/classrooms');
       const data = await res.json();
@@ -21,9 +20,14 @@ export default function TeacherHomePage() {
     }
   }, []);
 
+  const load = async () => {
+    setLoading(true);
+    await fetchClassrooms();
+  };
+
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchClassrooms();
+  }, [fetchClassrooms]);
 
   const createClassroom = async (e) => {
     e.preventDefault();

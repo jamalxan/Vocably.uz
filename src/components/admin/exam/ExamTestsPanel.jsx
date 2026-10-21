@@ -64,8 +64,8 @@ export default function ExamTestsPanel() {
   // Qator ostida ko'rsatiladigan xato (alert() o'rniga): { id, message, issues }
   const [rowError, setRowError] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // Sinxron setState yo'q: effekt ichidan xavfsiz chaqiriladi.
+  const fetchTests = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/exam-tests');
       const data = await res.json();
@@ -75,9 +75,15 @@ export default function ExamTestsPanel() {
     }
   }, []);
 
+  // Qayta yuklash: spinner'ni ko'rsatadi.
+  const load = useCallback(async () => {
+    setLoading(true);
+    await fetchTests();
+  }, [fetchTests]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchTests();
+  }, [fetchTests]);
 
   const togglePublish = async (test) => {
     setBusyId(test.id);

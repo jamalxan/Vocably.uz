@@ -25,26 +25,37 @@ export default function ReytingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const load = useCallback(async () => {
+  // Davr almashganda yuklanish holatini render vaqtida qaytaramiz.
+  const [prevPeriod, setPrevPeriod] = useState(period);
+  if (prevPeriod !== period) {
+    setPrevPeriod(period);
     setLoading(true);
     setError(false);
-    try {
-      const res = await fetch(`/api/gamification/leaderboard?period=${period}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Xatolik');
-      setRows(data.rows || []);
-      setInactiveRows(data.inactiveRows || []);
-      setMe(data.me || null);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+  }
+
+  const fetchRows = useCallback(() => {
+    return fetch(`/api/gamification/leaderboard?period=${period}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Xatolik');
+        setRows(data.rows || []);
+        setInactiveRows(data.inactiveRows || []);
+        setMe(data.me || null);
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
   }, [period]);
 
+  // Qayta urinish tugmasi uchun.
+  const load = () => {
+    setLoading(true);
+    setError(false);
+    fetchRows();
+  };
+
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchRows();
+  }, [fetchRows]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-lg mx-auto">

@@ -182,7 +182,8 @@ export function AppProvider({ children }) {
     if (!isAuthed || loadingApp) return;
     if (vocabLoadedRef.current) return;
     if (!needsVocabulary(pathname)) return;
-    refreshCategories();
+    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
+    Promise.resolve().then(refreshCategories);
   }, [pathname, isAuthed, loadingApp, refreshCategories]);
 
   // Bitta so'zning takrorlash statistikasini yangilaydi (Bugungi takrorlash, Test, Tinglab yozish rejimlari uchun).
@@ -260,7 +261,7 @@ export function AppProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (isAuthed) loadChatSessions();
+    if (isAuthed) Promise.resolve().then(loadChatSessions);
   }, [isAuthed, loadChatSessions]);
 
   const openChatSession = useCallback((id) => {
@@ -321,13 +322,16 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const savedUser = localStorage.getItem('username');
     const savedPhone = localStorage.getItem('phone');
-    setUsername(savedUser || '');
-    setPhone(savedPhone || '');
+    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
+    Promise.resolve().then(() => {
+      setUsername(savedUser || '');
+      setPhone(savedPhone || '');
+      fetchUserData();
+      fetchChatAccess();
+    });
     // Ilgari bu yerda "localStorage'da token bormi" degan tarmoqsiz tekshiruv
     // bo'lardi. Endi haqiqiy tekshiruv doim serverga (cookie orqali) boradi —
     // 401 kelsa fetchUserData o'zi logout() chaqiradi (pastda, useCallback ichida).
-    fetchUserData();
-    fetchChatAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

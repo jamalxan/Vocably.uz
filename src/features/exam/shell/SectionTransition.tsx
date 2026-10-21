@@ -20,7 +20,9 @@ export default function SectionTransition({ completedLabel, nextLabel, onComplet
   const highContrast = useExamStore((s) => s.highContrast);
   // Live region mount'dan keyin to'ldiriladi — aks holda ekran o'qigich e'lon qilmaydi.
   const [announce, setAnnounce] = useState(false);
-  useEffect(() => setAnnounce(true), []);
+  useEffect(() => {
+    Promise.resolve().then(() => setAnnounce(true));
+  }, []);
 
   useEffect(() => {
     const start = Date.now();

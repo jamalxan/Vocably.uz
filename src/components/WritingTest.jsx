@@ -48,9 +48,12 @@ export default function WritingTest() {
   );
 
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda testni to'xtatamiz (avvalgi xatti-harakat).
-  useEffect(() => {
+  const resetKey = `${activeCatIndex}:${writeResetNonce}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
     setWriteActive(false);
-  }, [activeCatIndex, writeResetNonce]);
+  }
 
   // Har savolda fokus birinchi inputga, tekshirilgach "Keyingi savol" tugmasiga o'tadi —
   // mobil klaviatura yopilib qolmaydi, Enter bilan davom etish mumkin.

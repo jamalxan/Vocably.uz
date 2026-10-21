@@ -10,8 +10,7 @@ export default function AnnouncementsPanel() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const fetchAnnouncements = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/announcements');
       const data = await res.json();
@@ -21,9 +20,14 @@ export default function AnnouncementsPanel() {
     }
   }, []);
 
+  const load = async () => {
+    setLoading(true);
+    await fetchAnnouncements();
+  };
+
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
 
   const send = async (e) => {
     e.preventDefault();

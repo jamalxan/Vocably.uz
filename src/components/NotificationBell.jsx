@@ -42,20 +42,22 @@ export default function NotificationBell({ onOpenFriends }) {
   useEffect(() => { openRef.current = open; });
   useBackClose(open, () => setOpen(false));
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch('/api/notifications?limit=15');
-      const data = await res.json();
-      if (res.ok) {
-        if (!openRef.current) setItems(data.notifications || []);
-        if (typeof data.unreadCount === 'number') setUnreadCount(data.unreadCount);
-      }
-    } catch {
-      // jimgina — belgi eski holatda qoladi
-    } finally {
-      setLoaded(true);
-    }
-  }, []);
+  const load = useCallback(
+    () =>
+      fetch('/api/notifications?limit=15')
+        .then(async (res) => {
+          const data = await res.json();
+          if (res.ok) {
+            if (!openRef.current) setItems(data.notifications || []);
+            if (typeof data.unreadCount === 'number') setUnreadCount(data.unreadCount);
+          }
+        })
+        .catch(() => {
+          // jimgina — belgi eski holatda qoladi
+        })
+        .finally(() => setLoaded(true)),
+    []
+  );
 
   // BUG-031 — sahifa ko'rinmasa (boshqa tab/oyna) so'rov yubormaymiz, qaytib
   // ko'ringanda darhol yangilaymiz (fon intervali kutilmaydi).

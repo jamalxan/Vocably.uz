@@ -67,7 +67,8 @@ export default function WritingPracticeSection({ attemptId, onSubmitted }: Writi
   useAutosave(attemptId);
 
   useEffect(() => {
-    setNotes(readNotes(attemptId));
+    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
+    Promise.resolve().then(() => setNotes(readNotes(attemptId)));
   }, [attemptId]);
 
   const updateNote = useCallback(

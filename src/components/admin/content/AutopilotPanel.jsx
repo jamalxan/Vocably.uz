@@ -37,8 +37,8 @@ export default function AutopilotPanel() {
   const [pausing, setPausing] = useState(false);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // Sinxron setState yo'q: effekt ichidan xavfsiz chaqiriladi.
+  const fetchAll = useCallback(async () => {
     try {
       const [policyRes, summaryRes] = await Promise.all([
         fetch('/api/admin/automation/policy'),
@@ -56,9 +56,15 @@ export default function AutopilotPanel() {
     }
   }, []);
 
+  // Qayta yuklash: spinner'ni ko'rsatadi.
+  const load = useCallback(async () => {
+    setLoading(true);
+    await fetchAll();
+  }, [fetchAll]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchAll();
+  }, [fetchAll]);
 
   const save = async () => {
     setSaving(true);

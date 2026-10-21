@@ -47,10 +47,13 @@ export default function ListeningMode() {
   );
 
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda oraliq tanlashga qaytamiz.
-  useEffect(() => {
+  const resetKey = `${activeCatIndex}:${writeResetNonce}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
     setActive(false);
     setSetupError('');
-  }, [activeCatIndex, writeResetNonce]);
+  }
 
   const current = queue[idx];
   const target = levelDef.needsExample && current?.enrichment?.examples?.[0]?.en ? current.enrichment.examples[0].en : current?.word;

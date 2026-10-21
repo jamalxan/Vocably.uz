@@ -114,9 +114,13 @@ export default function TestMode() {
     [activeCategory.words, activeCatIndex]
   );
 
-  useEffect(() => {
+  // Kategoriya almashganda yoki reset signali kelganda oraliq tanlashga qaytamiz.
+  const resetKey = `${activeCatIndex}:${writeResetNonce}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
     setActive(false);
-  }, [activeCatIndex, writeResetNonce]);
+  }
 
   const nextQuestion = useCallback(() => {
     if (words.length < 4) return;

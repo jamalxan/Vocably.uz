@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { DEFAULT_LOCALE, LANG_COOKIE, normalizeLocale, translate } from '@/lib/i18n';
 import { translateServerText } from '@/lib/i18n/serverText';
 
@@ -16,14 +16,22 @@ function readCookie() {
   }
 }
 
+// Tashqi do'kon: cookie'dan o'qiydi; cookie yozib bo'lmasa ham joriy sessiya uchun `override` saqlanadi.
+let localeOverride = null;
+const localeListeners = new Set();
+function subscribeLocale(cb) {
+  localeListeners.add(cb);
+  return () => localeListeners.delete(cb);
+}
+const getLocaleSnapshot = () => localeOverride ?? readCookie();
+const getLocaleServerSnapshot = () => DEFAULT_LOCALE;
+
 export function LocaleProvider({ children }) {
-  const [locale, setLocaleState] = useState(DEFAULT_LOCALE);
+  const locale = useSyncExternalStore(subscribeLocale, getLocaleSnapshot, getLocaleServerSnapshot);
 
   useEffect(() => {
-    const l = readCookie();
-    setLocaleState(l);
-    document.documentElement.lang = l;
-  }, []);
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const setLocale = useCallback((next) => {
     const l = normalizeLocale(next);
@@ -33,7 +41,8 @@ export function LocaleProvider({ children }) {
       // cookie yopiq — joriy sessiya uchun holat baribir o'zgaradi
     }
     document.documentElement.lang = l;
-    setLocaleState(l);
+    localeOverride = l;
+    localeListeners.forEach((cb) => cb());
   }, []);
 
   // `ts` — serverdan o'zbekcha kelgan matnni (o'yin/vazifa/yutuq nomlari, daraja, reja) tanlangan tilga o'giradi; `numLocale` — sonlarni formatlash uchun.

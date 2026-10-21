@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { avatarGradient, avatarInitials, avatarUrl } from '@/lib/avatarShared';
 
 // Telegram uslubidagi yagona avatar komponenti — butun ilovada (suhbatlar ro'yxati,
@@ -18,7 +18,12 @@ export default function Avatar({
   alt,
 }) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [photoId]);
+  // photoId o'zgarsa, xatolik belgisini render paytida tiklaymiz.
+  const [prevPhotoId, setPrevPhotoId] = useState(photoId);
+  if (prevPhotoId !== photoId) {
+    setPrevPhotoId(photoId);
+    setFailed(false);
+  }
 
   // Katta avatarlarda (retina ekranda 160px'dan katta chiqadi) 640px nusxasi.
   const src = !failed && avatarUrl(userId, photoId, size > 80 ? 'full' : 'small');

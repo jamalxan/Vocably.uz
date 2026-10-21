@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Heart, Lock, Play, X, WifiOff } from 'lucide-react';
@@ -19,17 +19,19 @@ const NO_TIMER_KEY = 'vocably-games-no-timer';
 const AUTO_ADVANCE_MS = 1000;
 const KNOWN_KINDS = new Set(['mc_meaning', 'mc_word', 'definition', 'syn_ant', 'fill_choice', 'fill_typed', 'listen_choose', 'listen_type', 'sentence_build', 'match_pairs', 'memory_pairs', 'spell_drop', 'image_word', 'word_image']);
 
+const REDUCED_QUERY = '(prefers-reduced-motion: reduce)';
+function subscribeReduced(cb) {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const mq = window.matchMedia(REDUCED_QUERY);
+  mq.addEventListener?.('change', cb);
+  return () => mq.removeEventListener?.('change', cb);
+}
+function getReduced() {
+  return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(REDUCED_QUERY).matches;
+}
+
 function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduced(mq.matches);
-    const on = (e) => setReduced(e.matches);
-    mq.addEventListener?.('change', on);
-    return () => mq.removeEventListener?.('change', on);
-  }, []);
-  return reduced;
+  return useSyncExternalStore(subscribeReduced, getReduced, () => false);
 }
 
 function readNoTimer() {
@@ -52,7 +54,7 @@ export default function GamePlayer({ gameKey }) {
   const [error, setError] = useState('');
   const [resumable, setResumable] = useState(null);
   const [opts, setOpts] = useState({ difficulty: 'auto', categoryId: '', mode: search.get('mode') || 'mixed' });
-  const [noTimer, setNoTimer] = useState(false);
+  const [noTimer, setNoTimer] = useState(readNoTimer);
 
   const [session, setSession] = useState(null);
   const [index, setIndex] = useState(0);
@@ -71,7 +73,6 @@ export default function GamePlayer({ gameKey }) {
 
   // --- yuklash: katalog + tiklanadigan faol sessiya ---
   useEffect(() => {
-    setNoTimer(readNoTimer());
     const ctrl = new AbortController();
     (async () => {
       try {
@@ -103,6 +104,14 @@ export default function GamePlayer({ gameKey }) {
   const result = q ? results[q.qid] : null;
   const instant = session?.instantFeedback !== false;
   const timeLimit = !noTimer && q?.timeLimitSec ? q.timeLimitSec : null;
+  const timerActive = phase === 'playing' && !!q && !!timeLimit && !result && !checking;
+  // Taymer boshlanishi/to'xtashida qolgan vaqt render vaqtida qayta o'rnatiladi.
+  const timerKey = timerActive ? `${q.qid}|${timeLimit}` : '';
+  const [prevTimerKey, setPrevTimerKey] = useState(timerKey);
+  if (prevTimerKey !== timerKey) {
+    setPrevTimerKey(timerKey);
+    setTimeLeft(timerActive ? timeLimit * 1000 : null);
+  }
 
   // --- sessiyani boshlash / tiklash ---
   const beginSession = useCallback((view) => {
@@ -221,13 +230,9 @@ export default function GamePlayer({ gameKey }) {
 
   // --- taymer (qulaylik: o'chirib qo'yish mumkin) ---
   useEffect(() => {
-    if (phase !== 'playing' || !q || !timeLimit || result || checking) {
-      setTimeLeft(null);
-      return undefined;
-    }
+    if (!timerActive) return undefined;
     const started = shownAtRef.current || Date.now();
     const total = timeLimit * 1000;
-    setTimeLeft(total);
     const id = setInterval(() => {
       const left = total - (Date.now() - started);
       if (left <= 0) {
@@ -240,7 +245,7 @@ export default function GamePlayer({ gameKey }) {
     }, 100);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, q?.qid, timeLimit, !!result, checking]);
+  }, [timerActive, q?.qid, timeLimit]);
 
   // --- ulanish tiklanganda yuborilmagan javoblarni yuboramiz ---
   useEffect(() => {

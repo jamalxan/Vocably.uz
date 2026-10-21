@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 // Admin paneldagi "Umumiy suhbatlar" (boshqa foydalanuvchilar suhbatlari)
 // odatda yashirin — faqat adminning o'z suhbatlari ko'rinadi. "Suhbatlar"
@@ -41,13 +41,11 @@ export function registerChatsTap() {
   }
 }
 
+function subscribeUnlocked(cb) {
+  window.addEventListener(EVENT, cb);
+  return () => window.removeEventListener(EVENT, cb);
+}
+
 export function useAllChatsUnlocked() {
-  const [unlocked, setState] = useState(false);
-  useEffect(() => {
-    setState(isAllChatsUnlocked());
-    const onChange = (e) => setState(Boolean(e.detail));
-    window.addEventListener(EVENT, onChange);
-    return () => window.removeEventListener(EVENT, onChange);
-  }, []);
-  return unlocked;
+  return useSyncExternalStore(subscribeUnlocked, isAllChatsUnlocked, () => false);
 }

@@ -136,13 +136,18 @@ export default function ConversationView({ onBack }) {
   // Har bir suhbat almashtirilganda hisob-kitob "toza sahifa"dan boshlanadi —
   // shuning uchun keyingi effekt buni "birinchi yuklanish" deb qabul qiladi
   // (pastga sirg'almasdan, darhol tushadi, hisoblagich bo'lmaydi).
+  const convId = activeConversation?.id;
+  const [prevConvId, setPrevConvId] = useState(convId);
+  if (prevConvId !== convId) {
+    setPrevConvId(convId);
+    setIsNearBottom(true);
+    setNewMessageCount(0);
+  }
   useEffect(() => {
     prevLenRef.current = 0;
     prevLastIdRef.current = null;
     isNearBottomRef.current = true;
-    setIsNearBottom(true);
-    setNewMessageCount(0);
-  }, [activeConversation?.id]);
+  }, [convId]);
 
   // MUHIM: bu yerda ENDI xabarlar soni ko'paygani bilan ("length > prev") emas,
   // aynan OXIRGI xabar o'zgarganiga qarab qaror qilinadi — aks holda eski

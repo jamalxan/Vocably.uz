@@ -1,11 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
+
+const subscribe = () => () => {};
+const getYear = () => new Date().getFullYear();
 
 // Statik sahifada yil build vaqtida qotib qolmasligi uchun — brauzerda yangilanadi.
 export default function CurrentYear({ initial }) {
-  const [year, setYear] = useState(initial);
-  useEffect(() => {
-    setYear(new Date().getFullYear());
-  }, []);
-  return year;
+  return useSyncExternalStore(subscribe, getYear, () => initial);
 }

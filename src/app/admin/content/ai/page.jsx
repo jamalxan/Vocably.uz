@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Bot, FlaskConical, Loader2, Settings } from 'lucide-react';
 import AiSettingsPanel from '@/components/admin/content/AiSettingsPanel';
 import AiPlaygroundChat from '@/components/admin/content/AiPlaygroundChat';
@@ -35,9 +35,10 @@ export default function AdminContentAiPage() {
 
   // TaskKey'lar faqat "Sinov" tabi ochilganda kerak — asosiy chat ularsiz
   // ishlaydi, shuning uchun sahifa ochilishida ortiqcha so'rov yo'q.
-  useEffect(() => {
-    if (tab === 'playground' && taskKeys.length === 0) loadTaskKeys();
-  }, [tab, taskKeys.length, loadTaskKeys]);
+  const openPlayground = () => {
+    setTab('playground');
+    if (taskKeys.length === 0) loadTaskKeys();
+  };
 
   return (
     <div className="space-y-3">
@@ -45,7 +46,7 @@ export default function AdminContentAiPage() {
         <TabButton active={tab === 'agent'} onClick={() => setTab('agent')} icon={Bot} label="Yuklash" />
         <TabButton active={tab === 'settings'} onClick={() => setTab('settings')} icon={Settings} label="Sozlamalar" />
         <TabButton active={tab === 'autopilot'} onClick={() => setTab('autopilot')} icon={Bot} label="Avtopilot" />
-        <TabButton active={tab === 'playground'} onClick={() => setTab('playground')} icon={FlaskConical} label="Sinov (texnik)" />
+        <TabButton active={tab === 'playground'} onClick={openPlayground} icon={FlaskConical} label="Sinov (texnik)" />
       </div>
 
       {tab === 'agent' && <AdminAgentChat />}

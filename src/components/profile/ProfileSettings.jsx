@@ -53,7 +53,9 @@ export default function ProfileSettings({ open, onClose }) {
   // ---- Maxfiylik (/api/chat/settings) — faqat Do'stlar bo'limi ochiq foydalanuvchida ma'noli
   const [lastSeenVisibility, setLastSeenVisibility] = useState('everyone');
   const [photoVisibility, setPhotoVisibility] = useState('everyone');
-  const [visibilityLoading, setVisibilityLoading] = useState(true);
+  const [visibilityFetching, setVisibilityLoading] = useState(true);
+  // Chat huquqi yo'q bo'lsa ko'rinish sozlamalari yuklanmaydi.
+  const visibilityLoading = visibilityFetching && !!chatAccess;
   const [visibilitySaving, setVisibilitySaving] = useState(false);
   const [visibilityError, setVisibilityError] = useState(false);
 
@@ -111,8 +113,6 @@ export default function ProfileSettings({ open, onClose }) {
         })
         .catch(() => {})
         .finally(() => !cancelled && setVisibilityLoading(false));
-    } else {
-      setVisibilityLoading(false);
     }
     return () => {
       cancelled = true;

@@ -30,25 +30,35 @@ export default function ReportsQueue() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
 
+  // Sinxron setState yo'q: effekt ichidan xavfsiz chaqiriladi.
+  const fetchReports = useCallback(
+    () =>
+      fetch(`/api/admin/chat/reports?status=${statusFilter}`)
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Reportlarni yuklab bo'lmadi");
+          setReports(data.reports || []);
+          setNextCursor(data.nextCursor || null);
+        })
+        .catch((err) => {
+          setError(err.message || "Reportlarni yuklab bo'lmadi");
+        })
+        .finally(() => {
+          setLoading(false);
+        }),
+    [statusFilter]
+  );
+
+  // Qo'lda yangilash: spinner'ni ko'rsatib qayta yuklaydi.
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    try {
-      const res = await fetch(`/api/admin/chat/reports?status=${statusFilter}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Reportlarni yuklab bo\'lmadi');
-      setReports(data.reports || []);
-      setNextCursor(data.nextCursor || null);
-    } catch (err) {
-      setError(err.message || 'Reportlarni yuklab bo\'lmadi');
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter]);
+    await fetchReports();
+  }, [fetchReports]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchReports();
+  }, [fetchReports]);
 
   const loadMore = async () => {
     if (!nextCursor || loadingMore) return;
@@ -93,7 +103,11 @@ export default function ReportsQueue() {
         {STATUS_FILTERS.map(({ value, label }) => (
           <button
             key={value}
-            onClick={() => setStatusFilter(value)}
+            onClick={() => {
+              setStatusFilter(value);
+              setLoading(true);
+              setError('');
+            }}
             aria-pressed={statusFilter === value}
             className={`px-4 py-2 min-h-11 md:min-h-0 rounded-xl text-xs font-medium tracking-wide transition-colors ${
               statusFilter === value ? 'bg-accent text-on-accent shadow-glow' : 'bg-surface border border-border text-muted hover:text-ink'

@@ -41,8 +41,14 @@ export default function AuditLogTable() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback((actorValue) => {
+  // Aktyor almashganda yuklanish holatini render vaqtida qaytaramiz.
+  const [prevActor, setPrevActor] = useState(actor);
+  if (prevActor !== actor) {
+    setPrevActor(actor);
     setLoading(true);
+  }
+
+  const load = useCallback((actorValue) => {
     fetch(`/api/admin/audit-log?actor=${actorValue}`)
       .then((r) => r.json())
       .then((d) => {

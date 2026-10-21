@@ -14,6 +14,13 @@ export default function DeleteConversationModal({ open, otherUsername, onConfirm
   const cancelRef = useRef(null);
   const titleId = useId();
 
+  // Ochilganda holatni render paytida tiklaymiz.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) setForEveryone(false);
+  }
+
   // C-01 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2) — fokus ATAYLAB "Bekor
   // qilish"ga qo'yiladi, "O'chirish"ga EMAS: bu modal ConversationList'dagi
   // uzoq-bosish/kontekst-menyu orqali tasodifan ochilishi mumkin (masalan
@@ -23,7 +30,6 @@ export default function DeleteConversationModal({ open, otherUsername, onConfirm
   useEffect(() => {
     if (!open) return undefined;
     const prevFocus = document.activeElement;
-    setForEveryone(false);
     cancelRef.current?.focus();
     return () => {
       if (prevFocus instanceof HTMLElement) prevFocus.focus();

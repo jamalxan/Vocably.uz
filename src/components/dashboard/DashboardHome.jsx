@@ -31,11 +31,16 @@ export default function DashboardHome() {
   const { isAuthed, displayName, setActiveCatIndex, startPracticeQueue } = useApp();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isAuthed);
+  const [prevAuthed, setPrevAuthed] = useState(isAuthed);
+  // Auth o'zgarganda yuklanish holati render vaqtida moslanadi.
+  if (prevAuthed !== isAuthed) {
+    setPrevAuthed(isAuthed);
+    setLoading(isAuthed);
+    setError(false);
+  }
 
   const load = useCallback(async (signal) => {
-    setLoading(true);
-    setError(false);
     try {
       const res = await fetch('/api/dashboard', { signal });
       if (!res.ok) throw new Error();
@@ -50,12 +55,11 @@ export default function DashboardHome() {
 
   // Token almashsa/unmount bo'lsa eski so'rov bekor qilinadi — eski javob yangisini bosmasin.
   useEffect(() => {
-    if (!isAuthed) {
-      setLoading(false);
-      return undefined;
-    }
+    if (!isAuthed) return undefined;
     const ctrl = new AbortController();
-    load(ctrl.signal);
+    (async () => {
+      await load(ctrl.signal);
+    })();
     return () => ctrl.abort();
   }, [isAuthed, load]);
 
@@ -98,7 +102,7 @@ export default function DashboardHome() {
     return (
       <div className="text-center py-24">
         <p className="text-sm text-muted mb-3">{t('dash.loadError')}</p>
-        <Button onClick={() => load()}>{t('hub.retry')}</Button>
+        <Button onClick={() => { setLoading(true); setError(false); load(); }}>{t('hub.retry')}</Button>
       </div>
     );
   }

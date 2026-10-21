@@ -964,7 +964,8 @@ export function ChatProvider({ myUserId, children }) {
   const dismissMessageToast = useCallback(() => setNewMessageToast(null), []);
 
   useEffect(() => {
-    loadConversations();
+    // Asinxron yuklash mikrotask'dan boshlanadi — effekt tanasida sinxron setState yo'q.
+    Promise.resolve().then(loadConversations);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -979,7 +980,8 @@ export function ChatProvider({ myUserId, children }) {
   }, []);
 
   useEffect(() => {
-    loadStickers();
+    // Asinxron yuklash mikrotask'dan boshlanadi — effekt tanasida sinxron setState yo'q.
+    Promise.resolve().then(loadStickers);
   }, [loadStickers]);
 
   // F — sahifa qayta yuklanganda (yoki komponent birinchi mount bo'lganda) oflayn

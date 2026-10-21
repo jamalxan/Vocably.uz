@@ -78,12 +78,14 @@ export default function SpeedQuiz() {
   // 6.1.5 kombo tizimi — har to'g'ri javob 10 ball, streak≥3 →2×, streak≥6 →3×.
   const [points, setPoints] = useState(0);
   const [bestPoints, setBestPoints] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(START_TIME_MS);
+  // Taymer qiymati savolga bog'lanadi: yangi savolda to'liq vaqtdan boshlanadi.
+  const [timer, setTimer] = useState({ q: null, left: START_TIME_MS });
   const [finished, setFinished] = useState(false);
   const [setupError, setSetupError] = useState('');
 
   const advanceTimeoutRef = useRef(null);
   const timePerQuestion = Math.max(MIN_TIME_MS, START_TIME_MS - score.total * TIME_STEP_MS);
+  const timeLeft = timer.q === question ? timer.left : timePerQuestion;
 
   const dueWords = useMemo(
     () => dueWordsInCategory(activeCategory.words || []),
@@ -92,10 +94,13 @@ export default function SpeedQuiz() {
   );
 
   // Kategoriya almashganda yoki boshqa nav bo'limi bosilganda oraliq tanlashga qaytamiz.
-  useEffect(() => {
+  const resetKey = `${activeCatIndex}:${writeResetNonce}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
     setActive(false);
     setSetupError('');
-  }, [activeCatIndex, writeResetNonce]);
+  }
 
   useEffect(() => () => clearTimeout(advanceTimeoutRef.current), []);
 
@@ -204,7 +209,6 @@ export default function SpeedQuiz() {
   // vaqt qo'shiladi, va tab yashirin bo'lgan payt bu farq 0 deb olinadi.
   useEffect(() => {
     if (!active || !question || selected || finished) return;
-    setTimeLeft(timePerQuestion);
     let remaining = timePerQuestion;
     let lastTick = Date.now();
 
@@ -224,10 +228,10 @@ export default function SpeedQuiz() {
 
       if (remaining <= 0) {
         clearInterval(interval);
-        setTimeLeft(0);
+        setTimer({ q: question, left: 0 });
         registerAnswer(false, null);
       } else {
-        setTimeLeft(remaining);
+        setTimer({ q: question, left: remaining });
       }
     }, TICK_MS);
 

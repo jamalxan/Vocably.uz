@@ -53,7 +53,12 @@ function StickerTile({ packId, sticker, onPackChange }) {
   const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState(false);
 
-  useEffect(() => setLabel(sticker.label), [sticker.label]);
+  // Tashqi nom o'zgarsa, lokal qiymatni render paytida yangilaymiz.
+  const [prevLabel, setPrevLabel] = useState(sticker.label);
+  if (prevLabel !== sticker.label) {
+    setPrevLabel(sticker.label);
+    setLabel(sticker.label);
+  }
 
   const saveLabel = async () => {
     if (label.trim() === sticker.label) return;
@@ -120,7 +125,12 @@ function PackCard({ pack, isFirst, isLast, onPackChange, onPacksChange, onDelete
   const [confirmDelete, setConfirmDelete] = useState(false);
   const inputRef = useRef(null);
 
-  useEffect(() => setName(pack.name), [pack.name]);
+  // Tashqi nom o'zgarsa, lokal qiymatni render paytida yangilaymiz.
+  const [prevName, setPrevName] = useState(pack.name);
+  if (prevName !== pack.name) {
+    setPrevName(pack.name);
+    setName(pack.name);
+  }
 
   const patch = async (body) => {
     setBusy(true);
@@ -357,19 +367,28 @@ export default function StickersPanel() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
-  const load = useCallback(async () => {
+  // Sinxron setState yo'q: effekt ichidan xavfsiz chaqiriladi.
+  const fetchAll = useCallback(
+    () =>
+      api('/api/admin/stickers').then((res) => {
+        if (res.error) setLoadError(res.error);
+        else {
+          setPacks(res.packs || []);
+          setBuiltin(res.builtin || []);
+        }
+      }),
+    []
+  );
+
+  // Qayta urinish: avval xatoni tozalaydi.
+  const load = useCallback(() => {
     setLoadError('');
-    const res = await api('/api/admin/stickers');
-    if (res.error) setLoadError(res.error);
-    else {
-      setPacks(res.packs || []);
-      setBuiltin(res.builtin || []);
-    }
-  }, []);
+    return fetchAll();
+  }, [fetchAll]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchAll();
+  }, [fetchAll]);
 
   const create = async (e) => {
     e.preventDefault();

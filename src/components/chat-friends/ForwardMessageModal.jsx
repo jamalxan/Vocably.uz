@@ -19,11 +19,19 @@ export default function ForwardMessageModal({ open, message, onClose }) {
   const titleId = useId();
   const closeRef = useRef(null);
 
+  // Ochilganda holatni render paytida tiklaymiz.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) {
+      setQuery('');
+      setSendingId(null);
+      setDoneId(null);
+    }
+  }
+
   useEffect(() => {
     if (!open) return undefined;
-    setQuery('');
-    setSendingId(null);
-    setDoneId(null);
     const prevFocus = document.activeElement;
     closeRef.current?.focus();
     const onKeyDown = (e) => {

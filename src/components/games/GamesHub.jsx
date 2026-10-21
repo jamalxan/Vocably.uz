@@ -187,9 +187,7 @@ export default function GamesHub() {
   const [loading, setLoading] = useState(true);
   const [savingMinutes, setSavingMinutes] = useState(false);
 
-  const load = useCallback(async (minutes) => {
-    setLoading(true);
-    setError('');
+  const fetchAll = useCallback(async () => {
     try {
       const [p, g] = await Promise.all([getGamificationProfile(), getGames()]);
       setProfile(p);
@@ -201,9 +199,26 @@ export default function GamesHub() {
     }
   }, [t]);
 
+  // Qayta yuklash (qo'lda): avval yuklanish holati yoqiladi.
+  const load = () => {
+    setLoading(true);
+    setError('');
+    return fetchAll();
+  };
+
+  // Til (t) o'zgarsa qayta yuklanadi â€” yuklanish holati render vaqtida yoqiladi.
+  const [prevFetch, setPrevFetch] = useState(() => fetchAll);
+  if (prevFetch !== fetchAll) {
+    setPrevFetch(() => fetchAll);
+    setLoading(true);
+    setError('');
+  }
+
   useEffect(() => {
-    load();
-  }, [load]);
+    (async () => {
+      await fetchAll();
+    })();
+  }, [fetchAll]);
 
   const changeMinutes = async (m) => {
     setSavingMinutes(true);

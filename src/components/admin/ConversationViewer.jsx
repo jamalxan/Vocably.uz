@@ -122,20 +122,22 @@ export default function ConversationViewer({ conversationId = null }) {
   const currentTab = unlocked ? tab : 'mine';
   const list = lists[currentTab];
 
-  const fetchPage = async (scope, cursor) => {
+  const fetchPage = (scope, cursor) => {
     const qs = new URLSearchParams({ scope });
     if (cursor) qs.set('before', cursor);
-    const res = await fetch(`/api/admin/chat/conversations?${qs}`);
-    const data = await res.json();
-    if (data.adminId) setAdminId(data.adminId);
-    setLists((prev) => ({
-      ...prev,
-      [scope]: {
-        items: cursor ? [...prev[scope].items, ...(data.conversations || [])] : data.conversations || [],
-        cursor: data.nextCursor || null,
-        loaded: true,
-      },
-    }));
+    return fetch(`/api/admin/chat/conversations?${qs}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.adminId) setAdminId(data.adminId);
+        setLists((prev) => ({
+          ...prev,
+          [scope]: {
+            items: cursor ? [...prev[scope].items, ...(data.conversations || [])] : data.conversations || [],
+            cursor: data.nextCursor || null,
+            loaded: true,
+          },
+        }));
+      });
   };
 
   // Har bir bo'lim birinchi marta ko'rsatilganda yuklanadi — "Umumiy" ro'yxat
@@ -160,14 +162,22 @@ export default function ConversationViewer({ conversationId = null }) {
 
   // /admin/c/<id> — suhbat `id` filtri bilan to'g'ridan-to'g'ri olinadi
   // (ro'yxatning qaysi sahifasida turganidan qat'i nazar).
+  // Suhbat almashganda holatni render vaqtida boshiga qaytaramiz.
+  const [prevConversationId, setPrevConversationId] = useState(conversationId);
+  if (prevConversationId !== conversationId) {
+    setPrevConversationId(conversationId);
+    if (conversationId) {
+      setActive(null);
+      setNotFound(false);
+      setMessages(null);
+      setMsgCursor(null);
+      setViewMode('chat');
+      setGalleryData({});
+    }
+  }
+
   useEffect(() => {
     if (!conversationId) return;
-    setActive(null);
-    setNotFound(false);
-    setMessages(null);
-    setMsgCursor(null);
-    setViewMode('chat');
-    setGalleryData({});
     fetch(`/api/admin/chat/conversations?id=${encodeURIComponent(conversationId)}`)
       .then((r) => r.json())
       .then(async (d) => {

@@ -83,7 +83,9 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
 
   useEffect(() => {
     genRef.current += 1;
-    start();
+    (async () => {
+      await start();
+    })();
     // Yozuv paytida komponent yopilsa (masalan suhbatdan chiqilsa) — mikrofon, taymer
     // o'chiriladi va hech narsa yuborilmaydi.
     return () => {

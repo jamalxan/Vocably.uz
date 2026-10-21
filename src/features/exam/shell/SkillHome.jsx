@@ -83,7 +83,8 @@ function useStoredMode(skill, allowPractice) {
     if (!allowPractice) return;
     try {
       const saved = localStorage.getItem(`vocably_skill_mode_${skill}`);
-      if (saved === 'practice' || saved === 'timed') setMode(saved);
+      // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
+      if (saved === 'practice' || saved === 'timed') Promise.resolve().then(() => setMode(saved));
     } catch {}
   }, [skill, allowPractice]);
   const update = (m) => {
@@ -146,7 +147,7 @@ function useStoredKind(skill) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`vocably_skill_kind_${skill}`);
-      if (KIND_FILTERS.some((k) => k.key === saved)) setKind(saved);
+      if (KIND_FILTERS.some((k) => k.key === saved)) Promise.resolve().then(() => setKind(saved));
     } catch {}
   }, [skill]);
   const update = (k) => {
@@ -221,6 +222,13 @@ function TestGrid({ skill, mode, busyId, onPick }) {
   const { t } = useT();
   const [tests, setTests] = useState(null);
   const [statuses, setStatuses] = useState({});
+  // skill/mode o'zgarganda holatlar tozalanadi (render paytida moslash).
+  const statusKey = `${skill}|${mode}`;
+  const [prevStatusKey, setPrevStatusKey] = useState(statusKey);
+  if (prevStatusKey !== statusKey) {
+    setPrevStatusKey(statusKey);
+    setStatuses({});
+  }
   const [error, setError] = useState('');
   const [kind, setKind] = useStoredKind(skill);
   const [status, setStatus] = useState('all');
@@ -241,7 +249,6 @@ function TestGrid({ skill, mode, busyId, onPick }) {
 
   useEffect(() => {
     let cancelled = false;
-    setStatuses({});
     fetchSectionStatuses(skill, mode === 'practice' ? 'practice' : 'section')
       .then((s) => !cancelled && setStatuses(s))
       .catch(() => {});

@@ -45,10 +45,12 @@ export default function WordTable() {
     );
 
   // Kategoriya almashganda tanlovni tozalaymiz.
-  useEffect(() => {
+  const [prevCategoryId, setPrevCategoryId] = useState(activeCategory._id);
+  if (prevCategoryId !== activeCategory._id) {
+    setPrevCategoryId(activeCategory._id);
     setSelectedIds([]);
     setBulkEnrichFailed([]);
-  }, [activeCategory._id]);
+  }
 
   useEffect(() => () => clearTimeout(undoTimerRef.current), []);
   useEffect(() => () => { bulkCancelRef.current = true; }, []);

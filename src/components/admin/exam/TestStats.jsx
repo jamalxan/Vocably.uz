@@ -8,9 +8,15 @@ export default function TestStats({ testId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // testId o'zgarsa, yuklanish holatini render paytida tiklaymiz.
+  const [prevTestId, setPrevTestId] = useState(testId);
+  if (prevTestId !== testId) {
+    setPrevTestId(testId);
+    setLoading(true);
+  }
+
   useEffect(() => {
     let active = true;
-    setLoading(true);
     fetch(`/api/admin/exam-tests/${testId}/stats`)
       .then((r) => r.json())
       .then((d) => {

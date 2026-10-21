@@ -46,14 +46,17 @@ export default function AdminVocabFactory() {
   const fileRef = useRef(null);
   const mounted = useRef(true);
 
-  const load = useCallback(async () => {
-    try {
-      const d = await api('/api/admin/vocab-factory');
-      if (mounted.current) setJobs(d.jobs);
-    } catch (e) {
-      if (mounted.current) setError(e.message);
-    }
-  }, []);
+  const load = useCallback(
+    () =>
+      api('/api/admin/vocab-factory')
+        .then((d) => {
+          if (mounted.current) setJobs(d.jobs);
+        })
+        .catch((e) => {
+          if (mounted.current) setError(e.message);
+        }),
+    []
+  );
 
   useEffect(() => {
     mounted.current = true;

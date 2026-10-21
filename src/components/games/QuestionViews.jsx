@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Volume2, Check, X, RotateCcw } from 'lucide-react';
 import { speakText } from '@/lib/speech';
 import { optionStateClass, answerStateClass, OPTION_BUTTON_CLASS } from '@/lib/lugatQuiz';
@@ -7,18 +7,17 @@ import { useT } from '@/context/LocaleContext';
 
 const SPEEDS = [0.75, 1, 1.25];
 
+const subscribeNoop = () => () => {};
+const getSpeechSupported = () => typeof window !== 'undefined' && 'speechSynthesis' in window;
+
 // ---------------------------------------------------------------------------
 // Audio tugmasi: Eshitish / Qayta / tezlik 0.75x-1x-1.25x (TZ §54). Audio ishlamasa zaxira xabar.
 // ---------------------------------------------------------------------------
 export function AudioPlayer({ text, autoPlay = true }) {
   const { t: tx } = useT();
   const [speed, setSpeed] = useState(1);
-  const [supported, setSupported] = useState(true);
+  const supported = useSyncExternalStore(subscribeNoop, getSpeechSupported, () => true);
   const [playing, setPlaying] = useState(false);
-
-  useEffect(() => {
-    setSupported(typeof window !== 'undefined' && 'speechSynthesis' in window);
-  }, []);
 
   const play = useCallback(() => {
     if (!text || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -130,7 +129,12 @@ export function ChoiceQuestion({ question, result, locked, onAnswer }) {
   const [picked, setPicked] = useState(null);
   const optionRefs = useRef([]);
 
-  useEffect(() => setPicked(null), [question.qid]);
+  // Yangi savolda tanlov render vaqtida tozalanadi.
+  const [prevQid, setPrevQid] = useState(question.qid);
+  if (prevQid !== question.qid) {
+    setPrevQid(question.qid);
+    setPicked(null);
+  }
 
   const choose = useCallback(
     (opt) => {
@@ -198,8 +202,14 @@ export function TypedQuestion({ question, result, locked, onAnswer, near }) {
   const [value, setValue] = useState('');
   const inputRef = useRef(null);
 
-  useEffect(() => {
+  // Yangi savolda qiymat render vaqtida tozalanadi.
+  const [prevQid, setPrevQid] = useState(question.qid);
+  if (prevQid !== question.qid) {
+    setPrevQid(question.qid);
     setValue('');
+  }
+
+  useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 50);
     return () => clearTimeout(t);
   }, [question.qid]);
@@ -249,7 +259,11 @@ export function TypedQuestion({ question, result, locked, onAnswer, near }) {
 export function ArrangeQuestion({ question, result, locked, onAnswer }) {
   const { t: tx } = useT();
   const [chosen, setChosen] = useState([]); // token indekslari
-  useEffect(() => setChosen([]), [question.qid]);
+  const [prevQid, setPrevQid] = useState(question.qid);
+  if (prevQid !== question.qid) {
+    setPrevQid(question.qid);
+    setChosen([]);
+  }
 
   const tokens = question.tokens || [];
   const available = tokens.map((t, i) => ({ t, i })).filter(({ i }) => !chosen.includes(i));
@@ -321,10 +335,12 @@ export function MatchQuestion({ question, result, locked, onAnswer }) {
   const { t: tx } = useT();
   const [pairs, setPairs] = useState({}); // leftId -> rightId
   const [activeLeft, setActiveLeft] = useState(null);
-  useEffect(() => {
+  const [prevQid, setPrevQid] = useState(question.qid);
+  if (prevQid !== question.qid) {
+    setPrevQid(question.qid);
     setPairs({});
     setActiveLeft(null);
-  }, [question.qid]);
+  }
 
   const lefts = useMemo(() => question.lefts || [], [question.lefts]);
   const rights = question.rights || [];
@@ -476,12 +492,15 @@ export function MemoryQuestion({ question, result, locked, onAnswer, reducedMoti
   const [tries, setTries] = useState(0);
   const timer = useRef(null);
 
-  useEffect(() => {
+  const [prevQid, setPrevQid] = useState(question.qid);
+  if (prevQid !== question.qid) {
+    setPrevQid(question.qid);
     setFlipped([]);
     setMatched([]);
     setTries(0);
-    return () => clearTimeout(timer.current);
-  }, [question.qid]);
+  }
+
+  useEffect(() => () => clearTimeout(timer.current), [question.qid]);
 
   const pairCount = (question.lefts || []).length;
 

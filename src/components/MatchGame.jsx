@@ -48,10 +48,12 @@ export default function MatchGame() {
   );
 
   // "Juftlikni topish" nav tugmasi bosilganda (Sidebar orqali) oraliq tanlashga qaytamiz.
-  useEffect(() => {
+  const resetKey = `${matchGameNonce}:${activeCatIndex}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
     setActive(false);
-     
-  }, [matchGameNonce, activeCatIndex]);
+  }
 
   const initMatchGame = useCallback(
     (words) => {

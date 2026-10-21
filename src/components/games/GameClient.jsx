@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Canvas } from '@react-three/fiber';
@@ -32,13 +32,16 @@ class CanvasErrorBoundary extends Component {
   }
 }
 
+let webglCache = null;
 function hasWebGL() {
+  if (webglCache !== null) return webglCache;
   try {
     const canvas = document.createElement('canvas');
-    return !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+    webglCache = !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
   } catch {
-    return false;
+    webglCache = false;
   }
+  return webglCache;
 }
 
 // Minimap: dunyo koordinatalari (x, z) -> SVG (0..100).
@@ -109,6 +112,8 @@ function WorldFallback({ games, ts, t }) {
   );
 }
 
+const subscribeNoop = () => () => {};
+
 export default function GameClient() {
   const router = useRouter();
   const { t, ts } = useT();
@@ -117,13 +122,12 @@ export default function GameClient() {
   const [loadError, setLoadError] = useState('');
   const [nearKey, setNearKey] = useState(null);
   const [selectedKey, setSelectedKey] = useState(null);
-  const [webgl, setWebgl] = useState(true);
+  const webgl = useSyncExternalStore(subscribeNoop, hasWebGL, () => true);
   const joystickRef = useRef({ x: 0, y: 0 });
   const sprintRef = useRef(false);
   const positionRef = useRef({ x: SPAWN.x, z: SPAWN.z, rot: Math.PI });
 
   useEffect(() => {
-    setWebgl(hasWebGL());
     let cancelled = false;
     Promise.all([getGamificationProfile(), getGames()])
       .then(([p, g]) => {
