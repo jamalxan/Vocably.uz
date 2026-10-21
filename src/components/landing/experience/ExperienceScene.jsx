@@ -94,6 +94,7 @@ function Backdrop({ palette, lite, reducedMotion }) {
     const u = mat.current?.uniforms;
     if (!u) return;
     const dt = Math.min(delta, 0.05);
+    // eslint-disable-next-line react-hooks/immutability -- R3F uniform/ref mutatsiyasi (useFrame) — ataylab
     if (!reducedMotion) u.uTime.value += dt;
     u.uScroll.value = damp(u.uScroll.value, experience.scroll, 3, dt);
     // Measured every frame (not only on scroll events) so the active chapter
@@ -128,6 +129,16 @@ function Backdrop({ palette, lite, reducedMotion }) {
   );
 }
 
+// Deterministik PRNG — render paytida Math.random() chaqirilmasin (React Compiler purity qoidasi), zarrachalar har yuklashda bir xil.
+function mulberry32(a) {
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function Particles({ palette, lite, reducedMotion }) {
   const mat = useRef(null);
   const count = lite ? 140 : 360;
@@ -136,12 +147,13 @@ function Particles({ palette, lite, reducedMotion }) {
     const pos = new Float32Array(count * 3);
     const scale = new Float32Array(count);
     const seed = new Float32Array(count);
+    const rand = mulberry32(0x5eed + count);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() * 2 - 1) * 9;
-      pos[i * 3 + 1] = (Math.random() * 2 - 1) * 6;
-      pos[i * 3 + 2] = -Math.random() * 8 + 1.5;
-      scale[i] = 0.4 + Math.random() * 1.2;
-      seed[i] = Math.random();
+      pos[i * 3] = (rand() * 2 - 1) * 9;
+      pos[i * 3 + 1] = (rand() * 2 - 1) * 6;
+      pos[i * 3 + 2] = -rand() * 8 + 1.5;
+      scale[i] = 0.4 + rand() * 1.2;
+      seed[i] = rand();
     }
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setAttribute('aScale', new THREE.BufferAttribute(scale, 1));
@@ -175,6 +187,7 @@ function Particles({ palette, lite, reducedMotion }) {
     const u = mat.current?.uniforms;
     if (!u) return;
     const dt = Math.min(delta, 0.05);
+    // eslint-disable-next-line react-hooks/immutability -- R3F uniform/ref mutatsiyasi (useFrame) — ataylab
     if (!reducedMotion) u.uTime.value += dt;
     u.uScroll.value = damp(u.uScroll.value, experience.scroll, 3, dt);
     u.uDark.value = experience.dark;
@@ -298,11 +311,13 @@ function Core({ palette, colors, lite, reducedMotion }) {
     const haloU = haloMatRef.current?.uniforms;
     if (!reducedMotion) {
       spin.rotation.y += dt * (0.14 * a.spin + vel * 0.6);
+      // eslint-disable-next-line react-hooks/immutability -- R3F uniform/ref mutatsiyasi (useFrame) — ataylab
       if (orbU) orbU.uTime.value += dt;
     }
     spin.rotation.x = damp(spin.rotation.x, 0.36 - experience.pointer.y * 0.12 * par, 2, dt);
     spin.rotation.z = damp(spin.rotation.z, -0.14 + experience.pointer.x * 0.08 * par, 2, dt);
     if (orbU) orbU.uAmp.value = damp(orbU.uAmp.value, 0.05 + vel * 0.14, 3, dt);
+    // eslint-disable-next-line react-hooks/immutability -- R3F uniform/ref mutatsiyasi (useFrame) — ataylab
     if (haloU) haloU.uIntensity.value = 0.32 + experience.dark * 0.38 + vel * 0.2;
 
     ringRefs.current.forEach((ring, i) => {

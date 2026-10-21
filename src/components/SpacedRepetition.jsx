@@ -43,6 +43,7 @@ export default function SpacedRepetition({ active }) {
   const practiceSet = practiceWordIds ? new Set(practiceWordIds) : null;
 
   const dueWords = useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity -- Date.now() ma'lum vaqtni solishtirish uchun — ataylab
     const now = Date.now();
     const list = [];
     categories.forEach((c) => {
@@ -99,7 +100,7 @@ export default function SpacedRepetition({ active }) {
       map[rating] = formatDuration(nextReviewState(prevCard, rating, now).dueAt.getTime() - now.getTime(), t);
     }
     return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [current, t]);
 
   const answer = (rating) => {

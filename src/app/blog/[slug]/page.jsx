@@ -103,7 +103,7 @@ export default async function BlogPostPage(props) {
 
   return (
     <div className="min-h-dvh bg-bg">
-      {/* eslint-disable-next-line react/no-danger */}
+      { }
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       <LandingHeader />

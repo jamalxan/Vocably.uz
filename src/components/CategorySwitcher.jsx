@@ -21,7 +21,7 @@ export default function CategorySwitcher() {
   const rootRef = useRef(null);
   const searchRef = useRef(null);
   const editingIdxRef = useRef(null);
-  editingIdxRef.current = editingIdx;
+  useEffect(() => { editingIdxRef.current = editingIdx; });
 
   const active = categories[activeCatIndex];
   const filtered = categories

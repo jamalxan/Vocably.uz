@@ -29,7 +29,7 @@ export default function MultipleChoice({ question, value, onChange }: QuestionTy
         <span className="inline-flex align-middle mr-1.5">
           <FlagToggle questionNumber={question.number} />
         </span>
-        {/* eslint-disable-next-line react/no-danger */}
+        { }
         <span dangerouslySetInnerHTML={{ __html: question.promptHtml || '' }} />
         {isMulti && (
           <span className="block text-[0.86em] mt-0.5" style={{ color: 'var(--exam-muted)' }}>

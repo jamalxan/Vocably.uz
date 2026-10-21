@@ -1,5 +1,5 @@
 'use client';
-import { useMemo } from 'react';
+import { useState } from 'react';
 
 const EMOJI = ['✨', '⭐', '🎉', '💫'];
 
@@ -7,7 +7,7 @@ const EMOJI = ['✨', '⭐', '🎉', '💫'];
 // atrofga sochiladigan zarrachalar — src/app/globals.css'dagi .sparkle-particle animatsiyasi.
 // Sof CSS, tashqi kutubxonasiz (bundle og'irlashmaydi).
 export default function SparkleBurst({ count = 14 }) {
-  const particles = useMemo(
+  const [particles] = useState(
     () =>
       Array.from({ length: count }, (_, i) => {
         const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
@@ -20,8 +20,7 @@ export default function SparkleBurst({ count = 14 }) {
           delay: `${Math.random() * 120}ms`,
           size: 12 + Math.random() * 10,
         };
-      }),
-    [count]
+      })
   );
 
   return (

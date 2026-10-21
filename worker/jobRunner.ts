@@ -116,7 +116,7 @@ export async function runJob(data: WorkerJobData): Promise<unknown> {
       try {
         await runSelfHealForBook(data.bookId);
       } catch (healErr) {
-        // eslint-disable-next-line no-console
+         
         console.error(`[jobRunner] self_heal muvaffaqiyatsiz (bookId=${data.bookId}):`, (healErr as Error).message);
       }
       let anyNewlyPublished = false;
@@ -128,7 +128,7 @@ export async function runJob(data: WorkerJobData): Promise<unknown> {
         );
         anyNewlyPublished = gateResults.some((r) => r.published);
       } catch (gateErr) {
-        // eslint-disable-next-line no-console
+         
         console.error(`[jobRunner] auto_publish_gate muvaffaqiyatsiz (bookId=${data.bookId}):`, (gateErr as Error).message);
       }
 
@@ -140,7 +140,7 @@ export async function runJob(data: WorkerJobData): Promise<unknown> {
         try {
           await runMockScheduler();
         } catch (schedErr) {
-          // eslint-disable-next-line no-console
+           
           console.error('[jobRunner] mock_scheduler muvaffaqiyatsiz:', (schedErr as Error).message);
         }
 
@@ -151,7 +151,7 @@ export async function runJob(data: WorkerJobData): Promise<unknown> {
         try {
           await runContentGapScan();
         } catch (scanErr) {
-          // eslint-disable-next-line no-console
+           
           console.error('[jobRunner] content_gap_scan muvaffaqiyatsiz:', (scanErr as Error).message);
         }
       }

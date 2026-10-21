@@ -39,7 +39,7 @@ export default function NotificationBell({ onOpenFriends }) {
   // Ro'yxat ochiq paytda so'rov natijasi elementlarni almashtirmaydi — o'qilayotgan
   // e'lon ko'z oldida yo'qolib qolmasin (faqat hisoblagich yangilanadi).
   const openRef = useRef(false);
-  openRef.current = open;
+  useEffect(() => { openRef.current = open; });
   useBackClose(open, () => setOpen(false));
 
   const load = useCallback(async () => {

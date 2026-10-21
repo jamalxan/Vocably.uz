@@ -138,7 +138,7 @@ export default function SpeedQuiz() {
       if (p > readBestScore(activeCategory._id)) writeBestScore(activeCategory._id, p);
       return p;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [activeCategory._id]);
 
   const goNextQuestion = useCallback(

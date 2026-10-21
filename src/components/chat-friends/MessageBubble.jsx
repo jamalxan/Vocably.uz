@@ -66,7 +66,7 @@ function MediaError() {
 // fokusni avvalgi tugmaga qaytaradi.
 function useDialogFocus(initialRef, onClose) {
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => { onCloseRef.current = onClose; });
   useEffect(() => {
     const prevFocus = document.activeElement;
     initialRef.current?.focus();

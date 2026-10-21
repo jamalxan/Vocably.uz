@@ -34,9 +34,12 @@ test('kirgandan keyin til Sozlamalarda almashadi va qayta yuklanganda saqlanadi'
   test.setTimeout(240_000);
   await loginAs(page, E2E_PHONE);
   await page.goto('/app/profile');
-  await page.getByRole('button', { name: 'Settings' }).click();
+  // Hisob tili avvalgi yurishdan `uz` bo'lib qolgan bo'lishi mumkin — avval inglizchaga qaytaramiz.
+  await page.getByRole('button', { name: /^(Settings|Sozlamalar)$/ }).click();
+  await expect(page.getByRole('dialog', { name: /^(Settings|Sozlamalar)$/ })).toBeVisible({ timeout: 60_000 });
+  await page.getByRole('dialog').getByRole('button', { name: 'English' }).click();
   const dialog = page.getByRole('dialog', { name: 'Settings' });
-  await expect(dialog).toBeVisible({ timeout: 60_000 });
+  await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: "O'zbekcha" }).click();
   await expect(page.getByRole('dialog', { name: 'Sozlamalar' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'uz');

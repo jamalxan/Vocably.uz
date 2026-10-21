@@ -71,6 +71,7 @@ function CategoryHeader({ category, headerRefs, ...props }) {
       // Ro'yxat virtualizatsiyalangan — header ekrandan chiqsa unmount bo'ladi.
       // Eskirgan (DOM'dan uzilgan) tugun saqlanib qolmasligi uchun null'da o'chiramiz.
       ref={(node) => {
+        // eslint-disable-next-line react-hooks/immutability -- R3F uniform/ref mutatsiyasi (useFrame) — ataylab
         if (node) headerRefs.current[category.label] = node;
         else if (headerRefs.current[category.label] && !headerRefs.current[category.label].isConnected) {
           delete headerRefs.current[category.label];

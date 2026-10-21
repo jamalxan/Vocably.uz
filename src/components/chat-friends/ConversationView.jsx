@@ -195,7 +195,7 @@ export default function ConversationView({ onBack }) {
 
     prevLenRef.current = messages.length;
     prevLastIdRef.current = lastId;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [messages, myId]);
 
   if (!activeConversation) {

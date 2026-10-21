@@ -5,14 +5,11 @@ const config = [
   { ignores: ['.next/**', 'node_modules/**', 'public/**', 'e2e/**', 'scripts/**', 'docs/**', 'next-env.d.ts'] },
   { rules: { 'react/no-unescaped-entities': 'off' } },
   {
-    // eslint-config-next 16 (react-hooks v6) React Compiler qoidalarini qo'shdi. Ular xato emas, balki mavjud kodning
-    // uslub eskirishi (91 ta setState-in-effect va h.k.) — yangilash bilan birga yamab bo'lmaydi, shuning uchun ogohlantirish.
+    // set-state-in-effect (91 ta): effect'da ma'lumot yuklash, brauzer API'ni o'qish (gidratatsiya-xavfsiz) va prop o'zgarganda
+    // holatni nolga qaytarish — qonuniy naqshlar; ularni ommaviy qayta yozish regressiya xavfini tug'diradi, shuning uchun ogohlantirish.
+    // Qolgan React Compiler qoidalari (refs, purity, immutability, memoization) tuzatildi va xato sifatida qoldi.
     rules: {
       'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/preserve-manual-memoization': 'warn',
-      'react-hooks/refs': 'warn',
-      'react-hooks/purity': 'warn',
-      'react-hooks/immutability': 'warn',
     },
   },
   {

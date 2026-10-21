@@ -36,7 +36,7 @@ export default function ReviewQuestionRow({ question: q, onLocate }: ReviewQuest
         <div className="min-w-0 flex-1">
           <p className="text-sm text-ink break-words">
             <span className="font-semibold mr-1.5">{q.number}.</span>
-            {/* eslint-disable-next-line react/no-danger */}
+            { }
             <span dangerouslySetInnerHTML={{ __html: q.promptHtml }} />
           </p>
           <p className="text-xs mt-1.5 text-muted break-words">
@@ -48,7 +48,7 @@ export default function ReviewQuestionRow({ question: q, onLocate }: ReviewQuest
             </p>
           )}
           {q.explanationHtml && (
-            // eslint-disable-next-line react/no-danger
+             
             <p className="text-xs mt-1.5 bg-bg-sunken rounded-lg px-2.5 py-2 text-ink break-words" dangerouslySetInnerHTML={{ __html: q.explanationHtml }} />
           )}
           {q.locatorParagraph && onLocate && (

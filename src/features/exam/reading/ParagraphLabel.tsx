@@ -40,7 +40,7 @@ export default function ParagraphLabel({ label, html, paragraphIndex, highlights
           {label}
         </span>
       )}
-      {/* eslint-disable-next-line react/no-danger */}
+      { }
       <span ref={contentRef} data-paragraph-index={paragraphIndex} dangerouslySetInnerHTML={innerHtml} />
     </p>
   );

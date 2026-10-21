@@ -314,6 +314,7 @@ export default function ListeningSection({
         src={resolveListeningAudioSrc(currentPart)}
         mode="exam"
         volume={volume}
+        // eslint-disable-next-line react-hooks/refs -- faqat qism ochilganda boshlang'ich pozitsiya; state ishlatilsa pleyer har tikda qayta seek qiladi
         startPositionSec={positionRef.current}
         play={audioPlay}
         onPositionChange={(sec) => {

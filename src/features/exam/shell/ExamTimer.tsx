@@ -46,7 +46,7 @@ export default function ExamTimer({ remainingSec, hidden, onThresholdCrossed }: 
 
   const isDanger = remainingSec <= DANGER_THRESHOLD_SEC;
   const isWarn = !isDanger && remainingSec <= WARN_THRESHOLD_SEC;
-  const justCrossedDanger = isDanger && announcedRef.current.has(DANGER_THRESHOLD_SEC);
+  const justCrossedDanger = isDanger; // xabar (announcedRef) effect'da yoziladi — render paytida ref o'qilmaydi
 
   if (hidden) {
     return (

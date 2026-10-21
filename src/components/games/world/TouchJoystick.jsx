@@ -12,6 +12,7 @@ export function TouchJoystick({ valueRef, label = 'Joystick', size = 112 }) {
   const pointerId = useRef(null);
   const [knob, setKnob] = useState({ x: 0, y: 0 });
   const travel = size * 0.32;
+  const pressed = knob.x !== 0 || knob.y !== 0;
 
   const update = (e) => {
     const el = containerRef.current;
@@ -54,7 +55,7 @@ export function TouchJoystick({ valueRef, label = 'Joystick', size = 112 }) {
       className="rounded-full bg-slate-900/60 border-2 border-white/30 backdrop-blur-md relative flex items-center justify-center touch-none select-none pointer-events-auto shadow-2xl"
     >
       <div
-        className={`w-12 h-12 rounded-full shadow-lg border-2 border-white/80 ${pointerId.current != null ? 'bg-emerald-400' : 'bg-white/40'}`}
+        className={`w-12 h-12 rounded-full shadow-lg border-2 border-white/80 ${pressed ? 'bg-emerald-400' : 'bg-white/40'}`}
         style={{ transform: `translate(${knob.x * travel}px, ${knob.y * travel}px)` }}
       />
     </div>

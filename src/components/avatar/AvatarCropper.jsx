@@ -35,7 +35,7 @@ export default function AvatarCropper({ file, onCancel, onConfirm, busy = false,
   // Holatni ref'da ham saqlaymiz — pointer/wheel handler'lar har renderda qayta
   // ulanmasin (aks holda pinch o'rtasida eski qiymat bilan hisoblanardi).
   const stateRef = useRef({ rotation, zoom, offset, viewport, image });
-  stateRef.current = { rotation, zoom, offset, viewport, image };
+  useEffect(() => { stateRef.current = { rotation, zoom, offset, viewport, image }; });
 
   // Rasmni yuklash
   useEffect(() => {

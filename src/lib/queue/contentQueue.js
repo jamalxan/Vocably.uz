@@ -38,7 +38,7 @@ function getConnection() {
     // uchun `maxRetriesPerRequest: null` shart (BullMQ docs, Queue/Worker ikkalasi ham).
     cached.connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
     cached.connection.on('error', (err) => {
-      // eslint-disable-next-line no-console
+       
       console.error('[contentQueue] Redis ulanish xatosi:', err.message);
     });
   }
@@ -109,7 +109,7 @@ export async function enqueueIngestJob({ ingestJobId, bookId, stage, idempotency
   // buyruqni bekor qila olmaydi) — shuning uchun kech muvaffaqiyatsiz bo'lsa
   // handle qilinmagan rejection bo'lib qolmasligi uchun alohida ushlanadi.
   addPromise.catch((err) => {
-    // eslint-disable-next-line no-console
+     
     console.error('[contentQueue] enqueueIngestJob (fon, timeout\'dan keyin) muvaffaqiyatsiz:', err.message);
   });
 
@@ -120,7 +120,7 @@ export async function enqueueIngestJob({ ingestJobId, bookId, stage, idempotency
     ]);
     return { queued: true, backend: 'redis' };
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error('[contentQueue] enqueueIngestJob muvaffaqiyatsiz:', err.message);
     return { queued: false, backend: 'redis-error' };
   }
@@ -151,7 +151,7 @@ export async function scheduleMaintenanceSweep() {
     await queue.upsertJobScheduler(MAINTENANCE_SWEEP_SCHEDULER_ID, { every: SIX_HOURS_MS }, { name: MAINTENANCE_SWEEP_JOB_NAME, data: {} });
     return { scheduled: true, backend: 'redis' };
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error('[contentQueue] scheduleMaintenanceSweep muvaffaqiyatsiz:', err.message);
     return { scheduled: false, backend: 'redis-error' };
   }

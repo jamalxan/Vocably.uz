@@ -128,7 +128,7 @@ export default function TestMode() {
     setSelected(null);
     setQuestionIndex((n) => n + 1);
     setQuestionStartedAt(Date.now());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [words, questionIndex]);
 
   const beginSession = (selectedWords) => {
@@ -157,6 +157,7 @@ export default function TestMode() {
     if (selected) return;
     setSelected(option);
     const isCorrect = option === question.correctAnswer;
+    // eslint-disable-next-line react-hooks/purity -- Date.now() ma'lum vaqtni solishtirish uchun — ataylab
     const responseMs = Date.now() - questionStartedAt;
     setScore((s) => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
     if (question.target._id && activeCategory._id) {

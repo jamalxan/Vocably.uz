@@ -96,15 +96,15 @@ export function ChatProvider({ myUserId, children }) {
   // bir lahzaga yo'qolib "sahifa qayta yuklanyapti" taassurotini berardi.
   const messagesCacheRef = useRef(new Map());
   const activeIdRef = useRef(null);
-  activeIdRef.current = activeConversation?.id || null;
+  useEffect(() => { activeIdRef.current = activeConversation?.id || null; });
   const activeConversationRef = useRef(null);
-  activeConversationRef.current = activeConversation;
+  useEffect(() => { activeConversationRef.current = activeConversation; });
   const conversationsRef = useRef([]);
-  conversationsRef.current = conversations;
+  useEffect(() => { conversationsRef.current = conversations; });
   const replyingToRef = useRef(null);
-  replyingToRef.current = replyingTo;
+  useEffect(() => { replyingToRef.current = replyingTo; });
   const myIdRef = useRef(null);
-  myIdRef.current = myUserId;
+  useEffect(() => { myIdRef.current = myUserId; });
   const typingTimersRef = useRef({});
   // Server bir sahifada 50 ta xabar qaytaradi — kamroq kelsa, eskisi qolmagan.
   const hasMoreOlderRef = useRef(true);
@@ -245,7 +245,7 @@ export function ChatProvider({ myUserId, children }) {
   // idempotent (`clientMessageId`) yo'l bilan yuboradi. `window.addEventListener('online')`
   // va socket'ning har bir 'connect' (shu jumladan reconnect) hodisasida chaqiriladi.
   const flushOfflineQueue = useCallback(async () => {
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return; // yana uzilib qoldi
       const item = offlineQueueRef.current[0];

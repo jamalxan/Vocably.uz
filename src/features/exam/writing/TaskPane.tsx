@@ -14,7 +14,7 @@ export default function TaskPane({ task }: TaskPaneProps) {
       <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--exam-muted)' }}>
         Writing Task {task.order}
       </p>
-      {/* eslint-disable-next-line react/no-danger */}
+      { }
       <div
         className="overflow-x-auto break-words [&_img]:max-w-full [&_img]:h-auto [&_table]:w-full [&_pre]:whitespace-pre-wrap"
         dangerouslySetInnerHTML={{ __html: task.promptHtml }}

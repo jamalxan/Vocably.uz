@@ -49,7 +49,7 @@ export default function MatchingBank({ group, answers, onAnswerChange, paragraph
             </sup>
             <FlagToggle questionNumber={q.number} />
             <span className="flex-1 min-w-0 break-words">
-              {/* eslint-disable-next-line react/no-danger */}
+              { }
               <span dangerouslySetInnerHTML={{ __html: q.promptHtml || '' }} />
             </span>
             <select

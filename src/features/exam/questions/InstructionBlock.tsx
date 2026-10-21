@@ -19,7 +19,7 @@ export default function InstructionBlock({ rangeLabel, instructionHtml }: Instru
       <p className="text-[0.94em] font-bold mb-1.5" style={{ color: 'var(--exam-text)' }}>
         {rangeLabel}
       </p>
-      {/* eslint-disable-next-line react/no-danger */}
+      { }
       <div
         className="text-[0.94em] leading-[1.55] [&_strong]:font-bold [&_em]:italic"
         style={{ color: 'var(--exam-text)' }}

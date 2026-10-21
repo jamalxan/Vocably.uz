@@ -18,7 +18,7 @@ let counter = 0;
  */
 export function useBackClose(open, onClose) {
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  useEffect(() => { closeRef.current = onClose; });
 
   useEffect(() => {
     if (!open || typeof window === 'undefined') return undefined;

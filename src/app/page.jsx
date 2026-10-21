@@ -81,7 +81,7 @@ export default function LandingPage() {
     // overflow-x-clip (not hidden): hidden would turn this div into a scroll
     // container and silently break the sticky header and GSAP pins.
     <div className={`${landingFontVariables} relative isolate min-h-dvh overflow-x-clip bg-bg font-landing-body`}>
-      {/* eslint-disable-next-line react/no-danger */}
+      { }
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       <ExperienceLoader />

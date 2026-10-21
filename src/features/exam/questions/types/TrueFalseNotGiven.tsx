@@ -17,7 +17,7 @@ function ThreeWayChoice({ question, value, onChange, options }: QuestionTypeProp
         <span className="inline-flex align-middle mr-1.5">
           <FlagToggle questionNumber={question.number} />
         </span>
-        {/* eslint-disable-next-line react/no-danger */}
+        { }
         <span dangerouslySetInnerHTML={{ __html: question.promptHtml || '' }} />
       </legend>
       <div className="flex flex-wrap gap-x-5 gap-y-1.5 pl-4">

@@ -50,7 +50,7 @@ export default function MatchGame() {
   // "Juftlikni topish" nav tugmasi bosilganda (Sidebar orqali) oraliq tanlashga qaytamiz.
   useEffect(() => {
     setActive(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [matchGameNonce, activeCatIndex]);
 
   const initMatchGame = useCallback(

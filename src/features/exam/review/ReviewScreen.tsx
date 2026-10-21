@@ -191,7 +191,7 @@ export default function ReviewScreen({ detail, onBack }: ReviewScreenProps) {
                           style={{ padding: para.label ? '2px 4px 2px 24px' : '2px 4px' }}
                         >
                           {para.label && <span className="absolute left-1 font-bold text-muted">{para.label}</span>}
-                          {/* eslint-disable-next-line react/no-danger */}
+                          { }
                           <span dangerouslySetInnerHTML={{ __html: para.html }} />
                         </p>
                       );

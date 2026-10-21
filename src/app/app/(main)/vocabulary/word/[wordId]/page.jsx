@@ -25,6 +25,7 @@ export default function SozPage() {
   const [enriching, setEnriching] = useState(false);
   const [error, setError] = useState('');
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- React Compiler memoizatsiyani o'tkazib yuboradi; qo'lda useMemo/useCallback saqlanadi
   const found = useMemo(() => {
     for (const c of categories) {
       const w = (c.words || []).find((x) => x._id === wordId);

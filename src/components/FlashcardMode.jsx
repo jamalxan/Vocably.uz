@@ -79,7 +79,7 @@ export default function FlashcardMode() {
       map[rating] = formatInterval(nextReviewState(prevCard, rating, now).dueAt.getTime() - now.getTime(), t);
     }
     return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [current, t]);
 
   // Audio avtomatik — karta ochilganda (yoki flip qilinganda emas, faqat old tarafi

@@ -42,7 +42,7 @@ export default function Composer() {
   const textInputRef = useRef(null);
   const emojiButtonRef = useRef(null);
   const pendingAttachmentRef = useRef(null);
-  pendingAttachmentRef.current = pendingAttachment;
+  useEffect(() => { pendingAttachmentRef.current = pendingAttachment; });
 
   const clearPendingAttachment = () => {
     setPendingAttachment((prev) => {
@@ -66,7 +66,7 @@ export default function Composer() {
     setText(editingMessage.text);
     textInputRef.current?.focus();
     clearPendingAttachment();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [editingMessage]);
 
   // Javob berish rejimiga o'tilganda (xabardagi "Reply" tugmasi) inputga fokus

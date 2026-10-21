@@ -365,6 +365,7 @@ export function AppProvider({ children }) {
         setActiveCatIndex(categories.length);
       } catch (err) {
         console.error("Kategoriya qo'shishda xatolik", err);
+        // eslint-disable-next-line react-hooks/immutability -- R3F uniform/ref mutatsiyasi (useFrame) — ataylab
         setNotice(t('app.addCatFailed'));
       }
     },
@@ -406,6 +407,7 @@ export function AppProvider({ children }) {
   }, [notice]);
 
   const handleDeleteCategory = useCallback(
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization -- React Compiler memoizatsiyani o'tkazib yuboradi; qo'lda useMemo/useCallback saqlanadi
     (idx) => {
       const cat = categories[idx];
       if (!cat) return;

@@ -81,7 +81,7 @@ export default function WordTable() {
         if (idx >= chunks.length) return;
         const chunk = chunks[idx];
         try {
-          // eslint-disable-next-line no-await-in-loop
+           
           const results = await enrichWordsBatch(categoryId, chunk.map((w) => w._id));
           for (const r of results) {
             if (r.error) failed.push({ wordId: r.wordId, word: wordById.get(r.wordId)?.word || r.word, error: r.error, requestId: r.requestId });

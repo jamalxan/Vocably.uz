@@ -90,7 +90,7 @@ describeDb('hub performance (integration)', () => {
       const counted = gamesCatalogCompute(user);
       const catalogMs = ms(t0);
 
-      // eslint-disable-next-line no-console
+       
       console.log(`[perf] ${size} words: load ${load.toFixed(0)}ms, profile ${profileMs.toFixed(0)}ms, catalog ${catalogMs.toFixed(0)}ms`);
       expect(counted).toBe(size);
       expect(profile.overview.total).toBe(size);

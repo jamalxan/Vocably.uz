@@ -45,6 +45,7 @@ export default function RecordingPane({
   const secondsRef = useRef(0); // maxDurationSec tekshiruvi uchun — `seconds` state async, closure eskirib qolishi mumkin
   // Yuklash muvaffaqiyatsiz bo'lsa — qayta yozdirmasdan shu yozuvni qayta yuborish uchun.
   const lastRecordingRef = useRef<{ blob: Blob; durationSec: number } | null>(null);
+  const [canRetry, setCanRetry] = useState(false); // lastRecordingRef render'da o'qilmasligi uchun nusxa
   const onRecordingChangeRef = useRef(onRecordingChange);
   useEffect(() => {
     onRecordingChangeRef.current = onRecordingChange;
@@ -78,9 +79,11 @@ export default function RecordingPane({
     setUploading(true);
     setError('');
     lastRecordingRef.current = { blob, durationSec };
+    setCanRetry(true);
     try {
       await uploadSpeakingRecording(attemptId, { part, questionIndex, blob, durationSec });
       lastRecordingRef.current = null;
+      setCanRetry(false);
       setDone(true);
       onUploaded();
     } catch (err: any) {
@@ -100,6 +103,7 @@ export default function RecordingPane({
     setError('');
     setDone(false);
     lastRecordingRef.current = null;
+    setCanRetry(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -187,7 +191,7 @@ export default function RecordingPane({
           {error}
         </p>
       )}
-      {error && !uploading && !recording && lastRecordingRef.current && (
+      {error && !uploading && !recording && canRetry && (
         <button
           type="button"
           onClick={() => {

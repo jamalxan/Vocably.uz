@@ -53,6 +53,7 @@ export default function SubscriptionBanner() {
     tone = 'warning';
     Icon = AlertTriangle;
     text = t('sub.grace', { tier: label, n: sub.graceDaysLeft, date: fmt(sub.graceEndsAt) });
+  // eslint-disable-next-line react-hooks/purity -- Date.now() ma'lum vaqtni solishtirish uchun — ataylab
   } else if (sub.status === 'expired' && Date.now() - new Date(sub.graceEndsAt).getTime() < 7 * DAY_MS) {
     tone = 'danger';
     Icon = Lock;
