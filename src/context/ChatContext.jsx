@@ -131,22 +131,24 @@ export function ChatProvider({ myUserId, children }) {
     }
   }, []);
 
-  const loadConversations = useCallback(async () => {
-    try {
-      const res = await fetch('/api/chat/conversations', { headers: authHeaders() });
-      const data = await res.json();
-      if (res.ok) {
-        setConversations(data.conversations || []);
-        setConversationsError(false);
-      } else {
-        setConversationsError(true);
-      }
-    } catch {
-      setConversationsError(true);
-    } finally {
-      setLoadingConversations(false);
-    }
-  }, [authHeaders]);
+  // Promise zanjiri: effekt tanasida chaqirilganda kompilyator `catch` ichidagi setState'ni sinxron deb hisoblaydi.
+  const loadConversations = useCallback(
+    () =>
+      fetch('/api/chat/conversations', { headers: authHeaders() })
+        .then((res) =>
+          res.json().then((data) => {
+            if (res.ok) {
+              setConversations(data.conversations || []);
+              setConversationsError(false);
+            } else {
+              setConversationsError(true);
+            }
+          })
+        )
+        .catch(() => setConversationsError(true))
+        .finally(() => setLoadingConversations(false)),
+    [authHeaders]
+  );
 
   // `silent` — fon rejimidagi qayta yuklash (masalan pastdagi 5s poll, socket
   // ulanmaganda) uchun: spinner ko'rsatmaydi, aks holda suhbat ochiq turganda ham
@@ -964,24 +966,22 @@ export function ChatProvider({ myUserId, children }) {
   const dismissMessageToast = useCallback(() => setNewMessageToast(null), []);
 
   useEffect(() => {
-    // Asinxron yuklash mikrotask'dan boshlanadi — effekt tanasida sinxron setState yo'q.
-    Promise.resolve().then(loadConversations);
+    loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadStickers = useCallback(async () => {
-    try {
-      const res = await fetch('/api/chat/stickers');
-      if (!res.ok) return;
-      setStickerCatalog(buildStickerCatalog(await res.json()));
-    } catch {
-      // tarmoq xatosi — statik to'plam bilan qolinadi
-    }
-  }, []);
+  const loadStickers = useCallback(
+    () =>
+      fetch('/api/chat/stickers')
+        .then((res) => (res.ok ? res.json().then((json) => setStickerCatalog(buildStickerCatalog(json))) : undefined))
+        .catch(() => {
+          // tarmoq xatosi — statik to'plam bilan qolinadi
+        }),
+    []
+  );
 
   useEffect(() => {
-    // Asinxron yuklash mikrotask'dan boshlanadi — effekt tanasida sinxron setState yo'q.
-    Promise.resolve().then(loadStickers);
+    loadStickers();
   }, [loadStickers]);
 
   // F — sahifa qayta yuklanganda (yoki komponent birinchi mount bo'lganda) oflayn

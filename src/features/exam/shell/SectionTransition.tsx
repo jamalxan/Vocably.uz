@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useMounted } from '@/lib/useLocalStorage';
 import { useExamStore } from '../state/examStore';
 
 // TZ-vocably-v2.md §9.1 — "'Listening tugadi' ekrani (10s sanoq)" / "'Reading
@@ -19,10 +20,7 @@ export default function SectionTransition({ completedLabel, nextLabel, onComplet
   const [remaining, setRemaining] = useState(TRANSITION_SEC);
   const highContrast = useExamStore((s) => s.highContrast);
   // Live region mount'dan keyin to'ldiriladi — aks holda ekran o'qigich e'lon qilmaydi.
-  const [announce, setAnnounce] = useState(false);
-  useEffect(() => {
-    Promise.resolve().then(() => setAnnounce(true));
-  }, []);
+  const announce = useMounted();
 
   useEffect(() => {
     const start = Date.now();

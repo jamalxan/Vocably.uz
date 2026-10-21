@@ -1,5 +1,6 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocalStorageString } from '@/lib/useLocalStorage';
 import Link from 'next/link';
 import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { useExamStore } from '../state/examStore';
@@ -23,24 +24,13 @@ function notesStorageKey(attemptId: string): string {
   return `exam.practice.notes.${attemptId}`;
 }
 
-function readNotes(attemptId: string): { task1: string; task2: string } {
-  if (typeof window === 'undefined') return { task1: '', task2: '' };
+function parseNotes(raw: string | null): { task1: string; task2: string } {
   try {
-    const raw = localStorage.getItem(notesStorageKey(attemptId));
     if (!raw) return { task1: '', task2: '' };
     const parsed = JSON.parse(raw);
     return { task1: String(parsed?.task1 || ''), task2: String(parsed?.task2 || '') };
   } catch {
     return { task1: '', task2: '' };
-  }
-}
-
-function writeNotes(attemptId: string, notes: { task1: string; task2: string }) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(notesStorageKey(attemptId), JSON.stringify(notes));
-  } catch {
-    // Xususiy rejim yoki kvota to'lgan — jimgina o'tkazib yuboramiz, qoralama shu sessiyada ishlayveradi.
   }
 }
 
@@ -55,7 +45,9 @@ export default function WritingPracticeSection({ attemptId, onSubmitted }: Writi
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [notes, setNotes] = useState<{ task1: string; task2: string }>({ task1: '', task2: '' });
+  // Qoralama localStorage'da (attemptId bo'yicha) — gidratatsiyada bo'sh, keyin saqlangani.
+  const [rawNotes, setRawNotes] = useLocalStorageString(notesStorageKey(attemptId));
+  const notes = useMemo(() => parseNotes(rawNotes), [rawNotes]);
 
   const init = useExamStore((s) => s.init);
   const reset = useExamStore((s) => s.reset);
@@ -66,20 +58,11 @@ export default function WritingPracticeSection({ attemptId, onSubmitted }: Writi
 
   useAutosave(attemptId);
 
-  useEffect(() => {
-    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
-    Promise.resolve().then(() => setNotes(readNotes(attemptId)));
-  }, [attemptId]);
-
   const updateNote = useCallback(
     (task: 1 | 2, text: string) => {
-      setNotes((prev) => {
-        const next = { ...prev, [`task${task}`]: text };
-        writeNotes(attemptId, next);
-        return next;
-      });
+      setRawNotes((prevRaw: string | null) => JSON.stringify({ ...parseNotes(prevRaw), [`task${task}`]: text }));
     },
-    [attemptId]
+    [setRawNotes]
   );
 
   useEffect(() => {

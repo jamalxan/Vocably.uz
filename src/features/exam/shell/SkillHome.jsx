@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { BookOpenText, Ear, Mic, PenLine, Loader2, ChevronRight, RotateCcw, Shuffle, Timer, Sparkles, Highlighter, Search } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useT } from '@/context/LocaleContext';
+import { useLocalStorageString } from '@/lib/useLocalStorage';
 import { createAttempt, createPracticeAttempt, fetchSectionStatuses } from '../state/attemptsApi';
 import ExamBackLink from './ExamBackLink';
 import { countByKind, countByStatus, filterTests } from './testListFilter';
@@ -78,22 +79,9 @@ function testMeta(t, test, skill) {
 }
 
 function useStoredMode(skill, allowPractice) {
-  const [mode, setMode] = useState(allowPractice ? 'practice' : 'timed');
-  useEffect(() => {
-    if (!allowPractice) return;
-    try {
-      const saved = localStorage.getItem(`vocably_skill_mode_${skill}`);
-      // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
-      if (saved === 'practice' || saved === 'timed') Promise.resolve().then(() => setMode(saved));
-    } catch {}
-  }, [skill, allowPractice]);
-  const update = (m) => {
-    setMode(m);
-    try {
-      localStorage.setItem(`vocably_skill_mode_${skill}`, m);
-    } catch {}
-  };
-  return [mode, update];
+  const [saved, setSaved] = useLocalStorageString(`vocably_skill_mode_${skill}`);
+  const mode = allowPractice ? (saved === 'practice' || saved === 'timed' ? saved : 'practice') : 'timed';
+  return [mode, setSaved];
 }
 
 function ModeSwitch({ mode, onChange }) {
@@ -143,20 +131,9 @@ const STATUS_FILTERS = [
 ];
 
 function useStoredKind(skill) {
-  const [kind, setKind] = useState('all');
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(`vocably_skill_kind_${skill}`);
-      if (KIND_FILTERS.some((k) => k.key === saved)) Promise.resolve().then(() => setKind(saved));
-    } catch {}
-  }, [skill]);
-  const update = (k) => {
-    setKind(k);
-    try {
-      localStorage.setItem(`vocably_skill_kind_${skill}`, k);
-    } catch {}
-  };
-  return [kind, update];
+  const [saved, setSaved] = useLocalStorageString(`vocably_skill_kind_${skill}`);
+  const kind = KIND_FILTERS.some((k) => k.key === saved) ? saved : 'all';
+  return [kind, setSaved];
 }
 
 function FilterChips({ label, options, value, onChange, counts }) {

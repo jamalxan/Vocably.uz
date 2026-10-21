@@ -173,21 +173,26 @@ export default function SpeakingSection({ attemptId, candidateName, candidateId,
   // qolgan qismi yuklanayotganda ko'radi, ketma-ket kutish o'rniga. Stream
   // darhol to'xtatiladi (`getTracks().forEach(t => t.stop())`) — bu faqat
   // TEKSHIRUV, haqiqiy yozib olish RecordingPane o'zi qayta so'raydi.
-  const checkMic = useCallback(async () => {
+  // Promise zanjiri: boshlang'ich holat allaqachon 'checking', shuning uchun effektda sinxron setState yo'q.
+  // `new Promise` mediaDevices yo'q bo'lgandagi sinxron xatoni ham 'denied'ga olib keladi.
+  const probeMic = useCallback(
+    () =>
+      new Promise<MediaStream>((resolve) => resolve(navigator.mediaDevices.getUserMedia({ audio: true })))
+        .then((stream) => {
+          stream.getTracks().forEach((t) => t.stop());
+          setMicStatus('ok');
+        })
+        .catch(() => setMicStatus('denied')),
+    []
+  );
+  const checkMic = useCallback(() => {
     setMicStatus('checking');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((t) => t.stop());
-      setMicStatus('ok');
-    } catch {
-      setMicStatus('denied');
-    }
-  }, []);
+    return probeMic();
+  }, [probeMic]);
 
   useEffect(() => {
-    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
-    Promise.resolve().then(checkMic);
-  }, [checkMic]);
+    probeMic();
+  }, [probeMic]);
 
   if (micStatus !== 'ok') {
     return <MicCheck status={micStatus} onRetry={checkMic} />;

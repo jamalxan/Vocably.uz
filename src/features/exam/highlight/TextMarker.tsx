@@ -1,5 +1,6 @@
 'use client';
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLocalStorageString } from '@/lib/useLocalStorage';
 import { Highlighter, Eraser } from 'lucide-react';
 import { normalizeSpans, rangeToSpan, spanToRange, subtractSpan, type TextSpan } from './textOffsets';
 
@@ -33,9 +34,8 @@ function repaint() {
   else api.registry.delete(HIGHLIGHT_NAME);
 }
 
-function load(key: string): TextSpan[] {
+function parseSpans(raw: string | null): TextSpan[] {
   try {
-    const raw = localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter((s) => Number.isFinite(s?.start) && Number.isFinite(s?.end)) : [];
   } catch {
@@ -68,16 +68,14 @@ export interface TextMarkerProps {
 export default function TextMarker({ storageKey, className, children }: TextMarkerProps) {
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [spans, setSpans] = useState<TextSpan[]>([]);
+  const key = `vocably_marks_${storageKey}`;
+  const [rawSpans, setRawSpans] = useLocalStorageString(key);
+  const spans = useMemo(() => parseSpans(rawSpans), [rawSpans]);
   const [toolbar, setToolbar] = useState<Toolbar | null>(null);
   const supported = useRef(false);
-  const key = `vocably_marks_${storageKey}`;
-
   useEffect(() => {
     supported.current = !!highlightApi();
-    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
-    Promise.resolve().then(() => setSpans(load(key)));
-  }, [key]);
+  }, []);
 
   // Paint (and re-paint when React replaces text nodes underneath).
   useEffect(() => {
@@ -100,12 +98,9 @@ export default function TextMarker({ storageKey, className, children }: TextMark
   const save = useCallback(
     (next: TextSpan[]) => {
       const clean = normalizeSpans(next);
-      setSpans(clean);
-      try {
-        localStorage.setItem(key, JSON.stringify(clean));
-      } catch {}
+      setRawSpans(JSON.stringify(clean));
     },
-    [key]
+    [setRawSpans]
   );
 
   const inspectSelection = useCallback(

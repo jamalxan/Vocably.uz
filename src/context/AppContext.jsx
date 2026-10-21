@@ -5,6 +5,7 @@ import { AlertTriangle, RotateCcw, LogOut } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import Button from '@/components/ui/Button';
 import { useT } from '@/context/LocaleContext';
+import { useLocalStorageString } from '@/lib/useLocalStorage';
 
 const AppContext = createContext(null);
 
@@ -53,8 +54,9 @@ export function AppProvider({ children }) {
   const [reviewStreak, setReviewStreak] = useState(0);
 
   const [isAuthed, setIsAuthed] = useState(false);
-  const [username, setUsername] = useState('');
-  const [phone, setPhone] = useState('');
+  // localStorage'dan o'qiladi (server/gidratatsiyada bo'sh) — effektda setState kerak emas.
+  const [username, setUsername] = useLocalStorageString('username', '');
+  const [phone, setPhone] = useLocalStorageString('phone', '');
 
   // Do'stlar bo'limi — hidden feature, faqat admin ruxsat bergan userlarga ko'rinadi
   // (src/app/api/chat/me). `chatUsername`/`chatRole` shu yerdan keladi, login uchun
@@ -70,20 +72,25 @@ export function AppProvider({ children }) {
   // MyProfilePhoto.jsx rasm qo'yilganda/o'chirilganda yangilaydi.
   const [myPhotoId, setMyPhotoId] = useState(null);
 
-  const fetchChatAccess = useCallback(async () => {
-    try {
-      const res = await fetch('/api/chat/me');
-      if (!res.ok) return;
-      const data = await res.json();
-      setChatAccess(!!data.chatAccess);
-      setChatUsername(data.username || null);
-      setChatRole(data.role || 'user');
-      setChatUserId(data.id || null);
-      setMyPhotoId(data.photoId || null);
-    } catch {
-      // jimgina e'tiborsiz qoldiramiz — bo'lim shunchaki ko'rinmay qoladi
-    }
-  }, []);
+  const fetchChatAccess = useCallback(
+    () =>
+      fetch('/api/chat/me')
+        .then((res) =>
+          res.ok
+            ? res.json().then((data) => {
+                setChatAccess(!!data.chatAccess);
+                setChatUsername(data.username || null);
+                setChatRole(data.role || 'user');
+                setChatUserId(data.id || null);
+                setMyPhotoId(data.photoId || null);
+              })
+            : undefined
+        )
+        .catch(() => {
+          // jimgina e'tiborsiz qoldiramiz — bo'lim shunchaki ko'rinmay qoladi
+        }),
+    []
+  );
 
   // "Yozish testi" har qanday nav bosilganda qayta boshlanadigan qilib sozlanadi (avvalgi xatti-harakat).
   const [writeResetNonce, setWriteResetNonce] = useState(0);
@@ -120,59 +127,58 @@ export function AppProvider({ children }) {
     router.replace('/login'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /login ga tushib, tuzoq bo'lardi)
   }, [router]);
 
-  const fetchUserData = useCallback(async () => {
-    setAppError(false);
-    try {
-      // N-15: joriy sahifa lug'atga muhtoj bo'lmasa `?light=1` bilan so'raladi —
-      // server faqat sessiya haqiqiyligi + reviewStreak'ni tekshiradi, butun
-      // `categories` massivini QAYTARMAYDI (src/app/api/words/route.js).
-      const wantVocab = needsVocabulary(pathname);
-      const res = await fetch(wantVocab ? '/api/words' : '/api/words?light=1');
-      // Faqat 401 (sessiya yaroqsiz/muddati o'tgan) chiqishga olib keladi; tarmoq yoki
-      // server xatosida sessiya saqlanadi va foydalanuvchi qayta urinadi.
-      if (res.status === 401) {
-        logout();
-        return;
-      }
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      if (wantVocab) {
-        setCategories(data.categories || []);
-        vocabLoadedRef.current = true;
-      }
-      setReviewStreak(data.reviewStreak || 0);
-      if (data.name) {
-        setUsername(data.name);
-        localStorage.setItem('username', data.name);
-      }
-      if (data.phone) {
-        setPhone(data.phone);
-        localStorage.setItem('phone', data.phone);
-      }
-      setIsAuthed(true);
-      localStorage.setItem('vocably_authed', '1');
-    } catch {
-      setAppError(true);
-    } finally {
-      setLoadingApp(false);
-    }
-  }, [logout, pathname]);
+  // Promise zanjiri (async/catch emas): effekt tanasida chaqirilganda kompilyator `catch` ichidagi setState'ni sinxron deb hisoblaydi.
+  const fetchUserData = useCallback(() => {
+    // N-15: joriy sahifa lug'atga muhtoj bo'lmasa `?light=1` bilan so'raladi —
+    // server faqat sessiya haqiqiyligi + reviewStreak'ni tekshiradi, butun
+    // `categories` massivini QAYTARMAYDI (src/app/api/words/route.js).
+    const wantVocab = needsVocabulary(pathname);
+    return fetch(wantVocab ? '/api/words' : '/api/words?light=1')
+      .then((res) => {
+        // Faqat 401 (sessiya yaroqsiz/muddati o'tgan) chiqishga olib keladi; tarmoq yoki
+        // server xatosida sessiya saqlanadi va foydalanuvchi qayta urinadi.
+        if (res.status === 401) {
+          logout();
+          return undefined;
+        }
+        if (!res.ok) throw new Error();
+        return res.json().then((data) => {
+          if (wantVocab) {
+            setCategories(data.categories || []);
+            vocabLoadedRef.current = true;
+          }
+          setReviewStreak(data.reviewStreak || 0);
+          if (data.name) setUsername(data.name);
+          if (data.phone) setPhone(data.phone);
+          setAppError(false);
+          setIsAuthed(true);
+          localStorage.setItem('vocably_authed', '1');
+        });
+      })
+      .catch(() => setAppError(true))
+      .finally(() => setLoadingApp(false));
+  }, [logout, pathname, setUsername, setPhone]);
 
   // Fon rejimida faqat kategoriyalarni qayta yuklaydi (masalan AI chat orqali so'z qo'shilgandan keyin,
   // yoki N-15 lazy-load effekti — foydalanuvchi lug'atga muhtoj bo'lmagan sahifadan
   // shunday sahifaga o'tganda, quyida).
-  const refreshCategories = useCallback(async () => {
-    try {
-      const res = await fetch('/api/words');
-      if (!res.ok) return;
-      const data = await res.json();
-      setCategories(data.categories || []);
-      setReviewStreak(data.reviewStreak || 0);
-      vocabLoadedRef.current = true;
-    } catch {
-      // jimgina e'tiborsiz qoldiramiz
-    }
-  }, []);
+  const refreshCategories = useCallback(
+    () =>
+      fetch('/api/words')
+        .then((res) =>
+          res.ok
+            ? res.json().then((data) => {
+                setCategories(data.categories || []);
+                setReviewStreak(data.reviewStreak || 0);
+                vocabLoadedRef.current = true;
+              })
+            : undefined
+        )
+        .catch(() => {
+          // jimgina e'tiborsiz qoldiramiz
+        }),
+    []
+  );
 
   // N-15: agar boshlang'ich sahifa lug'atga muhtoj bo'lmasa (masalan
   // to'g'ridan-to'g'ri /app/mock'ga kirilgan) va keyin foydalanuvchi lug'atga
@@ -182,8 +188,7 @@ export function AppProvider({ children }) {
     if (!isAuthed || loadingApp) return;
     if (vocabLoadedRef.current) return;
     if (!needsVocabulary(pathname)) return;
-    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
-    Promise.resolve().then(refreshCategories);
+    refreshCategories();
   }, [pathname, isAuthed, loadingApp, refreshCategories]);
 
   // Bitta so'zning takrorlash statistikasini yangilaydi (Bugungi takrorlash, Test, Tinglab yozish rejimlari uchun).
@@ -250,18 +255,22 @@ export function AppProvider({ children }) {
   // o'zgaradi (yangi sessiya yaratilganda), unda esa qayta yuklash kerak emas.
   const [sessionOpenNonce, setSessionOpenNonce] = useState(0);
 
-  const loadChatSessions = useCallback(async () => {
-    try {
-      const res = await fetch('/api/ai/sessions');
-      const data = await res.json();
-      if (res.ok) setChatSessions(data.sessions || []);
-    } catch {
-      // jimgina e'tiborsiz qoldiramiz — ro'yxat bo'sh ko'rinadi
-    }
-  }, []);
+  const loadChatSessions = useCallback(
+    () =>
+      fetch('/api/ai/sessions')
+        .then((res) =>
+          res.json().then((data) => {
+            if (res.ok) setChatSessions(data.sessions || []);
+          })
+        )
+        .catch(() => {
+          // jimgina e'tiborsiz qoldiramiz — ro'yxat bo'sh ko'rinadi
+        }),
+    []
+  );
 
   useEffect(() => {
-    if (isAuthed) Promise.resolve().then(loadChatSessions);
+    if (isAuthed) loadChatSessions();
   }, [isAuthed, loadChatSessions]);
 
   const openChatSession = useCallback((id) => {
@@ -320,15 +329,8 @@ export function AppProvider({ children }) {
   }, [startNewChatSession, loadChatSessions]);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('username');
-    const savedPhone = localStorage.getItem('phone');
-    // Mikrotask — effekt tanasida sinxron setState bo'lmasligi uchun.
-    Promise.resolve().then(() => {
-      setUsername(savedUser || '');
-      setPhone(savedPhone || '');
-      fetchUserData();
-      fetchChatAccess();
-    });
+    fetchUserData();
+    fetchChatAccess();
     // Ilgari bu yerda "localStorage'da token bormi" degan tarmoqsiz tekshiruv
     // bo'lardi. Endi haqiqiy tekshiruv doim serverga (cookie orqali) boradi —
     // 401 kelsa fetchUserData o'zi logout() chaqiradi (pastda, useCallback ichida).
@@ -672,6 +674,7 @@ export function AppProvider({ children }) {
             <div className="flex flex-col gap-2">
               <Button
                 onClick={() => {
+                  setAppError(false);
                   setLoadingApp(true);
                   fetchUserData();
                 }}
