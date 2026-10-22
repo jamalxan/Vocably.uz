@@ -71,7 +71,8 @@ export async function handlePayme(method, params = {}) {
     case 'CheckPerformTransaction': {
       const r = await findOrder(params.account);
       if (!r) return { error: E.order };
-      if (r.status !== 'pending') return { error: E.orderBusy };
+      // Same rule as CreateTransaction: an order with an open transaction is busy.
+      if (r.status !== 'pending' || (r.provider?.txId && r.provider.state === 1)) return { error: E.orderBusy };
       if (toTiyin(r.amount) !== params.amount) return { error: E.amount };
       return { result: { allow: true } };
     }
@@ -103,9 +104,13 @@ export async function handlePayme(method, params = {}) {
         await cancelExpired(r);
         return { error: E.cantPerform };
       }
+      // Activate first (atomic pending → approved). If the order is no longer
+      // pending — an admin rejected it meanwhile — the money must not be
+      // taken: refuse, and Payme cancels on its side.
+      const approved = await approvePayment(r._id, { method: 'payme' });
+      if (!approved.ok) return { error: E.cantPerform };
       const performedAt = new Date();
       await PaymentRequest.updateOne({ _id: r._id }, { $set: { 'provider.state': 2, 'provider.performedAt': performedAt } });
-      await approvePayment(r._id, { method: 'payme' });
       return { result: { transaction: String(r._id), perform_time: performedAt.getTime(), state: 2 } };
     }
     case 'CancelTransaction': {

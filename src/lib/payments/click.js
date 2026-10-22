@@ -66,7 +66,9 @@ export async function handleClick(stage, p) {
     await r.save();
     return reply(p, { merchant_confirm_id: prepareIdOf(r), error: -9, error_note: 'Transaction cancelled' });
   }
+  // Activate first (atomic pending → approved); only then record the provider state.
+  const approved = await approvePayment(r._id, { method: 'click' });
+  if (!approved.ok) return reply(p, { error: -9, error_note: 'Transaction cancelled' });
   await PaymentRequest.updateOne({ _id: r._id }, { $set: { 'provider.state': 2, 'provider.performedAt': new Date() } });
-  await approvePayment(r._id, { method: 'click' });
   return reply(p, { merchant_confirm_id: prepareIdOf(r), error: 0, error_note: 'Success' });
 }

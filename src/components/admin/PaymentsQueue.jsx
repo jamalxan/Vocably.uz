@@ -137,7 +137,15 @@ export default function PaymentsQueue() {
               </p>
             )}
           </div>
-          {r.status === 'pending' && (
+          {r.status === 'pending' && r.method !== 'manual' && (
+            // Payme/Click order the provider hasn't finished: it approves itself
+            // on the provider callback, so there is nothing for the admin to
+            // confirm (and approving an unpaid order would open the plan for free).
+            <p className="sm:w-36 text-xs text-muted self-center">
+              {r.providerState === 1 ? `${r.method === 'payme' ? 'Payme' : 'Click'} tasdig'i kutilmoqda — avtomatik ochiladi` : "To'lov sahifasi ochilgan, hali to'lanmagan"}
+            </p>
+          )}
+          {r.status === 'pending' && r.method === 'manual' && (
             <div className="flex sm:flex-col gap-2 sm:w-36">
               <button
                 type="button"

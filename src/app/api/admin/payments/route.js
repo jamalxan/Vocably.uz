@@ -11,7 +11,8 @@ export async function GET(req) {
     const filter = st === 'all' ? {} : { status: st };
     const [list, pendingCount] = await Promise.all([
       PaymentRequest.find(filter).sort({ createdAt: -1 }).limit(100).populate('userId', 'name username phone subscriptionTier subscriptionExpiresAt').lean(),
-      PaymentRequest.countDocuments({ status: 'pending' }),
+      // Only receipts need a human; a pending Payme/Click order is the provider's to finish.
+      PaymentRequest.countDocuments({ status: 'pending', method: 'manual' }),
     ]);
     return NextResponse.json({
       pendingCount,
@@ -29,6 +30,7 @@ export async function GET(req) {
         rejectReason: r.rejectReason,
         hasReceipt: !!r.receiptFileId,
         receiptMime: r.receiptMime,
+        providerState: r.provider?.state ?? null,
         createdAt: r.createdAt,
         reviewedAt: r.reviewedAt,
       })),

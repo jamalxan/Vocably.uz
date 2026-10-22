@@ -57,11 +57,23 @@ export default function Checkout() {
   const [sent, setSent] = useState(false);
   const inputRef = useRef(null);
 
+  // Back from Payme/Click (`?paid=<request id>`): the provider confirms the
+  // payment through its server callback, which can land a few seconds after
+  // the redirect — so poll the request until it is approved (or given up).
+  const paidId = params.get('paid');
+  const [paidStatus, setPaidStatus] = useState(paidId ? 'checking' : null);
+
   const loadRequests = () =>
     fetch('/api/billing/requests')
       .then((r) => (r.ok ? r.json() : { requests: [] }))
-      .then((d) => setRequests(d.requests || []))
-      .catch(() => setRequests([]));
+      .then((d) => {
+        setRequests(d.requests || []);
+        return d.requests || [];
+      })
+      .catch(() => {
+        setRequests([]);
+        return [];
+      });
 
   useEffect(() => {
     fetch('/api/billing/options')
@@ -70,6 +82,28 @@ export default function Checkout() {
       .catch(() => setOptions({ manual: null, payme: false, click: false, prices: {} }));
     loadRequests();
   }, []);
+
+  useEffect(() => {
+    if (!paidId) return undefined;
+    let tries = 0;
+    let timer = null;
+    let stopped = false;
+    const poll = async () => {
+      const list = await loadRequests();
+      if (stopped) return;
+      const req = list.find((r) => r.id === paidId);
+      if (!req) return setPaidStatus('unknown');
+      if (req.status === 'approved') return setPaidStatus('approved');
+      if (req.status !== 'pending') return setPaidStatus('cancelled');
+      if (++tries >= 20) return setPaidStatus('pending');
+      timer = setTimeout(poll, 3000);
+    };
+    poll();
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [paidId]);
 
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
@@ -135,6 +169,32 @@ export default function Checkout() {
         <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">{t('co.title')}</h1>
         <p className="text-sm text-muted mt-1">{t('co.sub')}</p>
       </div>
+
+      {paidStatus && paidStatus !== 'unknown' && (
+        <div
+          role="status"
+          className={`flex items-center gap-3 rounded-2xl border px-5 py-4 text-sm ${
+            paidStatus === 'approved'
+              ? 'border-success/30 bg-success-soft text-ink'
+              : paidStatus === 'cancelled'
+                ? 'border-danger/30 bg-danger-soft text-ink'
+                : 'border-border bg-surface text-ink'
+          }`}
+        >
+          {paidStatus === 'checking' && <Loader2 size={18} className="animate-spin text-accent flex-shrink-0" aria-hidden="true" />}
+          {paidStatus === 'approved' && <CheckCircle2 size={18} className="text-success flex-shrink-0" aria-hidden="true" />}
+          {paidStatus === 'cancelled' && <XCircle size={18} className="text-danger flex-shrink-0" aria-hidden="true" />}
+          {paidStatus === 'pending' && <Clock size={18} className="text-warning flex-shrink-0" aria-hidden="true" />}
+          <span>
+            {t(`co.paid.${paidStatus}`)}{' '}
+            {paidStatus === 'approved' && (
+              <Link href="/app" className="font-semibold text-accent hover:underline">
+                {t('co.paid.open')}
+              </Link>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* 1. Plan */}
       <section className="rounded-2xl border border-border bg-surface shadow-card p-5 space-y-4" aria-labelledby="step-plan">

@@ -6,6 +6,7 @@ import { priceFor, paymeConfig, clickConfig } from '@/lib/payments/config';
 import { saveReceipt, receiptMagicMatches, RECEIPT_MAX_BYTES, RECEIPT_TYPES } from '@/lib/payments/receiptStorage';
 import { paymeCheckoutUrl } from '@/lib/payments/payme';
 import { clickCheckoutUrl } from '@/lib/payments/click';
+import { cancelAbandonedOnlineRequests, countAwaitingReview } from '@/lib/payments/pending';
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
 import { escapeTelegramHtml } from '@/lib/telegramHtml';
 import { TIER_CONFIG } from '@/lib/entitlements';
@@ -60,11 +61,13 @@ export async function POST(req) {
     if (method === 'payme' && !paymeConfig()) return NextResponse.json({ error: 'Payme hali ulanmagan' }, { status: 400 });
     if (method === 'click' && !clickConfig()) return NextResponse.json({ error: 'Click hali ulanmagan' }, { status: 400 });
 
-    // Limit abuse: at most 3 requests waiting at once.
-    const pending = await PaymentRequest.countDocuments({ userId, status: 'pending' });
-    if (pending >= 3) {
+    // Limit abuse: at most 3 receipts waiting for the admin at once. Online
+    // requests don't count — an abandoned Payme/Click click is not a review
+    // item, and it is cancelled when the user starts a new online payment.
+    if (method === 'manual' && (await countAwaitingReview(userId)) >= 3) {
       return NextResponse.json({ error: "Sizda tekshirilayotgan so'rovlar bor. Admin javobini kuting." }, { status: 429 });
     }
+    if (method !== 'manual') await cancelAbandonedOnlineRequests(userId);
 
     const doc = { userId, tier, months, amount, method, note: String(get('note') || '').slice(0, 500) };
 
