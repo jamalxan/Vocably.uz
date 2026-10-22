@@ -6,7 +6,8 @@ import { sendPushToUser } from '@/lib/webPush';
 
 // "Obuna faollashdi" xabarlari — ikki holat uchun:
 //   purchase — foydalanuvchi to'lov qilgan (approvePayment),
-//   gift     — admin tarifni sovg'a qilgan (admin/chat/users/[id] PATCH).
+//   gift     — admin tarifni sovg'a qilgan (admin/chat/users/[id] PATCH),
+//   trial    — yangi ro'yxatdan o'tganga avtomatik bepul boshlang'ich tarif (welcomeTrial).
 // Bildirishnoma (ilova ichida), brauzer push va Telegram bot — uchalasi bir joydan.
 
 const TIER_EMOJI = { standard: '⭐', premium: '💎' };
@@ -28,6 +29,26 @@ export function buildActivationMessages({ kind, tier, months, expiresAt, name })
   const until = formatUzDate(expiresAt, { year: true });
   const first = String(name || '').trim().split(/\s+/)[0];
   const hello = first ? `${first}, ` : '';
+
+  if (kind === 'trial') {
+    const title = `🎉 Xush kelibsiz! ${term} ${label} — bepul`;
+    const body = [
+      `${hello}Vocably'ga xush kelibsiz! Boshlash uchun ${label} tarifi ${term}ga bepul ochildi.`,
+      `📅 ${until} gacha barcha ${label} imkoniyatlari sizniki.`,
+    ].join('\n');
+    const telegram = [
+      '🎉 <b>Xush kelibsiz!</b>',
+      '━━━━━━━━━━━━━━',
+      `${first ? `Salom, <b>${escapeHtml(first)}</b>! ` : ''}Boshlash uchun <b>${escapeHtml(label)}</b> tarifi sizga bepul ochildi:`,
+      '',
+      `${emoji} Tarif: <b>${escapeHtml(label)}</b>`,
+      `⏳ Muddat: <b>${term}</b>`,
+      `📅 Amal qiladi: <b>${until}</b> gacha`,
+      '━━━━━━━━━━━━━━',
+      "Barcha imkoniyatlarni sinab ko'ring — yaxshi o'qishlar! 🚀",
+    ].join('\n');
+    return { type: 'gift', title, body, telegram };
+  }
 
   if (kind === 'gift') {
     const title = `🎁 Sizga sovg'a: ${label} tarifi!`;
@@ -74,7 +95,7 @@ export function buildActivationMessages({ kind, tier, months, expiresAt, name })
  */
 export async function notifySubscriptionActivated(user, { kind, tier, months, expiresAt }) {
   const msg = buildActivationMessages({ kind, tier, months, expiresAt, name: user.name });
-  const link = kind === 'gift' ? '/app' : '/pricing';
+  const link = kind === 'purchase' ? '/pricing' : '/app';
   const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
   const extra = /^https:\/\//.test(appUrl)
     ? { reply_markup: { inline_keyboard: [[{ text: '🚀 Ilovani ochish', url: `${appUrl}/app` }]] } }

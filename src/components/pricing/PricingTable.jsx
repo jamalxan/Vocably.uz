@@ -27,6 +27,7 @@ export default function PricingTable() {
   const [currentTier, setCurrentTier] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [interestSent, setInterestSent] = useState({});
+  const [welcomeTrial, setWelcomeTrial] = useState(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -49,6 +50,13 @@ export default function PricingTable() {
         if (err?.name !== 'AbortError') setAuthState('out');
       });
     return () => ctrl.abort();
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/billing/options')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.welcomeTrial && setWelcomeTrial(d.welcomeTrial))
+      .catch(() => {});
   }, []);
 
   const registerInterest = (tier) => {
@@ -94,6 +102,14 @@ export default function PricingTable() {
               {t('pr.subExpired', { tier: ts(TIER_CONFIG[subscription.tier]?.label), date: fmtDate(subscription.graceEndsAt) })}
             </>
           )}
+        </div>
+      )}
+      {welcomeTrial && authState !== 'in' && (
+        <div role="note" className="mx-auto mb-8 max-w-xl rounded-2xl border border-accent/40 bg-accent-soft px-5 py-4 text-center text-sm text-ink">
+          🎁 {t('pr.trial', { tier: ts(TIER_CONFIG[welcomeTrial.tier]?.label), n: welcomeTrial.months })}{' '}
+          <Link href="/register" className="font-semibold text-accent hover:underline">
+            {t('pr.trialCta')}
+          </Link>
         </div>
       )}
       <div className="flex justify-center mb-10">

@@ -5,6 +5,7 @@ import { phonesMatch, normalizePhone, formatPhoneDisplay } from '@/lib/phone';
 import { generateCode } from '@/lib/otp';
 import { sendMessage, requestContactKeyboard, removeKeyboard, answerCallbackQuery } from '@/lib/telegram';
 import { handleQuizCallback, sendDailyPractice } from '@/lib/telegramQuiz';
+import { handleAdminBroadcastMessage, handleBroadcastCallback, handleTrialCommand, isAdminChat } from '@/lib/telegramBroadcast';
 import { NextResponse } from 'next/server';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
@@ -40,6 +41,9 @@ const ADMIN_MENU =
   `/admin revoke &lt;telefon&gt; — ruxsatni olib tashlash\n` +
   `/admin ban &lt;telefon&gt; — chatdan bloklash\n` +
   `/admin unban &lt;telefon&gt; — blokdan chiqarish\n\n` +
+  `<b>Sozlamalar:</b>\n` +
+  `/admin trial — yangi foydalanuvchiga bepul tarif (ko'rish/yoqish/o'chirish)\n\n` +
+  `<b>Reklama:</b> shu chatga matn, rasm, video, ovozli/video xabar yoki fayl yuboring — bot "Barchaga yuborish" tugmasini ko'rsatadi.\n\n` +
   `Masalan: <code>/admin grant +998901234567 nodira</code>`;
 
 // Telefon bo'yicha topib, {chatAccess/chatBanned/username} maydonlaridan birini
@@ -111,6 +115,10 @@ async function handleAdminCommand(chatId, text) {
 
     if (!action) {
       await sendMessage(chatId, ADMIN_MENU);
+      return true;
+    }
+    if (action === 'trial') {
+      await sendMessage(chatId, await handleTrialCommand(chatId, parts.slice(1)));
       return true;
     }
     if (!['grant', 'revoke', 'ban', 'unban'].includes(action)) {
@@ -240,6 +248,15 @@ export async function POST(req) {
       return NextResponse.json({ ok: true });
     }
 
+    // Reklama tasdiqlash tugmalari (admin chat) — src/lib/telegramBroadcast.js.
+    if (cb?.data?.startsWith('bc:') && cb.message && isAdminChat(cb.message.chat.id)) {
+      await handleBroadcastCallback(cb).catch(async (err) => {
+        console.error('[telegram broadcast]', err);
+        await sendMessage(cb.message.chat.id, `❌ Xatolik: ${err?.message || err}`).catch(() => {});
+      });
+      return NextResponse.json({ ok: true });
+    }
+
     const message = update.message;
 
     if (!message) {
@@ -339,6 +356,11 @@ export async function POST(req) {
         `✅ Raqamingiz tasdiqlandi!\n\nTasdiqlash kodingiz:\n\n<b>${code}</b>\n\nUshbu kodni saytdagi tegishli maydonga kiriting. Kod 15 daqiqa amal qiladi, hech kimga bermang.`,
         removeKeyboard()
       );
+      return NextResponse.json({ ok: true });
+    }
+
+    // Admin chatdagi boshqa har qanday xabar — reklama drafti (matn/media + tasdiqlash tugmalari).
+    if (isAdminChat(chatId) && (await handleAdminBroadcastMessage(message))) {
       return NextResponse.json({ ok: true });
     }
 

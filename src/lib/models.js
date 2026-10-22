@@ -306,6 +306,9 @@ const UserSchema = new mongoose.Schema({
   subscriptionExpiresAt: { type: Date, default: null },
   // Delivered reminder keys ("<expiryISO>:grace-2" …) — makes the sweep idempotent.
   subscriptionNotices: { type: [String], default: [] },
+  // Welcome trial (src/lib/welcomeTrial.js): set once, when the free starter
+  // plan was granted at registration — so it is never granted twice.
+  welcomeTrialAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -728,11 +731,57 @@ const AnnouncementSchema = new mongoose.Schema({
   body: { type: String, default: '', trim: true },
   authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   recipientCount: { type: Number, default: 0 },
+  // Reklama/e'lon media (src/lib/broadcast.js). Either uploaded from the admin
+  // panel (GridFS `fileId`, bucket announcementMedia) or sent to the bot
+  // (`telegramFileId`); the in-app page serves both through
+  // /api/announcements/[id]/media.
+  media: {
+    kind: { type: String, enum: ['photo', 'video', 'animation', 'audio', 'voice', 'video_note', 'document', null], default: null },
+    fileId: { type: String, default: null },
+    telegramFileId: { type: String, default: null },
+    mime: { type: String, default: null },
+    fileName: { type: String, default: null },
+  },
+  // Inline URL buttons (Telegram inline keyboard + links on the in-app page).
+  buttons: [{ text: { type: String, required: true, trim: true, maxlength: 64 }, url: { type: String, required: true, trim: true } }],
+  telegramCount: { type: Number, default: 0 },
+  source: { type: String, enum: ['web', 'bot'], default: 'web' },
   createdAt: { type: Date, default: Date.now },
 });
 AnnouncementSchema.index({ createdAt: -1 });
 
 export const Announcement = mongoose.models.Announcement || mongoose.model('Announcement', AnnouncementSchema);
+
+// Bot-side reklama draft: the admin sends a message to the bot, confirms with
+// an inline button, then it is copied to every linked user. One draft per
+// admin chat; a new message replaces it. `step` — 'ready' (waiting for the
+// confirm button) or 'awaiting_button' (the next text line is "Matn | URL").
+const BroadcastDraftSchema = new mongoose.Schema({
+  chatId: { type: Number, required: true, unique: true },
+  messageId: { type: Number, required: true },
+  kind: { type: String, default: null }, // null = text only
+  telegramFileId: { type: String, default: null },
+  mime: { type: String, default: null },
+  fileName: { type: String, default: null },
+  text: { type: String, default: '' }, // text or caption
+  buttons: [{ text: String, url: String }],
+  step: { type: String, enum: ['ready', 'awaiting_button'], default: 'ready' },
+  previewMessageId: { type: Number, default: null },
+  createdAt: { type: Date, default: Date.now, expires: 60 * 60 * 24 },
+});
+
+export const BroadcastDraft = mongoose.models.BroadcastDraft || mongoose.model('BroadcastDraft', BroadcastDraftSchema);
+
+// Admin-editable app settings (src/lib/settings.js) — one document per key,
+// `value` is free-form and validated by the owning module (e.g. welcomeTrial).
+const AppSettingSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: { type: mongoose.Schema.Types.Mixed, default: null },
+  updatedAt: { type: Date, default: Date.now },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+});
+
+export const AppSetting = mongoose.models.AppSetting || mongoose.model('AppSetting', AppSettingSchema);
 
 // Brauzer push obunasi (Web Push API) — bitta foydalanuvchi bir nechta qurilma/brauzerdan
 // obuna bo'lishi mumkin, shuning uchun userId unique emas, `endpoint` unique.

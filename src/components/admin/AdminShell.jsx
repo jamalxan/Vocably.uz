@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker, Wallet, Gauge, Gamepad2, BookMarked, Wand2 } from 'lucide-react';
+import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker, Wallet, Gauge, Gamepad2, BookMarked, Wand2, Settings } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { registerChatsTap } from '@/lib/adminHiddenChats';
@@ -46,6 +46,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/admin/announcements', label: "E'lonlar", icon: Megaphone },
       { href: '/admin/stickers', label: 'Stikerlar', icon: Sticker },
+      { href: '/admin/settings', label: 'Sozlamalar', icon: Settings },
       { href: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
     ],
   },

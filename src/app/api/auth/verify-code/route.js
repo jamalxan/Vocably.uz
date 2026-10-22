@@ -9,6 +9,7 @@ import { safeEqual } from '@/lib/safeEqual';
 import { checkRateLimit } from '@/lib/chatAuth';
 import { clientIp } from '@/lib/clientIp';
 import { escapeTelegramHtml } from '@/lib/telegramHtml';
+import { grantWelcomeTrial } from '@/lib/welcomeTrial';
 import { NextResponse } from 'next/server';
 
 const SESSION_TOKEN_RE = /^[a-f0-9]{32}$/;
@@ -105,6 +106,8 @@ export async function POST(req) {
         chatHistory: [],
       });
 
+      // Yangi foydalanuvchiga bepul boshlang'ich tarif (admin sozlamasi: welcomeTrial).
+      await grantWelcomeTrial(newUser);
       await notifyAdminNewUser(newUser);
 
       const token = jwt.sign({ userId: newUser._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });

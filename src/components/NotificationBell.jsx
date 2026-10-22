@@ -151,7 +151,9 @@ export default function NotificationBell({ onOpenFriends }) {
     if (n.type === 'chat_message') {
       setOpen(false);
       onOpenFriends?.();
-    } else if ((n.type === 'subscription' || n.type === 'vocab_reminder') && n.link) {
+    } else if ((n.type === 'subscription' || n.type === 'vocab_reminder' || n.type === 'announcement') && n.link?.startsWith('/app/')) {
+      // Announcements with their own page (media, buttons) open there; older
+      // text-only ones (link /announcements/…, no page) still expand inline.
       setOpen(false);
       router.push(n.link);
     } else {
