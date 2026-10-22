@@ -1,0 +1,52 @@
+{
+ "article": "QR code",
+ "url": "https://en.wikipedia.org/w/index.php?title=QR_code&oldid=1380495507",
+ "revid": 1380495507,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A QR code, short for quick-response code, is a type of two-dimensional matrix barcode invented in 1994 by Masahiro Hara of the Japanese company Denso Wave for labelling automobile parts. It features white (\"0\") and black (\"1\") squares within a square grid featuring fiducial markers on the corners, readable by imaging devices like cameras, and processed using Reed–Solomon error correction until the image can be appropriately interpreted. The required data is then extracted from patterns that are present in both the horizontal and the vertical components of the QR image."
+  },
+  {
+   "label": "B",
+   "text": "Whereas a barcode is a machine-readable optical image that contains information specific to the labeled item, the QR code contains the data for a locator, an identifier, and web tracking. To store data efficiently, QR codes use four standardized modes of encoding: numeric, alphanumeric, byte or binary, and kanji."
+  },
+  {
+   "label": "C",
+   "text": "Compared to standard UPC barcodes, the QR labeling system was applied beyond the automobile industry because of faster reading of the optical image and greater data-storage capacity in applications such as product tracking, item identification, time tracking, document management, and general marketing."
+  },
+  {
+   "label": "D",
+   "text": "As of 2026, QR codes are used in a broad context, including both commercial tracking applications and convenience-oriented applications aimed at mobile phone users (termed mobile tagging). QR codes may be used to display text to the user, to open a webpage on the user's device, to add a vCard contact to the user's device, to open a Uniform Resource Identifier (URI), to connect to a wireless network, to compose an email or text message, or as a method of payment."
+  },
+  {
+   "label": "E",
+   "text": "The QR code system was invented in 1994, at the Denso Wave automotive products company in Japan. The initial alternating-square design presented by the team of researchers, headed by Masahiro Hara, was influenced by the black and white stones played on a Go board; the pattern of the position detection markers was determined by finding the least-used sequence of alternating black-white areas on printed matter, which was found to be (1:1:3:1:1). The functional purpose of the QR code system was to facilitate keeping track of the types and numbers of automobile parts, by replacing individually-scanned bar-code labels on each box of auto parts with a single label that contained the data of each label. The quadrangular configuration of the QR code system consolidated the data of the various bar-code labels with kanji, kana, and alphanumeric codes printed onto a single label."
+  },
+  {
+   "label": "F",
+   "text": "In 2008, a Japanese stonemason announced plans to engrave QR codes on gravestones, allowing visitors to view information about the deceased and for family members to track visits. Psychologist Richard Wiseman was one of the first authors to include QR codes in a book, in Paranormality: Why We See What Isn't There (2011)."
+  },
+  {
+   "label": "G",
+   "text": "After the COVID-19 pandemic began spreading, QR codes began to be used as a \"touchless\" system to display information, show menus, or provide updated consumer information, especially in the hospitality industry. Restaurants replaced paper or laminated plastic menus with QR code decals on the table, which opened an online version of the menu. This prevented the need to dispose of single-use paper menus, or institute cleaning and sanitizing procedures for permanent menus after each use. Local television stations utilized codes on local newscasts to allow viewers quicker access to stories or information involving the pandemic, including testing and immunization scheduling websites, or for links within stories mentioned in the newscasts overall. This shift also prompted discussion about digital access, as reliance on QR codes assumes the availability of smartphones, internet connectivity, and digital literacy, which may exclude some users."
+  },
+  {
+   "label": "H",
+   "text": "In Australia, patrons were required to scan QR codes at shops, clubs, supermarkets, and other service and retail establishments on entry to assist contact tracing. Singapore, Taiwan, the United Kingdom, and New Zealand used similar systems."
+  },
+  {
+   "label": "I",
+   "text": "During June 2011, 14 million American mobile users scanned a QR code or a barcode. Some 58% of those users scanned a QR or barcode from their homes, while 39% scanned from retail stores; 53% of the 14 million users were men between the ages of 18 and 34."
+  },
+  {
+   "label": "J",
+   "text": "In developing countries including China, India QR code payment is a very popular and convenient method of making payments. Since Alipay designed a QR code payment method in 2011, mobile payment has been quickly adopted in China. As of 2018, around 83% of all payments were made via mobile payment."
+  },
+  {
+   "label": "K",
+   "text": "In September 2020, a survey found that 18.8 percent of consumers in the United States and the United Kingdom strongly agreed that they had noticed an increase in QR code use since the then-active COVID-19-related restrictions had begun several months prior."
+  }
+ ]
+}

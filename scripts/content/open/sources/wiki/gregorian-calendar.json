@@ -1,0 +1,44 @@
+{
+ "article": "Gregorian calendar",
+ "url": "https://en.wikipedia.org/w/index.php?title=Gregorian_calendar&oldid=1380886632",
+ "revid": 1380886632,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "The Gregorian calendar is the calendar currently used in most parts of the world. It went into effect in October 1582 following the papal bull Inter gravissimas issued by Pope Gregory XIII, which introduced it as a modification of, and replacement for, the Julian calendar. The principal change was to space leap years slightly differently to make the average calendar year 365+97⁄400, or 365.2425, days long rather than the Julian calendar's 365+1⁄4 days, thus more closely approximating the 365.2422-day tropical, or solar, year that is determined by the Earth's revolution around the Sun."
+  },
+  {
+   "label": "B",
+   "text": "The rule for leap years is that every year divisible by four is a leap year, except for years that are divisible by 100 but not also divisible by 400. For example, 1800 and 1900 were not leap years, but 1600 and 2000 were."
+  },
+  {
+   "label": "C",
+   "text": "There were two reasons to establish the Gregorian calendar. First, the Julian calendar was based on the estimate that the average solar year is exactly 365.25 days long, an overestimate of a little under one day per century, and thus has a leap year every four years without exception. The Gregorian reform shortened the average (calendar) year by 0.0075 days to stop the drift of the calendar with respect to the equinoxes. Second, in the years since the First Council of Nicaea in AD 325, the excess leap days introduced by the Julian algorithm had caused the calendar to drift such that the March equinox was occurring well before its nominal 21 March date. This date was important to the Christian churches because it is fundamental to the calculation of the date of Easter. To reinstate the association, the reform advanced the date by 10 days: Thursday 4 October 1582 was followed by Friday 15 October 1582. In addition, the reform also altered the lunar cycle used by the Church to calculate the date for Easter, because astronomical new moons were occurring four days before the calculated dates."
+  },
+  {
+   "label": "D",
+   "text": "The reform was adopted initially by the Catholic countries of Europe and their overseas possessions. Over the next three centuries, the Protestant and Eastern Orthodox countries also gradually moved to what they called the \"Improved calendar\", with Greece being the last European country to adopt the calendar (for civil use only) in 1923. However, many Orthodox churches continue to use the Julian calendar for religious rites and the dating of major feasts. To unambiguously specify a date during the transition period (in contemporary documents or in history texts), both notations were given, tagged as \"Old Style\" or \"New Style\" as appropriate. During the 20th century, most non-Western countries also adopted the calendar, at least for civil purposes."
+  },
+  {
+   "label": "E",
+   "text": "The Gregorian calendar, like the Julian calendar, is a solar calendar with 12 months of 28–31 days each. The year in both calendars consists of 365 days, with a leap day being added to February in the leap years. The months and length of months in the Gregorian calendar are the same as for the Julian calendar. The only difference is that the Gregorian calendar omits a leap day in three centurial years every 400 years and leaves the leap day unchanged in the fourth."
+  },
+  {
+   "label": "F",
+   "text": "A leap year normally occurs every four years: the leap day, historically, was inserted by doubling 24 February – there were indeed two days dated 24 February. However, for many years it has been customary to put the extra day at the end of the month of February, adding a 29 February for the leap day. Before the 1969 revision of its General Roman Calendar, the Catholic Church delayed February feasts after the 23rd by one day in leap years; masses celebrated according to the previous calendar still reflect this delay."
+  },
+  {
+   "label": "G",
+   "text": "Gregorian years are identified by consecutive year numbers. A calendar date is fully specified by the year (numbered according to a calendar era, in this case Anno Domini or Common Era), the month (identified by name or number), and the day of the month (numbered sequentially starting from 1). Although the calendar year currently runs from 1 January to 31 December, at previous times year numbers were based on a different starting point within the calendar (see: § Beginning of the year, below)."
+  },
+  {
+   "label": "H",
+   "text": "Calendar cycles (ignoring lunar and Easter calculations) repeat completely every 400 years, which equals 146,097 days. Of these 400 years, 303 are regular years of 365 days and 97 are leap years of 366 days. A mean calendar year is ⁠365+97/400⁠ days = 365.2425 days, or 365 days, 5 hours, 49 minutes and 12 seconds. The cycle contains exactly 20,871 weeks (146,097 = 7 × 20,871)."
+  },
+  {
+   "label": "I",
+   "text": "The Gregorian calendar was a reform of the Julian calendar. It was instituted by the papal bull Inter gravissimas dated 24 February 1582 by Pope Gregory XIII, after whom the calendar is named. The motivation for the adjustment was to bring the date for the celebration of Easter to the time of year in which it was celebrated when it was introduced by the early Church. The error in the Julian calendar (its assumption that there are exactly 365.25 days in a year) had led to the date of the equinox according to the calendar drifting from the observed reality, and thus an error had been introduced into the calculation of the date of Easter. Although a recommendation of the First Council of Nicaea in 325 specified that all Christians should celebrate Easter on the same day, it took almost five centuries before virtually all Christians achieved that objective by adopting the rules of the Church of Alexandria (see Easter for the issues which arose)."
+  }
+ ]
+}

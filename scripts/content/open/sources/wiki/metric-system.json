@@ -1,0 +1,52 @@
+{
+ "article": "Metric system",
+ "url": "https://en.wikipedia.org/w/index.php?title=Metric_system&oldid=1380041985",
+ "revid": 1380041985,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A system of measurement is a frame in which physical qualities (such as length, weight, temperature, etc.) can be quantified with numbers. Among many systems of measurement, the metric system refers to ones that standardise a set of base units and a nomenclature describing relatively large and small quantities using decimal-based multiplicative unit prefixes (such as kilo and milli). The International System of Units (SI) is a good example, and there are other widely accepted systems (less popular than SI) mainly used in specific fields, such as the Gaussian units for electromagnetism."
+  },
+  {
+   "label": "B",
+   "text": "Though rules governing the metric system have changed over time, the modern definition in the International System of Units prescribes the metric prefixes and seven base units: metre (m), kilogram (kg), second (s), ampere (A), kelvin (K), mole (mol), and candela (cd)."
+  },
+  {
+   "label": "C",
+   "text": "An SI derived unit is a named combination of base units, such as the hertz (cycles per second), newton (kg⋅m/s2), and tesla (1 kg⋅s−2⋅A−1). In the case of degrees Celsius (°C), it is a shifted scale derived from the kelvin (273.15 K is equal to 0 °C while 1 K interval is same to the 1 °C interval)."
+  },
+  {
+   "label": "D",
+   "text": "The SI system derives from the older metre-kilogram-second (MKS) system of units, though the definitions of the base units have evolved over time. Today, all base units are defined by physical constants – not by prototypes in the form of physical objects, as they were in the past."
+  },
+  {
+   "label": "E",
+   "text": "Other metric system variants include the centimetre–gram–second system of units, the metre–tonne–second system of units, and the gravitational metric system. Each has unaffiliated metric units, and some of these systems are still used in limited contexts. Particular non-SI units such as the litre remain widely used."
+  },
+  {
+   "label": "F",
+   "text": "The prefix kilo, for example, implies a factor of 1000 (103), and the prefix milli implies a factor of 1/1000 (10−3). Thus, a kilometre is a thousand metres, and a milligram is one thousandth of a gram. These relations can be written symbolically as:"
+  },
+  {
+   "label": "G",
+   "text": "The decimalised system is based on the metre, which had been introduced in France in the 1790s. The historical development of these systems culminated in the definition of the International System of Units (SI) in the mid-20th century, under the oversight of an international standards body."
+  },
+  {
+   "label": "H",
+   "text": "The historical evolution of metric systems has resulted in the recognition of several principles. A set of independent dimensions of nature is selected, in terms of which all natural quantities can be expressed, called base quantities. For each of these dimensions, a representative quantity is defined as a base unit of measure. The definition of base units has increasingly been realised in terms of fundamental natural phenomena, in preference to copies of physical artefacts. A unit derived from the base units is used for expressing quantities of dimensions that can be derived from the base dimensions of the system—e.g., the square metre is the derived unit for area, which is derived from length. These derived units are coherent, which means that they involve only products of powers of the base units, without any further factors. For any given quantity whose unit has a name and symbol, an extended set of smaller and larger units is defined that are related by factors of powers of ten. The unit of time should be the second; the unit of length should be either the metre or a decimal multiple of it; and the unit of mass should be the gram or a decimal multiple of it."
+  },
+  {
+   "label": "I",
+   "text": "Metric systems have evolved since the 1790s, as science and technology have evolved, in providing a single universal measuring system. Before and in addition to the SI, other metric systems include: the MKS system of units and the MKSA systems, which are the direct forerunners of the SI; the centimetre–gram–second (CGS) system and its subtypes, the CGS electrostatic (cgs-esu) system, the CGS electromagnetic (cgs-emu) system, and their still-popular blend, the Gaussian system; the metre–tonne–second (MTS) system; and the gravitational metric systems, which can be based on either the metre or the centimetre, and either the gram, gram-force, kilogram or kilogram-force."
+  },
+  {
+   "label": "J",
+   "text": "The metric system is intended to be easy to use and widely applicable, including units based on the natural world, decimal ratios, prefixes for multiples and sub-multiples, and a structure of base and derived units."
+  },
+  {
+   "label": "K",
+   "text": "It is a coherent system with derived units built from base units using logical rather than empirical relationships and with multiples and submultiples of both units based on decimal factors and identified by a common set of prefixes."
+  }
+ ]
+}

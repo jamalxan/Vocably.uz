@@ -1,0 +1,48 @@
+{
+ "article": "Noise pollution",
+ "url": "https://en.wikipedia.org/w/index.php?title=Noise_pollution&oldid=1381125683",
+ "revid": 1381125683,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "Noise pollution is sound with potential harmful effects on humans and animals. The main sources of outdoor noise worldwide are machines, transportation, and propagation systems. Poor urban planning may give rise to noise pollution. Side-by-side industrial and residential zones can result in noise pollution in residential areas. Some of the main sources of noise in residential areas include loud music, transportation (traffic, rail, airplanes, etc.), lawn care maintenance, construction, electrical generators, wind turbines, explosions, and other human activity."
+  },
+  {
+   "label": "B",
+   "text": "Documented problems associated with noise in urban environments go back as far as ancient Rome. Research suggests that noise pollution in the United States is the highest in low-income and racial minority neighborhoods, and noise pollution associated with household electricity generators is an emerging environmental degradation in many developing nations. A national study of modeled transportation noise in the contiguous United States found that census tracts with higher proportions of Black, Hispanic, and Asian population and higher poverty had higher average noise levels than wealthier and mostly White areas. The study found that residential segregation and urban land use practices correlate with the high levels of traffic and aviation noise in many communities of color and low-income neighborhoods."
+  },
+  {
+   "label": "C",
+   "text": "High noise levels can contribute to cardiovascular effects in humans and an increased incidence of coronary artery disease. In animals, noise can increase the risk of death by altering predator or prey detection and avoidance, interfere with reproduction and navigation, and contribute to permanent hearing loss."
+  },
+  {
+   "label": "D",
+   "text": "Noise exposure is quantified in terms of sound pressure levels measured in decibels (dB), a logarithmic scale used to relate physical sound intensity to human perception. Everyday environmental sounds such as road traffic and construction typically range from about 70 to over 100 dB, and repeated exposure above approximately 85 dB is associated with an increased risk of hearing damage. Metrics such as the equivalent continuous sound level (L_eq) and the day–night average sound level (L_dn) are commonly used in regulatory and public health contexts to describe long-term community noise exposure."
+  },
+  {
+   "label": "E",
+   "text": "Researchers measure noise in terms of pressure, intensity, and frequency. Sound pressure level (SPL) represents the amount of pressure relative to atmospheric pressure during sound wave propagation that can vary with time; this is also known as the sum of the amplitudes of a wave. Sound intensity, measured in Watts per meters-squared, represents the flow of sound over a particular area. Although sound pressure and intensity differ, both can describe the level of loudness by comparing the current state to the threshold of hearing; this results in decibel units on the logarithmic scale. The logarithmic scale accommodates the vast range of sound heard by the human ear."
+  },
+  {
+   "label": "F",
+   "text": "Frequency, or pitch, is measured in hertz (Hz) and reflects the number of sound waves propagated through the air per second. Humans generally hear frequencies from 20 Hz to 20,000 Hz; however, sensitivity to hearing higher frequencies decreases with age. Some organisms, such as elephants, can register frequencies between 0 and 20 Hz (infrasound), and others, such as bats, can recognize frequencies above 20,000 Hz (ultrasound) to echolocate."
+  },
+  {
+   "label": "G",
+   "text": "Researchers use different weights to account for noise frequency with intensity, as humans do not perceive sound at the same loudness level. The most commonly used weighted levels are A-weighting, C-weighting, and Z-weighting. A-weighting mirrors the range of hearing, with frequencies of 20 Hz to 20,000 Hz. This gives more weight to higher frequencies and less weight to lower frequencies. C-weighting has been used to measure peak sound pressure or impulse noise, similar to loud short-lived noises from machinery in occupational settings. Z-weighting, also known as zero-weighting, represents noise levels without any frequency weights."
+  },
+  {
+   "label": "H",
+   "text": "Energy average equivalent level of the A-weighted sound, LAeq: This measures the average sound energy over a given period for constant or continuous noise, such as road traffic. LAeq can be further broken up into different types of noise based on time of day; however, cutoffs for evening and nighttime hours may differ between countries, with the United States, Belgium, and New Zealand noting evening hours from 19:00–22:00 or 7:00 p.m.–10:00 p.m. and nighttime hours from 22:00–7:00 or 10:00 p.m.–7:00 a.m. and most European countries noting evening hours from 19:00–23:00 or 7:00 p.m.–11:00 p.m. and nighttime hours from 23:00–7:00 or 11:00 p.m.–7:00 a.m.). LAeq terms include:"
+  },
+  {
+   "label": "I",
+   "text": "Day-night average level, DNL or LDN: This measurement assesses the cumulative exposure to sound for a 24-hour period (Leq over 24 hrs) of the year, with a 10 dB(A) penalty or weight added to nighttime noise measurements given the increased sensitivity to noise at night. This is calculated from the following equation (United States, Belgium, New Zealand):"
+  },
+  {
+   "label": "J",
+   "text": "Day-evening-night average level, DENL or Lden: This measurement, commonly used in European countries, assesses the 24-hour average in a year (similar to DNL); however, this measurement separates evening (4 hours, 19:00–23:00 or 7:00pm–11:00pm) from night hours (8 hours, 23:00–7:00 or 11:00 p.m.–7:00 a.m.) and adds a 5 dB penalty to evening and 10 dB penalty to nighttime hours. This is calculated from the following equation (most of Europe):"
+  }
+ ]
+}

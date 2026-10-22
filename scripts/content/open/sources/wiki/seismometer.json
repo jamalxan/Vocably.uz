@@ -1,0 +1,52 @@
+{
+ "article": "Seismometer",
+ "url": "https://en.wikipedia.org/w/index.php?title=Seismometer&oldid=1374008413",
+ "revid": 1374008413,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A seismometer is an instrument that responds to ground displacement and shaking caused by quakes, volcanic eruptions, and explosions. They are usually combined with a timing device and a recording device to form a seismograph. The output of such a device—formerly recorded on paper (see picture) or film, now recorded and processed digitally—is a seismogram. Such data is used to locate and characterize earthquakes, and to study the internal structure of Earth."
+  },
+  {
+   "label": "B",
+   "text": "A simple seismometer, sensitive to up-down motions of the Earth, is like a weight hanging from a spring, both suspended from a frame that moves along with any motion detected. The relative motion between the weight (called the mass) and the frame provides a measurement of the vertical ground motion. A rotating drum is attached to the frame and a pen is attached to the weight, thus recording any ground motion in a seismogram."
+  },
+  {
+   "label": "C",
+   "text": "Any movement from the ground moves the frame. The mass tends not to move because of its inertia, and by measuring the movement between the frame and the mass, the motion of the ground can be determined."
+  },
+  {
+   "label": "D",
+   "text": "Early seismometers used optical levers or mechanical linkages to amplify the small motions involved, recording on soot-covered paper or photographic paper. Modern instruments use electronics. In some systems, the mass is held nearly motionless relative to the frame by an electronic negative feedback loop. The motion of the mass relative to the frame is measured, and the feedback loop applies a magnetic or electrostatic force to keep the mass nearly motionless. The voltage needed to produce this force is the output of the seismometer, which is recorded digitally."
+  },
+  {
+   "label": "E",
+   "text": "In other systems the weight is allowed to move, and its motion produces an electrical charge in a coil attached to the mass which voltage moves through the magnetic field of a magnet attached to the frame. This design is often used in a geophone, which is used in exploration for oil and gas."
+  },
+  {
+   "label": "F",
+   "text": "Seismic observatories usually have instruments measuring three axes: north-south (y-axis), east–west (x-axis), and vertical (z-axis). If only one axis is measured, it is usually the vertical because it is less noisy and gives better records of some seismic waves."
+  },
+  {
+   "label": "G",
+   "text": "The foundation of a seismic station is critical. A professional station is sometimes mounted on bedrock. The best mountings may be in deep boreholes, which avoid thermal effects, ground noise and tilting from weather and tides. Other instruments are often mounted in insulated enclosures on small buried piers of unreinforced concrete. Reinforcing rods and aggregates would distort the pier as the temperature changes. A site is always surveyed for ground noise with a temporary installation before pouring the pier and laying conduit. Originally, European seismographs were placed in a particular area after a destructive earthquake. Today, they are spread to provide appropriate coverage (in the case of weak-motion seismology) or concentrated in high-risk regions (strong-motion seismology)."
+  },
+  {
+   "label": "H",
+   "text": "The word derives from the Greek σεισμός, seismós, a shaking or quake, from the verb σείω, seíō, to shake; and μέτρον, métron, to measure, and was coined by David Milne-Home in 1841, to describe an instrument designed by Scottish physicist James David Forbes."
+  },
+  {
+   "label": "I",
+   "text": "Seismograph is another Greek term from seismós and γράφω, gráphō, to draw. It is often used to mean seismometer, though it is more applicable to the older instruments in which the measuring and recording of ground motion were combined, than to modern systems, in which these functions are separated. Both types provide a continuous record of ground motion; this record distinguishes them from seismoscopes, which merely indicate that motion has occurred, perhaps with some simple measure of how large it was."
+  },
+  {
+   "label": "J",
+   "text": "The concept of measuring the \"shaking\" of something means that the word \"seismograph\" might be used in a more general sense. For example, a monitoring station that tracks changes in electromagnetic noise affecting amateur radio waves presents an rf seismograph. And helioseismology studies the \"quakes\" on the Sun."
+  },
+  {
+   "label": "K",
+   "text": "The first seismometer was made in China during the 2nd century. It was invented by Zhang Heng, a Chinese mathematician and astronomer. The first Western description of the device comes from the French physicist and priest Jean de Hautefeuille in 1703. The modern seismometer was developed in the 19th century."
+  }
+ ]
+}

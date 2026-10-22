@@ -1,0 +1,36 @@
+{
+ "article": "Memory",
+ "url": "https://en.wikipedia.org/w/index.php?title=Memory&oldid=1380372913",
+ "revid": 1380372913,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "Memory is the faculty of the mind by which data or information is encoded, stored, and retrieved when needed. It is the retention of information over time for the purpose of influencing future action. If past events could not be remembered, it would be impossible for language, relationships, or personal identity to develop. Memory loss is usually described as forgetfulness or a disorder such as amnesia."
+  },
+  {
+   "label": "B",
+   "text": "Memory is often understood as an information processing system with explicit and implicit functioning that is made up of a sensory processor, short-term (or working) memory, and long-term memory. This can be related to the neuron. The sensory processor allows information from the outside world to be sensed in the form of chemical and physical stimuli and attended to various levels of focus and intent. Working memory serves as an encoding and retrieval processor. Information in the form of stimuli is encoded in accordance with explicit or implicit functions by the working memory processor. The working memory also retrieves information from previously stored material. Finally, the function of long-term memory is to store information through various categorical models or systems."
+  },
+  {
+   "label": "C",
+   "text": "Declarative, or explicit memory, is the conscious storage and recollection of data. Under declarative memory resides semantic and episodic memory. Semantic memory refers to memory that is encoded with specific meaning. Meanwhile, episodic memory refers to information that is encoded along a spatial and temporal plane. Declarative memory is usually the primary process thought of when referencing memory. Non-declarative, or implicit, memory is the unconscious storage and recollection of information. An example of a non-declarative process would be the unconscious learning or retrieval of information by way of procedural memory, or a priming phenomenon. Priming is the process of subliminally arousing specific responses from memory and shows that not all memory is consciously activated, whereas procedural memory is the slow and gradual learning of skills that often occurs without conscious attention to learning."
+  },
+  {
+   "label": "D",
+   "text": "Memory is not a perfect processor and is affected by many factors. The ways by which information is encoded, stored, and retrieved can all be corrupted. Pain, for example, has been identified as a physical condition that impairs memory, and has been noted in animal models as well as chronic pain patients. The amount of attention given new stimuli can diminish the amount of information that becomes encoded for storage. Also, the storage process can become corrupted by physical damage to areas of the brain that are associated with memory storage, such as the hippocampus. Finally, the retrieval of information from long-term memory can be disrupted because of decay within long-term memory. Normal functioning, decay over time, and brain damage all affect the accuracy and capacity of the memory."
+  },
+  {
+   "label": "E",
+   "text": "Sensory memory holds information, derived from the senses, less than one second after an item is perceived. The ability to look at an item and remember what it looked like with just a split second of observation, or memorization, is an example of sensory memory. It is out of cognitive control and is an automatic response. With very short presentations, participants often report that they seem to \"see\" more than they can actually report. The first precise experiments exploring this form of sensory memory were conducted by George Sperling (1963) using the \"partial report paradigm.\" Subjects were presented with a grid of 12 letters, arranged into three rows of four. After a brief presentation, subjects were then played either a high, medium or low tone, cuing them which of the rows to report. Based on these partial report experiments, Sperling was able to show that the capacity of sensory memory was approximately 12 items, but that it degraded very quickly (within a few hundred milliseconds). Because this form of memory degrades so quickly, participants would see the display but be unable to report all of the items (12 in the \"whole report\" procedure) before they decayed. This type of memory cannot be prolonged via rehearsal."
+  },
+  {
+   "label": "F",
+   "text": "Three types of sensory memories exist. Iconic memory is a fast decaying store of visual information, a type of sensory memory that briefly stores an image that has been perceived for a small duration. Echoic memory is a fast decaying store of auditory information, also a sensory memory that briefly stores sounds that have been perceived for short durations. Haptic memory is a type of sensory memory that represents a database for touch stimuli."
+  },
+  {
+   "label": "G",
+   "text": "How we encode information has a big impact on how well we remember it later. Research on levels of processing shows that memory is better when encoding emphasizes \"deep\" aspects of a stimulus (such as meaning) vs. \"shallow\" aspects of a stimulus (such as a place). \"Deep\" encoding leads to a highly distributed representation and \"shallow\" encoding leads to a sparse representation. Thinking about meaning creates a richer, more connected memory, while shallow processing leads to weaker, less lasting traces. Memory also works best when the cues we use to recall information match the ones present during learning which connects to the principle called encoding specificity. Similarly, context dependence shows that remembering is easier when the environment at study matches the environment at test. For example, studying in a \"wet\" lab can help if the test is in the same setting. Overall, these findings show that both the way we think about information and the context in which we learn it play a major role in memory."
+  }
+ ]
+}

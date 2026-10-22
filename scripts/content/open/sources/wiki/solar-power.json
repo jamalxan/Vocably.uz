@@ -1,0 +1,52 @@
+{
+ "article": "Solar power",
+ "url": "https://en.wikipedia.org/w/index.php?title=Solar_power&oldid=1380558907",
+ "revid": 1380558907,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "Solar power, also known as solar electricity, is the conversion of energy from sunlight into electricity, either directly using photovoltaics (PV) or indirectly using concentrated solar power. Solar panels use the photovoltaic effect to convert light into an electric current. Concentrated solar power systems use lenses or mirrors and solar tracking systems to focus a large area of sunlight to a hot spot, often to drive a steam turbine."
+  },
+  {
+   "label": "B",
+   "text": "Photovoltaics (PV) were initially solely used as a source of electricity for small and medium-sized applications, from the calculator powered by a single solar cell to remote homes powered by an off-grid rooftop PV system. Commercial concentrated solar power plants were first developed in the 1980s. Since then, as the cost of solar panels has fallen, grid-connected solar PV systems' capacity and production have doubled about every three years. Three-quarters of new generation capacity is solar, with both millions of rooftop installations and gigawatt-scale photovoltaic power stations continuing to be built."
+  },
+  {
+   "label": "C",
+   "text": "In 2025, solar power generated 9% of global electricity. In 2024, solar generated 7% of global electricity and over 1% of primary energy (2.7% by the substitution method), adding twice as much new electricity as coal."
+  },
+  {
+   "label": "D",
+   "text": "Along with onshore wind power, utility-scale solar is the source with the cheapest levelised cost of electricity for new installations in most countries. Almost half the solar power installed in 2022 was mounted on rooftops. China is currently the largest producer and installer of solar power capacity; globally, it produces 98% of solar wafers, 92% of solar cells and 85% of solar panels, and accounted for more than 55% of global installed solar capacity in the first half of 2025."
+  },
+  {
+   "label": "E",
+   "text": "Much more low-carbon power is needed for electrification and to limit climate change. The International Energy Agency said in 2022 that more effort was needed for grid integration and the mitigation of policy, regulation and financing challenges. Nevertheless solar may greatly cut the cost of energy. Solar is important for energy security."
+  },
+  {
+   "label": "F",
+   "text": "Geography affects solar energy potential because some places are sunnier than others. In particular areas that are closer to the equator generally receive more sunshine. However, solar panels that can follow the position of the Sun can significantly increase the solar energy potential in areas that are farther from the equator. Daytime cloud cover can reduce the light available for solar cells."
+  },
+  {
+   "label": "G",
+   "text": "Land availability also has a significant effect on the potential for solar energy deployment. Despite prices of solar panels have dropped significantly in recent years, a major limitation for many countries to adopt large scale solar deployment have been due to its land-use requirement, and related constraints. Utility-scale solar farms require substantial surface area, which can be difficult to allocate in densely populated or highly urbanized areas. As a result, large-scale solar installations are often located in rural areas or at a significant distance from major population centres, which may require additional infrastructure, such as upgrading of the grid to rural areas and the construction of high-voltage transmission lines, to transmit electricity efficiently to major population centres."
+  },
+  {
+   "label": "H",
+   "text": "The photovoltaic effect in solar cells converts light into electric current. The first solar cell was constructed by Charles Fritts in the 1880s. The German industrialist Ernst Werner von Siemens was among those who recognized the importance of this discovery. In 1931, the German engineer Bruno Lange developed a photo cell using silver selenide in place of copper oxide, although the prototype selenium cells converted less than 1% of incident light into electricity. Following the work of Russell Ohl in the 1940s, researchers Gerald Pearson, Calvin Fuller and Daryl Chapin created the silicon solar cell in 1954. These early solar cells cost US$286/watt and reached efficiencies of 4.5–6%. In 1957, Mohamed M. Atalla developed the process of silicon surface passivation by thermal oxidation at Bell Labs. The surface passivation process has since been critical to solar cell efficiency."
+  },
+  {
+   "label": "I",
+   "text": "As of 2022 over 90% of the market is crystalline silicon. Other types of solar cell include thin-film solar cells, made by depositing one or more thin layers, or thin film (TF) of photovoltaic material on a substrate, such as glass, plastic or metal."
+  },
+  {
+   "label": "J",
+   "text": "The array of a photovoltaic system, or PV system, produces direct current (DC) power which fluctuates with the sunlight's intensity. For practical use this usually requires conversion to alternating current (AC), through the use of inverters. Multiple solar cells are connected inside panels. Panels are wired together to form arrays, then tied to an inverter, which produces power at the desired voltage, and for AC, the desired frequency/phase."
+  },
+  {
+   "label": "K",
+   "text": "Many residential PV systems are connected to the grid when available, especially in developed countries with large markets. In these grid-connected PV systems energy storage is optional. In certain applications such as satellites, lighthouses, or in developing countries, batteries or additional power generators are often added as back-ups. Such stand-alone power systems permit operations at night and at other times of limited sunlight."
+  }
+ ]
+}

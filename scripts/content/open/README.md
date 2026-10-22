@@ -29,6 +29,25 @@ Each test's `rights.licenceNote` in the database lists every source URL.
 
 `openTests.test.ts` re-runs the static, validator and scoring checks in the normal test suite.
 
+## Full 40-question series (`reading-full-N`, `listening-full-N`) — composed, not written
+
+Added 2026-10-22. Full-length Academic Reading tests (3 passages, 13+13+14 = 40 questions,
+60 min) and Listening tests (4 parts × 10 = 40 questions) are **composed** from the section
+files by `full/compose.mjs` according to `full/sets.json` (which section numbers form which
+full test; `n` is stable because the slugs `vocably-reading-full-N` / `vocably-listening-full-N`
+are published). Questions are renumbered 1..40 (`{{qN}}` placeholders, subtitle ranges, group
+ids prefixed `p1-`…), everything else is byte-for-byte the section content, so a fix in a
+section file flows into its full test on the next load.
+
+- Extend the table after adding new section files: `node scripts/content/open/tools/full-sets-gen.mjs`
+  (existing sets are never changed; it only adds sets from unused sections — Reading needs
+  two 13-question and one 14-question passage per test with 2150-2750 words in total).
+- Verify / test / load exactly like the other series: `--series=reading-full|listening-full`.
+  Listening audio is the sections' static files (already live), so no new upload is needed.
+- Once the full tests are published the section tests are unpublished
+  (`tools/unpublish-sections.mts`); the section files stay as the source of the full tests.
+- Both full series pass `isSectionMockEligible`, so they also feed the full-format mock pool.
+
 ## Reading series (`reading/reading-N.mjs`) and Listening series (`listening/listening-N.mjs`)
 
 Section-only practice tests (added 2026-10-15; 100 + 100 planned). Same source rules and

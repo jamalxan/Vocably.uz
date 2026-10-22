@@ -9,8 +9,8 @@
 //   open-test-N.mjs           — to'liq test: Reading 3 passage + Listening 4 part + Writing
 //   reading/reading-N.mjs     — faqat Reading: 1 passage, 13-14 savol (20 daqiqa)
 //   listening/listening-N.mjs — faqat Listening: 1 part (VOA hikoyasi), 10 savol
-//   node scripts/content/open/verify.mjs [--series=open|reading|listening]
-import { existsSync, readdirSync } from 'node:fs';
+//   node scripts/content/open/verify.mjs [--series=open|reading|listening|reading-full|listening-full]
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderChartSvg } from '../../../src/lib/chartSvg.js';
@@ -188,20 +188,38 @@ export function verifyOpenTest(t) {
 /** Barcha kontent fayllari: open-test-N.mjs (series 'open'), reading/reading-N.mjs
  * ('reading'), listening/listening-N.mjs ('listening'). Har bir testga `series` va `n`
  * qo'shiladi. `series` berilsa faqat o'sha seriya yuklanadi. */
+export const SERIES_NAMES = ['open', 'reading', 'listening', 'reading-full', 'listening-full'];
+
 export async function loadOpenTests(series) {
   const SERIES = [
     { name: 'open', dir: DIR, re: /^open-test-(\d+)\.mjs$/ },
     { name: 'reading', dir: path.join(DIR, 'reading'), re: /^reading-(\d+)\.mjs$/ },
     { name: 'listening', dir: path.join(DIR, 'listening'), re: /^listening-(\d+)\.mjs$/ },
   ];
+  // To'liq (40 savol) testlar bo'lim fayllaridan yig'iladi (full/compose.mjs + full/sets.json),
+  // shuning uchun ular so'ralganda manba bo'limlar ham yuklanadi.
+  const wantFull = !series || series.endsWith('-full');
+  const sectionSeries = series?.endsWith('-full') ? series.replace(/-full$/, '') : series;
   const out = [];
+  const sections = [];
   for (const s of SERIES) {
-    if (series && s.name !== series) continue;
+    const wanted = !series || s.name === series;
+    if (!wanted && s.name !== sectionSeries) continue;
     if (!existsSync(s.dir)) continue;
     const files = readdirSync(s.dir).map((f) => s.re.exec(f)).filter(Boolean).sort((a, b) => Number(a[1]) - Number(b[1]));
     for (const m of files) {
       const t = (await import(pathToFileURL(path.join(s.dir, m[0])).href)).default;
-      out.push({ ...t, series: s.name, n: Number(m[1]) });
+      const entry = { ...t, series: s.name, n: Number(m[1]) };
+      if (wanted) out.push(entry);
+      if (s.name !== 'open') sections.push(entry);
+    }
+  }
+  if (wantFull) {
+    const setsFile = path.join(DIR, 'full', 'sets.json');
+    if (existsSync(setsFile)) {
+      const { composeAll } = await import('./full/compose.mjs');
+      const sets = JSON.parse(readFileSync(setsFile, 'utf8'));
+      for (const t of composeAll(sets, sections, series)) out.push(t);
     }
   }
   return out;

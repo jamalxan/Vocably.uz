@@ -1,0 +1,48 @@
+{
+ "article": "Thermometer",
+ "url": "https://en.wikipedia.org/w/index.php?title=Thermometer&oldid=1378639224",
+ "revid": 1378639224,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A thermometer is a device that measures temperature (the hotness or coldness of an object). A thermometer has two important elements: (1) a temperature sensor (e.g. the bulb of a mercury-in-glass thermometer or the pyrometric sensor in an infrared thermometer) in which some change occurs with a change in temperature; and (2) some means of converting this change into a numerical value (e.g. the visible scale that is marked on a mercury-in-glass thermometer or the digital readout on an infrared model). Thermometers are widely used in technology and industry to monitor processes, in meteorology, in medicine (medical thermometer), in scientific research, and for cooking."
+  },
+  {
+   "label": "B",
+   "text": "While an individual thermometer is able to measure degrees of hotness, the readings on two thermometers cannot be compared unless they conform to an agreed scale. Today there is an absolute thermodynamic temperature scale. Internationally agreed temperature scales are designed to approximate this closely, based on fixed points and interpolating thermometers. The most recent official temperature scale is the International Temperature Scale of 1990. It extends from 0.65 K (−272.5 °C; −458.5 °F) to approximately 1,358 K (1,085 °C; 1,985 °F)."
+  },
+  {
+   "label": "C",
+   "text": "Sparse and conflicting historical records make it difficult to pinpoint the invention of the thermometer to any single person or date with certitude. In addition, given the many parallel developments in the thermometer's history and its many gradual improvements over time, the instrument is best viewed not as a single invention, but an evolving technology."
+  },
+  {
+   "label": "D",
+   "text": "In the 3rd century BC, Philo of Byzantium documented his experiment with a tube submerged in a container of liquid on one end and connected to an air-tight, hollow sphere on the other. When air in the sphere is heated with a candle or by exposing it to the sun, expanding air exits the sphere and generates bubbles in the vessel. As air in the sphere cools, a partial vacuum is created, sucking liquid up into the tube. Any changes in the position of the liquid will now indicate whether the air in the sphere is getting hotter or colder."
+  },
+  {
+   "label": "E",
+   "text": "In his book, Pneumatics, Hero of Alexandria (10–70 AD) provides a recipe for building a \"Fountain which trickles by the Action of the Sun's Rays,\" a more elaborate version of Philo's pneumatic experiment but which worked on the same principle of heating and cooling air to move water around. Translations of the ancient work Pneumatics were introduced to late 16th century Italy and studied by many, including Galileo Galilei, who had read it by 1594."
+  },
+  {
+   "label": "F",
+   "text": "The Roman Greek physician Galen is given credit for introducing two concepts important to the development of a scale of temperature and the eventual invention of the thermometer. First, he had the idea that hotness or coldness may be measured by \"degrees of hot and cold.\" He also conceived of a fixed reference temperature, a mixture of equal amounts of ice and boiling water, with four degrees of heat above this point and four degrees of cold below. 16th century physician Johann Hasler developed body temperature scales based on Galen's theory of degrees to help him mix the appropriate amount of medicine for patients."
+  },
+  {
+   "label": "G",
+   "text": "In the late 16th and early 17th centuries, several European scientists, notably Galileo Galilei and Italian physiologist Santorio Santorio, developed devices with an air-filled glass bulb, connected to a tube, partially filled with water. As the air in the bulb warms or cools, the height of the column of water in the tube falls or rises, allowing an observer to compare the current height of the water to previous heights to detect relative changes of the heat in the bulb and its immediate environment. Such devices, with no scale for assigning a numerical value to the height of the liquid, are referred to as a thermoscope because they provide an observable indication of sensible heat (the modern concept of temperature was yet to arise)."
+  },
+  {
+   "label": "H",
+   "text": "A thermometer is simply a thermoscope with a scale.... I propose to regard it as axiomatic that a “meter” must have a scale or something equivalent.... If this is admitted, the problem of the invention of the thermometer becomes more straightforward; that of the invention of the thermoscope remains as obscure as ever."
+  },
+  {
+   "label": "I",
+   "text": "Given this, Middleton claimed that the possible inventors of the thermometer are Galileo, Santorio, Dutch inventor Cornelis Drebbel, or British mathematician Robert Fludd. Though Galileo is often said to be the inventor of the thermometer, there is no surviving document that he actually produced any such instrument."
+  },
+  {
+   "label": "J",
+   "text": "The first clear diagram of a thermoscope was published in 1617 by Giuseppe Biancani (1566 – 1624); the first showing a scale and thus constituting a thermometer was by Santorio Santorio in 1625. This was a vertical tube, closed by a bulb of air at the top, with the lower end opening into a vessel of water. The water level in the tube was controlled by the expansion and contraction of the air, so it was what we would now call an air thermometer."
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "article": "Crossword",
+ "url": "https://en.wikipedia.org/w/index.php?title=Crossword&oldid=1380517224",
+ "revid": 1380517224,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A crossword is a word game consisting of a grid of black and white squares with numbers on the corners, into which solvers enter words or phrases (\"entries\") crossing each other horizontally (\"across\") and vertically (\"down\") according to a set of clues. Each white square is typically filled with one letter, while the black squares are used to separate entries. The first white square in each entry is typically numbered to correspond to its clue."
+  },
+  {
+   "label": "B",
+   "text": "Crosswords commonly appear in newspapers and magazines. The earliest crosswords that resemble their modern form were popularized by the New York World in the 1910s. Many variants of crosswords are popular around the world, including cryptic crosswords and many language-specific variants."
+  },
+  {
+   "label": "C",
+   "text": "Crossword construction in modern times usually involves the use of software. Constructors choose a theme (except for themeless puzzles), place the theme answers in a grid which is usually rotationally symmetric, fill in the rest of the grid, and then write clues."
+  },
+  {
+   "label": "D",
+   "text": "Puzzles are often one of several standard sizes. For example, many weekday newspaper puzzles (such as the American New York Times crossword puzzle) are 15×15 squares, while weekend puzzles may be 21×21, 23×23, or 25×25. The New York Times puzzles also set a common pattern for American crosswords by increasing in difficulty throughout the week: their Monday puzzles are the easiest and the puzzles get harder each day until Saturday. Their larger Sunday puzzle is about the same level of difficulty as a weekday-size Thursday puzzle. This has led U.S. solvers to use the day of the week as a shorthand when describing how hard a puzzle is: e.g. an easy puzzle may be referred to as a \"Monday\" or a \"Tuesday\", a medium-difficulty puzzle as a \"Wednesday\", and a truly difficult puzzle as a \"Saturday\"."
+  },
+  {
+   "label": "E",
+   "text": "American-style crossword clues, called straight or quick clues by those more familiar with cryptic puzzles, are often simple definitions of the answers. Often, a straight clue is not in itself sufficient to distinguish between several possible answers, either because multiple synonymous answers may fit or because the clue itself is a homonym (e.g., \"Lead\" as in to be ahead in a contest or \"Lead\" as in the element), so the solver must make use of checks to establish the correct answer with certainty. For example, the answer to the clue \"PC key\" for a three-letter answer could be ESC, ALT, TAB, DEL, or INS, so until a check is filled in, giving at least one of the letters, the correct answer cannot be determined."
+  },
+  {
+   "label": "F",
+   "text": "Crossword clues are generally consistent with the solutions. For instance, clues and their solutions should always agree in tense, number, and degree. If a clue is in the past tense, so is the answer: thus \"Traveled on horseback\" would be a valid clue for the solution RODE, but not for RIDE. Similarly, \"Family members\" would be a valid clue for AUNTS but not UNCLE, while \"More joyful\" could clue HAPPIER but not HAPPIEST."
+  },
+  {
+   "label": "G",
+   "text": "Capitalization of answer letters is conventionally ignored; crossword puzzles are typically filled in, and their answer sheets published, in all caps. This ensures a proper name can have its initial capital letter checked with a non-capitalizable letter in the intersecting clue."
+  },
+  {
+   "label": "H",
+   "text": "Most widely distributed American crosswords today (e.g., The New York Times, The Washington Post, The Boston Globe, USA Today, etc.) also contain colloquial answers, i.e., entries in the puzzle grid that try to replicate everyday colloquial language. In such a puzzle, one might see phrases such as WHATS UP, AS IF, or WHADDYA WANT."
+  },
+  {
+   "label": "I",
+   "text": "The constraints of the American-style grid (in which every letter is checked) often require a fair number of answers not to be dictionary words. As a result, the following ways to clue abbreviations and other non-words, although they can be found in \"straight\" British crosswords, are much more common in American ones:"
+  },
+  {
+   "label": "J",
+   "text": "Abbreviations, the use of a foreign language, variant spellings, or other unusual word tricks are indicated in the clue. A crossword creator might choose to clue the answer SEN (as in the abbreviation for \"senator\") as \"Washington bigwig: Abbr.\" or \"Member of Cong.\", with the abbreviation in the clue indicating that the answer is to be similarly abbreviated. The use of \"Var.\" indicates the answer is a variant spelling (e.g., EMEER instead of EMIR), while the use of foreign language or a foreign place name within the clue indicates that the answer is also in a foreign language. For example, ETE (été, French for \"summer\") might be clued as \"Summer, in the Sorbonne\". ROMA could be clued as \"Italia's capital\", whereas the clue \"Italy's capital\" would indicate the English spelling Rome."
+  },
+  {
+   "label": "K",
+   "text": "The eight possible abbreviations for a position on a compass, e.g., NNW (north-northwest) or ESE (east-southeast), occur with some frequency. They can be clued as simply \"Compass point\", where the desired answer is determined by a combination of logic—since the third letter can be only E or W, and the second letter can be only N or S—and a process of elimination using checks. Alternatively, compass point answers are more frequently clued as \"XXX to YYY direction\", where XXX and YYY are two place names. For example, SSW might be clued as \"New York to Washington DC dir.\". Similarly, a clue such as \"Right on the map\" means EAST. A clue could also consist of objects that point a direction, e.g., \"vane dir.\" or \"windsock dir.\"."
+  }
+ ]
+}

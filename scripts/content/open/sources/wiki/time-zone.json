@@ -1,0 +1,52 @@
+{
+ "article": "Time zone",
+ "url": "https://en.wikipedia.org/w/index.php?title=Time_zone&oldid=1380240509",
+ "revid": 1380240509,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "A time zone is an area which observes a uniform standard time for legal, commercial, and social purposes. Time zones tend to follow the boundaries between countries and their subdivisions instead of strictly following longitude, because it is convenient for areas in frequent communication to keep the same time."
+  },
+  {
+   "label": "B",
+   "text": "Each time zone is defined by a standard offset from Coordinated Universal Time (UTC). The offsets range from UTC−12:00 to UTC+14:00, and are usually a whole number of hours, but a few zones are offset by an additional 30 or 45 minutes, such as in India and Nepal. Some areas in a time zone may use a different offset for part of the year, typically one hour ahead during spring and summer, a practice known as daylight saving time (DST)."
+  },
+  {
+   "label": "C",
+   "text": "In the table below, the locations that use daylight saving time are listed in their UTC offset when DST is not in effect. When DST is in effect, approximately during spring and summer, their UTC offset is increased by one hour (except for Lord Howe Island, where it is increased by 30 minutes). For example, during the DST period, California observes UTC−07:00 and the United Kingdom observes UTC+01:00."
+  },
+  {
+   "label": "D",
+   "text": "The apparent position of the Sun in the sky, and thus solar time, varies by location due to the spherical shape of the Earth. This variation corresponds to four minutes for every degree of longitude; for example, when it is solar noon in London, it is about 10 minutes before solar noon in Bristol, which is about 2.5 degrees to the west. Local solar time has been associated with civil timekeeping since the development of sundials; for example, c.1500 BC, an ancient Egyptian sundial was used to measure laborers' work hours. In the 2nd century BC, Hipparchus developed a method to measure longitudinal distances by comparing local solar times when a lunar eclipse was simultaneously observed at two locations. The work of Hipparchus is lost, but is known from citations in Strabo's Geographica, c. 7 AD."
+  },
+  {
+   "label": "E",
+   "text": "The Royal Observatory, Greenwich, founded in 1675, established Greenwich Mean Time (GMT), the mean solar time at that location, as an aid to mariners to determine longitude at sea, providing a standard reference time while each location in England kept a different time."
+  },
+  {
+   "label": "F",
+   "text": "In the 19th century, as transportation and telecommunications improved, it became increasingly inconvenient for each location to observe its own solar time. In November 1840, the British Great Western Railway started using GMT kept by portable chronometers. This practice was soon adopted by other British railway companies and became known as railway time."
+  },
+  {
+   "label": "G",
+   "text": "Around August 23, 1852, time signals were first transmitted by telegraph from the Royal Observatory. By 1855, 98% of Great Britain's public clocks were using GMT, but it was not made the island's legal time until August 2, 1880. Some British clocks from this period have two minute hands, one for the local time and one for GMT."
+  },
+  {
+   "label": "H",
+   "text": "On November 2, 1868, the British Colony of New Zealand officially adopted a standard time to be observed throughout the colony. It was based on longitude 172°30′ east of Greenwich, or 11 hours 30 minutes ahead of GMT. This standard was known as New Zealand Mean Time."
+  },
+  {
+   "label": "I",
+   "text": "Timekeeping on North American railroads in the 19th century was complex. Each railroad used its own standard time, usually based on the local time of its headquarters or most important terminus, and the railroad's train schedules were published using its own time. Some junctions served by several railroads had a clock for each railroad, each showing a different time. Because of this, a number of accidents occurred when trains from different companies using the same tracks mistimed their passings."
+  },
+  {
+   "label": "J",
+   "text": "Around 1863, Charles F. Dowd proposed a system of hourly standard time zones for North American railroads, although he published nothing on the matter at that time and did not consult railroad officials until 1869. In 1870, he proposed four ideal time zones having north–south borders, the first centered on Washington, D.C.. By 1872, the first was centered on the meridian 75° west of Greenwich, with natural borders such as sections of the Appalachian Mountains. Dowd's system was never accepted by North American railroads."
+  },
+  {
+   "label": "K",
+   "text": "Cleveland Abbe, chief meteorologist at the United States Weather Bureau, divided the United States into four standard time zones for consistency among the weather stations. In 1879, he published a paper titled Report on Standard Time. In 1883, he convinced North American railroad companies to adopt his time-zone system. In 1884, Britain, which had already adopted its own standard time system for England, Scotland, and Wales, helped gather international consent for global time. In time, the American government, influenced in part by Abbe's 1879 paper, adopted the time-zone system."
+  }
+ ]
+}

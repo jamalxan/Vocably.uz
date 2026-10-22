@@ -1,0 +1,52 @@
+{
+ "article": "Lightning",
+ "url": "https://en.wikipedia.org/w/index.php?title=Lightning&oldid=1374814050",
+ "revid": 1374814050,
+ "licence": "CC BY-SA 4.0",
+ "paragraphs": [
+  {
+   "label": "A",
+   "text": "Lightning is a natural phenomenon consisting of electrostatic discharges occurring through the atmosphere between two electrically charged regions. One or both regions are within the atmosphere, with the second region sometimes occurring on the ground. Following the lightning, the regions become partially or wholly electrically neutralized."
+  },
+  {
+   "label": "B",
+   "text": "Lightning involves a near-instantaneous release of energy on a scale averaging between 200 megajoules and 7 gigajoules. The air around the lightning flash rapidly heats to temperatures of about 30,000 °C (54,000 °F). There is an emission of electromagnetic radiation across a wide range of wavelengths, some visible as a bright flash. Lightning also causes thunder, a sound from the shock wave which develops as heated gases in the vicinity of the discharge experience a sudden increase in pressure."
+  },
+  {
+   "label": "C",
+   "text": "The most common occurrence of a lightning event is known as a thunderstorm, though they can also commonly occur in other types of energetic weather systems, such as volcanic eruptions. Lightning influences the global atmospheric electrical circuit and atmospheric chemistry and is a natural ignition source of wildfires. Lightning is considered an Essential Climate Variable by the World Meteorological Organization, and its scientific study is called fulminology."
+  },
+  {
+   "label": "D",
+   "text": "Many other observational variants are recognized, including: volcanic lightning, which can occur during volcanic eruptions; \"heat lightning\", which can be seen from a great distance but not heard; dry lightning, which can cause forest fires; and ball lightning, which is rarely observed scientifically."
+  },
+  {
+   "label": "E",
+   "text": "The most direct effects of lightning on humans occur as a result of cloud-to-ground lightning, even though intra-cloud and cloud-to-cloud are more common. Intra-cloud and cloud-to-cloud lightning indirectly affect humans through their influence on atmospheric chemistry."
+  },
+  {
+   "label": "F",
+   "text": "Cloud-to-ground (CG) lightning is a lightning discharge between a thundercloud and the ground. It is initiated by a stepped leader moving down from the cloud, which is met by a streamer moving up from the ground."
+  },
+  {
+   "label": "G",
+   "text": "CG is the least common, but best understood of all types of lightning. It is easier to study scientifically because it terminates on a physical object, namely the ground, and lends itself to being measured by instruments on the ground. Of the three primary types of lightning, it poses the greatest threat to life and property, since it terminates on the ground or \"strikes\"."
+  },
+  {
+   "label": "H",
+   "text": "The overall discharge, termed a flash, is composed of a number of processes such as preliminary breakdown, stepped leaders, connecting leaders, return strokes, dart leaders, and subsequent return strokes. The conductivity of the electrical ground, be it soil, fresh water, or salt water, may affect the lightning discharge rate and thus visible characteristics."
+  },
+  {
+   "label": "I",
+   "text": "Cloud-to-ground (CG) lightning is either positive or negative, as defined by the direction of the conventional electric current between cloud and ground. Most CG lightning is negative, meaning that a negative charge is transferred (electrons flow) downwards to ground along the lightning channel (the conventional current flows from the ground up to the cloud). The reverse happens in a positive CG flash, where electrons travel upward along the lightning channel, while also a positive charge is transferred downward to the ground (the conventional current travels from cloud to ground)."
+  },
+  {
+   "label": "J",
+   "text": "There are a number of mechanisms theorized to result in the formation of positive lightning. These are mainly based on movement or intensification of charge centres in the cloud. Such changes in cloud charging may come about as a result of variations in vertical wind shear or precipitation, or dissipation of the storm. Positive flashes may also result from certain behaviour of in-cloud discharges, e.g. breaking off or branching from existing flashes."
+  },
+  {
+   "label": "K",
+   "text": "Positive lightning strikes tend to be much more intense than their negative counterparts. An average bolt of negative lightning creates an electric current of 30,000 amperes (30 kA), transferring a total 15 C (coulombs) of electric charge and 1 gigajoule of energy. Large bolts of positive lightning can create up to 120 kA and transfer 350 C. The average positive ground flash has roughly double the peak current of a typical negative flash, and can produce peak currents up to 400 kA and charges of several hundred coulombs. Furthermore, positive ground flashes with high peak currents are commonly followed by long continuing currents, a correlation not seen in negative ground flashes."
+  }
+ ]
+}

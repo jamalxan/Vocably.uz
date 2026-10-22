@@ -12,7 +12,7 @@
 //      (Atlas'da joy yo'q — Vercel statik fayl; nashrdan oldin jonli URL HEAD 200 bo'lishi
 //      shart), aks holda GridFS (qayta o'qilib sha256 solishtiriladi, sha256 bo'yicha dedupe)
 //   6. contentValidator.ts#validateTest — blocking xato bo'lmasligi kerak
-//   node --env-file=.env --import tsx scripts/load-open-tests.mts [--series=open|reading|listening]
+//   node --env-file=.env --import tsx scripts/load-open-tests.mts [--series=open|reading|listening|reading-full|listening-full]
 //        [--only=1,2] [--dry] [--draft] [--no-live-check] [--site=https://www.vocably.uz]
 import dns from 'node:dns';
 import fs from 'node:fs';
@@ -27,7 +27,7 @@ const noLiveCheck = args.includes('--no-live-check');
 const site = ((args.find((a) => a.startsWith('--site=')) || '').split('=')[1] || 'https://www.vocably.uz').replace(/\/$/, '');
 const series = (args.find((a) => a.startsWith('--series=')) || '').split('=')[1] || undefined;
 const only = ((args.find((a) => a.startsWith('--only=')) || '').split('=')[1] || '').split(',').filter(Boolean).map(Number);
-if (only.length && !series) throw new Error('--only bilan birga --series=open|reading|listening ko\'rsating');
+if (only.length && !series) throw new Error('--only bilan birga --series=open|reading|listening|reading-full|listening-full ko\'rsating');
 const STATIC_DIR = path.join(process.cwd(), 'public', 'audio', 'exam', 'open');
 
 const { loadOpenTests, verifyOpenTest, norm } = await import('./content/open/verify.mjs');
