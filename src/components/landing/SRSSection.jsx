@@ -3,6 +3,31 @@ import { useLayoutEffect, useRef } from 'react';
 import { gsap } from './gsapConfig';
 import useChapter from './experience/useChapter';
 import useRevealOnScroll from './useRevealOnScroll';
+import useCopy from './useCopy';
+
+// "resilient" in the stage cards is the English study word — it stays English in both locales.
+const COPY = {
+  uz: {
+    eyebrow: 'Spaced Repetition',
+    title: "Vocably so'z yodlashni qanday ishlatadi?",
+    body: "Yangi so'z bir necha kunda xotiradan o'chadi. Vocably uni aynan unutish arafasida qayta ko'rsatadi — har takrorlashdan keyin egri chiziq sekinroq pasayadi va so'z uzoq muddatli xotiraga o'tadi.",
+    legendPlain: 'Oddiy yodlash',
+    legendSrs: 'Vocably SRS',
+    chartLabel: "Unutish egri chizig'i va SRS takrorlash egri chizig'i taqqoslanishi",
+    daySuffix: 'k',
+    stages: ['Kartochka', 'Reading', 'Listening', 'Speaking / Writing'],
+  },
+  en: {
+    eyebrow: 'Spaced Repetition',
+    title: 'How does Vocably make words stick?',
+    body: 'A new word fades from memory within a few days. Vocably shows it again right before you would forget it — after every review the curve drops more slowly, until the word moves into long-term memory.',
+    legendPlain: 'Plain memorising',
+    legendSrs: 'Vocably SRS',
+    chartLabel: 'The forgetting curve compared with the SRS review curve',
+    daySuffix: 'd',
+    stages: ['Flashcard', 'Reading', 'Listening', 'Speaking / Writing'],
+  },
+};
 
 // Chart geometry — retention over 7 days.
 const W = 560;
@@ -46,13 +71,14 @@ const FORGET_D = forgettingPath();
 const SRS_D = srsPath();
 
 const STAGES = [
-  { step: 'T+0', label: 'Kartochka', opacity: 0.55, scale: 0.9 },
-  { step: 'T+1', label: 'Reading', opacity: 0.72, scale: 0.96 },
-  { step: 'T+2', label: 'Listening', opacity: 0.88, scale: 1.02 },
-  { step: 'T+3', label: 'Speaking / Writing', opacity: 1, scale: 1.1 },
+  { step: 'T+0', opacity: 0.55, scale: 0.9 },
+  { step: 'T+1', opacity: 0.72, scale: 0.96 },
+  { step: 'T+2', opacity: 0.88, scale: 1.02 },
+  { step: 'T+3', opacity: 1, scale: 1.1 },
 ];
 
 export default function SRSSection() {
+  const tx = useCopy(COPY);
   const sectionRef = useRef(null);
   const headRef = useRef(null);
   const chartRef = useRef(null);
@@ -80,20 +106,19 @@ export default function SRSSection() {
     <section ref={sectionRef} className="relative z-10 px-4 sm:px-6 py-24 lg:py-36">
       <div className="max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-12 lg:gap-16 items-center">
         <div ref={headRef}>
-          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-5">Spaced Repetition</p>
+          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-5">{tx.eyebrow}</p>
           <h2 className="font-landing-display font-semibold tracking-[-0.035em] leading-[1.02] text-[34px] sm:text-[46px] lg:text-[58px] text-ink mb-6">
-            Vocably so'z yodlashni qanday ishlatadi?
+            {tx.title}
           </h2>
           <p className="font-landing-body text-base lg:text-lg text-ink/75 leading-relaxed max-w-md">
-            Yangi so'z bir necha kunda xotiradan o'chadi. Vocably uni aynan unutish arafasida qayta ko'rsatadi — har
-            takrorlashdan keyin egri chiziq sekinroq pasayadi va so'z uzoq muddatli xotiraga o'tadi.
+            {tx.body}
           </p>
           <div className="mt-8 flex flex-wrap gap-5 font-landing-mono text-xs">
             <span className="flex items-center gap-2 text-ink/70">
-              <span className="h-[3px] w-7 rounded-full bg-ink/25" /> Oddiy yodlash
+              <span className="h-[3px] w-7 rounded-full bg-ink/25" /> {tx.legendPlain}
             </span>
             <span className="flex items-center gap-2 text-ink">
-              <span className="h-[3px] w-7 rounded-full bg-accent" /> Vocably SRS
+              <span className="h-[3px] w-7 rounded-full bg-accent" /> {tx.legendSrs}
             </span>
           </div>
         </div>
@@ -102,7 +127,7 @@ export default function SRSSection() {
           ref={chartRef}
           className="relative rounded-[2rem] border border-border bg-surface/85 p-4 sm:p-7 shadow-premium"
         >
-          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Unutish egri chizig'i va SRS takrorlash egri chizig'i taqqoslanishi">
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label={tx.chartLabel}>
             {[0, 0.25, 0.5, 0.75, 1].map((r) => (
               <g key={r}>
                 <line x1={PL} x2={W - PR} y1={y(r)} y2={y(r)} stroke="rgb(var(--color-border))" strokeDasharray="3 5" />
@@ -113,7 +138,8 @@ export default function SRSSection() {
             ))}
             {Array.from({ length: DAYS + 1 }, (_, d) => (
               <text key={d} x={x(d)} y={H - 10} textAnchor="middle" className="font-landing-mono" fontSize="10" fill="rgb(var(--color-ink) / .5)">
-                {d}k
+                {d}
+                {tx.daySuffix}
               </text>
             ))}
             <path
@@ -152,7 +178,7 @@ export default function SRSSection() {
       </div>
 
       <div ref={stagesRef} className="max-w-5xl mx-auto mt-16 lg:mt-24 grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {STAGES.map((s) => (
+        {STAGES.map((s, i) => (
           <div key={s.step} className="rounded-3xl border border-border bg-surface/80 p-5 text-center">
             <div
               className="mx-auto mb-4 flex h-16 w-full max-w-[140px] items-center justify-center rounded-2xl border"
@@ -171,7 +197,7 @@ export default function SRSSection() {
               </span>
             </div>
             <p className="font-landing-mono text-[11px] tracking-[0.25em] text-accent uppercase mb-1">{s.step}</p>
-            <p className="text-sm font-landing-body font-medium text-ink">{s.label}</p>
+            <p className="text-sm font-landing-body font-medium text-ink">{tx.stages[i]}</p>
           </div>
         ))}
       </div>

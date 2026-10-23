@@ -1,9 +1,19 @@
+'use client';
 import { BookOpenText } from 'lucide-react';
 import Tilt3DCard from '../Tilt3DCard';
+import useCopy from '../useCopy';
+
+// The passage and the word "resilient" are study material and stay English in both locales;
+// only the gloss is localized (Uzbek translation / English definition).
+const COPY = {
+  uz: { noteLabel: 'Izoh', gloss: 'qiyinchiliklarga chidamli, tez tiklanuvchan.' },
+  en: { noteLabel: 'Note', gloss: 'able to withstand difficulties and recover quickly.' },
+};
 
 // Brief §13 — a UI fragment (not a stock illustration): a passage with a
 // highlighted vocabulary word and its comprehension explanation.
 export default function ReadingCard() {
+  const tx = useCopy(COPY);
   return (
     <Tilt3DCard className="h-full">
       <div className="h-full bg-surface border border-border rounded-2xl p-6 shadow-card">
@@ -23,9 +33,9 @@ export default function ReadingCard() {
         </div>
 
         <div className="flex items-start gap-2 rounded-xl bg-accent-soft/60 border border-accent/15 p-3">
-          <span className="font-landing-mono text-[10px] uppercase tracking-wider text-accent mt-0.5">Izoh</span>
+          <span className="font-landing-mono text-[10px] uppercase tracking-wider text-accent mt-0.5">{tx.noteLabel}</span>
           <p className="text-xs font-landing-body text-ink leading-relaxed">
-            <strong className="font-medium">resilient</strong> — qiyinchiliklarga chidamli, tez tiklanuvchan.
+            <strong className="font-medium">resilient</strong> — {tx.gloss}
           </p>
         </div>
       </div>

@@ -3,9 +3,17 @@ import { useRef } from 'react';
 import { Plus } from 'lucide-react';
 import useChapter from './experience/useChapter';
 import useRevealOnScroll from './useRevealOnScroll';
-import { FAQS } from './faqData';
+import { FAQS_BY_LOCALE } from './faqData';
+import useCopy from './useCopy';
+
+const COPY = {
+  uz: { title: "Ko'p beriladigan savollar" },
+  en: { title: 'Frequently asked questions' },
+};
 
 export default function FaqSection() {
+  const tx = useCopy(COPY);
+  const faqs = useCopy(FAQS_BY_LOCALE);
   const sectionRef = useRef(null);
   const listRef = useRef(null);
   useChapter(sectionRef, 'faq');
@@ -17,11 +25,11 @@ export default function FaqSection() {
         <div>
           <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-5">FAQ</p>
           <h2 className="font-landing-display font-semibold tracking-[-0.04em] leading-[0.98] text-[40px] sm:text-[52px] text-ink">
-            Ko'p beriladigan savollar
+            {tx.title}
           </h2>
         </div>
         <div ref={listRef} className="space-y-3">
-          {FAQS.map((f) => (
+          {faqs.map((f) => (
             <details
               key={f.q}
               className="group rounded-[1.5rem] border border-border bg-surface/90 p-6 transition-colors open:border-accent/40"

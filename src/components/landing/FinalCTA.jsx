@@ -6,18 +6,31 @@ import { gsap } from './gsapConfig';
 import useChapter from './experience/useChapter';
 import DarkVeil from './DarkVeil';
 import Magnetic from './Magnetic';
+import useCopy from './useCopy';
 
-const HEADLINE = [
-  { w: 'Bugundan' },
-  { w: 'boshlang.' },
-  { w: 'Natijangizni', accent: true },
-  { w: "o'zgartiring." },
-];
+// `accent` marks the highlighted headline word — each locale picks its own.
+const COPY = {
+  uz: {
+    headline: [{ w: 'Bugundan' }, { w: 'boshlang.' }, { w: 'Natijangizni', accent: true }, { w: "o'zgartiring." }],
+    marquee: 'Bugundan boshlang ✦',
+    note: "Ro'yxatdan o'tish 1 daqiqa, kredit karta shart emas.",
+    register: "Ro'yxatdan o'tish",
+    more: "Batafsil ma'lumot",
+  },
+  en: {
+    headline: [{ w: 'Start' }, { w: 'today.' }, { w: 'Change' }, { w: 'your results.', accent: true }],
+    marquee: 'Start today ✦',
+    note: 'Sign-up takes 1 minute, no credit card needed.',
+    register: 'Sign up',
+    more: 'Learn more',
+  },
+};
 
 // Finale: dark chapter, the Learning Core returns above the headline with
 // its orbits blown wide (the "final" preset) — every element of the story
 // converging in one frame.
 export default function FinalCTA() {
+  const tx = useCopy(COPY);
   const sectionRef = useRef(null);
   const loopRef = useRef(null);
   useChapter(sectionRef, 'final', { dark: true });
@@ -45,7 +58,8 @@ export default function FinalCTA() {
       gsap.to(loopRef.current, { xPercent: -50, repeat: -1, duration: 30, ease: 'none' });
     }, sectionRef);
     return () => ctx.revert();
-  }, []);
+    // Re-run on a language switch: the headline word spans are new elements.
+  }, [tx]);
 
   return (
     <section
@@ -62,26 +76,26 @@ export default function FinalCTA() {
           ref={loopRef}
           className="flex w-max whitespace-nowrap font-landing-display font-bold leading-none tracking-[-0.05em] text-[18vw] landing-stroke-light"
         >
-          <span className="pr-[6vw]">Bugundan boshlang ✦</span>
-          <span className="pr-[6vw]">Bugundan boshlang ✦</span>
+          <span className="pr-[6vw]">{tx.marquee}</span>
+          <span className="pr-[6vw]">{tx.marquee}</span>
         </div>
       </div>
 
       <div className="relative w-full max-w-5xl mx-auto text-center pt-[48svh] lg:pt-[42svh]">
         <h2 className="font-landing-display font-semibold tracking-[-0.045em] leading-[0.98] text-[42px] sm:text-[64px] lg:text-[88px] mb-7">
-          {HEADLINE.map(({ w, accent }, i) => (
-            <span key={w}>
+          {tx.headline.map(({ w, accent }, i) => (
+            <span key={`${w}-${i}`}>
               <span className="inline-block overflow-hidden align-top pb-[0.1em] -mb-[0.1em]">
                 <span data-fword className={`inline-block ${accent ? 'landing-dark-accent' : ''}`}>
                   {w}
                 </span>
               </span>
-              {i < HEADLINE.length - 1 ? ' ' : ''}
+              {i < tx.headline.length - 1 ? ' ' : ''}
             </span>
           ))}
         </h2>
         <p data-ffade className="font-landing-body text-base lg:text-lg text-on-primary/75 mb-10">
-          Ro'yxatdan o'tish 1 daqiqa, kredit karta shart emas.
+          {tx.note}
         </p>
         <div data-ffade className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Magnetic className="w-full sm:w-auto">
@@ -89,7 +103,7 @@ export default function FinalCTA() {
               href="/register"
               className="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-full bg-on-primary pl-8 pr-2 py-2 text-base font-landing-body font-semibold text-primary shadow-premium transition-transform duration-300 hover:scale-[1.03]"
             >
-              Ro'yxatdan o'tish
+              {tx.register}
               <span className="grid h-11 w-11 place-items-center rounded-full bg-accent text-on-accent transition-transform duration-500 group-hover:rotate-[-45deg]">
                 <ArrowRight size={18} />
               </span>
@@ -100,7 +114,7 @@ export default function FinalCTA() {
               href="/demo"
               className="w-full sm:w-auto inline-flex items-center justify-center rounded-full border border-on-primary/30 px-8 py-[1.15rem] text-base font-landing-body font-semibold text-on-primary transition-colors duration-300 hover:bg-on-primary/10"
             >
-              Batafsil ma'lumot
+              {tx.more}
             </Link>
           </Magnetic>
         </div>

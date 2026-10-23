@@ -5,16 +5,38 @@ import { gsap } from './gsapConfig';
 import useChapter from './experience/useChapter';
 import useRevealOnScroll from './useRevealOnScroll';
 import useCountUp from './useCountUp';
+import useCopy from './useCopy';
 
-const WEEK = [
-  { d: 'Du', v: 42 },
-  { d: 'Se', v: 64 },
-  { d: 'Ch', v: 50 },
-  { d: 'Pa', v: 82 },
-  { d: 'Ju', v: 70 },
-  { d: 'Sh', v: 96 },
-  { d: 'Ya', v: 78 },
-];
+// Numbers stay outside COPY; `{goal}` / `{pct}` in vocabGoal are filled in at render.
+const COPY = {
+  uz: {
+    eyebrow: 'Progress',
+    title: "O'sishingizni raqamlarda ko'ring",
+    xpLabel: 'XP · bu hafta',
+    days: ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
+    streak: 'Streak',
+    streakUnit: 'kun',
+    vocab: "Lug'at",
+    vocabGoal: "{goal} so'zlik maqsadning {pct}%i",
+    band: 'Band (mock)',
+    skills: "Ko'nikmalar bo'yicha",
+  },
+  en: {
+    eyebrow: 'Progress',
+    title: 'See your growth in numbers',
+    xpLabel: 'XP · this week',
+    days: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
+    streak: 'Streak',
+    streakUnit: 'days',
+    vocab: 'Vocabulary',
+    vocabGoal: '{pct}% of your {goal}-word goal',
+    band: 'Band (mock)',
+    skills: 'By skill',
+  },
+};
+
+// Bar heights pair with COPY.*.days by index.
+const WEEK = [42, 64, 50, 82, 70, 96, 78];
 
 const SKILLS = [
   { label: 'Reading', value: 88 },
@@ -42,8 +64,10 @@ function Count({ end, decimal = false, className = '' }) {
 }
 
 // Premium analytics bento — color blocks and real-looking data, no
-// childish badges/confetti (brief §18).
+// childish badges/confetti (brief §18). Text swaps in place on a language
+// switch (index keys keep the animated nodes), so the GSAP effect does not re-bind.
 export default function ProgressSection() {
+  const tx = useCopy(COPY);
   const sectionRef = useRef(null);
   const headRef = useRef(null);
   const gridRef = useRef(null);
@@ -67,13 +91,17 @@ export default function ProgressSection() {
     return () => ctx.revert();
   }, []);
 
+  const vocabGoal = tx.vocabGoal
+    .replace('{goal}', String(VOCAB_GOAL))
+    .replace('{pct}', String(Math.round((VOCAB / VOCAB_GOAL) * 100)));
+
   return (
     <section ref={sectionRef} className="relative z-10 px-4 sm:px-6 py-24 lg:py-36">
       <div className="max-w-7xl mx-auto">
         <div ref={headRef} className="max-w-3xl mb-12 lg:mb-16">
-          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-5">Progress</p>
+          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-5">{tx.eyebrow}</p>
           <h2 className="font-landing-display font-semibold tracking-[-0.04em] leading-[0.98] text-[40px] sm:text-[56px] lg:text-[72px] text-ink">
-            O'sishingizni raqamlarda ko'ring
+            {tx.title}
           </h2>
         </div>
 
@@ -87,7 +115,7 @@ export default function ProgressSection() {
             <div className="relative flex h-full flex-col justify-between gap-10">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 font-landing-mono text-xs uppercase tracking-[0.25em] text-on-primary/70">
-                  <Trophy size={14} /> XP · bu hafta
+                  <Trophy size={14} /> {tx.xpLabel}
                 </span>
                 <span className="rounded-full bg-on-primary/10 px-3 py-1 font-landing-mono text-[11px]">+18%</span>
               </div>
@@ -95,20 +123,20 @@ export default function ProgressSection() {
                 <Count end={2480} />
               </p>
               <div className="flex h-36 items-end gap-2 sm:gap-3" aria-hidden="true">
-                {WEEK.map((w, i) => (
-                  <div key={w.d} className="flex flex-1 flex-col items-center gap-2 h-full justify-end">
+                {WEEK.map((v, i) => (
+                  <div key={i} className="flex flex-1 flex-col items-center gap-2 h-full justify-end">
                     <span
                       data-bar
                       className="w-full rounded-t-xl rounded-b-md"
                       style={{
-                        height: `${w.v}%`,
+                        height: `${v}%`,
                         background:
                           i === 5
                             ? 'linear-gradient(to top, rgb(var(--color-accent)), rgb(var(--color-warning) / .9))'
                             : 'rgb(var(--color-on-primary) / .18)',
                       }}
                     />
-                    <span className="font-landing-mono text-[10px] text-on-primary/60">{w.d}</span>
+                    <span className="font-landing-mono text-[10px] text-on-primary/60">{tx.days[i]}</span>
                   </div>
                 ))}
               </div>
@@ -117,11 +145,11 @@ export default function ProgressSection() {
 
           <div className="rounded-[2rem] border border-border bg-surface/90 p-7">
             <span className="flex items-center gap-2 font-landing-mono text-xs uppercase tracking-[0.25em] text-ink/60 mb-5">
-              <Flame size={14} className="text-accent" /> Streak
+              <Flame size={14} className="text-accent" /> {tx.streak}
             </span>
             <p className="font-landing-display font-semibold tracking-[-0.04em] text-[56px] leading-none text-ink">
               <Count end={14} />
-              <span className="ml-2 text-xl text-ink/60">kun</span>
+              <span className="ml-2 text-xl text-ink/60">{tx.streakUnit}</span>
             </p>
             <div className="mt-7 flex gap-2" aria-hidden="true">
               {[0, 1, 2, 3, 4, 5, 6].map((d) => (
@@ -158,17 +186,15 @@ export default function ProgressSection() {
             </div>
             <div>
               <span className="flex items-center gap-2 font-landing-mono text-xs uppercase tracking-[0.25em] text-ink/60 mb-2">
-                <Layers size={14} className="text-accent" /> Lug'at
+                <Layers size={14} className="text-accent" /> {tx.vocab}
               </span>
-              <p className="text-sm font-landing-body text-ink/75">
-                {VOCAB_GOAL} so'zlik maqsadning {Math.round((VOCAB / VOCAB_GOAL) * 100)}%i
-              </p>
+              <p className="text-sm font-landing-body text-ink/75">{vocabGoal}</p>
             </div>
           </div>
 
           <div className="rounded-[2rem] bg-accent-soft border border-accent/15 p-7">
             <span className="flex items-center gap-2 font-landing-mono text-xs uppercase tracking-[0.25em] text-ink/60 mb-5">
-              <TrendingUp size={14} className="text-accent" /> Band (mock)
+              <TrendingUp size={14} className="text-accent" /> {tx.band}
             </span>
             <p className="flex items-end gap-3 font-landing-display font-semibold tracking-[-0.04em] leading-none text-ink">
               <span className="text-[56px]">
@@ -185,7 +211,7 @@ export default function ProgressSection() {
 
           <div className="rounded-[2rem] border border-border bg-surface/90 p-7">
             <span className="block font-landing-mono text-xs uppercase tracking-[0.25em] text-ink/60 mb-5">
-              Ko'nikmalar bo'yicha
+              {tx.skills}
             </span>
             <div className="space-y-3.5">
               {SKILLS.map((s) => (

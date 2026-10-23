@@ -55,6 +55,36 @@ export function LocaleProvider({ children }) {
 
 export const useT = () => useContext(LocaleContext);
 
+// Foydalanuvchi tilni hali tanlamagan (cookie yo'q) bo'lsa — qaysi til ishlatilsin. Ildizdagi standart `en`
+// (ilova), lekin o'zbek auditoriyasiga mo'ljallangan bosh sahifa o'zbekcha ochiladi va SEO uchun server HTML ham
+// o'zbekcha bo'ladi. Tanlangan til (cookie) har doim ustun; tanlov setLocale orqali butun saytga yoziladi.
+const getChosenSnapshot = () => {
+  if (localeOverride) return localeOverride;
+  try {
+    const m = document.cookie.match(new RegExp(`(?:^|; )${LANG_COOKIE}=([^;]*)`));
+    return m ? normalizeLocale(decodeURIComponent(m[1])) : null;
+  } catch {
+    return null;
+  }
+};
+const getChosenServerSnapshot = () => null;
+
+export function LocaleFallback({ locale: fallback, children }) {
+  const parent = useContext(LocaleContext);
+  const chosen = useSyncExternalStore(subscribeLocale, getChosenSnapshot, getChosenServerSnapshot);
+  const locale = chosen || normalizeLocale(fallback);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  const value = useMemo(
+    () => ({ ...parent, locale, t: (key, vars) => translate(locale, key, vars), ts: (text) => translateServerText(locale, text), numLocale: locale === 'uz' ? 'uz-UZ' : 'en-US' }),
+    [parent, locale]
+  );
+  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
+}
+
 /** Server komponentlar ichida ham ishlatiladi: <T k="practice.title" /> */
 export function T({ k, vars }) {
   const { t } = useT();

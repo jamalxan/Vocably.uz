@@ -5,19 +5,63 @@ import { gsap } from './gsapConfig';
 import useChapter from './experience/useChapter';
 import useRevealOnScroll from './useRevealOnScroll';
 import DarkVeil from './DarkVeil';
+import useCopy from './useCopy';
 
-const FEATURES = [
-  { icon: MessagesSquare, label: 'Suhbat', body: "Istalgan savolni o'zbekcha bering" },
-  { icon: ScanSearch, label: 'Xatoni topish', body: 'Grammatika va kollokatsiya xatolari' },
-  { icon: Wand2, label: 'Feedback', body: 'Nima uchun xato — tushuntirish bilan' },
-  { icon: Target, label: 'Tavsiyalar', body: 'Zaif joylaringizga mos mashqlar' },
-  { icon: Lightbulb, label: "O'rganish yo'li", body: "SRS navbatingizga so'z qo'shadi" },
-];
+// The learner's question ("I have went to the exam") and the "have went / have gone /
+// go → gone" bits are English study content and stay English in both locales; only the
+// surrounding explanation is translated.
+const COPY = {
+  uz: {
+    eyebrow: 'AI yordamchi',
+    title: "Shaxsiy AI o'qituvchingiz",
+    lead: "Xatoni ko'radi, sababini tushuntiradi va o'sha so'zni sizning takrorlash navbatingizga qo'yadi.",
+    features: [
+      { label: 'Suhbat', body: "Istalgan savolni o'zbekcha bering" },
+      { label: 'Xatoni topish', body: 'Grammatika va kollokatsiya xatolari' },
+      { label: 'Feedback', body: 'Nima uchun xato — tushuntirish bilan' },
+      { label: 'Tavsiyalar', body: 'Zaif joylaringizga mos mashqlar' },
+      { label: "O'rganish yo'li", body: "SRS navbatingizga so'z qo'shadi" },
+    ],
+    status: 'onlayn · IELTS tutor',
+    userAsk: "— bu to'g'rimi?",
+    aiLead: "Deyarli to'g'ri —",
+    aiInsteadOf: "o'rniga",
+    aiRule: "Present Perfect'da fe'lning III shakli ishlatiladi.",
+    fixChip: 'Grammar tuzatildi',
+    tipAdded: "bugungi SRS navbatingizga qo'shildi.",
+    tipNext: 'Ertaga Reading matnida uchratasiz.',
+  },
+  en: {
+    eyebrow: 'AI assistant',
+    title: 'Your personal AI tutor',
+    lead: 'It spots the mistake, explains why it is wrong and puts that word straight into your review queue.',
+    features: [
+      { label: 'Chat', body: 'Ask anything, in Uzbek or English' },
+      { label: 'Error spotting', body: 'Grammar and collocation mistakes' },
+      { label: 'Feedback', body: 'Why it is wrong — clearly explained' },
+      { label: 'Recommendations', body: 'Practice matched to your weak spots' },
+      { label: 'Learning path', body: 'Adds words to your SRS queue' },
+    ],
+    status: 'online · IELTS tutor',
+    userAsk: '— is this correct?',
+    aiLead: 'Almost —',
+    aiInsteadOf: 'should be',
+    aiRule: 'Present Perfect takes the third form (past participle) of the verb.',
+    fixChip: 'Grammar fixed',
+    tipAdded: "has been added to today's SRS queue.",
+    tipNext: "You'll meet it in a Reading passage tomorrow.",
+  },
+};
+// Paired with COPY.*.features by index.
+const FEATURE_ICONS = [MessagesSquare, ScanSearch, Wand2, Target, Lightbulb];
 
 // Dark chapter. The chat panel is frosted glass sitting right on top of the
 // Learning Core (the "ai" preset parks the orb behind it), and the
 // conversation plays out message by message as it scrolls through.
+// Text swaps in place on a language switch (index keys, same nodes), so the
+// GSAP timeline does not need to re-bind.
 export default function AISection() {
+  const tx = useCopy(COPY);
   const sectionRef = useRef(null);
   const headRef = useRef(null);
   const panelRef = useRef(null);
@@ -46,25 +90,28 @@ export default function AISection() {
       <DarkVeil />
       <div className="relative max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
         <div ref={headRef}>
-          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] landing-dark-accent mb-5">AI yordamchi</p>
+          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] landing-dark-accent mb-5">{tx.eyebrow}</p>
           <h2 className="font-landing-display font-semibold tracking-[-0.04em] leading-[0.98] text-[40px] sm:text-[56px] lg:text-[72px] mb-6">
-            Shaxsiy AI o'qituvchingiz
+            {tx.title}
           </h2>
           <p className="font-landing-body text-base lg:text-lg text-on-primary/75 max-w-md leading-relaxed mb-10">
-            Xatoni ko'radi, sababini tushuntiradi va o'sha so'zni sizning takrorlash navbatingizga qo'yadi.
+            {tx.lead}
           </p>
           <ul className="grid sm:grid-cols-2 gap-3">
-            {FEATURES.map((f) => (
-              <li key={f.label} className="flex items-start gap-3 rounded-2xl border border-on-primary/10 bg-on-primary/[0.06] p-4">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-on-accent">
-                  <f.icon size={16} />
-                </span>
-                <span>
-                  <span className="block text-sm font-landing-body font-semibold">{f.label}</span>
-                  <span className="block text-xs font-landing-body text-on-primary/65 mt-0.5">{f.body}</span>
-                </span>
-              </li>
-            ))}
+            {tx.features.map((f, i) => {
+              const Icon = FEATURE_ICONS[i];
+              return (
+                <li key={i} className="flex items-start gap-3 rounded-2xl border border-on-primary/10 bg-on-primary/[0.06] p-4">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-on-accent">
+                    <Icon size={16} />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-landing-body font-semibold">{f.label}</span>
+                    <span className="block text-xs font-landing-body text-on-primary/65 mt-0.5">{f.body}</span>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -81,7 +128,7 @@ export default function AISection() {
                 </div>
                 <div>
                   <p className="text-sm font-landing-body font-semibold leading-tight">Vocably AI</p>
-                  <p className="text-[11px] font-landing-mono text-on-primary/60">onlayn · IELTS tutor</p>
+                  <p className="text-[11px] font-landing-mono text-on-primary/60">{tx.status}</p>
                 </div>
               </div>
               <span className="h-2 w-2 rounded-full bg-accent landing-pulse" aria-hidden="true" />
@@ -89,7 +136,7 @@ export default function AISection() {
 
             <div className="flex justify-end mb-3" data-chat="user">
               <div className="max-w-[82%] rounded-2xl rounded-tr-md bg-on-primary/15 px-4 py-3 text-sm font-landing-body">
-                "I have went to the exam" — bu to'g'rimi?
+                &quot;I have went to the exam&quot; {tx.userAsk}
               </div>
             </div>
 
@@ -104,15 +151,14 @@ export default function AISection() {
             <div className="flex mb-3" data-chat="ai">
               <div className="max-w-[88%] rounded-2xl rounded-tl-md bg-surface px-4 py-3 text-ink">
                 <p className="text-sm font-landing-body leading-relaxed mb-2">
-                  Deyarli to'g'ri — <strong className="font-semibold">"have went"</strong> o'rniga{' '}
-                  <strong className="font-semibold text-accent">"have gone"</strong>. Present Perfect'da fe'lning III
-                  shakli ishlatiladi.
+                  {tx.aiLead} <strong className="font-semibold">&quot;have went&quot;</strong> {tx.aiInsteadOf}{' '}
+                  <strong className="font-semibold text-accent">&quot;have gone&quot;</strong>. {tx.aiRule}
                 </p>
                 <span
                   data-chat="fix"
                   className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-landing-mono text-accent"
                 >
-                  <CheckCircle2 size={12} /> Grammar tuzatildi
+                  <CheckCircle2 size={12} /> {tx.fixChip}
                 </span>
               </div>
             </div>
@@ -120,8 +166,7 @@ export default function AISection() {
             <div data-chat="tip" className="flex items-start gap-3 rounded-2xl border border-on-primary/15 bg-on-primary/[0.08] p-4">
               <Lightbulb size={16} className="mt-0.5 shrink-0 landing-dark-accent" />
               <p className="text-sm font-landing-body text-on-primary/85 leading-relaxed">
-                <strong className="font-semibold text-on-primary">go → gone</strong> bugungi SRS navbatingizga qo'shildi.
-                Ertaga Reading matnida uchratasiz.
+                <strong className="font-semibold text-on-primary">go → gone</strong> {tx.tipAdded} {tx.tipNext}
               </p>
             </div>
           </div>

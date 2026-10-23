@@ -1,6 +1,12 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { CHAPTER_NAV, experience, getChapterElement } from './store';
+import useCopy from '../useCopy';
+
+const COPY = {
+  uz: { nav: 'Sahifa boblari', labels: { manifesto: 'Nega Vocably', story: "So'z → ko'nikma", srs: 'SRS', skills: "4 ko'nikma", ai: 'AI tutor', progress: 'Progress', mock: 'Mock', faq: 'FAQ' } },
+  en: { nav: 'Page chapters', labels: { manifesto: 'Why Vocably', story: 'Word → skill', srs: 'SRS', skills: '4 skills', ai: 'AI tutor', progress: 'Progress', mock: 'Mock', faq: 'FAQ' } },
+};
 
 // Fixed chapter rail (desktop, pointer devices): one tick per chapter of the
 // scroll story, the active one stretched and labelled. Reads the same
@@ -9,6 +15,7 @@ import { CHAPTER_NAV, experience, getChapterElement } from './store';
 // so the first viewport stays clean. Clicks go through Lenis when it's
 // running so the jump eases like every other scroll on the page.
 export default function ChapterRail() {
+  const tx = useCopy(COPY);
   const [active, setActive] = useState(null);
   const [visible, setVisible] = useState(false);
   const frame = useRef(0);
@@ -41,7 +48,7 @@ export default function ChapterRail() {
 
   return (
     <nav
-      aria-label="Sahifa boblari"
+      aria-label={tx.nav}
       className={`fixed right-5 top-1/2 z-20 hidden lg:flex -translate-y-1/2 flex-col items-end gap-2.5 transition-opacity duration-500 ${
         visible ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
@@ -54,7 +61,7 @@ export default function ChapterRail() {
             type="button"
             onClick={() => jump(c.name)}
             aria-current={on ? 'true' : undefined}
-            aria-label={`${String(i + 1).padStart(2, '0')} — ${c.label}`}
+            aria-label={`${String(i + 1).padStart(2, '0')} — ${tx.labels[c.name] || c.label}`}
             className="group flex items-center gap-3 py-0.5 focus-visible:outline-none"
           >
             {/* Rel och va to'q boblar ustidan o'tadi — yorliq o'z sirtli pili bilan, shunda kontrast fonga bog'liq emas. */}
@@ -63,7 +70,7 @@ export default function ChapterRail() {
                 on ? 'translate-x-0 opacity-100' : 'translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100'
               }`}
             >
-              {c.label}
+              {tx.labels[c.name] || c.label}
             </span>
             <span
               aria-hidden="true"

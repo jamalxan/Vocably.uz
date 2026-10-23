@@ -4,34 +4,13 @@ import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import BrandLogo from '@/components/BrandLogo';
 import { useT } from '@/context/LocaleContext';
-import { LOCALES, LOCALE_LABELS } from '@/lib/i18n';
+import LanguageSwitch from '@/components/LanguageSwitch';
 
 const NAV_HREFS = ['/ielts', '/dictionary', '/blog', '/pricing'];
 const TEXT = {
   en: { nav: ['IELTS', 'Dictionary', 'Blog', 'Pricing'], login: 'Log in', start: 'Start free', menu: 'Main menu', mobile: 'Mobile menu', open: 'Open menu', close: 'Close menu', lang: 'Language' },
   uz: { nav: ['IELTS', "Lug'at", 'Blog', 'Narxlar'], login: 'Kirish', start: 'Bepul boshlash', menu: 'Asosiy menyu', mobile: 'Mobil menyu', open: 'Menyuni ochish', close: 'Menyuni yopish', lang: 'Til' },
 };
-
-function LangSwitch({ locale, setLocale, label, className = '' }) {
-  return (
-    <div role="group" aria-label={label} className={`flex gap-1 ${className}`}>
-      {LOCALES.map((l) => (
-        <button
-          key={l}
-          type="button"
-          lang={l}
-          onClick={() => setLocale(l)}
-          aria-pressed={locale === l}
-          className={`px-2.5 min-h-9 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-            locale === l ? 'bg-accent text-on-accent' : 'text-muted hover:bg-bg-sunken'
-          }`}
-        >
-          {LOCALE_LABELS[l]}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // Faqat mobil menyu ochiq/yopiqligi uchun client — qolgan butun landing sahifa
 // server komponent (statik generatsiya, tezroq LCP).
@@ -42,7 +21,7 @@ function LangSwitch({ locale, setLocale, label, className = '' }) {
 // sahifalar (lugat, narxlar, blog, demo) bu prop'ni bermaydi — ular avvalgi
 // statik ko'rinishida qoladi, hech narsa buzilmaydi.
 export default function LandingHeader({ floating = false }) {
-  const { locale, setLocale } = useT();
+  const { locale } = useT();
   const tx = TEXT[locale] || TEXT.en;
   const NAV_LINKS = NAV_HREFS.map((href, i) => ({ href, label: tx.nav[i] }));
   const [open, setOpen] = useState(false);
@@ -92,7 +71,8 @@ export default function LandingHeader({ floating = false }) {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          <LangSwitch locale={locale} setLocale={setLocale} label={tx.lang} />
+          <LanguageSwitch />
+          <span className="h-6 w-px bg-border" aria-hidden="true" />
           <Link href="/login" className="text-sm font-medium text-ink hover:text-accent transition-colors px-2">
             {tx.login}
           </Link>
@@ -104,16 +84,19 @@ export default function LandingHeader({ floating = false }) {
           </Link>
         </div>
 
+        <div className="md:hidden flex items-center gap-2">
+        <LanguageSwitch />
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? tx.close : tx.open}
           aria-expanded={open}
           aria-controls="landing-mobile-menu"
-          className="md:hidden w-11 h-11 -mr-2 inline-flex items-center justify-center rounded-lg text-ink"
+          className="w-11 h-11 -mr-2 inline-flex items-center justify-center rounded-lg text-ink"
         >
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
+        </div>
       </div>
 
       {open && (
@@ -146,7 +129,6 @@ export default function LandingHeader({ floating = false }) {
             >
               {tx.start}
             </Link>
-            <LangSwitch locale={locale} setLocale={setLocale} label={tx.lang} className="px-1 pt-2" />
           </nav>
         </>
       )}

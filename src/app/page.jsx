@@ -17,6 +17,7 @@ import SmoothScroll from '@/components/landing/experience/SmoothScroll';
 import ChapterRail from '@/components/landing/experience/ChapterRail';
 import { FAQS } from '@/components/landing/faqData';
 import { landingFontVariables } from '@/components/landing/fonts';
+import { LocaleFallback } from '@/context/LocaleContext';
 import { ldGraph, organizationLd, webApplicationLd, tierOffers, SITE_URL, SITE_NAME, SITE_TAGLINE } from '@/lib/seo/site';
 
 // VOCABLY-TZ.md §3.1 (IA) — '/' ochiq marketing landing (SEO uchun server
@@ -80,6 +81,8 @@ export default function LandingPage() {
   return (
     // overflow-x-clip (not hidden): hidden would turn this div into a scroll
     // container and silently break the sticky header and GSAP pins.
+    // Til tanlanmagan (cookie yo'q) bo'lsa bosh sahifa o'zbekcha — server HTML ham (SEO); tanlansa hammasi o'sha tilda.
+    <LocaleFallback locale="uz">
     <div className={`${landingFontVariables} relative isolate min-h-dvh overflow-x-clip bg-bg font-landing-body`}>
       { }
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
@@ -108,5 +111,6 @@ export default function LandingPage() {
         <LandingFooter />
       </div>
     </div>
+    </LocaleFallback>
   );
 }

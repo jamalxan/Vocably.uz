@@ -7,6 +7,7 @@ import SpeakingCard from './skills/SpeakingCard';
 import WritingCard from './skills/WritingCard';
 import { gsap } from './gsapConfig';
 import useChapter from './experience/useChapter';
+import useCopy from './useCopy';
 
 // Four color-blocked panels, each a different combination of the existing
 // palette (surface/accent, merlot/accent-soft, merlot+accent glow,
@@ -40,46 +41,75 @@ const THEMES = {
   },
 };
 
+// Non-text config, paired with COPY.panels by index.
 const PANELS = [
-  {
-    n: '01',
-    title: 'Reading',
-    tagline: "Kontekstdagi so'z",
-    body: "CEFR darajangizga mos matnlar — o'rgangan so'zlaringiz ichida belgilangan, har savolga izoh bilan.",
-    points: ['Highlight + izoh', 'Tushunish savollari', 'IELTS formatidagi passage'],
-    theme: 'light',
-    Card: ReadingCard,
-  },
-  {
-    n: '02',
-    title: 'Listening',
-    tagline: 'Tabiiy nutq',
-    body: "Dialog va monologlar, tezlikni sozlash va transkript bilan tahlil — so'z quloqqa o'rnashadi.",
-    points: ['Audio waveform', 'Tezlikni sozlash', 'Progress kuzatuvi'],
-    theme: 'merlot',
-    Card: ListeningCard,
-  },
-  {
-    n: '03',
-    title: 'Speaking',
-    tagline: 'AI baholash',
-    body: "Ovozli javob bering — AI talaffuz, ravonlik, grammatika va lug'at bo'yicha IELTS mezonida baholaydi.",
-    points: ['Pronunciation', 'Fluency', 'Grammar · Vocabulary'],
-    theme: 'ember',
-    Card: SpeakingCard,
-  },
-  {
-    n: '04',
-    title: 'Writing',
-    tagline: 'Band + tahlil',
-    body: 'Task 1 va Task 2: band baho, mezonlar bo‘yicha tahlil va aniq, tushunarli tuzatishlar.',
-    points: ['Band score', 'Weakness tahlili', 'Aniq tavsiyalar'],
-    theme: 'blush',
-    Card: WritingCard,
-  },
+  { n: '01', title: 'Reading', theme: 'light', Card: ReadingCard },
+  { n: '02', title: 'Listening', theme: 'merlot', Card: ListeningCard },
+  { n: '03', title: 'Speaking', theme: 'ember', Card: SpeakingCard },
+  { n: '04', title: 'Writing', theme: 'blush', Card: WritingCard },
 ];
 
+const COPY = {
+  uz: {
+    eyebrow: '4 skills',
+    title: "Bitta platforma, to'rtta ko'nikma",
+    lead: "Har bir ko'nikma — alohida mahsulot interfeysi, lekin hammasi bitta SRS tizimiga ulangan.",
+    scroll: 'Scroll',
+    panels: [
+      {
+        tagline: "Kontekstdagi so'z",
+        body: "CEFR darajangizga mos matnlar — o'rgangan so'zlaringiz ichida belgilangan, har savolga izoh bilan.",
+        points: ['Highlight + izoh', 'Tushunish savollari', 'IELTS formatidagi passage'],
+      },
+      {
+        tagline: 'Tabiiy nutq',
+        body: "Dialog va monologlar, tezlikni sozlash va transkript bilan tahlil — so'z quloqqa o'rnashadi.",
+        points: ['Audio waveform', 'Tezlikni sozlash', 'Progress kuzatuvi'],
+      },
+      {
+        tagline: 'AI baholash',
+        body: "Ovozli javob bering — AI talaffuz, ravonlik, grammatika va lug'at bo'yicha IELTS mezonida baholaydi.",
+        points: ['Pronunciation', 'Fluency', 'Grammar · Vocabulary'],
+      },
+      {
+        tagline: 'Band + tahlil',
+        body: 'Task 1 va Task 2: band baho, mezonlar bo‘yicha tahlil va aniq, tushunarli tuzatishlar.',
+        points: ['Band score', 'Weakness tahlili', 'Aniq tavsiyalar'],
+      },
+    ],
+  },
+  en: {
+    eyebrow: '4 skills',
+    title: 'One platform, four skills',
+    lead: 'Each skill has its own dedicated interface — and all of them plug into a single SRS system.',
+    scroll: 'Scroll',
+    panels: [
+      {
+        tagline: 'Words in context',
+        body: 'Passages matched to your CEFR level — the words you have learned are highlighted inside, with an explanation for every question.',
+        points: ['Highlights + notes', 'Comprehension questions', 'IELTS-style passages'],
+      },
+      {
+        tagline: 'Natural speech',
+        body: 'Dialogues and monologues, adjustable speed and transcript-based review — so words stick by ear.',
+        points: ['Audio waveform', 'Speed control', 'Progress tracking'],
+      },
+      {
+        tagline: 'AI scoring',
+        body: 'Answer out loud — AI scores your pronunciation, fluency, grammar and vocabulary against IELTS criteria.',
+        points: ['Pronunciation', 'Fluency', 'Grammar · Vocabulary'],
+      },
+      {
+        tagline: 'Band + analysis',
+        body: 'Task 1 and Task 2: a band score, criterion-by-criterion analysis and clear, specific corrections.',
+        points: ['Band score', 'Weakness analysis', 'Concrete tips'],
+      },
+    ],
+  },
+};
+
 export default function SkillsSection() {
+  const tx = useCopy(COPY);
   const sectionRef = useRef(null);
   const trackRef = useRef(null);
   useChapter(sectionRef, 'skills');
@@ -143,26 +173,28 @@ export default function SkillsSection() {
     });
 
     return () => mm.revert();
-  }, []);
+    // Re-run on language change: panel text (and so the track width) changes.
+  }, [tx]);
 
   return (
     <section ref={sectionRef} className="relative z-10 py-20 lg:py-0 lg:h-[100svh] lg:overflow-hidden lg:flex lg:items-center">
       <div ref={trackRef} className="flex flex-col gap-5 px-4 sm:px-6 lg:flex-row lg:w-max lg:gap-8 lg:px-[6vw] lg:items-stretch">
         <div className="lg:w-[34vw] lg:shrink-0 flex flex-col justify-center pb-6 lg:pb-0 lg:pr-6">
-          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-5">4 skills</p>
+          <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-5">{tx.eyebrow}</p>
           <h2 className="font-landing-display font-semibold tracking-[-0.04em] leading-[0.98] text-[40px] sm:text-[56px] lg:text-[72px] text-ink mb-6">
-            Bitta platforma, to'rtta ko'nikma
+            {tx.title}
           </h2>
           <p className="font-landing-body text-base lg:text-lg text-ink/75 max-w-sm leading-relaxed">
-            Har bir ko'nikma — alohida mahsulot interfeysi, lekin hammasi bitta SRS tizimiga ulangan.
+            {tx.lead}
           </p>
           <p className="hidden lg:flex items-center gap-3 mt-10 font-landing-mono text-xs uppercase tracking-[0.3em] text-ink/60">
-            Scroll <ArrowRight size={14} className="landing-nudge-x" />
+            {tx.scroll} <ArrowRight size={14} className="landing-nudge-x" />
           </p>
         </div>
 
-        {PANELS.map((p) => {
+        {PANELS.map((p, i) => {
           const t = THEMES[p.theme];
+          const c = tx.panels[i];
           return (
             <article
               key={p.n}
@@ -180,13 +212,13 @@ export default function SkillsSection() {
                     {p.n}
                   </span>
                   <div>
-                    <p className={`font-landing-mono text-[11px] uppercase tracking-[0.3em] mb-3 ${t.muted}`}>{p.tagline}</p>
+                    <p className={`font-landing-mono text-[11px] uppercase tracking-[0.3em] mb-3 ${t.muted}`}>{c.tagline}</p>
                     <h3 className="font-landing-display font-semibold tracking-[-0.04em] leading-none text-[44px] sm:text-[60px] lg:text-[80px] mb-5">
                       {p.title}
                     </h3>
-                    <p className={`font-landing-body text-base lg:text-lg leading-relaxed max-w-md mb-6 ${t.muted}`}>{p.body}</p>
+                    <p className={`font-landing-body text-base lg:text-lg leading-relaxed max-w-md mb-6 ${t.muted}`}>{c.body}</p>
                     <ul className="flex flex-wrap gap-2">
-                      {p.points.map((pt) => (
+                      {c.points.map((pt) => (
                         <li
                           key={pt}
                           className="rounded-full border px-3 py-1 text-xs font-landing-mono"

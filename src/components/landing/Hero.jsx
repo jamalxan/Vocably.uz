@@ -7,8 +7,31 @@ import useChapter from './experience/useChapter';
 import useWebGLSupport from './experience/useWebGLSupport';
 import LearningCoreFallback from './LearningCoreFallback';
 import Magnetic from './Magnetic';
+import useCopy from './useCopy';
 
-const CHIPS = ["4 ko'nikma", 'SRS', 'AI feedback', 'Mock test'];
+// The h1 is a list of words, each rising out of its own mask; `shimmer` marks the highlighted one.
+const COPY = {
+  uz: {
+    badge: "IELTS uchun zamonaviy o'quv platformasi",
+    title: [{ w: 'Ingliz' }, { w: 'tilini' }, { w: 'unutmaydigan', shimmer: true }, { w: 'usulda' }, { w: "o'rganing" }],
+    lead: 'Vocably IELTS imtihoniga tayyorgarlik uchun Reading, Listening, Writing, Speaking, Vocabulary, AI va Mock testlarni bitta tizimga birlashtiradi.',
+    ctaPrimary: 'Bepul boshlash',
+    ctaSecondary: 'Qanday ishlaydi?',
+    chips: ["4 ko'nikma", 'SRS', 'AI feedback', 'Mock test'],
+    noCard: '· kredit karta shart emas',
+    scroll: 'Scroll',
+  },
+  en: {
+    badge: 'A modern IELTS learning platform',
+    title: [{ w: 'Learn' }, { w: 'English' }, { w: 'that' }, { w: 'actually' }, { w: 'sticks', shimmer: true }],
+    lead: 'Vocably brings Reading, Listening, Writing, Speaking, Vocabulary, AI and Mock tests together into one system for IELTS preparation.',
+    ctaPrimary: 'Start for free',
+    ctaSecondary: 'How it works',
+    chips: ['4 skills', 'SRS', 'AI feedback', 'Mock test'],
+    noCard: '· no credit card required',
+    scroll: 'Scroll',
+  },
+};
 
 // Each word sits in an overflow-hidden mask and rises into place. The
 // entrance is pure CSS (.landing-hero-word, globals.css) so it starts on
@@ -24,6 +47,7 @@ function Word({ children, i, className = '' }) {
 }
 
 export default function Hero() {
+  const tx = useCopy(COPY);
   const sectionRef = useRef(null);
   const copyRef = useRef(null);
   const bigRef = useRef(null);
@@ -78,23 +102,26 @@ export default function Hero() {
             className="landing-hero-fade inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-accent/20 bg-surface/70 px-3.5 py-1.5 mb-6 lg:mb-7 text-[10px] sm:text-[11px] font-landing-mono font-medium uppercase tracking-[0.06em] sm:tracking-[0.2em] text-accent"
             style={{ '--i': 0 }}
           >
-            <Sparkles size={13} /> IELTS uchun zamonaviy o'quv platformasi
+            <Sparkles size={13} /> {tx.badge}
           </div>
 
           <h1 className="font-landing-display font-semibold text-ink tracking-[-0.045em] leading-[0.95] text-[40px] sm:text-[58px] lg:text-[60px] xl:text-[76px] 2xl:text-[84px] mb-7">
-            <Word i={0}>Ingliz</Word> <Word i={1}>tilini</Word>{' '}
-            <Word i={2} className="landing-shimmer-text">
-              unutmaydigan
-            </Word>{' '}
-            <Word i={3}>usulda</Word> <Word i={4}>o'rganing</Word>
+            {tx.title.map(({ w, shimmer }, i) => (
+              // Keyed by locale so the CSS entrance replays on a language switch.
+              <span key={`${tx.badge}-${i}`}>
+                <Word i={i} className={shimmer ? 'landing-shimmer-text' : ''}>
+                  {w}
+                </Word>
+                {i < tx.title.length - 1 ? ' ' : ''}
+              </span>
+            ))}
           </h1>
 
           <p
             className="landing-hero-fade text-base sm:text-lg font-landing-body text-ink/75 max-w-xl mx-auto lg:mx-0 mb-9 leading-relaxed"
             style={{ '--i': 1 }}
           >
-            Vocably IELTS imtihoniga tayyorgarlik uchun Reading, Listening, Writing, Speaking, Vocabulary, AI va Mock
-            testlarni bitta tizimga birlashtiradi.
+            {tx.lead}
           </p>
 
           <div
@@ -106,7 +133,7 @@ export default function Hero() {
                 href="/register"
                 className="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-full bg-accent pl-7 pr-2 py-2 text-sm font-landing-body font-semibold text-on-accent shadow-glow transition-colors duration-300 hover:bg-accent-hover"
               >
-                Bepul boshlash
+                {tx.ctaPrimary}
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-on-accent/15 transition-transform duration-500 group-hover:rotate-[-45deg]">
                   <ArrowRight size={17} />
                 </span>
@@ -117,7 +144,7 @@ export default function Hero() {
                 href="#qanday-ishlaydi"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-ink/15 bg-surface/60 px-7 py-4 text-sm font-landing-body font-semibold text-ink backdrop-blur-md transition-colors duration-300 hover:border-accent/50"
               >
-                Qanday ishlaydi?
+                {tx.ctaSecondary}
               </a>
             </Magnetic>
           </div>
@@ -126,7 +153,7 @@ export default function Hero() {
             className="landing-hero-fade mt-9 flex flex-wrap items-center justify-center lg:justify-start gap-2"
             style={{ '--i': 3 }}
           >
-            {CHIPS.map((c) => (
+            {tx.chips.map((c) => (
               <li
                 key={c}
                 className="rounded-full border border-border bg-surface/70 px-3 py-1 text-[11px] font-landing-mono text-ink/80"
@@ -134,7 +161,7 @@ export default function Hero() {
                 {c}
               </li>
             ))}
-            <li className="px-1 text-[11px] font-landing-mono text-ink/60">· kredit karta shart emas</li>
+            <li className="px-1 text-[11px] font-landing-mono text-ink/60">{tx.noCard}</li>
           </ul>
         </div>
       </div>
@@ -144,7 +171,7 @@ export default function Hero() {
         style={{ '--i': 4 }}
         aria-hidden="true"
       >
-        Scroll
+        {tx.scroll}
         <span className="relative h-10 w-px overflow-hidden bg-ink/15">
           <span className="landing-scroll-cue absolute inset-x-0 top-0 h-1/2 bg-accent" />
         </span>

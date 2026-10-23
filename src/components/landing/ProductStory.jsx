@@ -5,39 +5,42 @@ import { ScrollTrigger } from './gsapConfig';
 import useChapter from './experience/useChapter';
 import { experience } from './experience/store';
 import DarkVeil from './DarkVeil';
+import useCopy from './useCopy';
 
-const STEPS = [
-  {
-    label: 'Reading',
-    icon: BookOpenText,
-    title: 'Matnda uchratasiz',
-    body: "Ertasi kuni “resilient” sizning darajangizdagi Reading matnida qaytadi — endi kontekst ichida.",
-  },
-  {
-    label: 'Listening',
-    icon: Ear,
-    title: 'Dialogda eshitasiz',
-    body: "So'z tabiiy nutqda — talaffuzi va urg'usi bilan quloqqa tanish bo'ladi.",
-  },
-  {
-    label: 'Speaking',
-    icon: Mic,
-    title: "O'zingiz gapirasiz",
-    body: "Speaking savoliga javobda ishlatasiz — AI talaffuz va ravonlikni baholaydi.",
-  },
-  {
-    label: 'Writing',
-    icon: PenLine,
-    title: "Yozuvda qo'llaysiz",
-    body: "Task 2 inshoda to'g'ri kollokatsiya bilan yozasiz — AI tekshiradi va tuzatadi.",
-  },
-  {
-    label: 'Long-term memory',
-    icon: Brain,
-    title: 'Xotirada qoladi',
-    body: "To'rt ko'nikmadan o'tgan so'z endi passiv emas — imtihon kuni o'zi esga tushadi.",
-  },
+// Skill labels are product terms (same in both locales); titles/bodies come from COPY by index.
+const STEP_META = [
+  { label: 'Reading', icon: BookOpenText },
+  { label: 'Listening', icon: Ear },
+  { label: 'Speaking', icon: Mic },
+  { label: 'Writing', icon: PenLine },
+  { label: 'Long-term memory', icon: Brain },
 ];
+
+// "resilient" is the English study word in the demo — it stays English in both locales.
+const COPY = {
+  uz: {
+    eyebrow: "So'z → Ko'nikma",
+    title: "Bitta so'z — beshta ko'nikmada tirik qoladi",
+    steps: [
+      { title: 'Matnda uchratasiz', body: "Ertasi kuni “resilient” sizning darajangizdagi Reading matnida qaytadi — endi kontekst ichida." },
+      { title: 'Dialogda eshitasiz', body: "So'z tabiiy nutqda — talaffuzi va urg'usi bilan quloqqa tanish bo'ladi." },
+      { title: "O'zingiz gapirasiz", body: 'Speaking savoliga javobda ishlatasiz — AI talaffuz va ravonlikni baholaydi.' },
+      { title: "Yozuvda qo'llaysiz", body: "Task 2 inshoda to'g'ri kollokatsiya bilan yozasiz — AI tekshiradi va tuzatadi." },
+      { title: 'Xotirada qoladi', body: "To'rt ko'nikmadan o'tgan so'z endi passiv emas — imtihon kuni o'zi esga tushadi." },
+    ],
+  },
+  en: {
+    eyebrow: 'Word → Skill',
+    title: 'One word, kept alive across five skills',
+    steps: [
+      { title: 'You meet it in a text', body: 'The next day “resilient” comes back in a Reading passage at your level — this time in context.' },
+      { title: 'You hear it in a dialogue', body: 'The word appears in natural speech, so its pronunciation and stress start to sound familiar.' },
+      { title: 'You say it yourself', body: 'You use it in a Speaking answer — AI scores your pronunciation and fluency.' },
+      { title: 'You use it in writing', body: 'You write it into a Task 2 essay with the right collocation — AI checks and corrects it.' },
+      { title: 'It stays in memory', body: 'A word that has passed through all four skills is no longer passive — on exam day it comes to mind on its own.' },
+    ],
+  },
+};
 
 const REDUCED_QUERY = '(prefers-reduced-motion: reduce)';
 const subscribeReduced = (cb) => {
@@ -51,6 +54,8 @@ const getReduced = () => window.matchMedia(REDUCED_QUERY).matches;
 // and (via the experience store) the 3D token hopping between skill nodes
 // around the Learning Core, which sits in the middle column.
 export default function ProductStory() {
+  const tx = useCopy(COPY);
+  const STEPS = STEP_META.map((m, i) => ({ ...m, ...tx.steps[i] }));
   const sectionRef = useRef(null);
   const barRef = useRef(null);
   const activeRef = useRef(0);
@@ -73,7 +78,7 @@ export default function ProductStory() {
       onUpdate: (self) => {
         experience.story.progress = self.progress;
         if (barRef.current) barRef.current.style.transform = `scaleY(${self.progress})`;
-        const idx = Math.min(STEPS.length - 1, Math.floor(self.progress * STEPS.length));
+        const idx = Math.min(STEP_META.length - 1, Math.floor(self.progress * STEP_META.length));
         if (idx !== activeRef.current) {
           activeRef.current = idx;
           setActive(idx);
@@ -89,10 +94,10 @@ export default function ProductStory() {
         <DarkVeil />
         <div className="relative max-w-3xl mx-auto" key="static">
           <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] landing-dark-accent mb-4">
-            So'z → Ko'nikma
+            {tx.eyebrow}
           </p>
           <h2 className="font-landing-display text-4xl font-semibold tracking-tight mb-10">
-            Bitta so'z — beshta ko'nikmada tirik qoladi
+            {tx.title}
           </h2>
           <ol className="space-y-6">
             {STEPS.map((s) => (
@@ -116,10 +121,10 @@ export default function ProductStory() {
       <div className="relative h-full max-w-7xl mx-auto px-5 sm:px-8 flex flex-col lg:grid lg:grid-cols-[1fr_1.05fr_1fr] lg:items-center pt-24 pb-8 lg:py-0">
         <div className="lg:pr-6">
           <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] landing-dark-accent mb-4">
-            So'z → Ko'nikma
+            {tx.eyebrow}
           </p>
           <h2 className="font-landing-display font-semibold tracking-[-0.035em] leading-[1.02] text-[30px] sm:text-[40px] lg:text-[52px]">
-            Bitta so'z — beshta ko'nikmada tirik qoladi
+            {tx.title}
           </h2>
           <div className="hidden lg:flex items-end gap-5 mt-12">
             <span className="font-landing-display font-bold leading-none text-[120px] tabular-nums landing-stroke-light">

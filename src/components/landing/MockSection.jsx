@@ -4,14 +4,36 @@ import { Clock, Flag, ShieldCheck, Save, Award, Layers } from 'lucide-react';
 import { gsap } from './gsapConfig';
 import useChapter from './experience/useChapter';
 import useRevealOnScroll from './useRevealOnScroll';
+import useCopy from './useCopy';
 
 const TABS = ['Listening', 'Reading', 'Writing', 'Speaking'];
-const OPTIONS = ['A  Tarixiy kontekst', "B  Iqtisodiy ta'sir", 'C  Texnologik yechim'];
 
+const COPY = {
+  uz: {
+    title: 'Haqiqiy imtihon atmosferasi',
+    lead: "To'rt bo'limli to'liq sinov: server taymeri, avtosaqlash va haqiqiy IELTS interfeysi — imtihon kuni hech narsa yangi bo'lmaydi.",
+    chips: ['Server taymeri', 'Avtosaqlash', "4 bo'lim"],
+    result: 'Natija',
+    flag: 'Belgilash',
+    tabsLabel: "Mock bo'limlari",
+    options: ['A  Tarixiy kontekst', "B  Iqtisodiy ta'sir", 'C  Texnologik yechim'],
+  },
+  en: {
+    title: 'The real exam atmosphere',
+    lead: 'A full four-part test with a server-side timer, autosave and the real IELTS interface — so nothing feels new on exam day.',
+    chips: ['Server timer', 'Autosave', '4 sections'],
+    result: 'Result',
+    flag: 'Flag',
+    tabsLabel: 'Mock sections',
+    options: ['A  Historical context', 'B  Economic impact', 'C  Technological solution'],
+  },
+};
+
+// Non-text chip config, paired with COPY[locale].chips by index.
 const CHIPS = [
-  { icon: ShieldCheck, text: 'Server taymeri', pos: 'left-[-6%] top-[14%]', speed: -60 },
-  { icon: Save, text: 'Avtosaqlash', pos: 'right-[-5%] top-[30%]', speed: -120 },
-  { icon: Layers, text: "4 bo'lim", pos: 'left-[-3%] bottom-[18%]', speed: -150 },
+  { icon: ShieldCheck, pos: 'left-[-6%] top-[14%]', speed: -60 },
+  { icon: Save, pos: 'right-[-5%] top-[30%]', speed: -120 },
+  { icon: Layers, pos: 'left-[-3%] bottom-[18%]', speed: -150 },
 ];
 
 function useCountdown(ref, start) {
@@ -39,6 +61,7 @@ function useCountdown(ref, start) {
 }
 
 export default function MockSection() {
+  const tx = useCopy(COPY);
   const sectionRef = useRef(null);
   const headRef = useRef(null);
   const stageRef = useRef(null);
@@ -74,7 +97,8 @@ export default function MockSection() {
       });
     }, sectionRef);
     return () => ctx.revert();
-  }, []);
+    // Re-run on a language switch: the chips are re-keyed, so the [data-float] nodes are new.
+  }, [tx]);
 
   return (
     <section ref={sectionRef} className="relative z-10 px-4 sm:px-6 py-24 lg:py-36">
@@ -82,18 +106,17 @@ export default function MockSection() {
         <div ref={headRef} className="max-w-3xl mx-auto text-center mb-14 lg:mb-20">
           <p className="font-landing-mono text-[11px] uppercase tracking-[0.35em] text-accent mb-5">IELTS Mock</p>
           <h2 className="font-landing-display font-semibold tracking-[-0.04em] leading-[0.98] text-[40px] sm:text-[56px] lg:text-[72px] text-ink mb-5">
-            Haqiqiy imtihon atmosferasi
+            {tx.title}
           </h2>
           <p className="font-landing-body text-base lg:text-lg text-ink/75 max-w-xl mx-auto">
-            To'rt bo'limli to'liq sinov: server taymeri, avtosaqlash va haqiqiy IELTS interfeysi — imtihon kuni hech narsa
-            yangi bo'lmaydi.
+            {tx.lead}
           </p>
         </div>
 
         <div ref={stageRef} className="relative max-w-3xl mx-auto [perspective:1400px]">
-          {CHIPS.map((c) => (
+          {CHIPS.map((c, i) => (
             <div
-              key={c.text}
+              key={`${tx.chips[i]}-${i}`}
               data-float={c.speed}
               aria-hidden="true"
               className={`hidden lg:flex absolute z-20 ${c.pos} items-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 shadow-premium`}
@@ -101,7 +124,7 @@ export default function MockSection() {
               <span className="grid h-8 w-8 place-items-center rounded-xl bg-accent-soft text-accent">
                 <c.icon size={15} />
               </span>
-              <span className="text-sm font-landing-body font-semibold text-ink">{c.text}</span>
+              <span className="text-sm font-landing-body font-semibold text-ink">{tx.chips[i]}</span>
             </div>
           ))}
           <div
@@ -110,7 +133,7 @@ export default function MockSection() {
             className="hidden sm:block absolute z-20 -right-[3%] -bottom-[10%] rounded-3xl bg-primary px-6 py-5 text-on-primary shadow-premium"
           >
             <p className="flex items-center gap-2 font-landing-mono text-[11px] uppercase tracking-[0.25em] text-on-primary/70">
-              <Award size={13} /> Natija
+              <Award size={13} /> {tx.result}
             </p>
             <p className="font-landing-display text-4xl font-semibold tracking-tight mt-1">Band 7.0</p>
           </div>
@@ -122,11 +145,11 @@ export default function MockSection() {
               </div>
               <span className="font-landing-mono text-xs text-ink/60">12 / 40</span>
               <span className="flex items-center gap-1.5 text-xs font-landing-body text-ink/60">
-                <Flag size={13} /> Belgilash
+                <Flag size={13} /> {tx.flag}
               </span>
             </div>
 
-            <div className="flex overflow-x-auto no-scrollbar border-b border-border" role="tablist" aria-label="Mock bo'limlari">
+            <div className="flex overflow-x-auto no-scrollbar border-b border-border" role="tablist" aria-label={tx.tabsLabel}>
               {TABS.map((tab) => (
                 <button
                   key={tab}
@@ -152,7 +175,7 @@ export default function MockSection() {
                 individual details.
               </p>
               <div className="space-y-2.5">
-                {OPTIONS.map((opt, i) => (
+                {tx.options.map((opt, i) => (
                   <button
                     key={opt}
                     type="button"
