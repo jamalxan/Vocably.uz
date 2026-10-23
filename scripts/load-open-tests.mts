@@ -14,6 +14,8 @@
 //   6. contentValidator.ts#validateTest — blocking xato bo'lmasligi kerak
 //   node --env-file=.env --import tsx scripts/load-open-tests.mts [--series=open|reading|listening|reading-full|listening-full]
 //        [--only=1,2] [--dry] [--draft] [--no-live-check] [--site=https://www.vocably.uz]
+//        [--export=<dir>]  — bazaga yozmaydi, tayyor hujjatlarni <dir>/<slug>.json ga yozadi
+//                            (keyin admin API orqali yuklash uchun; faqat statik audio)
 import dns from 'node:dns';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,6 +26,7 @@ const args = process.argv.slice(2);
 const dry = args.includes('--dry');
 const draft = args.includes('--draft');
 const noLiveCheck = args.includes('--no-live-check');
+const exportDir = (args.find((a) => a.startsWith('--export=')) || '').split('=')[1] || '';
 const site = ((args.find((a) => a.startsWith('--site=')) || '').split('=')[1] || 'https://www.vocably.uz').replace(/\/$/, '');
 const series = (args.find((a) => a.startsWith('--series=')) || '').split('=')[1] || undefined;
 const only = ((args.find((a) => a.startsWith('--only=')) || '').split('=')[1] || '').split(',').filter(Boolean).map(Number);
@@ -55,7 +58,8 @@ const tests = (await loadOpenTests(series)).filter((t: any) => !only.length || o
 let failed = 0;
 
 let db: any = null, bucket: any = null, mongoose: any = null, adminId: any = null;
-if (!dry) {
+if (exportDir) fs.mkdirSync(exportDir, { recursive: true });
+if (!dry && !exportDir) {
   const { connectToDatabase } = await import('@/lib/db');
   mongoose = (await import('mongoose')).default;
   await connectToDatabase();
@@ -131,6 +135,7 @@ for (const t of tests) {
             throw new Error(`${audioUrl} jonli saytda yo'q (HEAD) — avval public/audio/exam/open ni commit+push qiling yoki --draft bilan yuklang`);
           }
         } else {
+          if (exportDir) throw new Error("--export faqat statik audio (listening.audio: static) bilan ishlaydi");
           audioUrl = dry ? `DRY:${p.source.key}` : `/api/exam/audio/${await uploadVerified(a.buf, `${p.source.key}.mp3`, { source: p.source.url, licence: p.source.licence })}`;
         }
         parts.push({ order: p.order, audioUrl, durationSec: a.durationSec, transcript: p.transcript, contextText: p.contextText, gapAfterSec: p.gapAfterSec, questionGroups: p.questionGroups, source: p.source });
@@ -170,6 +175,12 @@ for (const t of tests) {
       `mock=${doc.isMockEligible}`,
     ].filter(Boolean).join(', ');
     if (dry) { console.log(`✓ ${t.slug} (dry) — ${summary}`); continue; }
+    if (exportDir) {
+      const file = path.join(exportDir, `${t.slug}.json`);
+      fs.writeFileSync(file, JSON.stringify(doc));
+      console.log(`✓ ${t.slug} (export) — ${summary} → ${file}`);
+      continue;
+    }
 
     const prev = await db.collection('examtests').findOne({ slug: t.slug }, { projection: { _id: 1, createdAt: 1, createdBy: 1 } });
     await db.collection('examtests').replaceOne(
