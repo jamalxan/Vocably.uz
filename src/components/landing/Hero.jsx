@@ -15,7 +15,7 @@ const COPY = {
     badge: "IELTS uchun zamonaviy o'quv platformasi",
     title: [{ w: 'Ingliz' }, { w: 'tilini' }, { w: 'unutmaydigan', shimmer: true }, { w: 'usulda' }, { w: "o'rganing" }],
     lead: 'Vocably IELTS imtihoniga tayyorgarlik uchun Reading, Listening, Writing, Speaking, Vocabulary, AI va Mock testlarni bitta tizimga birlashtiradi.',
-    ctaPrimary: 'Bepul boshlash',
+    ctaPrimary: 'Shaxsiy reja olish — bepul',
     ctaSecondary: 'Qanday ishlaydi?',
     chips: ["4 ko'nikma", 'SRS', 'AI feedback', 'Mock test'],
     noCard: '· kredit karta shart emas',
@@ -25,7 +25,7 @@ const COPY = {
     badge: 'A modern IELTS learning platform',
     title: [{ w: 'Learn' }, { w: 'English' }, { w: 'that' }, { w: 'actually' }, { w: 'sticks', shimmer: true }],
     lead: 'Vocably brings Reading, Listening, Writing, Speaking, Vocabulary, AI and Mock tests together into one system for IELTS preparation.',
-    ctaPrimary: 'Start for free',
+    ctaPrimary: 'Get my free plan',
     ctaSecondary: 'How it works',
     chips: ['4 skills', 'SRS', 'AI feedback', 'Mock test'],
     noCard: '· no credit card required',
@@ -130,7 +130,7 @@ export default function Hero() {
           >
             <Magnetic className="w-full sm:w-auto">
               <Link
-                href="/register"
+                href="/start"
                 className="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-full bg-accent pl-7 pr-2 py-2 text-sm font-landing-body font-semibold text-on-accent shadow-glow transition-colors duration-300 hover:bg-accent-hover"
               >
                 {tx.ctaPrimary}

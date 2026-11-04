@@ -19,6 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/ielts`, lastModified: CONTENT_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE_URL}/ielts/band-calculator`, lastModified: CONTENT_UPDATED, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE_URL}/demo`, lastModified: CONTENT_UPDATED, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${BASE_URL}/start`, lastModified: CONTENT_UPDATED, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/pricing`, lastModified: CONTENT_UPDATED, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE_URL}/blog`, lastModified: new Date(BLOG_POSTS[0]?.date || CONTENT_UPDATED), changeFrequency: 'weekly', priority: 0.7 },
     { url: `${BASE_URL}/dictionary`, lastModified: CONTENT_UPDATED, changeFrequency: 'monthly', priority: 0.6 },

@@ -149,12 +149,18 @@ export function nextReviewState(
 }
 
 /**
- * Avtomatik baholanadigan rejimlar (typing/quiz/matching) uchun: to'g'ri/tez -> 3,
- * to'g'ri/sekin -> 2, xato -> 1. Spec §6.2.
+ * Avtomatik baholanadigan rejimlar (o'yinlar, typing/quiz/matching) uchun (TZ 2.0 §7):
+ * to'g'ri va juda tez (< 3 s) -> 4 Oson, to'g'ri -> 3 Yaxshi, to'g'ri lekin sekin (> 8 s) -> 2 Qiyin,
+ * xato -> 1 Qayta.
  */
+export const EASY_RESPONSE_MS = 3000;
+export const SLOW_RESPONSE_MS = 8000;
+
 export function ratingFromOutcome(isCorrect: boolean, responseMs?: number): SrsRating {
   if (!isCorrect) return 1;
-  if (typeof responseMs === 'number' && responseMs > 8000) return 2;
+  if (typeof responseMs !== 'number' || !Number.isFinite(responseMs) || responseMs <= 0) return 3;
+  if (responseMs > SLOW_RESPONSE_MS) return 2;
+  if (responseMs < EASY_RESPONSE_MS) return 4;
   return 3;
 }
 

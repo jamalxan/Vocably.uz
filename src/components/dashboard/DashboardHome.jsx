@@ -16,6 +16,7 @@ import MasteryBreakdown from './MasteryBreakdown';
 import LeechList from './LeechList';
 import ForecastRow from './ForecastRow';
 import CategoryProgress from './CategoryProgress';
+import OnboardingPrompt from '@/components/onboarding/OnboardingPrompt';
 
 // Recharts (ActivityChart) faqat shu sahifa ochilganda yuklanadi (spec §11.3).
 const ActivityChart = dynamic(() => import('./ActivityChart'), {
@@ -114,6 +115,8 @@ export default function DashboardHome() {
       <div>
         <h2 className="text-lg sm:text-xl font-bold text-ink font-luxury">{t('dash.welcome', { name: displayName })}</h2>
       </div>
+
+      <OnboardingPrompt onSynced={() => load()} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">

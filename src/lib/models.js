@@ -288,6 +288,12 @@ const UserSchema = new mongoose.Schema({
   // formatlamagan, MVP doirasida shu uchtasi yetarli).
   currentLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced', null], default: null },
   dailyStudyMinutes: { type: Number, default: null },
+  // Vocably 2.0 onboarding (TZ 2.0 §6.1, src/lib/onboarding.js). `goal: general` = IELTS emas,
+  // umumiy ingliz tili. `examDateEstimated` — foydalanuvchi "hali bilmayman" dedi, sana +90 kun.
+  goal: { type: String, enum: ['ielts', 'general', null], default: null },
+  weakestSkill: { type: String, enum: ['reading', 'listening', 'writing', 'speaking', null], default: null },
+  examDateEstimated: { type: Boolean, default: false },
+  onboardingCompletedAt: { type: Date, default: null },
   // BILL-01/02 (VOCABLY_TZ_FINAL...2026-09-20.md §46) — entitlement modeli.
   // Bu bosqichda haqiqiy to'lov integratsiyasi YO'Q (checkout emas) — tarif
   // FAQAT admin tomonidan qo'lda tayinlanadi (src/app/api/admin/chat/users/[id]/route.js
