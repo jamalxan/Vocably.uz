@@ -1242,6 +1242,48 @@ XpEventSchema.index({ createdAt: -1 }); // haftalik reyting — barcha userlar b
 
 export const XpEvent = mongoose.models.XpEvent || mongoose.model('XpEvent', XpEventSchema);
 
+// Vocably 2.0 "Bugungi reja" (TZ 2.0 §6.2, src/lib/todayPlan.js + src/lib/plan/server.js).
+// One document per user per LOCAL day (00:00 in the user's timezone). Built lazily on the
+// first read of the day, so no midnight cron is needed; `inputsKey` rebuilds it when the
+// exam date / daily minutes / weakest skill change. XP per task goes through XpEvent with
+// idempotencyKey `plan:<userId>:<date>:<taskKey>`, so a task can never pay out twice.
+const PlanTaskSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true },
+    type: { type: String, enum: ['review', 'new', 'game', 'skill', 'mock'], required: true },
+    skill: { type: String, default: undefined },
+    title: { type: String, required: true },
+    minutes: { type: Number, default: 0 },
+    href: { type: String, default: '' },
+    xp: { type: Number, default: 0 },
+    target: { type: Number, default: 1 },
+    progress: { type: Number, default: 0 },
+    status: { type: String, enum: ['todo', 'done'], default: 'todo' },
+    doneAt: { type: Date, default: undefined },
+    manual: { type: Boolean, default: undefined },
+    carried: { type: Boolean, default: undefined },
+    focus: { type: Boolean, default: undefined },
+    needsWords: { type: Boolean, default: undefined },
+  },
+  { _id: false }
+);
+const DailyPlanSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  date: { type: String, required: true }, // 'YYYY-MM-DD' in the user's timezone
+  minutes: { type: Number, default: 20 },
+  weakest: { type: String, default: '' },
+  inputsKey: { type: String, default: '' },
+  tasks: { type: [PlanTaskSchema], default: [] },
+  completedAt: { type: Date, default: null }, // all tasks done
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+DailyPlanSchema.index({ userId: 1, date: -1 }, { unique: true });
+// Plans are only read for today/yesterday/the weekly report — keep ~4 months.
+DailyPlanSchema.index({ createdAt: 1 }, { expireAfterSeconds: 120 * 24 * 60 * 60 });
+
+export const DailyPlan = mongoose.models.DailyPlan || mongoose.model('DailyPlan', DailyPlanSchema);
+
 // ============================================================================
 // TZ-vocably-v2.md (AI Content Ingestion Agent, 2026-09-12) §6 — "admin kitob
 // (PDF), audio va rasm yuklaydi — tizim qolganini o'zi qiladi." M1 bosqichi:

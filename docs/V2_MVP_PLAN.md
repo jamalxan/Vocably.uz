@@ -11,9 +11,9 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 ## MVP (Must) gaps, in work order
 | # | Item | TZ | Status |
 |---|---|---|---|
-| 1 | Game → SRS: correct and <3 s = Easy, correct = Good, slow = Hard, wrong = Again | 7, 6.3.4 | ⏳ |
-| 2 | Onboarding wizard (7 steps, resumable) + result screen (X days / Y min / Z words + prices) | 6.1 | ⏳ |
-| 3 | "Today's plan": one engine, plan stored in the DB, task marking, 50% carry-over, XP per task, progress ring | 6.2 | ⏳ |
+| 1 | Game → SRS: correct and <3 s = Easy, correct = Good, slow = Hard, wrong = Again | 7, 6.3.4 | ✅ |
+| 2 | Onboarding wizard (7 steps, resumable) + result screen (X days / Y min / Z words + prices) | 6.1 | ✅ |
+| 3 | "Today's plan": one engine, plan stored in the DB, task marking, 50% carry-over, XP per task, progress ring | 6.2 | ✅ |
 | 4 | Writing word upgrades → SRS in one click (exam grader) | 6.6.1 | ⏳ |
 | 5 | SRS review session: Recognition / Production / Mixed modes | 6.3.3 | ⏳ |
 | 6 | Flagship games without login: Vocably Run (3-lane runner), Gapir yoki yiqil | 7 | ⏳ |
@@ -22,6 +22,12 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 | 9 | Telegram Login Widget + reminder at a user-chosen time, max 2 messages per day | 6.10 | ⏳ |
 | 10 | 7-day trial (setting), 14-day refund request, 3-month plan | 10 | ⏳ |
 | 11 | Admin: landing→onboarding→signup→payment funnel | 6.12.3 | ⏳ |
+
+## Notes on what's done
+- Step 3: `src/lib/todayPlan.js` (rules) + `src/lib/plan/server.js` (storage, signals, XP) + `DailyPlan` model,
+  `GET /api/plan/today`, `POST /api/plan/tasks/:key/complete`. The old `studyPlan.js` was removed (one engine).
+  The plan is built at the start of the local day (00:00) on the first read, so no cron is needed. XP is paid once per task (XpEvent idempotency).
+  Not done yet: the weekly report (TZ §6.2.4, Premium) and the band forecast in the plan card.
 
 ## Should/Could (after the MVP)
 Voice tutor, R/L hint mode, pause map, leagues/duel, SEO tools (CEFR converter, topic generators, university requirements, vocab test),

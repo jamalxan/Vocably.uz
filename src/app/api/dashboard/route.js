@@ -169,7 +169,7 @@ export async function GET(req) {
     const currentEstimate = skillEstimate.estimate;
     const daysLeft = user.examDate ? Math.ceil((new Date(user.examDate).getTime() - now.getTime()) / DAY_MS) : null;
 
-    // Daily plan inputs (src/lib/studyPlan.js): which sections were finished
+    // Legacy plan inputs (the plan itself now lives in /api/plan/today): which sections were finished
     // today (in the user's local day) and how many mistake words are due.
     const recentAttempts = await ExamAttempt.find({
       userId,

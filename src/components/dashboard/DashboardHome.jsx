@@ -141,7 +141,7 @@ export default function DashboardHome() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
         <div className="lg:col-span-2">
-          <StudyPlanCard data={data} />
+          <StudyPlanCard />
         </div>
         <div className="lg:col-span-3">
           <ExamPrepCard examPrep={data.examPrep} />
