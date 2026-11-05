@@ -18,7 +18,7 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 | 5 | SRS review session: Recognition / Production / Mixed modes | 6.3.3 | ✅ |
 | 6 | Flagship games without login: Vocably Run (3-lane runner), Gapir yoki yiqil | 7 | ✅ |
 | 7 | 9:16 result card (download/share) | 7 | ✅ |
-| 8 | Streak: ≥1 plan task = streak, 1 free freeze per week | 6.8.2 | ⏳ |
+| 8 | Streak: ≥1 plan task = streak, 1 free freeze per week | 6.8.2 | ✅ |
 | 9 | Telegram Login Widget + reminder at a user-chosen time, max 2 messages per day | 6.10 | ⏳ |
 | 10 | 7-day trial (setting), 14-day refund request, 3-month plan | 10 | ⏳ |
 | 11 | Admin: landing→onboarding→signup→payment funnel | 6.12.3 | ⏳ |
@@ -45,6 +45,11 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 - Step 7: `src/lib/flagship/shareCard.js` (pure `cardModel` + canvas `drawCard`, 1080×1920 PNG made in the browser, no upload)
   and `ShareCard.jsx` on both result screens: preview, Download, Share (native share sheet with the image file; on desktop "copy link").
   The card has only the game result and the game URL, no user name. Not done: a video card for "Gapir yoki yiqil" (TZ mentions video) — image for now.
+- Step 8: the streak counts "Bugungi reja" tasks (`settleStreak` in `src/lib/plan/server.js`, once per day,
+  conditional update). Reviews/games/Telegram quiz no longer bump the streak directly — they call `touchPlan`, which only
+  re-evaluates the plan until today is settled. The streak day starts at 00:00 (like the plan). Every ISO week the user
+  gets 1 free freeze (`User.freezeWeek`); the old "earn a freeze every 7 days" is gone. The game task is now always in
+  the plan, so there is always a quick task. Trade-off: an offline review done on an earlier day no longer back-fills that day.
 - E2E: the dev server flakes on first compile; the reliable check is `next build` + `next start -p 3100` + `E2E_REUSE_SERVER=1`.
 
 ## Should/Could (after the MVP)

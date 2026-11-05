@@ -88,9 +88,13 @@ export function buildTodayPlan(p) {
     });
   }
 
+  // 2. One game — always present: it's the quick, reachable task that keeps a streak alive
+  // (TZ 2.0 §6.8.2: a streak day = ≥1 plan task done).
+  tasks.push({ key: 'game', type: 'game', title: '1 ta o‘yin — so‘zlarni mustahkamlash', minutes: 5, href: '/app/games', xp: XP.game, target: 1 });
+
   const optional = [];
 
-  // 2. Carry-over: 50% (rounded up) of yesterday's unfinished skill/mock tasks.
+  // 3. Carry-over: 50% (rounded up) of yesterday's unfinished skill/mock tasks.
   const unfinished = (p.previousTasks || []).filter((t) => (t.type === 'skill' || t.type === 'mock') && t.status !== 'done');
   const carried = unfinished.slice(0, Math.ceil(unfinished.length / 2));
   for (const t of carried) {
@@ -100,18 +104,16 @@ export function buildTodayPlan(p) {
     });
   }
 
-  // 3. Today's skill (40% weighted to the weakest).
+  // 4. Today's skill (40% weighted to the weakest).
   const skill = skillForDay(weakest, day);
   optional.push({ ...skillTask(skill, minutes, day), focus: skill === weakest });
 
-  // 4. New words.
+  // 5. New words.
   const n = newWordTarget(minutes);
   optional.push((p.newAvailable || 0) > 0
     ? { key: 'new', type: 'new', title: `${Math.min(n, p.newAvailable)} ta yangi so‘z`, minutes: Math.ceil(Math.min(n, p.newAvailable) * 0.75), href: '/app/vocabulary/flashcards', xp: XP.new, target: Math.min(n, p.newAvailable) }
     : { key: 'new', type: 'new', title: `Kutubxonadan ${n} ta yangi so‘z qo‘shish`, minutes: 5, href: '/app/vocabulary/library', xp: XP.new, target: n, needsWords: true });
 
-  // 5. One game.
-  optional.push({ key: 'game', type: 'game', title: '1 ta o‘yin — so‘zlarni mustahkamlash', minutes: 5, href: '/app/games', xp: XP.game, target: 1 });
 
   // De-duplicate (a carried skill task can equal today's skill task).
   const seen = new Set(tasks.map((t) => t.key));

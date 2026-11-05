@@ -248,6 +248,8 @@ const UserSchema = new mongoose.Schema({
   // Gamified Vocabulary Engine — streak freeze (TZ §15) va o'yin statistikasi (yutuqlar/kvestlar uchun).
   // Streak hisobi o'zi `reviewStreak`/`lastReviewDate` maydonlarida qoladi (ikkala oqim ham bitta streak'ni oshiradi).
   streakFreezes: { type: Number, default: 0, min: 0, max: 5 },
+  // ISO week ('2026-W45') of the last weekly free freeze (TZ 2.0 §6.8.2).
+  freezeWeek: { type: String, default: null },
   gameStats: {
     gamesCompleted: { type: Number, default: 0 },
     bossCompleted: { type: Number, default: 0 },

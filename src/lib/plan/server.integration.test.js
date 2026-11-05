@@ -100,4 +100,40 @@ describeDb('today plan (integration)', () => {
     expect(next.tasks.some((t) => t.carried)).toBe(true);
     expect(await M.DailyPlan.countDocuments({ userId: u._id })).toBe(2);
   });
+
+  describe('streak = ≥1 plan task (TZ 2.0 §6.8.2)', () => {
+    it('an untouched plan does not extend the streak; the first done task does, once', async () => {
+      const u = await makeUser();
+      const plan = await P.getTodayPlan(u._id, NOW);
+      expect(plan.streak).toBeNull();
+      expect((await M.User.findById(u._id).lean()).reviewStreak).toBe(0);
+
+      const skill = plan.tasks.find((t) => t.type === 'skill');
+      const done = await P.completeTask(u._id, skill.key, NOW);
+      expect(done.streak).toMatchObject({ streak: 1, extended: true });
+      const user = await M.User.findById(u._id).lean();
+      expect(user).toMatchObject({ reviewStreak: 1, lastReviewDate: '2026-11-04', freezeWeek: '2026-W45', streakFreezes: 1 });
+
+      // later reads the same day change nothing
+      expect((await P.getTodayPlan(u._id, new Date(NOW.getTime() + 3600_000))).streak).toBeNull();
+      expect((await M.User.findById(u._id).lean()).reviewStreak).toBe(1);
+    });
+
+    it('concurrent reads after activity count the day once', async () => {
+      const u = await makeUser();
+      await M.User.updateOne({ _id: u._id }, { $set: { reviewStreak: 4, lastReviewDate: '2026-11-03', longestReviewStreak: 4 } });
+      await P.getTodayPlan(u._id, NOW);
+      await M.GameSession.create({ userId: u._id, gameKey: 'multiple_choice', difficulty: 'easy', status: 'completed', startedAt: NOW, completedAt: NOW, expiresAt: new Date(NOW.getTime() + 3600_000), questions: [] });
+      const later = new Date(NOW.getTime() + 60_000);
+      const rs = await Promise.all([P.getTodayPlan(u._id, later), P.getTodayPlan(u._id, later), P.touchPlan(u._id, later, '2026-11-03')]);
+      expect(rs.filter((r) => r && (r.streak?.extended || r.extended)).length).toBe(1);
+      expect((await M.User.findById(u._id).lean()).reviewStreak).toBe(5);
+    });
+
+    it('touchPlan skips all work once today is settled', async () => {
+      const u = await makeUser();
+      expect(await P.touchPlan(u._id, NOW, '2026-11-04')).toBeNull();
+      expect(await M.DailyPlan.countDocuments({ userId: u._id })).toBe(0); // no plan read at all
+    });
+  });
 });

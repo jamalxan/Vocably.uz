@@ -5,7 +5,7 @@ import { GameSession, User, VocabularyEntry } from '@/lib/models';
 import { normalizeWordKey } from '@/lib/vocab/library';
 import { localDateWithCutoff } from '@/lib/srs';
 import { ANTI_CHEAT } from '@/lib/vocab/config';
-import { applyStreakActivity } from '@/lib/vocab/streak';
+import { touchPlan } from '@/lib/plan/server';
 import { computeSessionXp, idempotencyKeys, levelInfo } from '@/lib/vocab/xp';
 import { questionUnits, scoreSession, suggestDifficulty, validateAnswer } from '@/lib/vocab/answering';
 import { assessSession, minPlausibleMs } from '@/lib/vocab/antiCheat';
@@ -530,19 +530,14 @@ export async function completeSession({ userId, sessionId, now = new Date() }) {
   const xpAfter = xpResult.totalXp ?? (await User.findById(uid).select('xp').lean())?.xp ?? xpBefore;
 
   // ---------- streak ----------
+  // TZ 2.0 §6.8.2: the streak counts "Bugungi reja" tasks — a finished game completes the plan's
+  // game task, so re-evaluate the plan here (it settles the streak at most once a day).
   let streakInfo = null;
   if (!session.finalized?.streak) {
     if (answeredUnits > 0 && !assessment.suspicious) {
-      const u = await User.findById(uid).select('reviewStreak lastReviewDate longestReviewStreak streakFreezes').lean();
-      const r = applyStreakActivity(
-        { streak: u?.reviewStreak || 0, lastDate: u?.lastReviewDate || null, freezes: u?.streakFreezes || 0, longest: u?.longestReviewStreak || 0 },
-        completedAt,
-        tz
-      );
-      if (!r.alreadyCounted) {
-        await User.updateOne({ _id: uid }, { $set: { reviewStreak: r.streak, lastReviewDate: r.lastDate, longestReviewStreak: r.longest, streakFreezes: r.freezes } });
-      }
-      streakInfo = { streak: r.streak, extended: r.extended, milestone: r.milestone, usedFreezes: r.usedFreezes, earnedFreeze: r.earnedFreeze, broke: r.broke };
+      const settled = await touchPlan(uid, now);
+      const u = settled ? null : await User.findById(uid).select('reviewStreak').lean();
+      streakInfo = settled || { streak: u?.reviewStreak || 0, extended: false, milestone: null, usedFreezes: 0, earnedFreeze: false, broke: false };
     }
     await GameSession.updateOne({ _id: session._id }, { $set: { 'finalized.streak': true } });
   }

@@ -1,10 +1,12 @@
 import { ReviewEvent } from '@/lib/models';
-import { nextReviewState, cardFromStats, levelFromIntervalDays, computeStreakUpdate } from '@/lib/srs';
+import { nextReviewState, cardFromStats, levelFromIntervalDays } from '@/lib/srs';
 
 // One SRS review applied to a word of a loaded (not lean) user document —
 // shared by the web review endpoint and the Telegram mini-test, so both
-// move the schedule and the streak in exactly the same way. The caller saves
-// the user; `logReviewEvent` is separate because it must run after the save.
+// move the schedule in exactly the same way. The caller saves the user;
+// `logReviewEvent` is separate because it must run after the save. The streak is
+// not touched here: since TZ 2.0 it counts plan tasks (touchPlan in plan/server.js).
+// `user` is unused but kept in the signature for callers.
 export function applyWordReview(user, word, { correct, rating, now = new Date() }) {
   if (!word.stats) word.stats = {};
   const prevCard = cardFromStats(word.stats);
@@ -23,10 +25,7 @@ export function applyWordReview(user, word, { correct, rating, now = new Date() 
   word.stats.wrong = (word.stats.wrong || 0) + (correct ? 0 : 1);
   word.stats.lastReviewed = now;
 
-  const { streak, lastReviewDate } = computeStreakUpdate(now, user.timezone || 'Asia/Tashkent', user.reviewStreak || 0, user.lastReviewDate);
-  user.reviewStreak = streak;
-  user.lastReviewDate = lastReviewDate;
-  user.longestReviewStreak = Math.max(user.longestReviewStreak || 0, streak);
+  void user;
 
   return { prevCard, result };
 }

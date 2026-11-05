@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyStreakActivity, daysBetween, effectiveStreak, type StreakState } from './streak';
+import { applyStreakActivity, daysBetween, effectiveStreak, isoWeek, type StreakState } from './streak';
 
 const TZ = 'Asia/Tashkent';
 // Toshkent UTC+5: 2026-10-01 12:00 UTC = 17:00 Toshkent
@@ -41,7 +41,8 @@ describe('applyStreakActivity (TZ §15)', () => {
   });
 
   it("o'tkazib yuborilgan kun (freeze'siz) streak ni uzadi", () => {
-    const s: StreakState = { streak: 5, lastDate: '2026-10-01', freezes: 0, longest: 5 };
+    // this week's free freeze was already granted (and spent)
+    const s: StreakState = { streak: 5, lastDate: '2026-10-01', freezes: 0, longest: 5, freezeWeek: isoWeek('2026-10-03') };
     const r = applyStreakActivity(s, at('2026-10-03T12:00:00Z'), TZ);
     expect(r.streak).toBe(1);
     expect(r.broke).toBe(true);
@@ -65,27 +66,35 @@ describe('applyStreakActivity (TZ §15)', () => {
     expect(r.freezes).toBe(1);
   });
 
-  it("7 kunlik streak da yangi freeze topiladi (maksimum 2)", () => {
-    const s: StreakState = { streak: 6, lastDate: '2026-10-01', freezes: 0, longest: 6 };
-    const r = applyStreakActivity(s, at('2026-10-02T12:00:00Z'), TZ);
-    expect(r.streak).toBe(7);
-    expect(r.earnedFreeze).toBe(true);
-    expect(r.freezes).toBe(1);
-    expect(r.milestone).toBe(7);
+  it('TZ 2.0: har hafta 1 ta bepul freeze (to‘ldiriladi, maksimumdan oshmaydi)', () => {
+    expect(isoWeek('2026-10-05')).toBe('2026-W41'); // Monday
+    expect(isoWeek('2026-10-04')).toBe('2026-W40'); // Sunday
+    expect(isoWeek('2027-01-01')).toBe('2026-W53');
 
-    const full: StreakState = { streak: 6, lastDate: '2026-10-01', freezes: 2, longest: 6 };
-    expect(applyStreakActivity(full, at('2026-10-02T12:00:00Z'), TZ).freezes).toBe(2);
+    const s: StreakState = { streak: 6, lastDate: '2026-10-04', freezes: 0, longest: 6, freezeWeek: '2026-W40' };
+    const r = applyStreakActivity(s, at('2026-10-05T12:00:00Z'), TZ);
+    expect(r).toMatchObject({ streak: 7, earnedFreeze: true, freezes: 1, freezeWeek: '2026-W41', milestone: 7 });
+    // same week — no second grant
+    const again = applyStreakActivity({ ...r, freezes: 0 }, at('2026-10-06T12:00:00Z'), TZ);
+    expect(again).toMatchObject({ earnedFreeze: false, freezes: 0 });
+    // already at the cap
+    expect(applyStreakActivity({ ...s, freezes: 2 }, at('2026-10-05T12:00:00Z'), TZ).freezes).toBe(2);
   });
 
-  it("timezone va 04:00 chegarasini hisobga oladi: 03:30 (Toshkent) hali kechagi kun", () => {
-    // 2026-10-02 03:30 Toshkent = 2026-10-01 22:30 UTC -> hali 2026-10-01 hisoblanadi
+  it("yangi haftaning freeze'i o'tgan haftadagi bitta bo'shliqni yopadi", () => {
+    // active Sat 10-03, missed Sun 10-04, back Mon 10-05 (new week)
+    const s: StreakState = { streak: 4, lastDate: '2026-10-03', freezes: 0, longest: 4, freezeWeek: '2026-W40' };
+    const r = applyStreakActivity(s, at('2026-10-05T12:00:00Z'), TZ);
+    expect(r).toMatchObject({ streak: 5, usedFreezes: 1, freezes: 0, broke: false });
+  });
+
+  it("kun 00:00 da (reja bilan bir xil) boshlanadi, foydalanuvchi timezone'ida", () => {
+    // 23:30 Toshkent (18:30 UTC) — hali 2026-10-01
     const s: StreakState = { streak: 3, lastDate: '2026-10-01', freezes: 0, longest: 3 };
-    const r = applyStreakActivity(s, at('2026-10-01T22:30:00Z'), TZ);
+    const r = applyStreakActivity(s, at('2026-10-01T18:30:00Z'), TZ);
     expect(r.alreadyCounted).toBe(true);
-    expect(r.streak).toBe(3);
-    // 05:00 Toshkent — yangi kun
-    const next = applyStreakActivity(s, at('2026-10-02T00:00:00Z'), TZ);
-    expect(next.streak).toBe(4);
+    // 00:30 Toshkent — yangi kun
+    expect(applyStreakActivity(s, at('2026-10-01T19:30:00Z'), TZ).streak).toBe(4);
   });
 
   it("soat orqaga surilsa (gap <= 0) streak buzilmaydi", () => {

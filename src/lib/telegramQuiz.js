@@ -2,6 +2,7 @@ import { User } from '@/lib/models';
 import { escapeTelegramHtml } from './telegramHtml';
 import { sendMessage, editMessageText } from '@/lib/telegram';
 import { applyWordReview, logReviewEvent } from '@/lib/wordReview';
+import { touchPlan } from '@/lib/plan/server';
 
 // Daily 5-minute mini-test in Telegram: five words from the user's own
 // vocabulary (due ones first), "which translation is right?" with four
@@ -120,6 +121,8 @@ export async function handleQuizCallback(chatId, messageId, data, now = new Date
   await user.save();
   if (review) {
     await logReviewEvent({ userId: user._id, categoryId: item.categoryId, wordId: item.wordId, mode: 'telegram', rating: correct ? 3 : 1, correct, now, ...review });
+    const settled = await touchPlan(user._id, now, user.lastReviewDate || null);
+    if (settled) user.reviewStreak = settled.streak;
   }
 
   const verdict = correct ? '✅ To‘g‘ri!' : `❌ To‘g‘ri javob: <b>${item.options[item.correct]}</b>`;

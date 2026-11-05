@@ -7,7 +7,7 @@ import { ratingFromOutcome } from '@/lib/srs';
 import { applyWordReview, logReviewEvent } from '@/lib/wordReview';
 import { awardXp, xpForReview, checkAndAwardBadges, countMasteredWords } from '@/lib/gamification';
 import { applySkillResult, computeMastery } from '@/lib/vocab/mastery';
-import { applyStreakActivity } from '@/lib/vocab/streak';
+import { touchPlan } from '@/lib/plan/server';
 import { statsToInput } from '@/lib/vocab/server/words';
 import { recordQuestEvents } from '@/lib/vocab/server/questService';
 import { awardXpOnce, trackVocabEvents } from '@/lib/vocab/server/ledger';
@@ -70,14 +70,6 @@ export async function PATCH(req) {
     // Rating (1-4) hozircha faqat ba'zi rejimlardan keladi — qolganlari hali eski
     // to'g'ri/xato tugmalarini ishlatadi (FAZA 5'da 4 tugmali baholashga o'tiladi).
     const rating = [1, 2, 3, 4].includes(ratingInput) ? ratingInput : ratingFromOutcome(correct, responseMs);
-    // Streak holati SRS qo'llanishidan OLDIN olinadi: pastda freeze'ni hisobga oluvchi yagona hisob (streak.ts)
-    // applyWordReview ichidagi oddiy hisobni bosib yozadi — o'yinlar bilan bir xil streak.
-    const streakBefore = {
-      streak: user.reviewStreak || 0,
-      lastDate: user.lastReviewDate || null,
-      freezes: user.streakFreezes || 0,
-      longest: user.longestReviewStreak || 0,
-    };
     const { prevCard, result } = applyWordReview(user, word, { correct, rating, now });
 
     // Mastery (TZ §6): takrorlash "recall" ko'nikmasi signali — SRS hisobiga tegmaydi.
@@ -103,13 +95,6 @@ export async function PATCH(req) {
     const newlyMastered = mastery.status === 'mastered' && !word.stats.masteredAt;
     if (newlyMastered) word.stats.masteredAt = now;
 
-    const streakResult = applyStreakActivity(streakBefore, now, user.timezone || 'Asia/Tashkent');
-    const streak = streakResult.streak;
-    user.reviewStreak = streak;
-    user.lastReviewDate = streakResult.lastDate;
-    user.longestReviewStreak = Math.max(streakBefore.longest, streak);
-    user.streakFreezes = streakResult.freezes;
-
     // FAZA 5 — gamifikatsiya (VOCABLY-TZ.md §13). Yutuqlar so'z holatini yangilagandan
     // KEYIN tekshiriladi — "mastered so'zlar soni" aynan shu javobdan keyingi holatni aks ettirsin.
     // XP faqat: shu so'z yaqinda takrorlanmagan va oxirgi 24 soatda takrorlash-XP chegarasi to'lmagan bo'lsa.
@@ -126,6 +111,8 @@ export async function PATCH(req) {
     // Javobdan oldin kutiladi (serverless funksiya javobdan keyin to'xtatilishi
     // mumkin); xato bo'lsa faqat log qilinadi — asosiy holat allaqachon saqlangan.
     await logReviewEvent({ userId: user._id, categoryId, wordId, mode: mode || 'spaced', rating, correct, prevCard, result, now });
+    // TZ 2.0: the streak counts plan tasks — re-evaluate today's plan (no-op once today is settled).
+    const streakResult = await touchPlan(user._id, now, user.lastReviewDate || null);
 
     // Gamified Vocabulary Engine — kvest progressi, "mastered" XP va analytics. Bularning hech biri
     // asosiy takrorlash javobini bloklamasligi kerak (yuqorida allaqachon saqlangan) — alohida try/catch.
@@ -147,7 +134,6 @@ export async function PATCH(req) {
       await trackVocabEvents(user._id, [
         { name: 'review_answered', payload: { correct, rating, mode: mode || 'spaced', ms: Math.round(responseMs || 0) } },
         ...(newlyMastered ? [{ name: 'vocabulary_mastered', payload: { word: word.word } }] : []),
-        ...(streakResult.extended ? [{ name: 'streak_extended', payload: { streak } }] : []),
       ]);
     } catch (err) {
       console.error('[vocab] takrorlash signalini yozishda xatolik', err);
@@ -156,7 +142,7 @@ export async function PATCH(req) {
     return NextResponse.json({
       success: true,
       stats: word.stats,
-      reviewStreak: user.reviewStreak,
+      reviewStreak: streakResult?.streak ?? user.reviewStreak,
       xp: user.xp,
       newBadges,
       questsCompleted: questsCompleted.map((q) => ({ key: q.def.key, title: q.def.title, rewardXp: q.xp })),

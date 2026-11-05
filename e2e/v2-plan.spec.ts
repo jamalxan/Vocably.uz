@@ -67,6 +67,10 @@ test.describe('Vocably 2.0 — today plan', () => {
     await expect(ticks).toHaveCount(before - 1, { timeout: 15_000 });
     const after = await (await page.request.get('/api/plan/today')).json();
     expect(after.progress.xpEarned).toBeGreaterThanOrEqual(skill.xp);
+    // TZ 2.0 §6.8.2: a done plan task makes today a streak day; the card shows it.
+    expect(after.streakNow.todayDone).toBe(true);
+    expect(after.streakNow.days).toBeGreaterThanOrEqual(1);
+    await expect(card.getByText(/kunlik seriya/)).toBeVisible();
 
     const second = await page.request.post(`/api/plan/tasks/${skill.key}/complete`);
     expect((await second.json()).xpPaid).toBe(0);

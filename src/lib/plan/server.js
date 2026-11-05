@@ -11,13 +11,15 @@ import { User, DailyPlan, ReviewEvent, GameSession, ExamAttempt, XpEvent } from 
 import { cardFromStats, localDateWithCutoff } from '@/lib/srs';
 import { getSkillBandEstimate } from '@/lib/exam/attemptServer';
 import { buildTodayPlan, applySignals, planInputsKey, mergeRebuilt, planProgress } from '@/lib/todayPlan';
+import { applyStreakActivity, effectiveStreak, STREAK_FREEZE_CONFIG } from '@/lib/vocab/streak';
+import { trackVocabEvents } from '@/lib/vocab/server/ledger';
 
 const DAY_MS = 86400000;
 /** TZ: the plan day starts at 00:00 local time (not the 04:00 SRS cutoff). */
 const PLAN_CUTOFF_HOUR = 0;
 const MANUAL_TYPES = new Set(['skill', 'mock']);
 
-const USER_FIELDS = 'timezone dailyStudyMinutes examDate targetBand weakestSkill categories.words.stats';
+const USER_FIELDS = 'timezone dailyStudyMinutes examDate targetBand weakestSkill reviewStreak lastReviewDate streakFreezes freezeWeek categories.words.stats';
 
 export function planDate(now, tz) {
   return localDateWithCutoff(now, tz || 'Asia/Tashkent', PLAN_CUTOFF_HOUR);
@@ -118,6 +120,52 @@ function serialize(plan, user, now) {
   };
 }
 
+const STREAK_FIELDS = 'timezone reviewStreak lastReviewDate longestReviewStreak streakFreezes freezeWeek';
+
+/**
+ * TZ 2.0 §6.8.2: the day counts for the streak once ≥1 plan task is done. Runs at most once a
+ * day per user: the update is conditional on the previous lastReviewDate, so concurrent requests
+ * can't count a day twice. Returns streak info, or null when nothing changed.
+ */
+async function settleStreak(userId, date, now, tasks) {
+  if (!tasks.some((t) => t.status === 'done')) return null;
+  const u = await User.findById(userId).select(STREAK_FIELDS).lean();
+  if (!u || u.lastReviewDate === date) return null;
+  const r = applyStreakActivity(
+    { streak: u.reviewStreak || 0, lastDate: u.lastReviewDate || null, freezes: u.streakFreezes || 0, longest: u.longestReviewStreak || 0, freezeWeek: u.freezeWeek || null },
+    now,
+    u.timezone || 'Asia/Tashkent',
+    STREAK_FREEZE_CONFIG
+  );
+  if (r.alreadyCounted) return null;
+  const res = await User.updateOne(
+    { _id: userId, lastReviewDate: u.lastReviewDate ?? null },
+    { $set: { reviewStreak: r.streak, lastReviewDate: r.lastDate, longestReviewStreak: r.longest, streakFreezes: r.freezes, freezeWeek: r.freezeWeek } }
+  );
+  if (!res.modifiedCount) return null; // a concurrent request settled it
+  await trackVocabEvents(userId, [{ name: 'streak_extended', payload: { streak: r.streak, usedFreezes: r.usedFreezes } }]).catch(() => {});
+  return { streak: r.streak, extended: true, milestone: r.milestone, usedFreezes: r.usedFreezes, earnedFreeze: r.earnedFreeze, broke: r.broke, freezes: r.freezes };
+}
+
+/**
+ * After learning activity (review, game, Telegram quiz): re-evaluate today's plan so the streak
+ * and task XP update right away — but only until today is settled, so it costs nothing after
+ * the first finished task of the day. Never throws (activity is already saved).
+ */
+export async function touchPlan(userId, now = new Date(), knownLastDate) {
+  try {
+    if (knownLastDate !== undefined) {
+      const u = await User.findById(userId).select('timezone').lean();
+      if (knownLastDate === planDate(now, u?.timezone)) return null;
+    }
+    const plan = await getTodayPlan(userId, now);
+    return plan?.streak || null;
+  } catch (err) {
+    console.error('[plan] touchPlan failed', err);
+    return null;
+  }
+}
+
 /** GET /api/plan/today */
 export async function getTodayPlan(userId, now = new Date()) {
   const user = await User.findById(userId).select(USER_FIELDS).lean();
@@ -158,7 +206,17 @@ export async function getTodayPlan(userId, now = new Date()) {
     );
   }
   const xpPaid = newlyDone.length ? await payXp(new mongoose.Types.ObjectId(String(userId)), date, tasks, newlyDone) : 0;
-  return { ...serialize({ ...plan, tasks }, user, now), xpPaid, newlyDone };
+  const streak = await settleStreak(userId, date, now, tasks);
+  // What the card shows: current streak, freezes, and whether today already counts.
+  const eff = effectiveStreak(
+    { streak: user.reviewStreak || 0, lastDate: user.lastReviewDate || null, freezes: user.streakFreezes || 0, longest: 0, freezeWeek: user.freezeWeek || null },
+    now,
+    tz
+  );
+  const streakNow = streak
+    ? { days: streak.streak, freezes: streak.freezes, todayDone: true }
+    : { days: eff.streak, freezes: user.streakFreezes || 0, todayDone: user.lastReviewDate === date };
+  return { ...serialize({ ...plan, tasks }, user, now), xpPaid, newlyDone, streak, streakNow };
 }
 
 /** POST /api/plan/tasks/:key/complete — manual tick for tasks we can't detect (skill/mock). */
@@ -182,5 +240,6 @@ export async function completeTask(userId, key, now = new Date()) {
     await DailyPlan.updateOne({ _id: plan._id, completedAt: null }, { $set: { completedAt: now } });
   }
   const xpPaid = await payXp(new mongoose.Types.ObjectId(String(userId)), date, plan.tasks, [key]);
-  return { ok: true, xpPaid };
+  const streak = await settleStreak(userId, date, now, [{ status: 'done' }]);
+  return { ok: true, xpPaid, streak };
 }

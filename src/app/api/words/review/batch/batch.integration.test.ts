@@ -55,7 +55,10 @@ describeDb('POST /api/words/review/batch (integration)', () => {
     expect(w.stats.reps).toBe(1);
     expect(w.stats.correct).toBe(1);
     expect(new Date(w.stats.lastReviewed).getTime()).toBeLessThan(Date.now() - 3000_000); // clientTs ishlatilgan
-    expect(u.xp).toBe(100); // offline XP bermaydi
+    // offline reviews give no review XP; only a finished "Bugungi reja" task pays (once per day)
+    const planXp = (await M.XpEvent.find({ userId: user._id, sourceType: 'plan' }).lean()).reduce((n: number, e: any) => n + e.amount, 0);
+    expect(await M.XpEvent.countDocuments({ userId: user._id, sourceType: { $ne: 'plan' } })).toBe(0);
+    expect(u.xp).toBe(100 + planXp);
     expect(await M.ReviewEvent.countDocuments({ userId: user._id, mode: 'offline' })).toBe(1);
   });
 

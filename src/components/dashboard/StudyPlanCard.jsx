@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CalendarCheck, CheckCircle2, Circle, ChevronRight, Star, RotateCcw, Check, Loader2 } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, Circle, ChevronRight, Star, RotateCcw, Check, Loader2, Flame, Snowflake } from 'lucide-react';
 import { useT } from '@/context/LocaleContext';
 
 const SKILL_LABEL = { listening: 'Listening', reading: 'Reading', writing: 'Writing', speaking: 'Speaking' };
@@ -39,7 +39,8 @@ export default function StudyPlanCard() {
       if (signal?.aborted) return;
       setPlan(j);
       setError(false);
-      if (j.xpPaid > 0) setToast(t('plan.xpGained', { xp: j.xpPaid }));
+      if (j.streak?.extended) setToast(t('plan.streakUp', { n: j.streak.streak }));
+      else if (j.xpPaid > 0) setToast(t('plan.xpGained', { xp: j.xpPaid }));
     } catch {
       if (!signal?.aborted) setError(true);
     }
@@ -71,7 +72,8 @@ export default function StudyPlanCard() {
       const r = await fetch(`/api/plan/tasks/${encodeURIComponent(key)}/complete`, { method: 'POST' });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error();
-      if (j.xpPaid > 0) setToast(t('plan.xpGained', { xp: j.xpPaid }));
+      if (j.streak?.extended) setToast(t('plan.streakUp', { n: j.streak.streak }));
+      else if (j.xpPaid > 0) setToast(t('plan.xpGained', { xp: j.xpPaid }));
       await load();
     } catch {
       await load();
@@ -128,6 +130,19 @@ export default function StudyPlanCard() {
           <p className="text-xs text-muted tabular-nums mt-0.5">
             ~{t('hub.minShort', { n: minutes })} · {t('plan.xpToday', { earned: xpEarned, total: xpTotal })}
           </p>
+          {plan.streakNow && (
+            <p className="text-xs tabular-nums mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+              <span className={`inline-flex items-center gap-1 font-semibold ${plan.streakNow.todayDone ? 'text-accent' : 'text-muted'}`}>
+                <Flame size={13} aria-hidden="true" /> {t('plan.streak', { n: plan.streakNow.days })}
+              </span>
+              {plan.streakNow.freezes > 0 && (
+                <span className="inline-flex items-center gap-1 text-muted" title={t('plan.freezeHint')}>
+                  <Snowflake size={13} aria-hidden="true" /> {t('plan.freezes', { n: plan.streakNow.freezes })}
+                </span>
+              )}
+              {!plan.streakNow.todayDone && <span className="text-muted">{t('plan.streakHint')}</span>}
+            </p>
+          )}
         </div>
       </div>
 
