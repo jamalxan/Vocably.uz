@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectsCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 
@@ -131,6 +131,12 @@ export async function readObjectPrefix(key, length = 16) {
     chunks.push(chunk);
   }
   return Buffer.concat(chunks.map((c) => (Buffer.isBuffer(c) ? c : Buffer.from(c))));
+}
+
+// Forward: the object is copied inside the bucket into the target conversation's folder — the
+// browser no longer downloads and re-uploads the file (Telegram-speed forwards).
+export async function copyObject(srcKey, dstKey) {
+  await getClient().send(new CopyObjectCommand({ Bucket: BUCKET(), CopySource: `${BUCKET()}/${encodeURIComponent(srcKey).replace(/%2F/g, '/')}`, Key: dstKey }));
 }
 
 export async function objectExists(key) {

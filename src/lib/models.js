@@ -468,6 +468,10 @@ const ConversationSchema = new mongoose.Schema({
   // holatda ham keyinroq (qidiruv orqali qayta ochilsa yoki yangi xabar kelsa) shu
   // userning id'si bu massivdan olib tashlanadi — suhbat ro'yxatga qaytadi (src/app/api/chat/conversations).
   hiddenFor: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  // Telegram parity (faqat shu userga tegishli): arxivlangan va yuqoriga qadalgan suhbatlar.
+  // Arxivdagi suhbatga yangi xabar kelsa, u arxivdan chiqadi (messages POST).
+  archivedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  pinnedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   // Har bir tomon boshqasiga o'zi xohlagan taxallus qo'yishi mumkin (faqat o'zida
   // ko'rinadi) — kalit shu userning id'si (String), qiymat esa u ko'rgan taxallus.
   // .lean() bilan oddiy JS obyektiga aylanadi (src/app/api/chat/conversations/[id]/nickname).
@@ -507,6 +511,10 @@ const MessageMediaSchema = new mongoose.Schema(
     durationSec: { type: Number, default: null },
     // Video note (recorded with the in-chat camera) — shown as a circle.
     round: { type: Boolean, default: false },
+    // Telegram parity: the original file name (files), and the voice waveform (0–31, ≤100 samples)
+    // recorded on the client so the bubble can draw it without decoding the audio.
+    name: { type: String, default: '' },
+    waveform: { type: [Number], default: undefined },
   },
   { _id: false }
 );
@@ -524,6 +532,8 @@ const ReplyToSchema = new mongoose.Schema(
     // Iqtibos qilingan asl xabar "hamma uchun" o'chirilgan — matn tozalanadi,
     // iqtibos o'rnida "Xabar o'chirildi" ko'rsatiladi.
     deleted: { type: Boolean, default: false },
+    // Media iqtibosi uchun kichik rasmcha (rasm/video) — Telegram'dagi kabi.
+    mediaKey: { type: String, default: null },
   },
   { _id: false }
 );
@@ -536,6 +546,13 @@ const MessageSchema = new mongoose.Schema({
   media: { type: MessageMediaSchema, default: null },
   stickerId: { type: String, default: null }, // src/lib/stickers.js manifest'idagi statik id
   replyTo: { type: ReplyToSchema, default: null },
+  // Birga yuborilgan 2–10 rasm/video bitta albom (grid) bo'lib ko'rinadi — klient yaratgan id.
+  albumId: { type: String, default: null },
+  // Forward qilingan xabar: asl yuboruvchi (Telegram "… dan yuborilgan").
+  forwardedFrom: {
+    type: new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, name: { type: String, default: '' } }, { _id: false }),
+    default: null,
+  },
   readAt: { type: Date, default: null },
   // Telegram uslubidagi ikki xil o'chirish: `deletedFor` — faqat shu ro'yxatdagi
   // foydalanuvchi(lar) o'z tarafidan ko'rmaydi (boshqa tomon xabarni odatdagidek

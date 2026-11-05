@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Check,
   CheckCheck,
+  CheckSquare,
   Clock,
   Copy,
   Download,
@@ -28,42 +29,26 @@ import { useChat } from '@/context/ChatContext';
 import { isOnline } from '@/lib/presence';
 import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import { parseMessageFormatting } from '@/lib/chatFormatting';
+import { albumRows } from '@/lib/chat/albums';
+import { formatBytes, fileExtension } from '@/lib/chat/mediaMeta';
 import DeleteMessageModal from './DeleteMessageModal';
 import ForwardMessageModal from './ForwardMessageModal';
 import ReportReasonModal from './ReportReasonModal';
 
-// Uzoq bosish (long-press) uchun chegara — ConversationList.jsx'dagi bilan bir xil
-// naqsh/vaqt (C-10 — xabar pufakchasida ham o'sha uslub bilan kontekst menyu).
+// Message bubbles (Telegram parity): albums, local previews with upload progress, file cards with
+// name/size, voice with waveform + speed, forwarded label, reply quote with thumbnail, swipe-to-reply,
+// multi-select. Context menu: "..." / right-click / long-press.
 const LONG_PRESS_MS = 500;
+const SWIPE_REPLY_PX = 56;
+const SPEEDS = [1, 1.5, 2];
 
-function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
-  const { t, ts } = useT();
-  const senderLabel = String(replyTo.senderId) === String(myId) ? t('ch.youRaw') : otherUsername ? `@${otherUsername}` : t('ch.user');
-  const preview = replyTo.deleted
-    ? t('mb.deleted')
-    : replyTo.type === 'text' ? replyTo.text : ts(REPLY_TYPE_LABEL[replyTo.type] || '');
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`block w-full text-left mb-1.5 pl-2 border-l-2 rounded-sm ${
-        isMine ? 'border-on-accent/50 hover:bg-on-accent/10' : 'border-accent hover:bg-primary-soft/40'
-      } transition-colors`}
-    >
-      <p className={`text-xs font-semibold truncate ${isMine ? 'text-on-accent/90' : 'text-accent'}`}>{senderLabel}</p>
-      <p className={`text-xs truncate ${isMine ? 'text-on-accent/70' : 'text-muted'}`}>{preview || '…'}</p>
-    </button>
-  );
-}
+const idOf = (m) => String(m.id || m._id);
 
-// Presign so'rovi xato bo'lsa — cheksiz "pulsing" skelet o'rniga aniq xabar.
 function MediaError() {
   const { t } = useT();
   return <p className="text-xs text-muted italic">{t('mb.loadFail')}</p>;
 }
 
-// Oyna ochilganda fokusni ichkariga oladi, Escape bilan yopiladi, yopilganda
-// fokusni avvalgi tugmaga qaytaradi.
 function useDialogFocus(initialRef, onClose) {
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; });
@@ -81,21 +66,13 @@ function useDialogFocus(initialRef, onClose) {
   }, [initialRef]);
 }
 
-// C-09 — UserProfileModal.jsx'dagi media galereyasi ham xuddi shu lightbox'ni
-// ishlatadi (bosilganda rasm kattalashadi) — alohida oyna qurish o'rniga eksport
-// qilinadi (TZ ko'rsatmasiga ko'ra "bo'lsa qayta ishlatilsin").
+/** Legacy single-image lightbox — the profile gallery still uses it. */
 export function ImageLightbox({ url, onClose }) {
   const { t } = useT();
   const closeRef = useRef(null);
   useDialogFocus(closeRef, onClose);
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('ch.photoAlt')}
-      onClick={onClose}
-      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-zoom-out"
-    >
+    <div role="dialog" aria-modal="true" aria-label={t('ch.photoAlt')} onClick={onClose} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-zoom-out">
       <button
         ref={closeRef}
         type="button"
@@ -112,59 +89,158 @@ export function ImageLightbox({ url, onClose }) {
   );
 }
 
-// C-12 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 K) — rasm/video/fayl
-// endi FAQAT pufakcha viewport'ga (yoki uning 200px atrofiga) kirganda so'raladi
-// (useInViewport), suhbat ochilishi bilan HAMMASI emas — `inView` bo'lmaguncha
-// useAuthedMediaUrl'ga `null` uzatiladi, u esa mediaKey bo'lmasa hech qanday
-// so'rov yubormaydi (src/lib/useAuthedMedia.js).
-function ImageBubble({ media }) {
+// ---------------------------------------------------------------- upload overlay (progress ring + cancel)
+function UploadOverlay({ message }) {
   const { t } = useT();
-  const [viewRef, inView] = useInViewport();
-  const { url, error } = useAuthedMediaUrl(inView ? media.key : null);
-  const [open, setOpen] = useState(false);
-  if (error) return <MediaError />;
-  if (!url) {
-    return <div ref={viewRef} className="w-40 max-w-full h-32 bg-primary-soft rounded-lg animate-pulse" />;
-  }
+  const { cancelUpload, retryMessage } = useChat();
+  const status = message._status;
+  if (status !== 'uploading' && status !== 'failed') return null;
+  const pct = Math.round((message._upload?.progress || 0) * 100);
+  const C = 2 * Math.PI * 20;
   return (
-    <>
+    <div className="absolute inset-0 grid place-items-center bg-black/35 rounded-lg" data-testid="upload-overlay">
+      {status === 'uploading' ? (
+        <button
+          type="button"
+          onClick={() => cancelUpload(message.clientMessageId)}
+          aria-label={t('ch.cancelUpload')}
+          title={t('ch.cancelUpload')}
+          className="relative w-12 h-12 rounded-full bg-black/55 text-white grid place-items-center"
+        >
+          <svg viewBox="0 0 48 48" className="absolute inset-0 w-full h-full -rotate-90" aria-hidden="true">
+            <circle cx="24" cy="24" r="20" fill="none" stroke="white" strokeOpacity="0.3" strokeWidth="3" />
+            <circle cx="24" cy="24" r="20" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - pct / 100)} className="transition-[stroke-dashoffset] duration-200" />
+          </svg>
+          <X size={16} />
+          <span className="sr-only">{pct}%</span>
+        </button>
+      ) : (
+        <button type="button" onClick={() => retryMessage(message)} className="inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-xs font-semibold px-3 py-1.5">
+          <AlertCircle size={14} /> {t('mb.retry')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- image / video / album tiles
+function useMediaUrl(message, media) {
+  const [viewRef, inView] = useInViewport();
+  const { url: signed, error } = useAuthedMediaUrl(!message._localUrl && inView && media?.key ? media.key : null);
+  return { viewRef, url: message._localUrl || signed, error };
+}
+
+/** Keeps the bubble the final picture's shape before it loads (no layout jump). */
+function aspectStyle(media, maxW, maxH) {
+  const w = media?.width;
+  const h = media?.height;
+  if (!w || !h) return { width: maxW * 0.8, height: maxH * 0.6 };
+  const scale = Math.min(maxW / w, maxH / h, 1);
+  return { width: Math.max(96, Math.round(w * scale)), height: Math.max(72, Math.round(h * scale)) };
+}
+
+function ImageBubble({ message, onOpen }) {
+  const { t } = useT();
+  const { viewRef, url, error } = useMediaUrl(message, message.media);
+  const box = aspectStyle(message.media, 280, 320);
+  if (error) return <MediaError />;
+  return (
+    <div className="relative" style={{ maxWidth: '100%' }}>
       <button
         ref={viewRef}
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => url && onOpen?.()}
         aria-label={t('ch.zoom')}
-        className="block max-w-full rounded-lg cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="block max-w-full rounded-lg overflow-hidden bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        style={box}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={t('ch.photoAlt')} className="block max-w-[min(240px,100%)] max-h-[280px] rounded-lg object-cover" />
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={message.text || t('ch.photoAlt')} className="w-full h-full object-cover" draggable={false} />
+        ) : (
+          <span className="block w-full h-full animate-pulse" />
+        )}
       </button>
-      {open && <ImageLightbox url={url} onClose={() => setOpen(false)} />}
-    </>
+      <UploadOverlay message={message} />
+    </div>
   );
 }
 
-function VideoBubble({ media }) {
-  const [viewRef, inView] = useInViewport();
-  const { url, error } = useAuthedMediaUrl(inView ? media.key : null);
+function VideoBubble({ message, onOpen }) {
+  const { viewRef, url, error } = useMediaUrl(message, message.media);
   if (error) return <MediaError />;
-  if (media.round) return <RoundVideo url={url} viewRef={viewRef} />;
-  if (!url) return <div ref={viewRef} className="w-56 max-w-full h-40 bg-primary-soft rounded-lg animate-pulse" />;
+  if (message.media?.round) return <RoundVideo url={url} viewRef={viewRef} />;
+  const box = aspectStyle(message.media, 300, 320);
   return (
-    <video
-      ref={viewRef}
-      src={url}
-      controls
-      playsInline
-      preload="metadata"
-      className="block max-w-[min(260px,100%)] max-h-[300px] rounded-lg"
-    />
+    <div className="relative" style={{ maxWidth: '100%' }}>
+      <div ref={viewRef} className="rounded-lg overflow-hidden bg-black" style={box}>
+        {url ? (
+          <video src={url} controls playsInline preload="metadata" data-chat-media="" className="w-full h-full object-contain" onDoubleClick={onOpen} />
+        ) : (
+          <span className="block w-full h-full bg-primary-soft animate-pulse" />
+        )}
+      </div>
+      <UploadOverlay message={message} />
+    </div>
   );
 }
 
-// Video note — recorded in a circle, shown in a circle (it used to be sent as
-// a plain video and rendered as a rectangle). Tap to play with sound, tap
-// again to pause; a ring shows progress. Muted autoplay preview is skipped on
-// purpose: many notes in view would all start moving and downloading.
+function AlbumTile({ message, onOpen }) {
+  const { t } = useT();
+  const { viewRef, url, error } = useMediaUrl(message, message.media);
+  const isVideo = message.type === 'video';
+  return (
+    <div className="relative w-full h-full">
+      <button ref={viewRef} type="button" onClick={() => url && onOpen?.()} aria-label={isVideo ? t('ch.attVideo') : t('ch.zoom')} className="block w-full h-full bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        {error ? (
+          <span className="grid place-items-center w-full h-full text-[10px] text-muted">{t('mb.loadFail')}</span>
+        ) : url ? (
+          isVideo ? (
+            <video src={url} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" className="w-full h-full object-cover" draggable={false} />
+          )
+        ) : (
+          <span className="block w-full h-full animate-pulse" />
+        )}
+        {isVideo && url && (
+          <span className="absolute inset-0 grid place-items-center pointer-events-none">
+            <span className="w-9 h-9 rounded-full bg-black/50 text-white grid place-items-center"><Play size={16} className="ml-0.5" /></span>
+          </span>
+        )}
+      </button>
+      <UploadOverlay message={message} />
+    </div>
+  );
+}
+
+/** Telegram-style mosaic for 2–10 photos/videos sent together. */
+export function AlbumGrid({ messages, onOpen }) {
+  const rows = albumRows(messages.length);
+  const slices = [];
+  for (let start = 0, r = 0; r < rows.length; r++) {
+    slices.push(messages.slice(start, start + rows[r]));
+    start += rows[r];
+  }
+  return (
+    <div className="flex flex-col gap-0.5 w-[min(300px,100%)]" data-testid="album">
+      {slices.map((slice, r) => {
+        const count = slice.length;
+        return (
+          <div key={r} className="flex gap-0.5" style={{ height: count === 1 ? 200 : 128 }}>
+            {slice.map((m) => (
+              <div key={m.clientMessageId || idOf(m)} className="flex-1 min-w-0 rounded-md overflow-hidden">
+                <AlbumTile message={m} onOpen={() => onOpen?.(m)} />
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function RoundVideo({ url, viewRef }) {
   const { t } = useT();
   const videoRef = useRef(null);
@@ -183,13 +259,7 @@ function RoundVideo({ url, viewRef }) {
   };
   const C = 2 * Math.PI * 49;
   return (
-    <button
-      ref={viewRef}
-      type="button"
-      onClick={toggle}
-      aria-label={playing ? t('mb.pauseVideo') : t('mb.playVideo')}
-      className={`relative block ${size} rounded-full overflow-hidden bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
-    >
+    <button ref={viewRef} type="button" onClick={toggle} aria-label={playing ? t('mb.pauseVideo') : t('mb.playVideo')} className={`relative block ${size} rounded-full overflow-hidden bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}>
       <video
         ref={videoRef}
         src={url}
@@ -211,30 +281,17 @@ function RoundVideo({ url, viewRef }) {
       />
       <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
         <circle cx="50" cy="50" r="49" fill="none" stroke="white" strokeOpacity="0.25" strokeWidth="1.5" />
-        <circle
-          cx="50"
-          cy="50"
-          r="49"
-          fill="none"
-          stroke="white"
-          strokeWidth="1.5"
-          strokeDasharray={C}
-          strokeDashoffset={C * (1 - progress)}
-          strokeLinecap="round"
-        />
+        <circle cx="50" cy="50" r="49" fill="none" stroke="white" strokeWidth="1.5" strokeDasharray={C} strokeDashoffset={C * (1 - progress)} strokeLinecap="round" />
       </svg>
       {!playing && (
         <span className="absolute inset-0 grid place-items-center pointer-events-none">
-          <span className="w-12 h-12 rounded-full bg-black/45 text-white grid place-items-center">
-            <Play size={20} className="ml-0.5" />
-          </span>
+          <span className="w-12 h-12 rounded-full bg-black/45 text-white grid place-items-center"><Play size={20} className="ml-0.5" /></span>
         </span>
       )}
     </button>
   );
 }
 
-// Only one voice/video plays at a time (Telegram behaviour).
 function pauseOtherMedia(current) {
   document.querySelectorAll('[data-chat-media]').forEach((el) => {
     if (el !== current && !el.paused) el.pause();
@@ -247,20 +304,20 @@ function fmtTime(sec) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-// Voice message player. Loads the file on first play only (C-12 rule), then
-// plays through; when it ends, the NEXT voice message below it in the chat
-// starts by itself — like Telegram, a run of voice notes plays as one.
-// Next-in-line is found in DOM order via [data-voice-bubble] and started with
-// a 'voice-play' event, so bubbles don't need to know about each other.
-function VoiceBubble({ media, isMine }) {
+// ---------------------------------------------------------------- voice (waveform + speed)
+function VoiceBubble({ message, isMine }) {
   const { t } = useT();
+  const media = message.media || {};
   const rootRef = useRef(null);
   const audioRef = useRef(null);
   const [armed, setArmed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);
   const [dur, setDur] = useState(media.durationSec || 0);
-  const { url, error } = useAuthedMediaUrl(armed ? media.key : null);
+  const [speed, setSpeed] = useState(1);
+  const { url: signed, error } = useAuthedMediaUrl(armed && !message._localUrl ? media.key : null);
+  const url = armed ? message._localUrl || signed : null;
+  const bars = media.waveform?.length ? media.waveform : Array.from({ length: 40 }, (_, i) => 8 + ((i * 7) % 11));
 
   useEffect(() => {
     const el = rootRef.current;
@@ -274,13 +331,15 @@ function VoiceBubble({ media, isMine }) {
     el.addEventListener('voice-play', onPlayRequest);
     return () => el.removeEventListener('voice-play', onPlayRequest);
   }, []);
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = speed;
+  }, [speed, url]);
 
   const playNext = () => {
     const all = Array.from(document.querySelectorAll('[data-voice-bubble]'));
     const next = all[all.indexOf(rootRef.current) + 1];
     next?.dispatchEvent(new Event('voice-play'));
   };
-
   const toggle = () => {
     const a = audioRef.current;
     if (!a) return setArmed(true);
@@ -289,7 +348,6 @@ function VoiceBubble({ media, isMine }) {
       a.play().catch(() => {});
     } else a.pause();
   };
-
   const seek = (e) => {
     const a = audioRef.current;
     if (!a || !a.duration) return;
@@ -298,35 +356,32 @@ function VoiceBubble({ media, isMine }) {
   };
 
   if (error) return <MediaError />;
-  const loading = armed && !url;
+  const loading = (armed && !url) || message._status === 'uploading';
   const pct = dur ? Math.min(100, (pos / dur) * 100) : 0;
   const tone = isMine ? 'bg-on-accent text-accent' : 'bg-accent text-on-accent';
-  const track = isMine ? 'bg-on-accent/30' : 'bg-accent/20';
-  const fill = isMine ? 'bg-on-accent' : 'bg-accent';
+  const played = isMine ? 'bg-on-accent' : 'bg-accent';
+  const rest = isMine ? 'bg-on-accent/35' : 'bg-accent/30';
 
   return (
-    <div ref={rootRef} data-voice-bubble="" className="flex items-center gap-2.5 w-56 max-w-full py-0.5">
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label={playing ? t('mb.pauseVoice') : t('mb.playVoice')}
-        className={`w-10 h-10 rounded-full grid place-items-center flex-shrink-0 ${tone} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
-      >
-        {loading ? (
-          <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-        ) : playing ? (
-          <Pause size={16} />
-        ) : (
-          <Play size={16} className="ml-0.5" />
-        )}
+    <div ref={rootRef} data-voice-bubble="" className="flex items-center gap-2.5 w-60 max-w-full py-0.5" data-testid="voice-bubble">
+      <button type="button" onClick={toggle} aria-label={playing ? t('mb.pauseVoice') : t('mb.playVoice')} className={`w-10 h-10 rounded-full grid place-items-center flex-shrink-0 ${tone} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}>
+        {loading ? <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> : playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
       </button>
       <div className="flex-1 min-w-0">
-        <div role="presentation" onClick={seek} className={`h-1.5 rounded-full ${track} cursor-pointer overflow-hidden`}>
-          <div className={`h-full rounded-full ${fill}`} style={{ width: `${pct}%` }} />
+        <div role="presentation" onClick={seek} className="relative h-7 flex items-center gap-[2px] cursor-pointer" aria-hidden="true">
+          {bars.map((b, i) => {
+            const on = (i / bars.length) * 100 < pct;
+            return <span key={i} className={`flex-1 rounded-full ${on ? played : rest}`} style={{ height: `${Math.max(12, (b / 31) * 100)}%` }} />;
+          })}
         </div>
-        <p className={`mt-1 text-[11px] tabular-nums ${isMine ? 'text-on-accent/75' : 'text-muted'}`}>
-          {playing || pos > 0 ? `${fmtTime(pos)} / ${fmtTime(dur)}` : dur ? fmtTime(dur) : t('ch.voiceMsg')}
-        </p>
+        <div className={`mt-0.5 flex items-center gap-2 text-[11px] tabular-nums ${isMine ? 'text-on-accent/75' : 'text-muted'}`}>
+          <span>{playing || pos > 0 ? `${fmtTime(pos)} / ${fmtTime(dur)}` : dur ? fmtTime(dur) : t('ch.voiceMsg')}</span>
+          {(playing || pos > 0) && (
+            <button type="button" onClick={() => setSpeed((s) => SPEEDS[(SPEEDS.indexOf(s) + 1) % SPEEDS.length])} aria-label={t('ch.speed')} className={`ml-auto rounded px-1.5 font-semibold ${isMine ? 'bg-on-accent/20' : 'bg-accent/15 text-accent'}`}>
+              {speed}×
+            </button>
+          )}
+        </div>
       </div>
       {url && (
         <audio
@@ -338,6 +393,7 @@ function VoiceBubble({ media, isMine }) {
           className="hidden"
           onPlay={(e) => {
             pauseOtherMedia(e.currentTarget);
+            e.currentTarget.playbackRate = speed;
             setPlaying(true);
           }}
           onPause={() => setPlaying(false)}
@@ -354,57 +410,85 @@ function VoiceBubble({ media, isMine }) {
   );
 }
 
-function FileBubble({ media }) {
+// ---------------------------------------------------------------- file card
+function FileBubble({ message, isMine }) {
   const { t } = useT();
+  const media = message.media || {};
   const [viewRef, inView] = useInViewport();
-  const { url, error } = useAuthedMediaUrl(inView ? media.key : null);
+  const { url, error } = useAuthedMediaUrl(inView && media.key ? media.key : null);
+  const ext = fileExtension(media.name, media.mimeType);
+  const name = media.name || t('mb.file');
+  const uploading = message._status === 'uploading';
+  const pct = Math.round((message._upload?.progress || 0) * 100);
   const inner = (
     <>
-      <FileText size={16} className="flex-shrink-0" />
-      <span className="truncate max-w-[160px]">{error ? t('mb.loadFail') : t('mb.file')}</span>
-      <Download size={14} className="ml-auto flex-shrink-0" />
+      <span className={`relative w-10 h-10 rounded-lg grid place-items-center flex-shrink-0 ${isMine ? 'bg-on-accent/20' : 'bg-accent-soft text-accent'}`}>
+        <FileText size={18} />
+        {ext && <span className="absolute -bottom-1 inset-x-0 text-center text-[8px] font-bold uppercase tracking-wide">{ext.slice(0, 4)}</span>}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold truncate max-w-[200px]">{name}</span>
+        <span className={`block text-[11px] tabular-nums ${isMine ? 'text-on-accent/75' : 'text-muted'}`}>
+          {uploading ? `${t('ch.uploading')} ${pct}%` : error ? t('mb.loadFail') : formatBytes(media.size)}
+        </span>
+      </span>
+      {url && !uploading && <Download size={16} className="flex-shrink-0 opacity-80" aria-hidden="true" />}
     </>
   );
-  // Havola tayyor bo'lguncha bosiladigan '#' emas — bo'sh tab ochilmasin.
-  if (!url) {
+  const cls = `flex items-center gap-3 pr-1 py-0.5 w-64 max-w-full rounded-lg ${isMine ? 'text-on-accent' : 'text-ink'}`;
+  if (!url || uploading) {
     return (
-      <span ref={viewRef} aria-disabled="true" className="flex items-center gap-2 px-3 py-2 bg-surface/70 rounded-lg text-sm text-muted">
-        {inner}
-      </span>
+      <div className="relative">
+        <span ref={viewRef} className={cls} aria-disabled="true" data-testid="file-bubble">{inner}</span>
+        {uploading && (
+          <div className="mt-1 h-1 rounded-full bg-black/15 overflow-hidden"><div className={`h-full ${isMine ? 'bg-on-accent' : 'bg-accent'}`} style={{ width: `${pct}%` }} /></div>
+        )}
+        {message._status === 'failed' && <UploadOverlay message={message} />}
+      </div>
     );
   }
   return (
-    <a
-      href={url}
-      download
-      target="_blank"
-      rel="noreferrer"
-      className="flex items-center gap-2 px-3 py-2 bg-surface/70 rounded-lg text-sm text-ink hover:bg-surface"
-    >
+    <a href={url} download={media.name || true} target="_blank" rel="noreferrer" className={`${cls} hover:opacity-90`} data-testid="file-bubble" title={t('ch.download')}>
       {inner}
     </a>
   );
 }
 
-// C-10 — BIRDAN-BIR, unifitsirlangan xabar kontekst menyusi (barcha ekran
-// o'lchamlarida): "..." tugmasi, o'ng-klik (onContextMenu) va uzoq-bosish
-// (long-press, ConversationList.jsx'dagi bilan bir xil naqsh) — hammasi shu
-// bitta pastdan chiquvchi menyuni ochadi. Ilgari desktop'da alohida hover
-// ikonkalar qatori bo'lgan (Reply/Edit/Delete/Report) — endi bittalashtirilgan.
+// ---------------------------------------------------------------- reply quote (with thumbnail)
+function ReplyThumb({ mediaKey }) {
+  const { url } = useAuthedMediaUrl(mediaKey);
+  if (!url) return <span className="w-8 h-8 rounded bg-black/10 flex-shrink-0" />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />;
+}
+
+function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
+  const { t, ts } = useT();
+  const senderLabel = String(replyTo.senderId) === String(myId) ? t('ch.youRaw') : otherUsername ? `@${otherUsername}` : t('ch.user');
+  const preview = replyTo.deleted ? t('mb.deleted') : replyTo.type === 'text' ? replyTo.text : ts(REPLY_TYPE_LABEL[replyTo.type] || '');
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 w-full text-left mb-1.5 pl-2 pr-1 py-0.5 border-l-2 rounded-sm ${isMine ? 'border-on-accent/50 hover:bg-on-accent/10' : 'border-accent hover:bg-primary-soft/40'} transition-colors`}
+    >
+      {replyTo.mediaKey && !replyTo.deleted && <ReplyThumb mediaKey={replyTo.mediaKey} />}
+      <span className="min-w-0">
+        <span className={`block text-xs font-semibold truncate ${isMine ? 'text-on-accent/90' : 'text-accent'}`}>{senderLabel}</span>
+        <span className={`block text-xs truncate ${isMine ? 'text-on-accent/70' : 'text-muted'}`}>{preview || '…'}</span>
+      </span>
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------- context menu
 function MessageContextMenu({ actions, onClose }) {
   const { t } = useT();
   const firstRef = useRef(null);
   useDialogFocus(firstRef, onClose);
   return (
     <div onClick={onClose} className="fixed inset-0 z-50 flex items-end justify-center bg-primary/40 backdrop-blur-sm">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('mb.actions')}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-surface border-t border-border rounded-t-2xl shadow-card p-2"
-        style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
-      >
+      <div role="dialog" aria-modal="true" aria-label={t('mb.actions')} onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-surface border-t border-border rounded-t-2xl shadow-card p-2" style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
         {actions.map(({ key, label, Icon, onClick, danger }, i) => (
           <button
             key={key}
@@ -414,9 +498,7 @@ function MessageContextMenu({ actions, onClose }) {
               onClose();
               onClick();
             }}
-            className={`w-full min-h-12 flex items-center gap-3 px-4 rounded-xl text-sm font-medium text-left transition-colors hover:bg-bg-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-              danger ? 'text-danger' : 'text-ink'
-            }`}
+            className={`w-full min-h-12 flex items-center gap-3 px-4 rounded-xl text-sm font-medium text-left transition-colors hover:bg-bg-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${danger ? 'text-danger' : 'text-ink'}`}
           >
             <Icon size={18} className="flex-shrink-0" />
             {label}
@@ -427,28 +509,16 @@ function MessageContextMenu({ actions, onClose }) {
   );
 }
 
-// Faqat emoji(lar)dan iborat qisqa xabar — Telegram/WhatsApp'dagidek pufaksiz,
-// kattalashtirib ko'rsatiladi. \p{Emoji_Component} ataylab ishlatilmadi (raqamlar,
-// #, * ham shu toifaga kiradi — faqat sonlardan iborat xabar noto'g'ri "emoji" deb topilib qolardi).
+// ---------------------------------------------------------------- text helpers
 const ZWJ = '‍';
 const VARIATION_SELECTOR = '️';
-const EMOJI_ONLY_RE = new RegExp(
-  `^[\\p{Extended_Pictographic}${ZWJ}${VARIATION_SELECTOR}\\u{1F3FB}-\\u{1F3FF}\\s]+$`,
-  'u'
-);
+const EMOJI_ONLY_RE = new RegExp(`^[\\p{Extended_Pictographic}${ZWJ}${VARIATION_SELECTOR}\\u{1F3FB}-\\u{1F3FF}\\s]+$`, 'u');
 function isEmojiOnly(text) {
   if (!text || text.length > 30) return false;
   return EMOJI_ONLY_RE.test(text);
 }
-
-// Xabar matnidagi havolalarni (http(s):// yoki www.) bosiladigan <a>'ga aylantiradi —
-// dangerouslySetInnerHTML ISHLATILMAYDI (XSS xavfi), buning o'rniga regex bo'yicha
-// bo'lib, oddiy matnni React string sifatida qoldiramiz, faqat havola qismini
-// alohida elementga o'raymiz. Oxiridagi tinish belgilari (masalan gap oxiridagi
-// nuqta) havolaga kirib ketmasligi uchun alohida ajratiladi.
 const URL_RE = /((?:https?:\/\/|www\.)\S+)/gi;
 const TRAILING_PUNCT_RE = /[.,:;!?'")\]]+$/;
-
 function linkifyText(text) {
   const segments = text.split(URL_RE);
   const nodes = [];
@@ -464,19 +534,10 @@ function linkifyText(text) {
         </a>
       );
       if (trailing) nodes.push(trailing);
-    } else {
-      nodes.push(seg);
-    }
+    } else nodes.push(seg);
   });
   return nodes;
 }
-
-// D (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 D — composer) — oddiy Markdown-
-// uslubidagi belgilash (**qalin**, _kursiv_) xabar RENDER qilinish tomonida
-// hal qilinadi (composer'da to'liq WYSIWYG qurish o'rniga — TZ'ning ikkinchi,
-// past xavfli variantiga muvofiq): parseMessageFormatting (src/lib/chatFormatting.js,
-// pure, unit test qilingan) matnni bo'laklarga ajratadi, har bir bo'lak ichida esa
-// havolalar (linkifyText) baribir aniqlanadi.
 function renderFormattedText(text) {
   return parseMessageFormatting(text).map((tok, i) => {
     if (tok.type === 'bold') return <strong key={i}>{linkifyText(tok.value)}</strong>;
@@ -484,38 +545,34 @@ function renderFormattedText(text) {
     return <Fragment key={i}>{linkifyText(tok.value)}</Fragment>;
   });
 }
-
-// C-06 — xabar yuborilgan vaqt, har bir pufakcha tagida: ENDI har doim faqat
-// soat:daqiqa (Telegram/WhatsApp uslubi) — qaysi kun ekanligi endi bubble ichida
-// emas, ConversationView'dagi kun ajratgichida (day separator) ko'rsatiladi,
-// shuning uchun bu yerda sana/"kecha" qo'shilmaydi (avval izchil emas edi: eski
-// xabarlarda to'liq sana, yangilarida faqat soat — ikkalasi bir ekranda aralash ko'rinardi).
 function formatMessageTime(dateStr) {
   const d = new Date(dateStr);
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${hh}:${mm}`;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export default function MessageBubble({ message, isMine, myId, onJumpToReply }) {
+/** Status ticks (own messages): clock → ✓ → ✓✓ → ✓✓ coloured; failed → retry. */
+function Ticks({ message, otherOnline, t, retryMessage }) {
+  if (message._status === 'uploading') return <span title={t('ch.uploading')} role="img" aria-label={t('ch.uploading')} className="inline-flex"><Clock size={12} /></span>;
+  if (message._status === 'sending') return <span title={t('mb.sending')} role="img" aria-label={t('mb.sending')} className="inline-flex"><Clock size={12} /></span>;
+  if (message._status === 'failed') {
+    return (
+      <button type="button" onClick={() => retryMessage(message)} title={t('mb.failed')} className="inline-flex items-center gap-0.5 text-danger hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger rounded">
+        <AlertCircle size={12} /> {t('mb.retry')}
+      </button>
+    );
+  }
+  if (message.readAt) return <span title={t('mb.read')} role="img" aria-label={t('mb.read')} className="inline-flex"><CheckCheck size={13} className="text-accent" /></span>;
+  if (otherOnline) return <span title={t('mb.delivered')} role="img" aria-label={t('mb.delivered')} className="inline-flex"><CheckCheck size={13} /></span>;
+  return <span title={t('mb.sentOk')} role="img" aria-label={t('mb.sentOk')} className="inline-flex"><Check size={13} /></span>;
+}
+
+/**
+ * One message, or an album (`album` = its messages; `message` is then the first one).
+ * Selection mode: a tap toggles the checkbox instead of opening anything.
+ */
+export default function MessageBubble({ message, album = null, isMine, myId, onJumpToReply, onOpenMedia, selectionMode = false, selected = false, onToggleSelect, onEnterSelection }) {
   const { t, ts } = useT();
-  const {
-    reportTarget,
-    activeConversation,
-    startEditMessage,
-    startReply,
-    deleteMessage,
-    retryMessage,
-    livePresence,
-    pinMessage,
-    unpinMessage,
-    stickerById,
-  } = useChat();
-  // C-16 — "yetkazildi" (✓✓, rangsiz) holati boshqa tomonning HOZIRGI onlayn
-  // holatiga qarab taxmin qilinadi: ular socket orqali ulangan bo'lsa, xabar
-  // ularning brauzeriga real-vaqtda allaqachon yetib borgan (haqiqiy per-xabar
-  // "delivered" ACK'i yo'q — buning uchun alohida server infratuzilmasi kerak
-  // bo'lardi, lekin bu yondashuv to'rtta holatni ham ma'noli tarzda ko'rsatadi).
+  const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage, retryMessage, livePresence, pinMessage, unpinMessage, stickerById } = useChat();
   const otherOnline = isOnline(activeConversation?.otherUser?.lastActiveAt, livePresence[String(activeConversation?.otherUser?.id)]);
   const [reported, setReported] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -523,248 +580,195 @@ export default function MessageBubble({ message, isMine, myId, onJumpToReply }) 
   const [menuOpen, setMenuOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  // C-10 — uzoq-bosish (long-press), ConversationList.jsx'dagi ConversationRow
-  // bilan bir xil naqsh: faqat TEGIB (touch/pen) ishlaydigan qurilmalarda, sichqon
-  // uchun o'ng-klik (onContextMenu, pastda) va "..." tugmasi allaqachon yetarli.
+  const [swipe, setSwipe] = useState(0);
   const pressTimer = useRef(null);
   const longPressFired = useRef(false);
+  const swipeStart = useRef(null);
 
-  // Katalog (admin to'plamlari ham) — hali yuklanmagan bo'lsa statik manifestdan.
-  const sticker =
-    message.type === 'sticker' ? stickerById?.get(String(message.stickerId)) || findSticker(message.stickerId) : null;
+  const sticker = message.type === 'sticker' ? stickerById?.get(String(message.stickerId)) || findSticker(message.stickerId) : null;
   const deleted = !!message.deletedForEveryone;
   const emojiOnly = !deleted && message.type === 'text' && isEmojiOnly(message.text);
-
-  // H-2 — ilgari window.prompt() bilan erkin matn so'raladigan edi; endi kategoriya
-  // tanlash oynasi (ReportReasonModal.jsx) ochiladi.
-  const handleReport = () => setReportOpen(true);
+  const messages = album || [message];
+  const messageIdStr = idOf(message);
+  const isPending = messages.some((m) => m._status === 'sending' || m._status === 'failed' || m._status === 'uploading');
+  const isPlain = !deleted && (message.type === 'sticker' || emojiOnly || (message.type === 'video' && message.media?.round && !message.text));
+  const canEdit = isMine && message.type === 'text' && !deleted && !isPending;
+  const canReport = !isMine && !reported && !isPending;
+  const isPinned = !isPending && (activeConversation?.pinnedMessageIds || []).some((id) => String(id) === messageIdStr);
+  const caption = album ? messages.find((m) => m.text)?.text || '' : message.text;
 
   const submitReport = async (category, note) => {
     setReportOpen(false);
-    const ok = await reportTarget('message', message.id || message._id, category, note);
+    const ok = await reportTarget('message', messageIdStr, category, note);
     if (ok) setReported(true);
   };
-
   const handleDelete = async (forEveryone) => {
     setDeleting(true);
-    const res = await deleteMessage(message.id || message._id, forEveryone);
+    let res = null;
+    for (const m of messages) {
+      res = await deleteMessage(idOf(m), forEveryone);
+      if (res.error) break;
+    }
     setDeleting(false);
-    if (res.error) alert(ts(res.error));
+    if (res?.error) alert(ts(res.error));
     else setDeleteOpen(false);
   };
-
-  // Video notes (round) sit on the chat background without a bubble, like Telegram.
-  const isPlain = !deleted && (message.type === 'sticker' || emojiOnly || (message.type === 'video' && message.media?.round && !message.text));
-  // C-16 — hali serverga saqlanmagan ("yuborilmoqda"/"yuborilmadi") xabarlarda
-  // haqiqiy server id yo'q, shuning uchun javob/tahrir/o'chirish/shikoyat amallari
-  // hali ko'rsatilmaydi (haqiqiy id kelgunga qadar).
-  const isPending = message._status === 'sending' || message._status === 'failed';
-  const canEdit = isMine && message.type === 'text' && !deleted && !isPending;
-  const canReport = !isMine && !reported && !isPending;
-  const messageIdStr = String(message.id || message._id);
-  const isPinned = !isPending && (activeConversation?.pinnedMessageIds || []).some((id) => String(id) === messageIdStr);
-
   const handleCopyText = async () => {
     try {
-      await navigator.clipboard.writeText(message.text || '');
+      await navigator.clipboard.writeText(caption || '');
     } catch {
-      // Clipboard ruxsati bo'lmasa — jimgina (ko'rsatiladigan boshqa xato yo'q).
+      // clipboard blocked — nothing to show
     }
   };
-
   const handleTogglePin = async () => {
     const res = isPinned ? await unpinMessage(messageIdStr) : await pinMessage(messageIdStr);
     if (res?.error) alert(ts(res.error));
   };
+  const replyTarget = () => startReply({ ...message, mediaKey: ['image', 'video'].includes(message.type) && !message.media?.round ? message.media?.key : null });
 
-  // C-10 — §9.3 C to'liq ro'yxati: Javob, Nusxa olish, Forward (Yuborish), Pin,
-  // (o'ziniki bo'lsa) Tahrirlash/O'chirish, (kelgan bo'lsa) Shikoyat. Reaksiyalar
-  // (👍❤️😂...) ATAYLAB qo'shilmagan — TZ topshirig'ida bu alohida, ma'lumotlar
-  // modeliga qo'shimcha talab qiladigan qadam sifatida ko'rsatilgan (bu bosqichdan
-  // tashqarida).
   const actions = [
-    { key: 'reply', label: t('mb.reply'), aria: t('mb.replyAria'), Icon: Reply, onClick: () => startReply(message) },
-    ...(message.text
-      ? [{ key: 'copy', label: t('mb.copy'), aria: t('mb.copyAria'), Icon: Copy, onClick: handleCopyText }]
-      : []),
-    { key: 'forward', label: t('mb.forward'), aria: t('mb.forwardAria'), Icon: Forward, onClick: () => setForwardOpen(true) },
-    {
-      key: 'pin',
-      label: isPinned ? t('cv.unpin') : t('mb.pin'),
-      aria: isPinned ? t('mb.unpinAria') : t('mb.pinAria'),
-      Icon: isPinned ? PinOff : Pin,
-      onClick: handleTogglePin,
-    },
-    ...(canEdit
-      ? [{ key: 'edit', label: t('mb.edit'), aria: t('mb.editAria'), Icon: Pencil, onClick: () => startEditMessage(message) }]
-      : []),
-    { key: 'delete', label: t('ch.delete'), aria: t('mb.delAria'), Icon: Trash2, onClick: () => setDeleteOpen(true), danger: true },
-    ...(canReport
-      ? [{ key: 'report', label: t('mb.report'), aria: t('mb.reportAria'), Icon: Flag, onClick: handleReport }]
-      : []),
+    { key: 'reply', label: t('mb.reply'), Icon: Reply, onClick: replyTarget },
+    ...(caption ? [{ key: 'copy', label: t('mb.copy'), Icon: Copy, onClick: handleCopyText }] : []),
+    { key: 'forward', label: t('mb.forward'), Icon: Forward, onClick: () => setForwardOpen(true) },
+    { key: 'select', label: t('ch.select'), Icon: CheckSquare, onClick: () => onEnterSelection?.(messages) },
+    { key: 'pin', label: isPinned ? t('cv.unpin') : t('mb.pin'), Icon: isPinned ? PinOff : Pin, onClick: handleTogglePin },
+    ...(canEdit ? [{ key: 'edit', label: t('mb.edit'), Icon: Pencil, onClick: () => startEditMessage(message) }] : []),
+    { key: 'delete', label: t('ch.delete'), Icon: Trash2, onClick: () => setDeleteOpen(true), danger: true },
+    ...(canReport ? [{ key: 'report', label: t('mb.report'), Icon: Flag, onClick: () => setReportOpen(true) }] : []),
   ];
 
-  // C-10 — o'ng-klik (sichqoncha) va uzoq-bosish (touch, ConversationList.jsx'dagi
-  // bilan bir xil chegara/naqsh) ikkalasi ham xuddi shu kontekst menyusini ochadi.
-  const handleContextMenu = (e) => {
-    e.preventDefault();
-    setMenuOpen(true);
+  // Right-click / long-press → menu; horizontal swipe on touch → reply (Telegram gesture, with the
+  // visible "..." button as the always-available alternative).
+  const interactive = !deleted && !isPending && !selectionMode;
+  const onPointerDown = (e) => {
+    if (!interactive) return;
+    if (e.pointerType !== 'mouse') {
+      swipeStart.current = { x: e.clientX, y: e.clientY };
+      longPressFired.current = false;
+      clearTimeout(pressTimer.current);
+      pressTimer.current = setTimeout(() => {
+        longPressFired.current = true;
+        setMenuOpen(true);
+      }, LONG_PRESS_MS);
+    }
   };
-  const startLongPress = (e) => {
-    if (e?.pointerType === 'mouse') return;
-    longPressFired.current = false;
+  const onPointerMove = (e) => {
+    if (!swipeStart.current || e.pointerType === 'mouse') return;
+    const dx = e.clientX - swipeStart.current.x;
+    const dy = Math.abs(e.clientY - swipeStart.current.y);
+    if (dy > 24) {
+      swipeStart.current = null;
+      setSwipe(0);
+      clearTimeout(pressTimer.current);
+      return;
+    }
+    const dir = isMine ? -1 : 1; // own messages swipe left, others right
+    const d = Math.max(0, dx * dir);
+    if (d > 8) clearTimeout(pressTimer.current);
+    setSwipe(Math.min(SWIPE_REPLY_PX + 16, d));
+  };
+  const endSwipe = () => {
     clearTimeout(pressTimer.current);
-    pressTimer.current = setTimeout(() => {
-      longPressFired.current = true;
-      setMenuOpen(true);
-    }, LONG_PRESS_MS);
+    if (swipe >= SWIPE_REPLY_PX) replyTarget();
+    setSwipe(0);
+    swipeStart.current = null;
   };
-  const cancelLongPress = () => clearTimeout(pressTimer.current);
-  // O'chirilgan/hali yuborilmagan xabarlarda amallar tugmasi ham ko'rsatilmaydi
-  // (pastda), shuning uchun o'ng-klik/uzoq-bosish ham shu holatlarda o'chirilgan.
-  const menuTriggerProps =
-    !deleted && !isPending
-      ? {
-          onContextMenu: handleContextMenu,
-          onPointerDown: startLongPress,
-          onPointerUp: cancelLongPress,
-          onPointerLeave: cancelLongPress,
-          onPointerCancel: cancelLongPress,
-        }
-      : {};
+  const triggerProps = interactive
+    ? { onContextMenu: (e) => { e.preventDefault(); setMenuOpen(true); }, onPointerDown, onPointerMove, onPointerUp: endSwipe, onPointerLeave: endSwipe, onPointerCancel: endSwipe }
+    : {};
+
+  const openMedia = (m) => onOpenMedia?.(idOf(m || message));
+  const body = deleted ? (
+    <p className="flex items-center gap-1.5"><Trash2 size={13} /> {t('mb.deleted')}</p>
+  ) : (
+    <>
+      {message.forwardedFrom && (
+        <p className={`text-xs font-semibold mb-1 flex items-center gap-1 ${isMine ? 'text-on-accent/85' : 'text-accent'}`} data-testid="forwarded-label">
+          <Forward size={12} /> {t('ch.forwardedFrom', { name: message.forwardedFrom.name || t('ch.user') })}
+        </p>
+      )}
+      {message.replyTo && (
+        <ReplyQuote replyTo={message.replyTo} isMine={isMine} myId={myId} otherUsername={activeConversation?.otherUser?.username} onClick={() => onJumpToReply?.(String(message.replyTo.messageId))} />
+      )}
+      {album ? (
+        <AlbumGrid messages={messages} onOpen={openMedia} />
+      ) : (
+        <>
+          {message.type === 'text' && (
+            <p className={`whitespace-pre-wrap [overflow-wrap:anywhere] font-chat ${emojiOnly ? 'text-4xl leading-tight' : ''}`}>{emojiOnly ? message.text : renderFormattedText(message.text)}</p>
+          )}
+          {message.type === 'sticker' &&
+            (sticker ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={sticker.file} alt={sticker.label} draggable={false} className="w-32 h-32 md:w-36 md:h-36" />
+            ) : (
+              <p className="text-sm text-muted">{t('mb.sticker')}</p>
+            ))}
+          {message.type === 'image' && <ImageBubble message={message} onOpen={() => openMedia(message)} />}
+          {message.type === 'video' && <VideoBubble message={message} onOpen={() => openMedia(message)} />}
+          {message.type === 'voice' && <VoiceBubble message={message} isMine={isMine} />}
+          {message.type === 'file' && <FileBubble message={message} isMine={isMine} />}
+        </>
+      )}
+      {caption && message.type !== 'text' && <p className="whitespace-pre-wrap [overflow-wrap:anywhere] font-chat mt-1.5">{renderFormattedText(caption)}</p>}
+      {message.edited && <span className={`block text-[11px] mt-0.5 ${isMine ? 'text-on-accent/60' : 'text-muted'}`}>{t('mb.edited')}</span>}
+    </>
+  );
 
   return (
-    <div data-msg-id={String(message.id || message._id)} className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
-      <div className={`flex flex-col max-w-[85%] ${isMine ? 'items-end' : 'items-start'}`}>
-      <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : ''}`}>
-        {/* min-w-0 — media/uzun so'z pufakni max-w-[85%] dan tashqariga cho'zmasin.
-            C-10 — o'ng-klik/uzoq-bosish shu pufakning o'zida (menuTriggerProps). */}
-        <div
-          className={
-            isPlain
-              ? 'min-w-0'
-              : `min-w-0 rounded-2xl px-3.5 py-2.5 text-sm ${
-                  deleted
-                    ? 'bg-transparent border border-dashed border-border text-muted italic'
-                    : isMine
-                      ? 'bg-accent text-on-accent rounded-br-md'
-                      // TZ-vocably-v2.md BUG-026 — avval bg-bg (sahifa foni bilan bir xil,
-                      // dark rejimda pufak "yo'qolib" ko'rinardi) — endi bir daraja
-                      // ko'tarilgan sirt (§E2).
-                      : 'bg-surface-2 text-ink rounded-bl-md'
-                }`
-          }
-          {...menuTriggerProps}
-        >
-          {deleted ? (
-            <p className="flex items-center gap-1.5">
-              <Trash2 size={13} /> {t('mb.deleted')}
-            </p>
-          ) : (
-            <>
-              {message.replyTo && (
-                <ReplyQuote
-                  replyTo={message.replyTo}
-                  isMine={isMine}
-                  myId={myId}
-                  otherUsername={activeConversation?.otherUser?.username}
-                  onClick={() => onJumpToReply?.(String(message.replyTo.messageId))}
-                />
-              )}
-              {message.type === 'text' && (
-                <p className={`whitespace-pre-wrap [overflow-wrap:anywhere] font-chat ${emojiOnly ? 'text-4xl leading-tight' : ''}`}>
-                  {emojiOnly ? message.text : renderFormattedText(message.text)}
-                </p>
-              )}
-              {message.type === 'sticker' &&
-                (sticker ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={sticker.file} alt={sticker.label} draggable={false} className="w-32 h-32 md:w-36 md:h-36" />
-                ) : (
-                  // Manifestdan olib tashlangan (eski) stiker — bo'sh pufakcha emas, yorliq.
-                  <p className="text-sm text-muted">{t('mb.sticker')}</p>
-                ))}
-              {message.type === 'image' && <ImageBubble media={message.media} />}
-              {message.type === 'video' && <VideoBubble media={message.media} />}
-              {message.type === 'voice' && <VoiceBubble media={message.media} isMine={isMine} />}
-              {message.type === 'file' && <FileBubble media={message.media} />}
-              {message.text && ['image', 'video', 'file'].includes(message.type) && (
-                <p className="whitespace-pre-wrap [overflow-wrap:anywhere] font-chat mt-1.5">{renderFormattedText(message.text)}</p>
-              )}
-              {message.edited && (
-                <span className={`block text-[11px] mt-0.5 ${isMine ? 'text-on-accent/60' : 'text-muted'}`}>
-                  {t('mb.edited')}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-
-        {!deleted && !isPending && (
-          // C-10 — BITTA "..." tugmasi (barcha ekran o'lchamlarida) — o'ng-klik/
-          // uzoq-bosish bilan bir qatorda, xuddi shu unifitsirlangan kontekst
-          // menyusini ochadi (ilgari desktop'da alohida hover-ikonkalar qatori bor edi).
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label={t('mb.actions')}
-            aria-haspopup="dialog"
-            className="flex-shrink-0 w-11 min-h-11 lg:w-8 lg:min-h-8 -mx-1.5 -my-2 lg:mx-0 lg:my-0 inline-flex items-center justify-center text-muted hover:text-accent transition-colors touch-manipulation rounded-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    <div
+      data-msg-id={messageIdStr}
+      className={`flex items-center gap-2 ${isMine ? 'justify-end' : 'justify-start'} group ${selectionMode ? 'cursor-pointer' : ''} ${selected ? 'bg-accent-soft/60 -mx-4 px-4 rounded-lg' : ''}`}
+      onClick={selectionMode ? () => onToggleSelect?.(messages) : undefined}
+    >
+      {selectionMode && !isMine && (
+        <span className={`w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 ${selected ? 'bg-accent border-accent text-on-accent' : 'border-border'}`} aria-hidden="true">
+          {selected && <Check size={12} />}
+        </span>
+      )}
+      <div className={`flex flex-col max-w-[85%] ${isMine ? 'items-end' : 'items-start'}`} style={swipe ? { transform: `translateX(${isMine ? -swipe : swipe}px)`, transition: 'none' } : undefined}>
+        <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : ''}`}>
+          <div
+            className={
+              isPlain
+                ? 'min-w-0 relative'
+                : `min-w-0 relative rounded-2xl px-3.5 py-2.5 text-sm ${deleted ? 'bg-transparent border border-dashed border-border text-muted italic' : isMine ? 'bg-accent text-on-accent rounded-br-md' : 'bg-surface-2 text-ink rounded-bl-md'}`
+            }
+            {...triggerProps}
           >
-            <MoreHorizontal size={16} />
-          </button>
-        )}
-      </div>
-
-      <span className="flex items-center gap-1 text-[11px] text-muted mt-0.5 px-1 select-none">
-        {formatMessageTime(message.createdAt)}
-        {/* C-16 — to'liq holat zanjiri: yuborilmoqda (soat) -> yuborildi (✓) ->
-            yetkazildi (✓✓, rangsiz) -> o'qildi (✓✓, rangli); xato bo'lsa "Qayta
-            yuborish" (tap orqali qayta urinish). */}
-        {isMine && !deleted && (
-          message._status === 'sending' ? (
-            <span title={t('mb.sending')} aria-label={t('mb.sending')} role="img" className="inline-flex">
-              <Clock size={12} />
-            </span>
-          ) : message._status === 'failed' ? (
+            {swipe > 0 && (
+              <span className={`absolute top-1/2 -translate-y-1/2 ${isMine ? '-right-10' : '-left-10'} w-8 h-8 rounded-full bg-surface-2 text-accent grid place-items-center shadow-card transition-opacity ${swipe >= SWIPE_REPLY_PX ? 'opacity-100' : 'opacity-50'}`} aria-hidden="true">
+                <Reply size={14} />
+              </span>
+            )}
+            {body}
+          </div>
+          {!deleted && !isPending && !selectionMode && (
             <button
               type="button"
-              onClick={() => retryMessage(message)}
-              title={t('mb.failed')}
-              className="inline-flex items-center gap-0.5 text-danger hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger rounded"
+              onClick={() => setMenuOpen(true)}
+              aria-label={t('mb.actions')}
+              aria-haspopup="dialog"
+              className="flex-shrink-0 w-11 min-h-11 lg:w-8 lg:min-h-8 -mx-1.5 -my-2 lg:mx-0 lg:my-0 inline-flex items-center justify-center text-muted hover:text-accent transition-colors touch-manipulation rounded-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              <AlertCircle size={12} />
-              {t('mb.retry')}
+              <MoreHorizontal size={16} />
             </button>
-          ) : message.readAt ? (
-            <span title={t('mb.read')} aria-label={t('mb.read')} role="img" className="inline-flex">
-              <CheckCheck size={13} className="text-accent" />
-            </span>
-          ) : otherOnline ? (
-            <span title={t('mb.delivered')} aria-label={t('mb.delivered')} role="img" className="inline-flex">
-              <CheckCheck size={13} />
-            </span>
-          ) : (
-            <span title={t('mb.sentOk')} aria-label={t('mb.sentOk')} role="img" className="inline-flex">
-              <Check size={13} />
-            </span>
-          )
-        )}
-      </span>
+          )}
+        </div>
+        <span className="flex items-center gap-1 text-[11px] text-muted mt-0.5 px-1 select-none">
+          {formatMessageTime(message.createdAt)}
+          {isMine && !deleted && <Ticks message={messages.find((m) => m._status) || message} otherOnline={otherOnline} t={t} retryMessage={retryMessage} />}
+        </span>
       </div>
+      {selectionMode && isMine && (
+        <span className={`w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 ${selected ? 'bg-accent border-accent text-on-accent' : 'border-border'}`} aria-hidden="true">
+          {selected && <Check size={12} />}
+        </span>
+      )}
 
       {menuOpen && <MessageContextMenu actions={actions} onClose={() => setMenuOpen(false)} />}
-
-      <DeleteMessageModal
-        open={deleteOpen}
-        canDeleteForEveryone={isMine}
-        otherUsername={activeConversation?.otherUser?.username}
-        onConfirm={deleting ? undefined : handleDelete}
-        onCancel={() => setDeleteOpen(false)}
-      />
-
-      <ForwardMessageModal open={forwardOpen} message={message} onClose={() => setForwardOpen(false)} />
-
+      <DeleteMessageModal open={deleteOpen} canDeleteForEveryone={isMine} otherUsername={activeConversation?.otherUser?.username} onConfirm={deleting ? undefined : handleDelete} onCancel={() => setDeleteOpen(false)} />
+      <ForwardMessageModal open={forwardOpen} messages={messages} onClose={() => setForwardOpen(false)} />
       <ReportReasonModal open={reportOpen} onSubmit={submitReport} onCancel={() => setReportOpen(false)} />
     </div>
   );

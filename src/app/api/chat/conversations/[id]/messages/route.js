@@ -3,7 +3,8 @@ import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, Message, Block, User } from '@/lib/models';
 import { resolveSendableSticker } from '@/lib/stickerCatalog';
-import { objectExists, readObjectPrefix } from '@/lib/s3';
+import { objectExists, readObjectPrefix, copyObject, buildObjectKey } from '@/lib/s3';
+import { cleanAlbumId, cleanFileName, cleanWaveform } from '@/lib/chat/mediaMeta';
 import { isValidImageMagicBytes } from '@/lib/imageMagicBytes';
 import { pushNewMessage } from '@/lib/realtime';
 import { sendPushToUser } from '@/lib/webPush';
@@ -56,8 +57,12 @@ export async function GET(req, props) {
     // ko'rsatiladigan hech narsasi yo'q (suhbat oqimidan farqli, u yerda "o'chirilgan"
     // tombstone'i ko'rsatish uchun ular saqlanadi).
     const galleryType = req.nextUrl.searchParams.get('type');
-    if (['image', 'video', 'voice'].includes(galleryType)) {
+    if (['image', 'video', 'voice', 'file'].includes(galleryType)) {
       query.type = galleryType;
+      query.deletedForEveryone = { $ne: true };
+    } else if (galleryType === 'link') {
+      query.type = 'text';
+      query.text = /https?:\/\/|www\./i;
       query.deletedForEveryone = { $ne: true };
     }
     const desc = req.nextUrl.searchParams.get('order') === 'desc';
@@ -146,7 +151,14 @@ export async function POST(req, props) {
     let doc = { conversationId: convo._id, senderId: user._id, type, clientMessageId };
     let preview;
 
-    if (type === 'text') {
+    // Forward (Telegram parity): { conversationId, messageId } of a message I can see. The server
+    // copies text/sticker/media itself (S3 copy inside the bucket) and labels the sender.
+    if (body.forwardOf) {
+      const fwd = await resolveForward(body.forwardOf, user._id, convo._id);
+      if (fwd.error) return NextResponse.json({ error: fwd.error }, { status: 400 });
+      doc = { ...doc, ...fwd.doc };
+      preview = fwd.preview;
+    } else if (type === 'text') {
       const text = (body.text || '').trim();
       if (!text) return NextResponse.json({ error: "Bo'sh xabar yuborib bo'lmaydi" }, { status: 400 });
       if (text.length > MAX_TEXT_LEN) return NextResponse.json({ error: 'Xabar juda uzun' }, { status: 400 });
@@ -193,11 +205,14 @@ export async function POST(req, props) {
         key: media.key,
         mimeType: media.mimeType,
         size: media.size,
-        width: media.width || null,
-        height: media.height || null,
+        width: Number.isFinite(media.width) && media.width > 0 ? Math.min(Math.round(media.width), 20000) : null,
+        height: Number.isFinite(media.height) && media.height > 0 ? Math.min(Math.round(media.height), 20000) : null,
         durationSec: Number.isFinite(media.durationSec) && media.durationSec > 0 ? Math.min(Math.round(media.durationSec), 3600) : null,
         round: type === 'video' && media.round === true,
+        name: type === 'file' ? cleanFileName(media.name) : '',
+        waveform: type === 'voice' ? cleanWaveform(media.waveform) : undefined,
       };
+      doc.albumId = ['image', 'video'].includes(type) ? cleanAlbumId(body.albumId) : null;
       // Izoh (caption) — ixtiyoriy, faqat Composer'da fayl tanlab/joylab (paste) preview
       // ko'rinishida yozilgan bo'lsa keladi (ovozli xabarda yo'q — u darhol yuboriladi).
       const caption = (body.text || '').trim();
@@ -221,6 +236,7 @@ export async function POST(req, props) {
           senderId: original.senderId,
           type: original.type,
           text: !original.deletedForEveryone && original.type === 'text' ? original.text.slice(0, 120) : '',
+          mediaKey: !original.deletedForEveryone && ['image', 'video'].includes(original.type) && !original.media?.round ? original.media?.key || null : null,
         };
       }
     }
@@ -229,6 +245,10 @@ export async function POST(req, props) {
 
     convo.lastMessageAt = message.createdAt;
     convo.lastMessagePreview = preview;
+    // Telegram: a new message brings an archived chat back to the recipient's main list.
+    if ((convo.archivedBy || []).length) {
+      convo.archivedBy = convo.archivedBy.filter((id) => String(id) !== String(otherId));
+    }
     // Yangi xabar kelsa — ikkala tomon uchun ham ro'yxatga qaytadi, agar avval
     // (bir yoki ikki taraflama) o'chirilgan/yashirilgan bo'lsa (docs/ conversations/[id] DELETE).
     if ((convo.hiddenFor || []).length) {
@@ -254,6 +274,9 @@ export async function POST(req, props) {
       media: message.media,
       stickerId: message.stickerId,
       replyTo: message.replyTo,
+      albumId: message.albumId,
+      forwardedFrom: message.forwardedFrom,
+      clientMessageId: message.clientMessageId,
       createdAt: message.createdAt,
     }));
 
@@ -352,4 +375,32 @@ async function notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipie
 
 function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// A forwarded message: the source must be visible to the forwarder (member of that conversation,
+// not deleted for them); media is copied inside the bucket into the target conversation's folder.
+async function resolveForward(forwardOf, userId, targetConvoId) {
+  const srcConvoId = String(forwardOf?.conversationId || '');
+  const srcMsgId = String(forwardOf?.messageId || '');
+  if (!/^[a-f0-9]{24}$/.test(srcConvoId) || !/^[a-f0-9]{24}$/.test(srcMsgId)) return { error: "Noto'g'ri xabar" };
+  const src = await Conversation.findById(srcConvoId).select('participantIds').lean();
+  if (!src || !src.participantIds.some((id) => String(id) === String(userId))) return { error: 'Xabar topilmadi' };
+  const original = await Message.findOne({ _id: srcMsgId, conversationId: src._id, deletedFor: { $ne: userId }, deletedForEveryone: { $ne: true }, deletedForEveryoneSilently: { $ne: true } }).lean();
+  if (!original) return { error: 'Xabar topilmadi' };
+  const sender = await User.findById(original.forwardedFrom?.userId || original.senderId).select('name username').lean();
+  const forwardedFrom = { userId: sender?._id || original.senderId, name: (original.forwardedFrom?.name || sender?.name || (sender?.username ? `@${sender.username}` : '') || '').slice(0, 80) };
+  const doc = { type: original.type, text: original.text || '', forwardedFrom };
+  if (original.type === 'sticker') doc.stickerId = original.stickerId;
+  if (['image', 'video', 'voice', 'file'].includes(original.type) && original.media?.key) {
+    const dstKey = buildObjectKey(targetConvoId, original.type, original.media.mimeType || 'application/octet-stream');
+    try {
+      await copyObject(original.media.key, dstKey);
+    } catch (err) {
+      console.error('[chat] forward copy failed', err?.message);
+      return { error: "Faylni yuborib bo'lmadi" };
+    }
+    doc.media = { ...original.media, key: dstKey };
+  }
+  const preview = original.type === 'text' ? original.text.slice(0, 80) : original.text ? original.text.slice(0, 80) : PREVIEW_BY_TYPE[original.type] || 'Xabar';
+  return { doc, preview };
 }

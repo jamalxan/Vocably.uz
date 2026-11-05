@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
-import { X, Image as ImageIcon, Video, Mic, Loader2 } from 'lucide-react';
+import { X, Image as ImageIcon, Video, Mic, Loader2, FileText, Link2, Download } from 'lucide-react';
+import { formatBytes, fileExtension } from '@/lib/chat/mediaMeta';
 import { useChat } from '@/context/ChatContext';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
 import { ImageLightbox } from './MessageBubble';
@@ -48,7 +49,37 @@ function GalleryVoiceBubble({ media }) {
   return <audio src={url} controls className="w-52 max-w-full h-9" />;
 }
 
-const GALLERY_BUBBLE = { image: GalleryImageThumb, video: GalleryVideoBubble, voice: GalleryVoiceBubble };
+function GalleryFileRow({ media }) {
+  const { t } = useT();
+  const { url } = useAuthedMediaUrl(media.key);
+  const inner = (
+    <>
+      <span className="w-9 h-9 rounded-lg bg-accent-soft text-accent grid place-items-center flex-shrink-0 text-[9px] font-bold uppercase">{fileExtension(media.name, media.mimeType).slice(0, 4) || <FileText size={16} />}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-ink truncate">{media.name || t('mb.file')}</span>
+        <span className="block text-[11px] text-muted">{formatBytes(media.size)}</span>
+      </span>
+      <Download size={15} className="text-muted flex-shrink-0" />
+    </>
+  );
+  if (!url) return <span className="flex items-center gap-2.5 w-full opacity-70">{inner}</span>;
+  return <a href={url} download={media.name || true} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 w-full hover:opacity-90">{inner}</a>;
+}
+
+const URL_RE = /((?:https?:\/\/|www\.)[^\s]+)/gi;
+function GalleryLinkRow({ text }) {
+  const links = [...new Set((text || '').match(URL_RE) || [])];
+  return (
+    <span className="block min-w-0">
+      {links.map((l) => (
+        <a key={l} href={l.startsWith('www.') ? `https://${l}` : l} target="_blank" rel="noreferrer" className="block text-sm text-accent underline truncate">{l}</a>
+      ))}
+      <span className="block text-xs text-muted truncate">{text}</span>
+    </span>
+  );
+}
+
+const GALLERY_BUBBLE = { image: GalleryImageThumb, video: GalleryVideoBubble, voice: GalleryVoiceBubble, file: GalleryFileRow };
 
 // Suhbat ichidagi bitta media turini (rasm/video/ovozli) alohida, eng yangisi
 // tepada ko'rsatadi — admin panelning ConversationViewer.jsx'dagi galereyasi bilan
@@ -130,7 +161,7 @@ function MediaGallery({ conversationId, type }) {
   // chiqarib tashlanadi (order=desc so'rovida), lekin kesh/eski javoblarga qarshi
   // himoya sifatida bu yerda ham qoldiriladi — aks holda Bubble komponenti
   // `media.key`ni null'dan o'qishga urinib butun sahifani qulatadi.
-  const visibleMessages = data.messages.filter((m) => m.media);
+  const visibleMessages = type === 'link' ? data.messages.filter((m) => m.text) : data.messages.filter((m) => m.media);
   // C-09 — rasmlar uchun zich thumbnail GRID (sana matni o'rniga haqiqiy
   // preview, TZ ko'rsatmasidagi 80x80/object-cover), video/ovozli xabarlar
   // ilgarigidek — ular allaqachon o'zining nazorat elementiga (play/seek) ega,
@@ -151,6 +182,29 @@ function MediaGallery({ conversationId, type }) {
               disabled={loadingMore}
               className="min-h-11 md:min-h-0 px-3 py-1.5 bg-bg border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
             >
+              {loadingMore && <Loader2 size={12} className="animate-spin" />} {t('ch.older')}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'file' || type === 'link') {
+    return (
+      <div>
+        <ul className="space-y-1.5">
+          {visibleMessages.map((m) => (
+            <li key={m.id || m._id} className="rounded-xl border border-border bg-bg p-2.5">
+              {type === 'file' ? <GalleryFileRow media={m.media} /> : <GalleryLinkRow text={m.text} />}
+              <p className="text-[11px] text-muted mt-1">{new Date(m.createdAt).toLocaleString(locale === 'uz' ? 'uz-UZ' : 'en-US')}</p>
+            </li>
+          ))}
+        </ul>
+        {visibleMessages.length === 0 && <p className="text-center text-xs text-muted py-8">{t('ch.nothing')}</p>}
+        {data.cursor && (
+          <div className="flex justify-center pt-3">
+            <button onClick={loadMore} disabled={loadingMore} className="min-h-11 md:min-h-0 px-3 py-1.5 bg-bg border border-border rounded-lg text-[11px] font-medium text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5">
               {loadingMore && <Loader2 size={12} className="animate-spin" />} {t('ch.older')}
             </button>
           </div>
@@ -189,6 +243,8 @@ const TABS = [
   { key: 'image', label: 'ch.tabImg', Icon: ImageIcon },
   { key: 'video', label: 'ch.tabVid', Icon: Video },
   { key: 'voice', label: 'ch.tabVoice', Icon: Mic },
+  { key: 'file', label: 'ch.tabFiles', Icon: FileText },
+  { key: 'link', label: 'ch.tabLinks', Icon: Link2 },
 ];
 
 // Suhbat sarlavhasidagi username'ga bosilganda ochiladigan oyna (ConversationView.jsx) —

@@ -6,6 +6,8 @@
 //   - older messages loaded by scrolling up, which fell off the 50-item page.
 
 const idOf = (m) => String(m.id || m._id);
+/** Bubbles the server does not know yet: being uploaded, being sent, or waiting for "Retry". */
+export const isPendingStatus = (s) => s === 'sending' || s === 'failed' || s === 'uploading';
 
 /**
  * A message was deleted "for everyone": turn it into a tombstone (or drop it
@@ -32,7 +34,7 @@ export function applyDeletedForEveryone(list, messageId, silently) {
 
 /** @returns the merged list, oldest → newest */
 export function mergePolledMessages(prev, page) {
-  if (!page.length) return prev.filter((m) => m._status === 'sending' || m._status === 'failed');
+  if (!page.length) return prev.filter((m) => isPendingStatus(m._status));
   const pageIds = new Set(page.map(idOf));
   const pageClientIds = new Set(page.map((m) => m.clientMessageId).filter(Boolean));
   const firstAt = new Date(page[0].createdAt).getTime();
@@ -40,9 +42,7 @@ export function mergePolledMessages(prev, page) {
   const older = prev.filter(
     (m) => !m._status && !pageIds.has(idOf(m)) && new Date(m.createdAt).getTime() < firstAt
   );
-  const pending = prev.filter(
-    (m) => (m._status === 'sending' || m._status === 'failed') && !pageClientIds.has(m.clientMessageId)
-  );
+  const pending = prev.filter((m) => isPendingStatus(m._status) && !pageClientIds.has(m.clientMessageId));
   // Keep the local clientMessageId on messages the server now returns, so the
   // in-flight request can still find and settle its bubble.
   const prevByClient = new Map(prev.filter((m) => m.clientMessageId).map((m) => [String(m.clientMessageId), m]));
