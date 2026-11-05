@@ -100,3 +100,31 @@ test.describe('Vocably 2.0 — writing word upgrades → SRS', () => {
     expect(deck).toBeTruthy();
   });
 });
+
+test.describe('Vocably 2.0 — SRS review modes', () => {
+  test('"Yozish" asks for the word, grades it and remembers the mode', async ({ page }) => {
+    await loginAs(page, E2E_PHONE);
+    const words: { word: string; syns: string[] }[] = ((await (await page.request.get('/api/words')).json()).categories || [])
+      .flatMap((c: { words: { word: string; syns: string[] }[] }) => c.words || []);
+    await page.goto('/app/vocabulary/review');
+    await page.getByRole('radio', { name: 'Yozish' }).click();
+    const input = page.getByRole('textbox', { name: 'Inglizcha so‘zni yozing' });
+    test.skip(!(await input.isVisible().catch(() => false)), 'no due words with a meaning in this E2E database');
+
+    const meaning = (await page.locator('form p.text-accent').first().textContent())?.trim() || '';
+    const target = words.find((w) => w.syns.join(', ') === meaning);
+    expect(target, `word for meaning "${meaning}"`).toBeTruthy();
+
+    await input.fill(target!.word);
+    await page.getByRole('button', { name: 'Tekshirish' }).click();
+    await expect(page.getByRole('status')).toContainText('To‘g‘ri!');
+    const saved = page.waitForResponse((r) => r.url().endsWith('/api/words/review') && r.request().method() === 'PATCH');
+    await page.getByRole('button', { name: 'Keyingi' }).click();
+    const body = JSON.parse((await saved).request().postData() || '{}');
+    expect(body).toMatchObject({ mode: 'typing', correct: true });
+    expect([3, 4, 2]).toContain(body.rating);
+
+    await page.reload();
+    await expect(page.getByRole('radio', { name: 'Yozish' })).toHaveAttribute('aria-checked', 'true');
+  });
+});
