@@ -224,7 +224,7 @@ export function AlbumGrid({ messages, onOpen }) {
     start += rows[r];
   }
   return (
-    <div className="flex flex-col gap-0.5 w-[min(300px,100%)]" data-testid="album">
+    <div className="flex flex-col gap-0.5 w-[300px] max-w-full" data-testid="album">
       {slices.map((slice, r) => {
         const count = slice.length;
         return (

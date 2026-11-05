@@ -39,11 +39,12 @@ export function stageFiles(files, { existingCount = 0, asFile = false, makeId = 
 
 /** Album = 2+ image/video attachments sent together. Files never join an album. */
 export function albumGroups(attachments) {
-  const media = attachments.filter((a) => a.type === 'image' || a.type === 'video');
-  const files = attachments.filter((a) => a.type === 'file');
+  const isMedia = (a) => a.type === 'image' || a.type === 'video';
+  const media = attachments.filter(isMedia);
+  const rest = attachments.filter((a) => !isMedia(a)); // files, voice notes
   const groups = [];
   for (let i = 0; i < media.length; i += 10) groups.push(media.slice(i, i + 10));
-  return { albums: groups.filter((g) => g.length >= 2), singles: [...groups.filter((g) => g.length === 1).flat(), ...files] };
+  return { albums: groups.filter((g) => g.length >= 2), singles: [...groups.filter((g) => g.length === 1).flat(), ...rest] };
 }
 
 export function defaultId() {
