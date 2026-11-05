@@ -1,3 +1,4 @@
+import FunnelBeacon from '@/components/analytics/FunnelBeacon';
 import LandingHeader from '@/components/landing/LandingHeader';
 import SpeakOrFall from '@/components/flagship/SpeakOrFall';
 
@@ -13,6 +14,7 @@ export default function SpeakPage() {
   return (
     <div className="min-h-dvh bg-bg flex flex-col">
       <LandingHeader />
+      <FunnelBeacon stage="landing" />
       <main className="flex-1 px-4 py-6 sm:py-10">
         <SpeakOrFall />
       </main>

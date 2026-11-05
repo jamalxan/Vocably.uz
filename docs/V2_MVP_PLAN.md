@@ -21,7 +21,7 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 | 8 | Streak: ≥1 plan task = streak, 1 free freeze per week | 6.8.2 | ✅ |
 | 9 | Telegram Login Widget + reminder at a user-chosen time, max 2 messages per day | 6.10 | ✅ |
 | 10 | 7-day trial (setting), 14-day refund request, 3-month plan | 10 | ✅ |
-| 11 | Admin: landing→onboarding→signup→payment funnel | 6.12.3 | ⏳ |
+| 11 | Admin: landing→onboarding→signup→payment funnel | 6.12.3 | ✅ |
 
 ## Notes on what's done
 - Step 3: `src/lib/todayPlan.js` (rules) + `src/lib/plan/server.js` (storage, signals, XP) + `DailyPlan` model,
@@ -68,6 +68,11 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
   14 days from confirmation, once per account (`src/lib/payments/refund.js`, `POST /api/billing/refunds`); admin "Qaytarish" tab in
   /admin/payments → "Qaytarildi" after sending the money back by hand (Payme/Click have no merchant refund API we can call),
   which takes the paid term off the subscription (nothing left → Free).
+- Step 11: "Sotuv voronkasi" on /admin (`SalesFunnel.jsx`, `GET /api/admin/funnel?days=7|30|90`). Landing (/, /start, /pricing,
+  /games/run, /games/speak) and onboarding start/finish are anonymous beacons (`FunnelBeacon`, random id in localStorage, no cookie,
+  no IP stored; `FunnelHit` one row per day/stage/visitor, 400-day TTL; signed-in visitors and crawlers skipped). Signups come from
+  `User.createdAt`, payment = first confirmed payment per account in the period; revenue and refunds shown beside it.
+  Period flow, not a per-person cohort (anonymous visitors aren't linked to accounts). Not done: D30 and per-game conversion (TZ §6.12.3).
 - E2E: the dev server flakes on first compile; the reliable check is `next build` + `next start -p 3100` + `E2E_REUSE_SERVER=1`.
 
 ## Should/Could (after the MVP)

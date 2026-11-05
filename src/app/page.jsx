@@ -19,6 +19,7 @@ import { FAQS } from '@/components/landing/faqData';
 import { landingFontVariables } from '@/components/landing/fonts';
 import { LocaleFallback } from '@/context/LocaleContext';
 import { ldGraph, organizationLd, webApplicationLd, tierOffers, SITE_URL, SITE_NAME, SITE_TAGLINE } from '@/lib/seo/site';
+import FunnelBeacon from '@/components/analytics/FunnelBeacon';
 
 // VOCABLY-TZ.md §3.1 (IA) — '/' ochiq marketing landing (SEO uchun server
 // komponent), login formasi /login'da (src/app/kirish).
@@ -94,6 +95,7 @@ export default function LandingPage() {
       <LandingHeader floating />
 
       <main>
+        <FunnelBeacon stage="landing" />
         <Hero />
         <Marquee />
         <Manifesto />

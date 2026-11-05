@@ -1894,6 +1894,21 @@ VocabEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 6
 
 export const VocabEvent = mongoose.models.VocabEvent || mongoose.model('VocabEvent', VocabEventSchema);
 
+// TZ 2.0 §6.12.3: sales funnel landing → onboarding → signup → payment. Anonymous, first-party: a random
+// browser id (`vid`, localStorage) — no IP, no user agent, no cookies set. One row per (day, stage, vid), so
+// reloads don't inflate counts. Signups and payments come from User / PaymentRequest, not from here.
+const FunnelHitSchema = new mongoose.Schema({
+  day: { type: String, required: true }, // 'YYYY-MM-DD' Asia/Tashkent
+  stage: { type: String, enum: ['landing', 'onboarding_start', 'onboarding_done'], required: true },
+  vid: { type: String, required: true },
+  path: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now },
+});
+FunnelHitSchema.index({ day: 1, stage: 1, vid: 1 }, { unique: true });
+FunnelHitSchema.index({ createdAt: 1 }, { expireAfterSeconds: 400 * 24 * 60 * 60 });
+
+export const FunnelHit = mongoose.models.FunnelHit || mongoose.model('FunnelHit', FunnelHitSchema);
+
 // Offline takrorlash paketlari uchun idempotentlik: bir (userId, clientSeq) ikki marta qo'llanmaydi (tarmoq qayta urinishlari xavfsiz).
 const OfflineReviewReceiptSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

@@ -10,6 +10,7 @@ import {
 } from '@/lib/onboarding';
 import { buildDiagnostic, scoreDiagnostic } from '@/lib/vocab/diagnostic';
 import { TIER_CONFIG } from '@/lib/entitlements';
+import FunnelBeacon from '@/components/analytics/FunnelBeacon';
 
 // Vocably 2.0 onboarding (TZ 2.0 §6.1): up to 7 one-question screens → optional 16-word
 // vocabulary check → result with the plan AND the prices visible (TZ §1: we never hide price).
@@ -368,6 +369,7 @@ export default function OnboardingWizard() {
 
       {state.phase === 'result' && (
         <section>
+          <FunnelBeacon stage="onboarding_done" />
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink mb-2">{c.result.title}</h1>
           <p className="text-muted mb-6">{c.result.level(summary.cefr, summary.estBand.toFixed(1))}</p>
 
