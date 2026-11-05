@@ -118,7 +118,7 @@ describeDb('telegram webhook — reklama broadcast (integration)', () => {
     await adminMessage({ text: '/admin trial' }, 40);
     expect(sent('sendMessage').at(-1)!.body.text).toContain('yoqilgan');
     await adminMessage({ text: '/admin trial off' }, 41);
-    expect((await M.AppSetting.findOne({ key: 'welcomeTrial' })).value).toEqual({ enabled: false, tier: 'premium', months: 1, days: null });
+    expect((await M.AppSetting.findOne({ key: 'welcomeTrial' })).value).toEqual({ enabled: false, tier: 'premium', months: null, days: 7 });
     await adminMessage({ text: '/admin trial standard 3' }, 42);
     expect((await M.AppSetting.findOne({ key: 'welcomeTrial' })).value).toEqual({ enabled: true, tier: 'standard', months: 3, days: null });
     await adminMessage({ text: '/admin trial premium 7d' }, 44); // TZ 2.0 §10: 7-day trial

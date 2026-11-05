@@ -10,10 +10,11 @@ export const WELCOME_TRIAL_MONTHS = [1, 3, 6, 12];
 /** Short trial terms in days (TZ 2.0 §10: "7 kunlik bepul Premium sinov, kartasiz"). */
 export const WELCOME_TRIAL_DAYS = [3, 7, 14];
 
-/** Product rule (2026-10-22): every new account gets 1 month of Premium free.
+/** Product rule (2026-11-05, TZ 2.0 §10): every new account gets 7 days of Premium free, no card
+ * (was 1 month since 2026-10-22).
  * The admin can switch it off or change tier/term in /admin/settings or via
  * the bot (`/admin trial ...`). */
-export const WELCOME_TRIAL_DEFAULT = Object.freeze({ enabled: true, tier: 'premium', months: 1, days: null });
+export const WELCOME_TRIAL_DEFAULT = Object.freeze({ enabled: true, tier: 'premium', months: null, days: 7 });
 
 /** Pure: validates a welcome-trial value; unknown fields are dropped. Returns
  * null when a required field is invalid, so a bad PATCH is rejected whole. */

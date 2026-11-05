@@ -63,8 +63,8 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
   needs the repo secret `CRON_SECRET` (same as on Vercel). Not done: the Sunday weekly report message.
 - Step 10: 3-month term (`priceQuarterly`: Standard 176 000, Premium 329 000 = −15%) on /pricing, checkout, Payme/Click/manual
   (`PaymentRequest.months` 1/3/12, labels via `src/lib/billingTerms.js`). Welcome trial can now be in days (3/7/14) — admin
-  /admin/settings or bot `/admin trial premium 7d`. **The default stays 1 month Premium (the 2026-10-22 product rule);
-  switching to TZ 2.0's 7 days is one click in /admin/settings.** Refund: "Pulni qaytarish" under a paid request in /app/billing,
+  /admin/settings or bot `/admin trial premium 7d`. **Default is now 7 days Premium (user decision 2026-11-05, was 1 month);
+  a setting already saved in /admin/settings still wins over the default.** Refund: "Pulni qaytarish" under a paid request in /app/billing,
   14 days from confirmation, once per account (`src/lib/payments/refund.js`, `POST /api/billing/refunds`); admin "Qaytarish" tab in
   /admin/payments → "Qaytarildi" after sending the money back by hand (Payme/Click have no merchant refund API we can call),
   which takes the paid term off the subscription (nothing left → Free).
