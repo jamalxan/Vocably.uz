@@ -173,6 +173,18 @@ export default function VocablyRun() {
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     setUse3d(webglOk() && !reduce);
     let cancelled = false;
+    let authed = false;
+    try {
+      authed = localStorage.getItem('vocably_authed') === '1';
+    } catch {
+      authed = false;
+    }
+    if (!authed) {
+      setAudience('guest');
+      return () => {
+        cancelled = true;
+      };
+    }
     fetch('/api/games/vocably_run/active', { credentials: 'same-origin', cache: 'no-store' })
       .then(async (r) => {
         if (cancelled) return;

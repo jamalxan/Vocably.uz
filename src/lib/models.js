@@ -1360,6 +1360,8 @@ DuelSchema.index({ mode: 1, status: 1, ratingAtCreate: 1, createdAt: 1 });
 DuelSchema.index({ 'a.userId': 1, createdAt: -1 });
 DuelSchema.index({ 'b.userId': 1, createdAt: -1 });
 DuelSchema.index({ invitedUserId: 1, status: 1, createdAt: -1 });
+// Duellar 90 kundan keyin o'chadi (hub oxirgi 30 tasini ko'rsatadi; savollar har hujjatda saqlanadi).
+DuelSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
 
 export const Duel = mongoose.models.Duel || mongoose.model('Duel', DuelSchema);
 

@@ -24,7 +24,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           APP_URL: ${{ vars.APP_URL || 'https://www.vocably.uz' }}
         run: |
-          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET secret is not set — skipping"; exit 0; fi
+          if [ -z "$CRON_SECRET" ]; then echo "::error::CRON_SECRET secret is not set — reminders and weekly reports are NOT being sent"; exit 1; fi
           code=$(curl -sS -o body.json -w '%{http_code}' --max-time 300 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/internal/vocab/reminders")
           cat body.json; echo
           test "$code" = "200"

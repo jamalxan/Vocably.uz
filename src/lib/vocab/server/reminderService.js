@@ -8,7 +8,7 @@ import { claimTelegramSlot, releaseTelegramSlot } from '@/lib/telegramCap';
 import { isDue } from '@/lib/vocab/selection';
 import { vocabEngineFlag } from '@/lib/vocab/access';
 import { flattenUserWords } from './words';
-import { processWeeklyReport, weeklyReportOpen } from '@/lib/weeklyReportServer';
+import { runWeeklyReportSweep } from '@/lib/weeklyReportServer';
 import { trackVocabEvents } from './ledger';
 
 const BATCH = 100;
@@ -93,12 +93,15 @@ export async function processUserReminder(user, now = new Date(), { sendTelegram
  * Foydalanuvchilarni `_id` kursori bilan batch-batch ishlaydi (soatiga ishlaydigan cron: har bir foydalanuvchi o'z
  * mahalliy soatida, kuniga bir marta). "Bugun"/"soat" foydalanuvchi vaqt mintaqasida — UTC sanasiga tayanilmaydi
  * (UTC+10…+14 da mahalliy sana UTC'dan oldinda bo'ladi).
- * Yakshanba kechqurun shu aylanishda haftalik hisobot ham yuboriladi (alohida slot, haftasiga 1 marta).
+ * Avval haftalik hisobot o'tadi (yakshanba kechqurun / dushanba ertalab yetib olish, o'z budjeti bilan), keyin kunlik slotlar.
  * @returns {Promise<{scanned:number, sent:number, weekly:number, skipped:number, deferred:number, done:boolean}>}
  */
 export async function runReminderSweep({ now = new Date(), budgetMs = 240_000, flagEnv = process.env, sendTelegram = sendMessage } = {}) {
   const started = Date.now();
   const stats = { scanned: 0, sent: 0, weekly: 0, skipped: 0, deferred: 0, done: false };
+  const weekly = await runWeeklyReportSweep({ now, budgetMs: Math.min(100_000, Math.floor(budgetMs / 2)), sendTelegram });
+  stats.weekly = weekly.sent;
+  stats.weeklyDone = weekly.done;
   let after = null;
   for (;;) {
     if (Date.now() - started > budgetMs) return stats;
@@ -119,14 +122,6 @@ export async function runReminderSweep({ now = new Date(), budgetMs = 240_000, f
     for (const u of users) {
       stats.scanned++;
       const today = localDateWithCutoff(now, u.timezone || 'Asia/Tashkent');
-      // Haftalik hisobot (TZ 2.0 §6.10.2) — kunlik slotlardan mustaqil; xatosi kunlik eslatmani to'xtatmaydi.
-      if (weeklyReportOpen(u, now)) {
-        try {
-          if ((await processWeeklyReport(u, now, { sendTelegram })).sent) stats.weekly++;
-        } catch (err) {
-          console.error('[weekly report]', u._id, err?.message);
-        }
-      }
       try {
         const tz = u.timezone || 'Asia/Tashkent';
         const prefs = u.vocabReminders || {};

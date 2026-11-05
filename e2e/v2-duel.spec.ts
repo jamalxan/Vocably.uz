@@ -81,11 +81,16 @@ test('link duel: A creates and plays, B joins from the link, the winner is decid
   await expect(b.getByTestId('duel-delta')).toHaveText('Reyting -16');
   await b.getByRole('button', { name: /Xato so'zlarni lug'atga qo'shish \(7\)/ }).click();
   await expect(b.getByTestId('duel-saved')).toBeVisible();
-  const deck = await withDb(async (db) => {
+  // The deck gets every missed word that was not already somewhere in the user's vocabulary.
+  const { deck, expected } = await withDb(async (db) => {
     const u: any = await db.collection('users').findOne({ phone: E2E_FREE_PHONE });
-    return u.categories.find((c: any) => c.name === "So'z dueli: xatolar");
+    const d: any = await db.collection('duels').findOne({ code });
+    const missed: string[] = d.questions.filter((_: any, i: number) => !d.b.answers[i]?.ok).map((q: any) => q.word.toLowerCase());
+    const elsewhere = new Set(u.categories.filter((c: any) => c.name !== "So'z dueli: xatolar").flatMap((c: any) => c.words.map((w: any) => w.word.toLowerCase())));
+    return { deck: u.categories.find((c: any) => c.name === "So'z dueli: xatolar"), expected: missed.filter((w) => !elsewhere.has(w)) };
   });
-  expect(deck.words).toHaveLength(7);
+  expect(expected.length).toBeGreaterThan(0);
+  expect(deck.words.map((w: any) => w.word.toLowerCase()).sort()).toEqual(expected.sort());
   // A third person can't join a finished duel; B can't play again.
   expect((await b.request.post(`/api/duels/${code}/next`, { data: {} })).ok()).toBeTruthy();
   expect((await b.request.post(`/api/duels/${code}/answer`, { data: { index: 0, choice: 0 } })).status()).toBe(409);

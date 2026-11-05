@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Swords, Shuffle, UserPlus, Link2, Trophy, Loader2, ChevronRight } from 'lucide-react';
 import useCopy from '@/components/landing/useCopy';
-import { DUEL_COPY, fill } from './duelCopy';
+import { DUEL_COPY, fill, errorText } from './duelCopy';
 
 // So'z dueli hub (TZ 2.0 §6.8.4): rating, three ways to start, and my recent duels.
 
@@ -50,10 +50,10 @@ export default function DuelHub() {
         body: JSON.stringify(mode === 'friend' ? { mode, username } : { mode }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || c.error);
+      if (!r.ok) throw Object.assign(new Error(j.error || c.error), { code: j.code });
       router.push(`/app/duel/${j.duel.code}`);
     } catch (e) {
-      setError(e.message || c.error);
+      setError(errorText(c, e));
       setBusy('');
     }
   };
