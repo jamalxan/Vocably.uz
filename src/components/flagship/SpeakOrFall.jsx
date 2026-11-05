@@ -5,6 +5,7 @@ import { Mic, Shuffle, RotateCcw, ArrowRight, Loader2, Square } from 'lucide-rea
 import useCopy from '@/components/landing/useCopy';
 import { SPEAK, PART2_TOPICS, pickTopic, silenceLimitAt, dangerLevel, rmsLevel, createVad, createSilenceTracker, speakSummary } from '@/lib/flagship/speak';
 import { beep, readFx } from '@/lib/flagship/client';
+import ShareCard from './ShareCard';
 
 // "Gapir yoki yiqil" (TZ 2.0 §7). Voice activity is measured on the device from the microphone
 // level (Web Audio) — no audio is uploaded by us. Filler words need a transcript: when the
@@ -368,6 +369,7 @@ export default function SpeakOrFall() {
           <h3 className="mt-6 text-sm font-semibold text-ink mb-2">{c.pauseMap}</h3>
           <PauseMap pauses={result.pausesList} c={c} />
           {result.pausesList.length === 0 && <p className="mt-1 text-xs text-muted">{c.noPauses}</p>}
+          <ShareCard game="speak" result={result} />
           <div className="mt-6 grid gap-2">
             {guest ? (
               <Link href="/start" className="w-full min-h-14 rounded-2xl bg-accent text-on-accent font-bold inline-flex items-center justify-center gap-2 hover:bg-accent-hover text-center px-4">

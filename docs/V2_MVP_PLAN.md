@@ -17,7 +17,7 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 | 4 | Writing word upgrades → SRS in one click (exam grader) | 6.6.1 | ✅ |
 | 5 | SRS review session: Recognition / Production / Mixed modes | 6.3.3 | ✅ |
 | 6 | Flagship games without login: Vocably Run (3-lane runner), Gapir yoki yiqil | 7 | ✅ |
-| 7 | 9:16 result card (download/share) | 7 | ⏳ |
+| 7 | 9:16 result card (download/share) | 7 | ✅ |
 | 8 | Streak: ≥1 plan task = streak, 1 free freeze per week | 6.8.2 | ⏳ |
 | 9 | Telegram Login Widget + reminder at a user-chosen time, max 2 messages per day | 6.10 | ⏳ |
 | 10 | 7-day trial (setting), 14-day refund request, 3-month plan | 10 | ⏳ |
@@ -42,6 +42,9 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
   SpeechRecognition (opt-out; in Chrome this goes to Google — the intro says so). Speaking has no words → no SRS write.
   Also fixed: game questions sent `word`/`explanation`/`wordId` to the client before answering — the answer itself in choice games.
   Not done: a dedicated weekly Run leaderboard (game XP goes into the existing XP leaderboard), the share card (step 7).
+- Step 7: `src/lib/flagship/shareCard.js` (pure `cardModel` + canvas `drawCard`, 1080×1920 PNG made in the browser, no upload)
+  and `ShareCard.jsx` on both result screens: preview, Download, Share (native share sheet with the image file; on desktop "copy link").
+  The card has only the game result and the game URL, no user name. Not done: a video card for "Gapir yoki yiqil" (TZ mentions video) — image for now.
 - E2E: the dev server flakes on first compile; the reliable check is `next build` + `next start -p 3100` + `E2E_REUSE_SERVER=1`.
 
 ## Should/Could (after the MVP)

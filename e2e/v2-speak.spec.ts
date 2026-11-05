@@ -17,5 +17,13 @@ test.describe('Gapir yoki yiqil', () => {
     await expect(page.getByText('Pauza xaritasi')).toBeVisible();
     await expect(page.getByText("To'xtatildi")).toBeVisible(); // early stop is not a win
     await expect(page.getByRole('link', { name: 'Natijangni saqlash va rejangni olish' })).toBeVisible();
+    const card = page.getByRole('region', { name: 'Natija kartasi (9:16)' });
+    const dl = page.waitForEvent('download');
+    await card.getByRole('link', { name: 'Yuklab olish' }).click();
+    const file = await dl;
+    expect(file.suggestedFilename()).toMatch(/^vocably-speak-\d+s\.png$/);
+    const fs = await import('node:fs/promises');
+    const buf = await fs.readFile((await file.path())!);
+    expect([buf.readUInt32BE(16), buf.readUInt32BE(20)]).toEqual([1080, 1920]);
   });
 });

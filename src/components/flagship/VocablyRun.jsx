@@ -9,6 +9,7 @@ import { RUN_BANK, bankEntry } from '@/lib/flagship/runBank';
 import { saveGuestMissed, claimGuestMissed, readFx, writeFx, beep } from '@/lib/flagship/client';
 import { startGame, completeGame } from '@/components/games/api';
 import { createAnswerQueue } from '@/components/games/answerQueue';
+import ShareCard from './ShareCard';
 
 const RunScene3D = dynamic(() => import('./RunScene3D'), { ssr: false, loading: () => null });
 
@@ -577,6 +578,7 @@ function RunResult({ c, result, onAgain }) {
           </div>
         ))}
       </dl>
+      <ShareCard game="run" result={result} />
 
       <h3 className="mt-6 text-sm font-semibold text-ink">{c.missedTitle}</h3>
       {result.missed.length ? (

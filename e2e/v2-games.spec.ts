@@ -4,12 +4,20 @@ import { test, expect } from '@playwright/test';
 import { loginAs } from './auth';
 import { E2E_FREE_PHONE, E2E_PHONE } from './global-setup';
 
+/** PNG width/height from the IHDR chunk. */
+async function pngSize(download: import('@playwright/test').Download) {
+  const fs = await import('node:fs/promises');
+  const buf = await fs.readFile((await download.path())!);
+  expect(buf.subarray(1, 4).toString()).toBe('PNG');
+  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+}
+
 const lanes = (page: import('@playwright/test').Page) => page.getByRole('button', { name: /^(\d)-yo'lak:/ });
 
 test.describe('Vocably Run', () => {
   test('a guest plays without an account; each gate is graded and the HUD updates', async ({ page }) => {
     await page.goto('/games/run');
-    await expect(page.getByRole('heading', { name: 'Vocably Run' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Vocably Run' })).toBeVisible({ timeout: 20_000 }); // cold server
     await expect(page.getByText(/Ro'yxatdan o'tmasdan o'ynaysiz/)).toBeVisible();
     await page.getByRole('button', { name: 'Boshlash' }).click();
 
@@ -26,6 +34,23 @@ test.describe('Vocably Run', () => {
     // Pause stops the clock.
     await page.getByRole('button', { name: 'Pauza' }).click();
     await expect(page.getByRole('button', { name: 'Davom etish' })).toBeVisible();
+  });
+
+  test('a finished guest round shows the missed words and a downloadable 9:16 card', async ({ page }) => {
+    test.setTimeout(150_000);
+    await page.goto('/games/run');
+    await page.getByRole('button', { name: 'Boshlash' }).click();
+    // Staying in the middle lane loses lives fast; the round ends at 0 lives or after 90 s.
+    await expect(page.getByRole('heading', { level: 2 })).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByText("Xato qilingan so'zlar")).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Natijangni saqlash va rejangni olish' })).toBeVisible();
+    const card = page.getByRole('region', { name: 'Natija kartasi (9:16)' });
+    await expect(card.getByRole('img', { name: 'Natija kartasi' })).toBeVisible();
+    const dl = page.waitForEvent('download');
+    await card.getByRole('link', { name: 'Yuklab olish' }).click();
+    const file = await dl;
+    expect(file.suggestedFilename()).toMatch(/^vocably-run-\d+\.png$/);
+    expect(await pngSize(file)).toEqual({ w: 1080, h: 1920 });
   });
 
   test('signed in: the round uses the server session and answers are graded there', async ({ page }) => {
