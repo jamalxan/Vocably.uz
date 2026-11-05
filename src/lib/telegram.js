@@ -21,6 +21,11 @@ export function getBotUsername() {
   return (process.env.TELEGRAM_BOT_USERNAME || DEFAULT_BOT_USERNAME).replace(/^@/, '');
 }
 
+/** Bot for the Telegram Login Widget, or null when login through Telegram is not configured on this server. */
+export function loginWidgetBot() {
+  return process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_LOGIN_WIDGET !== 'off' ? getBotUsername() : null;
+}
+
 export function getTelegramDeepLink(sessionToken) {
   const username = getBotUsername();
   return `https://t.me/${username}?start=${sessionToken}`;

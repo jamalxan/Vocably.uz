@@ -1,10 +1,11 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Volume2, Flame, Trophy, CalendarCheck, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useT } from '@/context/LocaleContext';
 import { speakText } from '@/lib/speech';
 import { cardFromStats, nextReviewState, localDateWithCutoff } from '@/lib/srs';
+import { REVIEW_MODES, REVIEW_MODE_STORAGE_KEY, cardModeFor, gradeTyped, ratingForTyped, blankOut } from '@/lib/reviewModes';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -37,6 +38,28 @@ export default function SpacedRepetition({ active }) {
   // ko'rinardi. reviewedCount + qolgan dueWords.length'dan "X / Total" sessiya progressi
   // hisoblanadi — FlashcardMode/ListeningMode'dagi progress bilan bir xil uslub.
   const [reviewedCount, setReviewedCount] = useState(0);
+  // TZ 2.0 §6.3.3 — Tanish (recognition) / Yozish (production) / Aralash (mixed).
+  const [mode, setMode] = useState('recognition');
+  const [typed, setTyped] = useState('');
+  const [checked, setChecked] = useState(null); // { verdict, rating, ms } after "Tekshirish"
+  const shownAt = useRef(0);
+  const inputRef = useRef(null);
+  const nextRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REVIEW_MODE_STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time restore from localStorage
+      if (REVIEW_MODES.includes(saved)) setMode(saved);
+    } catch { /* storage blocked — default mode */ }
+  }, []);
+  const chooseMode = (m) => {
+    setMode(m);
+    setTyped('');
+    setChecked(null);
+    setShowAnswer(false);
+    try { localStorage.setItem(REVIEW_MODE_STORAGE_KEY, m); } catch { /* ignore */ }
+  };
 
   // Dashboard'dagi "Qiynalayotgan so'zlar" → "Shularni mashq qilish" shu ro'yxatni to'ldiradi.
   // Bo'lsa, oddiy due-navbat o'rniga faqat shu so'zlar ko'rsatiladi (due muddatidan qat'iy nazar).
@@ -88,6 +111,35 @@ export default function SpacedRepetition({ active }) {
   }, [categories]);
 
   const current = dueWords[0];
+  const cardMode = current ? cardModeFor(mode, current.word) : 'recognition';
+
+  // New card on screen → reset the typing state and start its response timer.
+  useEffect(() => {
+    shownAt.current = Date.now();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset per card
+    setTyped('');
+    setChecked(null);
+    if (cardMode === 'production') setTimeout(() => inputRef.current?.focus(), 0);
+  }, [current?.word?._id, cardMode]);
+
+  const checkTyped = () => {
+    if (!current || checked) return;
+    const ms = Date.now() - shownAt.current;
+    const { verdict } = gradeTyped(typed, current.word.word);
+    setChecked({ verdict, rating: ratingForTyped(verdict, ms), ms });
+    setTimeout(() => nextRef.current?.focus(), 0);
+  };
+  const submitTyped = () => {
+    if (!current || !checked) return;
+    reviewWord(current.categoryId, current.word._id, checked.verdict !== 'wrong', {
+      rating: checked.rating,
+      mode: 'typing',
+      responseMs: checked.ms,
+    });
+    setReviewedCount((n) => n + 1);
+    setChecked(null);
+    setTyped('');
+  };
 
   // Har bir baho tugmasi ostida "keyingi safar qachon" taxminini ko'rsatish uchun — haqiqiy
   // saqlanadigan natija emas (fuzz tasodifiy), lekin foydalanuvchiga farqni his qildiradi.
@@ -116,7 +168,7 @@ export default function SpacedRepetition({ active }) {
   // uchun `active` (view === 'review') tekshirilmasa, boshqa bo'limda ham bu tugmalar ishlab
   // ketardi.
   useEffect(() => {
-    if (!active || !current) return undefined;
+    if (!active || !current || cardMode === 'production') return undefined;
     const onKeyDown = (e) => {
       if (e.target instanceof HTMLElement) {
         const tag = e.target.tagName;
@@ -139,7 +191,7 @@ export default function SpacedRepetition({ active }) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, current, showAnswer]);
+  }, [active, current, showAnswer, cardMode]);
 
   return (
     <div className="flex flex-col items-center">
@@ -155,6 +207,23 @@ export default function SpacedRepetition({ active }) {
           </button>
         </div>
       )}
+
+      <div role="radiogroup" aria-label={t('srm.modeLabel')} className="w-full max-w-md grid grid-cols-3 gap-1 p-1 mb-4 rounded-xl bg-surface border border-border">
+        {REVIEW_MODES.map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={mode === m}
+            onClick={() => chooseMode(m)}
+            className={`min-h-10 rounded-lg text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              mode === m ? 'bg-accent text-on-accent' : 'text-muted hover:text-ink'
+            }`}
+          >
+            {t(`srm.mode.${m}`)}
+          </button>
+        ))}
+      </div>
 
       <div className="w-full max-w-md grid grid-cols-3 gap-2 mb-6 text-center">
         <div className="bg-surface border border-border rounded-xl py-3 shadow-sm">
@@ -188,6 +257,20 @@ export default function SpacedRepetition({ active }) {
             </span>
           </div>
 
+          {cardMode === 'production' ? (
+            <ProductionCard
+              word={current.word}
+              typed={typed}
+              setTyped={setTyped}
+              checked={checked}
+              onCheck={checkTyped}
+              onNext={submitTyped}
+              inputRef={inputRef}
+              nextRef={nextRef}
+              t={t}
+            />
+          ) : (
+          <>
           {/* Space/Enter global handler orqali ishlaydi (card button emas, chunki ichida talaffuz tugmasi bor). */}
           <div
             role="button"
@@ -255,8 +338,64 @@ export default function SpacedRepetition({ active }) {
               <p className="text-xs text-muted hidden sm:block">{t('lg.keyboardHint')}</p>
             </div>
           )}
+          </>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+// Yozish (production): meaning + blanked example → type the word → auto-graded.
+function ProductionCard({ word, typed, setTyped, checked, onCheck, onNext, inputRef, nextRef, t }) {
+  const hint = blankOut(word.enrichment?.examples?.[0]?.en, word.word);
+  const tone = !checked ? '' : checked.verdict === 'exact' ? 'text-success' : checked.verdict === 'close' ? 'text-warning' : 'text-danger';
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (checked) onNext();
+        else onCheck();
+      }}
+      className="w-full"
+    >
+      <div className="w-full min-h-64 sm:min-h-72 bg-surface rounded-2xl shadow-premium border border-border flex flex-col justify-center items-center px-6 py-8 sm:px-8">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-3">{t('srm.typePrompt')}</p>
+        <p className="text-xl sm:text-2xl font-semibold text-accent text-center break-words">{word.syns.join(', ')}</p>
+        {hint && <p className="text-xs text-muted mt-3 text-center italic sm:px-4 break-words">&ldquo;{hint}&rdquo;</p>}
+        <label className="w-full mt-6">
+          <span className="sr-only">{t('srm.typePrompt')}</span>
+          <input
+            ref={inputRef}
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            readOnly={!!checked}
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            lang="en"
+            className="w-full px-4 py-3 rounded-xl bg-bg border-2 border-border text-ink text-lg text-center font-word focus:border-accent outline-none"
+          />
+        </label>
+        {checked && (
+          <p role="status" className={`mt-4 text-sm font-semibold text-center ${tone}`}>
+            {checked.verdict === 'exact' ? t('srm.correct') : checked.verdict === 'close' ? t('srm.close') : t('srm.wrong')}{' '}
+            {checked.verdict !== 'exact' && <span className="font-word text-ink">{word.word}</span>}
+          </p>
+        )}
+      </div>
+      <div className="mt-6 w-full">
+        {checked ? (
+          <button ref={nextRef} type="submit" className="w-full min-h-12 rounded-xl bg-accent text-on-accent font-semibold hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            {t('srm.next')}
+          </button>
+        ) : (
+          <button type="submit" disabled={!typed.trim()} className="w-full min-h-12 rounded-xl bg-accent text-on-accent font-semibold hover:bg-accent-hover disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            {t('srm.check')}
+          </button>
+        )}
+      </div>
+    </form>
   );
 }

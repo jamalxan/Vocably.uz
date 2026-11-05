@@ -12,7 +12,8 @@ import { sendPushToUser } from '@/lib/webPush';
 
 const TIER_EMOJI = { standard: '⭐', premium: '💎' };
 
-export function formatTerm(months) {
+export function formatTerm(months, days = null) {
+  if (days) return `${days} kun`;
   const m = Number(months) || 1;
   return m % 12 === 0 ? `${m / 12} yil` : `${m} oy`;
 }
@@ -22,10 +23,10 @@ function escapeHtml(s) {
 }
 
 /** Pure: builds the three message shapes. Exported for unit tests. */
-export function buildActivationMessages({ kind, tier, months, expiresAt, name }) {
+export function buildActivationMessages({ kind, tier, months, days = null, expiresAt, name }) {
   const label = TIER_CONFIG[tier]?.label || tier;
   const emoji = TIER_EMOJI[tier] || '✨';
-  const term = formatTerm(months);
+  const term = formatTerm(months, days);
   const until = formatUzDate(expiresAt, { year: true });
   const first = String(name || '').trim().split(/\s+/)[0];
   const hello = first ? `${first}, ` : '';
@@ -93,8 +94,8 @@ export function buildActivationMessages({ kind, tier, months, expiresAt, name })
  * a blocked bot or dead push endpoint must not fail the payment/grant itself.
  * `user` needs `_id`, `name`, `telegramChatId`.
  */
-export async function notifySubscriptionActivated(user, { kind, tier, months, expiresAt }) {
-  const msg = buildActivationMessages({ kind, tier, months, expiresAt, name: user.name });
+export async function notifySubscriptionActivated(user, { kind, tier, months, days = null, expiresAt }) {
+  const msg = buildActivationMessages({ kind, tier, months, days, expiresAt, name: user.name });
   const link = kind === 'purchase' ? '/pricing' : '/app';
   const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
   const extra = /^https:\/\//.test(appUrl)

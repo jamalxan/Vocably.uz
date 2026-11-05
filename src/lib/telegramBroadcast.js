@@ -183,18 +183,21 @@ export async function handleBroadcastCallback(cb) {
   }
 }
 
-/** `/admin trial` · `/admin trial on|off` · `/admin trial <tier> <months>` → reply text. */
+/** `/admin trial` · `/admin trial on|off` · `/admin trial <tier> <months>|<days>d` → reply text. */
 export async function handleTrialCommand(chatId, args) {
   const current = await getWelcomeTrial();
-  const show = (t) => `🎁 Yangi foydalanuvchiga bepul tarif: <b>${t.enabled ? 'yoqilgan' : "o'chirilgan"}</b> — ${TIER_CONFIG[t.tier]?.label || t.tier}, ${t.months} oy`;
+  const show = (t) => `🎁 Yangi foydalanuvchiga bepul tarif: <b>${t.enabled ? 'yoqilgan' : "o'chirilgan"}</b> — ${TIER_CONFIG[t.tier]?.label || t.tier}, ${t.days ? `${t.days} kun` : `${t.months} oy`}`;
   const [a, b] = args;
   if (!a) {
-    return `${show(current)}\n\n<code>/admin trial off</code> — o'chirish\n<code>/admin trial on</code> — yoqish\n<code>/admin trial premium 1</code> — tarif va muddat (standard/premium; 1, 3, 6, 12 oy)`;
+    return `${show(current)}\n\n<code>/admin trial off</code> — o'chirish\n<code>/admin trial on</code> — yoqish\n<code>/admin trial premium 7d</code> — tarif va muddat (standard/premium; 3d, 7d, 14d kun yoki 1, 3, 6, 12 oy)`;
   }
   let next;
   if (a === 'on' || a === 'off') next = normalizeWelcomeTrial({ enabled: a === 'on' }, current);
-  else next = normalizeWelcomeTrial({ tier: a, months: b ?? current.months, enabled: true }, current);
-  if (!next) return "❌ Noto'g'ri qiymat. Tarif: standard yoki premium; muddat: 1, 3, 6 yoki 12 oy.\nMasalan: <code>/admin trial premium 1</code>";
+  else {
+    const dm = /^(\d+)d$/i.exec(b || '');
+    next = normalizeWelcomeTrial(dm ? { tier: a, days: Number(dm[1]), enabled: true } : b !== undefined ? { tier: a, months: b, enabled: true } : { tier: a, enabled: true }, current);
+  }
+  if (!next) return "❌ Noto'g'ri qiymat. Tarif: standard yoki premium; muddat: 3d, 7d, 14d yoki 1, 3, 6, 12 oy.\nMasalan: <code>/admin trial premium 7d</code>";
   const admin = await adminUserFor(chatId);
   await setWelcomeTrial(next, admin?._id || null);
   if (admin) {

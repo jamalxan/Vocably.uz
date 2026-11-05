@@ -8,14 +8,16 @@ export async function GET(req) {
     const { error, status } = await requireAdminUser(req);
     if (error) return NextResponse.json({ error }, { status });
     const st = new URL(req.url).searchParams.get('status') || 'pending';
-    const filter = st === 'all' ? {} : { status: st };
-    const [list, pendingCount] = await Promise.all([
+    const filter = st === 'all' ? {} : st === 'refund' ? { 'refund.status': 'requested' } : { status: st };
+    const [list, pendingCount, refundCount] = await Promise.all([
       PaymentRequest.find(filter).sort({ createdAt: -1 }).limit(100).populate('userId', 'name username phone subscriptionTier subscriptionExpiresAt').lean(),
       // Only receipts need a human; a pending Payme/Click order is the provider's to finish.
       PaymentRequest.countDocuments({ status: 'pending', method: 'manual' }),
+      PaymentRequest.countDocuments({ 'refund.status': 'requested' }),
     ]);
     return NextResponse.json({
       pendingCount,
+      refundCount,
       requests: list.map((r) => ({
         id: String(r._id),
         user: r.userId
@@ -33,6 +35,7 @@ export async function GET(req) {
         providerState: r.provider?.state ?? null,
         createdAt: r.createdAt,
         reviewedAt: r.reviewedAt,
+        refund: r.refund?.status && r.refund.status !== 'none' ? { status: r.refund.status, reason: r.refund.reason, requestedAt: r.refund.requestedAt, note: r.refund.note } : null,
       })),
     });
   } catch (err) {

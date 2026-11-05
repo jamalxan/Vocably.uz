@@ -95,9 +95,21 @@ export default function SettingsPanel() {
           </label>
           <label className="text-xs text-muted">
             Muddat
-            <select value={draft.months} onChange={(e) => setDraft({ ...draft, months: Number(e.target.value) })} className={`block mt-1 ${selectCls}`}>
+            <select
+              value={draft.days ? `d${draft.days}` : `m${draft.months}`}
+              onChange={(e) => {
+                const n = Number(e.target.value.slice(1));
+                setDraft({ ...draft, ...(e.target.value[0] === 'd' ? { days: n, months: null } : { months: n, days: null }) });
+              }}
+              className={`block mt-1 ${selectCls}`}
+            >
+              {(data.options.days || []).map((d) => (
+                <option key={`d${d}`} value={`d${d}`}>
+                  {d} kun
+                </option>
+              ))}
               {data.options.months.map((m) => (
-                <option key={m} value={m}>
+                <option key={`m${m}`} value={`m${m}`}>
                   {m} oy
                 </option>
               ))}
@@ -116,10 +128,10 @@ export default function SettingsPanel() {
         <p className="text-xs text-ink">
           Hozir:{' '}
           <strong>
-            {data.welcomeTrial.enabled ? `yoqilgan — ${TIER_CONFIG[data.welcomeTrial.tier]?.label} ${data.welcomeTrial.months} oy` : "o'chirilgan"}
+            {data.welcomeTrial.enabled ? `yoqilgan — ${TIER_CONFIG[data.welcomeTrial.tier]?.label} ${data.welcomeTrial.days ? `${data.welcomeTrial.days} kun` : `${data.welcomeTrial.months} oy`}` : "o'chirilgan"}
           </strong>
           . Botdan: <code className="text-[11px] bg-bg px-1.5 py-0.5 rounded">/admin trial on|off</code>,{' '}
-          <code className="text-[11px] bg-bg px-1.5 py-0.5 rounded">/admin trial premium 1</code>
+          <code className="text-[11px] bg-bg px-1.5 py-0.5 rounded">/admin trial premium 7d</code>
         </p>
         {error && (
           <p role="alert" className="text-xs text-danger">

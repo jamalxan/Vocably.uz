@@ -125,8 +125,17 @@ describe('ratingFromOutcome', () => {
     expect(ratingFromOutcome(false)).toBe(1);
     expect(ratingFromOutcome(false, 500)).toBe(1);
   });
-  it('maps a fast correct answer to 3 (good)', () => {
-    expect(ratingFromOutcome(true, 2000)).toBe(3);
+  it('maps a very fast (<3s) correct answer to 4 (easy) — TZ 2.0 §7', () => {
+    expect(ratingFromOutcome(true, 2000)).toBe(4);
+    expect(ratingFromOutcome(true, 2999)).toBe(4);
+  });
+  it('maps a normal-speed correct answer to 3 (good)', () => {
+    expect(ratingFromOutcome(true, 3000)).toBe(3);
+    expect(ratingFromOutcome(true, 8000)).toBe(3);
+  });
+  it('ignores non-positive response times (clock glitches) instead of awarding easy', () => {
+    expect(ratingFromOutcome(true, 0)).toBe(3);
+    expect(ratingFromOutcome(true, -50)).toBe(3);
   });
   it('maps a slow (>8s) correct answer to 2 (hard)', () => {
     expect(ratingFromOutcome(true, 9000)).toBe(2);

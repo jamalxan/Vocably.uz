@@ -193,6 +193,8 @@ const en = {
     "10 ta o'yin tugating": 'Finish 10 games',
     "Bu hafta 10 ta o'yinni tugating": 'Finish 10 games this week',
     'Vocabulary Boss': 'Vocabulary Boss',
+    'Vocably Run': 'Vocably Run',
+    "3 yo'lakli yugurish: to'g'ri so'z turgan yo'lakka o'ting": 'Three-lane run: switch to the lane with the right word',
     'Haftalik Vocabulary Boss sinovini tugating': 'Complete the weekly Vocabulary Boss challenge',
 
     // --- Achievements (src/lib/vocab/achievements.ts)
@@ -252,6 +254,10 @@ const en = {
     'Writing Task 1 (grafik tavsifi)': 'Writing Task 1 (describing a graph)',
     'Speaking: Part 2 cue card': 'Speaking: Part 2 cue card',
     'Mock test (imtihon sharoiti)': 'Mock test (exam conditions)',
+    // --- Vocably 2.0 today plan (src/lib/todayPlan.js)
+    '1 ta o‘yin — so‘zlarni mustahkamlash': '1 game — reinforce your words',
+    'To‘liq mock test (imtihon sharoiti)': 'Full mock test (exam conditions)',
+    'Haftalik mock bo‘lim': 'Weekly mock section',
     'Imtihon sanasini profilda belgilang — reja unga moslashadi': 'Set your exam date in your profile — the plan will adapt to it',
     'Imtihon sanasi o‘tib ketgan — yangi sanani kiriting': 'Your exam date has passed — enter a new date',
     'Imtihon bugun — omad! Faqat yengil takrorlash': 'Your exam is today — good luck! Light review only',
@@ -287,6 +293,8 @@ const en = {
     { uz: '{n} ta so‘zni takrorlash', tr: 'Review {n} {n#word|words}' },
     { uz: '{n} ta yangi so‘z o‘rganish', tr: 'Learn {n} new {n#word|words}' },
     { uz: 'Xatolardan {n} ta so‘z', tr: '{n} {n#word|words} from mistakes' },
+    { uz: '{n} ta yangi so‘z', tr: '{n} new {n#word|words}' },
+    { uz: 'Kutubxonadan {n} ta yangi so‘z qo‘shish', tr: 'Add {n} new {n#word|words} from the library' },
     { uz: 'Imtihongacha {n} kun · maqsad {b}', tr: '{n} {n#day|days} until the exam · target {b}' },
     { uz: 'Imtihongacha {n} kun', tr: '{n} {n#day|days} until the exam' },
     { uz: "Kamida {min} ta so'z kerak (hozir {n})", tr: 'At least {min} words needed (currently {n})' },

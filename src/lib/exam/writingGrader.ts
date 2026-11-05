@@ -14,12 +14,14 @@
 // about the client contract (POST grade-writing → result) needs to change.
 import { generateJsonWithMeta } from '@/lib/aiJson';
 import type { WritingScore, WritingTask } from './types';
+import { normalizeUpgrades } from './vocabUpgrades';
 
 // Prompt/sxema (RESPONSE_SCHEMA yoki buildPrompt) mazmunli o'zgarganda
 // qo'lda oshiriladi — eski saqlangan `WritingScore.graderVersion` qaysi
 // mezon matni bilan baholanganini bildiradi (audit uchun, TA/TR bahosi
 // prompt formulasiga sezilarli bog'liq).
-const GRADER_VERSION = '1.0';
+// 1.1 — vocabularyUpgrades (TZ 2.0 §6.6.1).
+const GRADER_VERSION = '1.1';
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -49,6 +51,14 @@ const RESPONSE_SCHEMA = {
       },
     },
     improvedVersion: { type: 'string' },
+    vocabularyUpgrades: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { original: { type: 'string' }, better: { type: 'string' }, noteUz: { type: 'string' } },
+        required: ['original', 'better'],
+      },
+    },
   },
   required: [
     'taskAchievement', 'coherenceCohesion', 'lexicalResource', 'grammaticalRange',
@@ -90,6 +100,7 @@ To'rt mezon bo'yicha 0-9 oralig'ida, 0.5 qadamda baholang: Task Achievement (Tas
 "criteriaFeedbackUz" — har mezon bo'yicha alohida, o'zbek tilida 1-2 jumlalik izoh.
 "corrections" — matndagi eng muhim 3-6 ta grammatik/leksik xato: asl parcha, tuzatilgan variant, o'zbekcha sabab.
 "improvedVersion" — band 7.5 darajasidagi qayta yozilgan to'liq variant (ingliz tilida).
+"vocabularyUpgrades" — foydalanuvchi matnida HAQIQATAN ishlatgan 3-5 ta oddiy so'z/ibora va ularning band 7+ darajasidagi kuchliroq muqobili (masalan "a lot of" → "a considerable number of"). "original" — matndagi aynan o'sha so'z/ibora, "better" — bitta muqobil (faqat ingliz tilida, 1-5 so'z), "noteUz" — qachon ishlatilishi haqida o'zbekcha qisqa izoh.
 
 JAVOBNI FAQAT xom JSON obyekti sifatida qaytar — hech qanday izoh, markdown yoki \`\`\`json bloki bo'lmasin.`;
 }
@@ -153,6 +164,7 @@ export async function gradeEssay(task: WritingTask, text: string): Promise<Writi
         }))
       : [],
     improvedVersion: typeof data.improvedVersion === 'string' ? data.improvedVersion : undefined,
+    vocabularyUpgrades: normalizeUpgrades(data.vocabularyUpgrades),
     graderModel: provider,
     graderVersion: GRADER_VERSION,
     underMinWords: wordCount < task.minWords,

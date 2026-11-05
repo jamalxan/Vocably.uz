@@ -30,17 +30,18 @@ describeDb('welcome trial (integration)', () => {
 
   const makeUser = (phone = '+998900000001') => M.User.create({ phone, password: 'x', name: 'Yangi' });
 
-  it('by default a new user gets 1 month of Premium and a welcome notice; a second call does nothing', async () => {
+  it('by default a new user gets 7 days of Premium and a welcome notice; a second call does nothing', async () => {
     const u = await makeUser();
     const out = await trial.grantWelcomeTrial(u);
-    expect(out).toMatchObject({ tier: 'premium', months: 1 });
+    expect(out).toMatchObject({ tier: 'premium', days: 7 });
 
     const fresh = await M.User.findById(u._id);
     expect(fresh.subscriptionTier).toBe('premium');
     expect(fresh.welcomeTrialAt).toBeInstanceOf(Date);
     const state = sub.subscriptionState(fresh);
     expect(state.status).toBe('active');
-    expect(state.daysLeft).toBeGreaterThanOrEqual(28);
+    expect(state.daysLeft).toBeGreaterThanOrEqual(6);
+    expect(state.daysLeft).toBeLessThanOrEqual(7);
     expect(await M.Notification.countDocuments({ userId: u._id, type: 'gift' })).toBe(1);
 
     expect(await trial.grantWelcomeTrial(fresh)).toBeNull();

@@ -12,11 +12,11 @@ export async function grantWelcomeTrial(user) {
     const trial = await getWelcomeTrial();
     if (!trial.enabled) return null;
     const now = new Date();
-    const update = activationUpdate(user, trial.tier, { months: trial.months, now, by: null });
+    const update = activationUpdate(user, trial.tier, { months: trial.months || 1, days: trial.days || null, now, by: null });
     const res = await User.updateOne({ _id: user._id, welcomeTrialAt: null }, { $set: { ...update, welcomeTrialAt: now } });
     if (!res.modifiedCount) return null;
-    await notifySubscriptionActivated(user, { kind: 'trial', tier: trial.tier, months: trial.months, expiresAt: update.subscriptionExpiresAt });
-    return { tier: trial.tier, months: trial.months, expiresAt: update.subscriptionExpiresAt };
+    await notifySubscriptionActivated(user, { kind: 'trial', tier: trial.tier, months: trial.months, days: trial.days, expiresAt: update.subscriptionExpiresAt });
+    return { tier: trial.tier, months: trial.months, days: trial.days, expiresAt: update.subscriptionExpiresAt };
   } catch (err) {
     console.error('[welcome-trial] berilmadi', err);
     return null;

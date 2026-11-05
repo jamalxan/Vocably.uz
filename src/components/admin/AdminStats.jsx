@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Users, ShieldCheck, Ban, Crown, MessagesSquare, Mail, Flag, TrendingUp } from 'lucide-react';
 import StatTile from '@/components/ui/StatTile';
+import SalesFunnel from '@/components/admin/SalesFunnel';
 
 const TYPE_LABELS = { text: 'Matn', image: 'Rasm', video: 'Video', voice: 'Ovozli', file: 'Fayl', sticker: 'Stiker' };
 
@@ -66,6 +67,11 @@ export default function AdminStats() {
           <StatTile icon={Crown} label="Adminlar" value={fmt(stats.adminCount)} />
           <StatTile icon={TrendingUp} label="Bugun ro'yxatdan o'tgan" value={fmt(stats.newToday)} />
         </div>
+      </div>
+
+      <div>
+        <SectionLabel>Voronka</SectionLabel>
+        <SalesFunnel />
       </div>
 
       <div>

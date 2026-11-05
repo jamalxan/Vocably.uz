@@ -2,6 +2,7 @@ import { User } from '@/lib/models';
 import { escapeTelegramHtml } from './telegramHtml';
 import { sendMessage, editMessageText } from '@/lib/telegram';
 import { applyWordReview, logReviewEvent } from '@/lib/wordReview';
+import { touchPlan } from '@/lib/plan/server';
 
 // Daily 5-minute mini-test in Telegram: five words from the user's own
 // vocabulary (due ones first), "which translation is right?" with four
@@ -79,9 +80,9 @@ export async function sendDailyPractice(user, now = new Date()) {
     await User.updateOne({ _id: user._id }, { $set: { tgDailySentOn: tashkentDate(now), tgQuiz: null } });
     return 'reminder';
   }
-  await sendMessage(user.telegramChatId, `${header}\n${quiz.items.length} ta so‘z — javobni tugma bilan tanlang.`);
+  // One message (header + first question): the daily cap counts messages (TZ 2.0 §6.10.5).
   const q = questionMarkup(quiz);
-  await sendMessage(user.telegramChatId, q.text, { reply_markup: q.reply_markup });
+  await sendMessage(user.telegramChatId, `${header}\n${quiz.items.length} ta so‘z — javobni tugma bilan tanlang.\n\n${q.text}`, { reply_markup: q.reply_markup });
   await User.updateOne({ _id: user._id }, { $set: { tgDailySentOn: tashkentDate(now), tgQuiz: quiz } });
   return 'quiz';
 }
@@ -120,6 +121,8 @@ export async function handleQuizCallback(chatId, messageId, data, now = new Date
   await user.save();
   if (review) {
     await logReviewEvent({ userId: user._id, categoryId: item.categoryId, wordId: item.wordId, mode: 'telegram', rating: correct ? 3 : 1, correct, now, ...review });
+    const settled = await touchPlan(user._id, now, user.lastReviewDate || null);
+    if (settled) user.reviewStreak = settled.streak;
   }
 
   const verdict = correct ? '✅ To‘g‘ri!' : `❌ To‘g‘ri javob: <b>${item.options[item.correct]}</b>`;

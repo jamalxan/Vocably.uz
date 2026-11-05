@@ -1,6 +1,7 @@
 'use client';
 import type { WritingScore } from '@/lib/exam/types';
 import { useT } from '@/context/LocaleContext';
+import VocabUpgrades from './VocabUpgrades';
 
 // TZ-vocably-v2.md §8.5/§11.2 — Writing bahosi kartasi. Ikkala joyda
 // ishlatiladi: WritingResult.tsx (submit'dan darhol keyin) va
@@ -56,6 +57,15 @@ export default function WritingScoreCard({ title, score, essayText }: WritingSco
             </div>
           ))}
         </div>
+      )}
+      {score.vocabularyUpgrades && score.vocabularyUpgrades.length > 0 && <VocabUpgrades items={score.vocabularyUpgrades} />}
+      {score.improvedVersion && (
+        <details className="mt-3">
+          <summary className="min-h-10 -my-2 py-2 flex items-center text-xs font-semibold uppercase tracking-wide text-muted cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            {t('rs.modelAnswer')}
+          </summary>
+          <p className="text-sm text-ink mt-2 whitespace-pre-wrap">{score.improvedVersion}</p>
+        </details>
       )}
       {essayText && (
         <details className="mt-3">

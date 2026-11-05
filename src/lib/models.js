@@ -248,6 +248,8 @@ const UserSchema = new mongoose.Schema({
   // Gamified Vocabulary Engine — streak freeze (TZ §15) va o'yin statistikasi (yutuqlar/kvestlar uchun).
   // Streak hisobi o'zi `reviewStreak`/`lastReviewDate` maydonlarida qoladi (ikkala oqim ham bitta streak'ni oshiradi).
   streakFreezes: { type: Number, default: 0, min: 0, max: 5 },
+  // ISO week ('2026-W45') of the last weekly free freeze (TZ 2.0 §6.8.2).
+  freezeWeek: { type: String, default: null },
   gameStats: {
     gamesCompleted: { type: Number, default: 0 },
     bossCompleted: { type: Number, default: 0 },
@@ -268,6 +270,16 @@ const UserSchema = new mongoose.Schema({
     sendHour: { type: Number, default: 20, min: 8, max: 21 },
     lastSentOn: { type: String, default: null },
     lastCheckedOn: { type: String, default: null },
+    // TZ 2.0 §6.10: kunduzgi eslatma turi va 21:00 seriya turtkisi (ikkinchi slot) holati.
+    lastKind: { type: String, default: null },
+    riskSentOn: { type: String, default: null },
+    riskCheckedOn: { type: String, default: null },
+  },
+  // Kuniga ko'pi bilan 2 ta proaktiv Telegram xabari (TZ 2.0 §6.10.5) — eslatmalar va kunlik mini-test birga
+  // hisoblanadi. src/lib/telegramCap.js atomik "band qiladi". day — foydalanuvchi mahalliy sanasi.
+  tgNudge: {
+    day: { type: String, default: null },
+    count: { type: Number, default: 0 },
   },
   // Lug'at onboarding diagnostikasi (TZ §64) — o'tkazib yuborish mumkin.
   vocabOnboarding: {
@@ -288,6 +300,12 @@ const UserSchema = new mongoose.Schema({
   // formatlamagan, MVP doirasida shu uchtasi yetarli).
   currentLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced', null], default: null },
   dailyStudyMinutes: { type: Number, default: null },
+  // Vocably 2.0 onboarding (TZ 2.0 §6.1, src/lib/onboarding.js). `goal: general` = IELTS emas,
+  // umumiy ingliz tili. `examDateEstimated` — foydalanuvchi "hali bilmayman" dedi, sana +90 kun.
+  goal: { type: String, enum: ['ielts', 'general', null], default: null },
+  weakestSkill: { type: String, enum: ['reading', 'listening', 'writing', 'speaking', null], default: null },
+  examDateEstimated: { type: Boolean, default: false },
+  onboardingCompletedAt: { type: Date, default: null },
   // BILL-01/02 (VOCABLY_TZ_FINAL...2026-09-20.md §46) — entitlement modeli.
   // Bu bosqichda haqiqiy to'lov integratsiyasi YO'Q (checkout emas) — tarif
   // FAQAT admin tomonidan qo'lda tayinlanadi (src/app/api/admin/chat/users/[id]/route.js
@@ -658,7 +676,7 @@ export const BillingInterest =
 const PaymentRequestSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   tier: { type: String, enum: ['standard', 'premium'], required: true },
-  months: { type: Number, enum: [1, 12], required: true },
+  months: { type: Number, enum: [1, 3, 12], required: true },
   amount: { type: Number, required: true }, // so'm
   method: { type: String, enum: ['manual', 'payme', 'click'], default: 'manual' },
   status: { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'], default: 'pending' },
@@ -677,9 +695,20 @@ const PaymentRequestSchema = new mongoose.Schema({
     cancelledAt: { type: Date, default: null },
     reason: { type: Number, default: null },
   },
+  // TZ 2.0 §10: 14-day full refund, requested in the app (src/lib/billingTerms.js). The money goes back by hand
+  // (card / Payme / Click merchant cabinet); approving here takes the paid term back from the subscription.
+  refund: {
+    status: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },
+    reason: { type: String, default: '', maxlength: 500 },
+    requestedAt: { type: Date, default: null },
+    decidedAt: { type: Date, default: null },
+    decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    note: { type: String, default: '', maxlength: 300 },
+  },
   createdAt: { type: Date, default: Date.now },
 });
 PaymentRequestSchema.index({ status: 1, createdAt: -1 });
+PaymentRequestSchema.index({ 'refund.status': 1, 'refund.requestedAt': -1 });
 PaymentRequestSchema.index({ userId: 1, createdAt: -1 });
 PaymentRequestSchema.index({ 'provider.txId': 1 }, { sparse: true });
 
@@ -1235,6 +1264,48 @@ XpEventSchema.index({ userId: 1, createdAt: -1 });
 XpEventSchema.index({ createdAt: -1 }); // haftalik reyting — barcha userlar bo'yicha
 
 export const XpEvent = mongoose.models.XpEvent || mongoose.model('XpEvent', XpEventSchema);
+
+// Vocably 2.0 "Bugungi reja" (TZ 2.0 §6.2, src/lib/todayPlan.js + src/lib/plan/server.js).
+// One document per user per LOCAL day (00:00 in the user's timezone). Built lazily on the
+// first read of the day, so no midnight cron is needed; `inputsKey` rebuilds it when the
+// exam date / daily minutes / weakest skill change. XP per task goes through XpEvent with
+// idempotencyKey `plan:<userId>:<date>:<taskKey>`, so a task can never pay out twice.
+const PlanTaskSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true },
+    type: { type: String, enum: ['review', 'new', 'game', 'skill', 'mock'], required: true },
+    skill: { type: String, default: undefined },
+    title: { type: String, required: true },
+    minutes: { type: Number, default: 0 },
+    href: { type: String, default: '' },
+    xp: { type: Number, default: 0 },
+    target: { type: Number, default: 1 },
+    progress: { type: Number, default: 0 },
+    status: { type: String, enum: ['todo', 'done'], default: 'todo' },
+    doneAt: { type: Date, default: undefined },
+    manual: { type: Boolean, default: undefined },
+    carried: { type: Boolean, default: undefined },
+    focus: { type: Boolean, default: undefined },
+    needsWords: { type: Boolean, default: undefined },
+  },
+  { _id: false }
+);
+const DailyPlanSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  date: { type: String, required: true }, // 'YYYY-MM-DD' in the user's timezone
+  minutes: { type: Number, default: 20 },
+  weakest: { type: String, default: '' },
+  inputsKey: { type: String, default: '' },
+  tasks: { type: [PlanTaskSchema], default: [] },
+  completedAt: { type: Date, default: null }, // all tasks done
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+DailyPlanSchema.index({ userId: 1, date: -1 }, { unique: true });
+// Plans are only read for today/yesterday/the weekly report — keep ~4 months.
+DailyPlanSchema.index({ createdAt: 1 }, { expireAfterSeconds: 120 * 24 * 60 * 60 });
+
+export const DailyPlan = mongoose.models.DailyPlan || mongoose.model('DailyPlan', DailyPlanSchema);
 
 // ============================================================================
 // TZ-vocably-v2.md (AI Content Ingestion Agent, 2026-09-12) §6 — "admin kitob
@@ -1822,6 +1893,21 @@ VocabEventSchema.index({ name: 1, createdAt: -1 });
 VocabEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
 
 export const VocabEvent = mongoose.models.VocabEvent || mongoose.model('VocabEvent', VocabEventSchema);
+
+// TZ 2.0 §6.12.3: sales funnel landing → onboarding → signup → payment. Anonymous, first-party: a random
+// browser id (`vid`, localStorage) — no IP, no user agent, no cookies set. One row per (day, stage, vid), so
+// reloads don't inflate counts. Signups and payments come from User / PaymentRequest, not from here.
+const FunnelHitSchema = new mongoose.Schema({
+  day: { type: String, required: true }, // 'YYYY-MM-DD' Asia/Tashkent
+  stage: { type: String, enum: ['landing', 'onboarding_start', 'onboarding_done'], required: true },
+  vid: { type: String, required: true },
+  path: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now },
+});
+FunnelHitSchema.index({ day: 1, stage: 1, vid: 1 }, { unique: true });
+FunnelHitSchema.index({ createdAt: 1 }, { expireAfterSeconds: 400 * 24 * 60 * 60 });
+
+export const FunnelHit = mongoose.models.FunnelHit || mongoose.model('FunnelHit', FunnelHitSchema);
 
 // Offline takrorlash paketlari uchun idempotentlik: bir (userId, clientSeq) ikki marta qo'llanmaydi (tarmoq qayta urinishlari xavfsiz).
 const OfflineReviewReceiptSchema = new mongoose.Schema({

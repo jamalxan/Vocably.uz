@@ -7,7 +7,7 @@ import { NEW_ACHIEVEMENT_DEFS } from '../vocab/achievements';
 import { LEVEL_NAMES } from '../vocab/config';
 import { WEAK_REASON_LABELS } from '../vocab/weakness';
 import { buildDailyPlan } from '../vocab/dailyPlan';
-import { buildDailyPlan as studyPlan } from '../studyPlan';
+import { buildTodayPlan } from '../todayPlan';
 
 describe('ko‘plik (inglizcha)', () => {
   const f = ['word', 'words'];
@@ -62,18 +62,15 @@ describe('qamrov: serverdagi har bir ko‘rinadigan matn tarjima qilingan', () =
     expect(missing(reasons)).toEqual([]);
   });
 
-  it('Bugun sahifasi reja kartasi (studyPlan.js): sarlavhalar va vazifalar', () => {
+  it('Bugungi reja (todayPlan.js): barcha vazifa nomlari', () => {
     const texts: string[] = [];
-    for (const dl of [null, -3, 0, 1, 10, 30, 100]) {
-      for (const day of [0, 1, 2, 3, 5, 6, 7, 14]) {
-        for (const due of [0, 7, 60]) {
-          for (const mistakes of [0, 4, 30]) {
-            const plan = studyPlan({
-              due, newAvailable: 12, reviewsToday: 0, goal: 20, daysLeft: dl, targetBand: dl === 1 ? 7 : null,
-              skillBands: { listening: 6, reading: null, writing: 5, speaking: 7 }, sectionsDoneToday: [], mistakeWordsDue: mistakes, dailyMinutes: 45,
-              now: new Date(Date.UTC(2026, 0, 1 + day)),
-            });
-            texts.push(plan.headline, ...plan.tasks.map((t: any) => t.title));
+    for (const minutes of [10, 20, 40, 60]) {
+      for (let day = 0; day < 15; day++) {
+        for (const [due, newAvailable] of [[0, 0], [7, 12], [60, 3]]) {
+          for (const daysLeft of [null, 3, 90]) {
+            const date = new Date(Date.UTC(2026, 0, 1 + day)).toISOString().slice(0, 10);
+            const plan = buildTodayPlan({ date, minutes, due, newAvailable, skillBands: { listening: 6, writing: 5 }, weakestSkill: 'speaking', daysLeft });
+            texts.push(...plan.tasks.map((t: any) => t.title));
           }
         }
       }

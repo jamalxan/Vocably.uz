@@ -6,6 +6,9 @@ import { TIER_CONFIG } from '@/lib/entitlements';
 import { getBotUsername } from '@/lib/telegram';
 import { formatDateLocale } from '@/lib/uzDate';
 import { useT } from '@/context/LocaleContext';
+import { savingsPercent, termLabel, REFUND_WINDOW_DAYS } from '@/lib/billingTerms';
+
+const PERIOD_MONTHS = { monthly: 1, quarterly: 3, yearly: 12 };
 
 // BILL-01/02 — haqiqiy (placeholder emas) pricing sahifasi. Narx/feature
 // ro'yxati src/lib/entitlements.js'dan keladi (TZ §46.2: hardcode qilinmaydi).
@@ -22,7 +25,7 @@ function formatSom(n) {
 
 export default function PricingTable() {
   const { t, ts, locale } = useT();
-  const [period, setPeriod] = useState('monthly'); // 'monthly' | 'yearly'
+  const [period, setPeriod] = useState('monthly'); // 'monthly' | 'quarterly' | 'yearly'
   const [authState, setAuthState] = useState('loading'); // 'loading' | 'in' | 'out'
   const [currentTier, setCurrentTier] = useState(null);
   const [subscription, setSubscription] = useState(null);
@@ -106,7 +109,7 @@ export default function PricingTable() {
       )}
       {welcomeTrial && authState !== 'in' && (
         <div role="note" className="mx-auto mb-8 max-w-xl rounded-2xl border border-accent/40 bg-accent-soft px-5 py-4 text-center text-sm text-ink">
-          🎁 {t('pr.trial', { tier: ts(TIER_CONFIG[welcomeTrial.tier]?.label), n: welcomeTrial.months })}{' '}
+          🎁 {t('pr.trialTerm', { tier: ts(TIER_CONFIG[welcomeTrial.tier]?.label), term: termLabel(welcomeTrial, locale) })}{' '}
           <Link href="/register" className="font-semibold text-accent hover:underline">
             {t('pr.trialCta')}
           </Link>
@@ -116,6 +119,7 @@ export default function PricingTable() {
         <div className="inline-flex items-center gap-1 p-1 bg-surface border border-border rounded-xl">
           {[
             { key: 'monthly', label: t('pr.monthly') },
+            { key: 'quarterly', label: t('pr.quarterly') },
             { key: 'yearly', label: t('pr.yearly') },
           ].map((opt) => (
             <button
@@ -127,8 +131,10 @@ export default function PricingTable() {
               }`}
             >
               {opt.label}
-              {opt.key === 'yearly' && (
-                <span className="ml-1.5 text-[10px] font-semibold text-success">{t('pr.saving')}</span>
+              {opt.key !== 'monthly' && (
+                <span className={`ml-1.5 text-[10px] font-semibold ${period === opt.key ? 'text-on-accent' : 'text-success'}`}>
+                  −{savingsPercent(TIER_CONFIG.standard.priceMonthly, PERIOD_MONTHS[opt.key], opt.key === 'yearly' ? TIER_CONFIG.standard.priceYearly : TIER_CONFIG.standard.priceQuarterly)}%
+                </span>
               )}
             </button>
           ))}
@@ -138,7 +144,8 @@ export default function PricingTable() {
       <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
         {ORDER.map((tier) => {
           const config = TIER_CONFIG[tier];
-          const price = period === 'monthly' ? config.priceMonthly : config.priceYearly;
+          const months = PERIOD_MONTHS[period];
+          const price = months === 1 ? config.priceMonthly : months === 3 ? config.priceQuarterly : config.priceYearly;
           const isCurrent = authState === 'in' && currentTier === tier;
           const isPopular = tier === 'standard';
 
@@ -162,13 +169,13 @@ export default function PricingTable() {
                   {price === 0 ? t('pr.free') : t('pr.som', { n: formatSom(price) })}
                 </span>
                 {price > 0 && (
-                  <span className="text-sm text-muted"> / {period === 'monthly' ? t('pr.perMonth') : t('pr.perYear')}</span>
+                  <span className="text-sm text-muted"> / {months === 1 ? t('pr.perMonth') : months === 3 ? termLabel({ months: 3 }, locale) : t('pr.perYear')}</span>
                 )}
               </div>
               <p className="text-xs text-ink-subtle mb-5 min-h-[1rem]">
                 {tier === 'free' && t('pr.alwaysFree')}
-                {tier !== 'free' && period === 'yearly' && t('pr.saveYear')}
-                {tier !== 'free' && period === 'monthly' && t('pr.cancelAny')}
+                {tier !== 'free' && months > 1 && t('pr.savePct', { n: savingsPercent(config.priceMonthly, months, price), refund: REFUND_WINDOW_DAYS })}
+                {tier !== 'free' && months === 1 && t('pr.cancelAny')}
               </p>
 
               <ul className="space-y-2.5 mb-6 flex-1">
@@ -186,7 +193,7 @@ export default function PricingTable() {
                     {t('pr.current')}
                   </span>
                   <Link
-                    href={`/app/billing?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`}
+                    href={`/app/billing?tier=${tier}&months=${months}`}
                     className="inline-flex items-center justify-center text-sm font-semibold text-accent hover:underline py-1"
                   >
                     {t('pr.extend')}
@@ -209,8 +216,8 @@ export default function PricingTable() {
                   <Link
                     href={
                       authState === 'in'
-                        ? `/app/billing?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`
-                        : `/register?next=${encodeURIComponent(`/app/billing?tier=${tier}&months=${period === 'yearly' ? 12 : 1}`)}`
+                        ? `/app/billing?tier=${tier}&months=${months}`
+                        : `/register?next=${encodeURIComponent(`/app/billing?tier=${tier}&months=${months}`)}`
                     }
                     onClick={() => registerInterest(tier)}
                     className={`inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl text-sm transition-colors ${

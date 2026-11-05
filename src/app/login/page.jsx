@@ -1,3 +1,4 @@
+import { loginWidgetBot } from '@/lib/telegram';
 import AuthForm from '@/components/auth/AuthForm';
 
 export const metadata = {
@@ -7,5 +8,5 @@ export const metadata = {
 };
 
 export default function KirishPage() {
-  return <AuthForm initialMode="login" />;
+  return <AuthForm initialMode="login" telegramBot={loginWidgetBot()} />;
 }

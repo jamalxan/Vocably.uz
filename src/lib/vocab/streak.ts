@@ -4,13 +4,31 @@
 import { localDateWithCutoff } from '../srs';
 
 export const STREAK_MILESTONES = [1, 7, 30, 100, 365];
-export const STREAK_FREEZE_CONFIG = { maxFreezes: 2, earnEveryDays: 7 };
+/**
+ * TZ 2.0 §6.8.2: a streak day = at least one "Bugungi reja" task done (the plan server calls
+ * applyStreakActivity); the day starts at 00:00 local time, like the plan. Every ISO week the user
+ * gets 1 free freeze (topped up to `weeklyFree`, never above `maxFreezes`).
+ */
+export const STREAK_FREEZE_CONFIG = { maxFreezes: 2, weeklyFree: 1, cutoffHour: 0 };
+
+/** ISO week of a 'YYYY-MM-DD' date, e.g. '2026-W45'. */
+export function isoWeek(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const yearStart = Date.UTC(t.getUTCFullYear(), 0, 1);
+  const week = Math.ceil(((t.getTime() - yearStart) / 86400000 + 1) / 7);
+  return `${t.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
 
 export interface StreakState {
   streak: number;
   lastDate: string | null;
   freezes: number;
   longest: number;
+  /** ISO week of the last free-freeze grant. */
+  freezeWeek?: string | null;
 }
 
 export interface StreakResult extends StreakState {
@@ -22,7 +40,7 @@ export interface StreakResult extends StreakState {
   broke: boolean;
   /** Ishlatilgan freeze soni. */
   usedFreezes: number;
-  /** Shu chaqiruvda yangi freeze topildi. */
+  /** Shu chaqiruvda haftalik bepul freeze berildi. */
   earnedFreeze: boolean;
   /** Yetilgan milestone (1/7/30/100/365) yoki null. */
   milestone: number | null;
@@ -42,7 +60,7 @@ export function applyStreakActivity(
   timeZone: string,
   config = STREAK_FREEZE_CONFIG
 ): StreakResult {
-  const today = localDateWithCutoff(now, timeZone);
+  const today = localDateWithCutoff(now, timeZone, config.cutoffHour);
   const base: StreakResult = {
     ...state,
     extended: false,
@@ -60,6 +78,16 @@ export function applyStreakActivity(
   let streak = state.streak;
   let freezes = state.freezes;
   let broke = false;
+  // Weekly free freeze — granted before a missed day is covered.
+  const week = isoWeek(today);
+  let earnedFreeze = false;
+  let freezeWeek = state.freezeWeek ?? null;
+  if (freezeWeek !== week) {
+    freezeWeek = week;
+    const topped = Math.min(config.maxFreezes, Math.max(freezes, config.weeklyFree));
+    earnedFreeze = topped > freezes;
+    freezes = topped;
+  }
   let usedFreezes = 0;
 
   if (!state.lastDate) {
@@ -85,16 +113,11 @@ export function applyStreakActivity(
     }
   }
 
-  let earnedFreeze = false;
-  if (streak > 0 && streak % config.earnEveryDays === 0 && freezes < config.maxFreezes && !broke) {
-    freezes += 1;
-    earnedFreeze = true;
-  }
-
   return {
     streak,
     lastDate: today,
     freezes,
+    freezeWeek,
     longest: Math.max(state.longest, streak),
     extended: true,
     alreadyCounted: false,
@@ -113,14 +136,17 @@ export function applyStreakActivity(
 export function effectiveStreak(
   state: StreakState,
   now: Date,
-  timeZone: string
+  timeZone: string,
+  cutoffHour = STREAK_FREEZE_CONFIG.cutoffHour
 ): { streak: number; atRisk: boolean; brokenPreview: boolean } {
   if (!state.lastDate || state.streak <= 0) return { streak: 0, atRisk: false, brokenPreview: false };
-  const today = localDateWithCutoff(now, timeZone);
+  const today = localDateWithCutoff(now, timeZone, cutoffHour);
   const gap = daysBetween(state.lastDate, today);
   if (gap <= 0) return { streak: state.streak, atRisk: false, brokenPreview: false };
   if (gap === 1) return { streak: state.streak, atRisk: true, brokenPreview: false };
   const missed = gap - 1;
-  if (state.freezes >= missed) return { streak: state.streak, atRisk: true, brokenPreview: false };
+  // A new week's free freeze will be granted before the gap is covered.
+  const freezes = (state.freezeWeek ?? null) !== isoWeek(today) ? Math.max(state.freezes, STREAK_FREEZE_CONFIG.weeklyFree) : state.freezes;
+  if (freezes >= missed) return { streak: state.streak, atRisk: true, brokenPreview: false };
   return { streak: 0, atRisk: false, brokenPreview: true };
 }

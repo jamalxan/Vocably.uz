@@ -1,3 +1,4 @@
+import FunnelBeacon from '@/components/analytics/FunnelBeacon';
 import LandingHeader from '@/components/landing/LandingHeader';
 import { serializeJsonLd } from '@/lib/jsonLd';
 import LandingFooter from '@/components/landing/LandingFooter';
@@ -22,6 +23,7 @@ export default function NarxlarPage() {
     <div className="min-h-dvh bg-bg flex flex-col">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(ldGraph([organizationLd, webApplicationLd()])) }} />
       <LandingHeader />
+      <FunnelBeacon stage="landing" />
       <main className="flex-1 px-4 sm:px-6 py-12 sm:py-16">
         <div className="text-center max-w-2xl mx-auto mb-12">
           <h1 className="font-luxury text-3xl sm:text-4xl font-bold text-ink mb-3">Tariflar</h1>

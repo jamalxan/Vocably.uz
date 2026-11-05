@@ -9,6 +9,8 @@ import {
   Circle,
   CloudRain,
   Crown,
+  Footprints,
+  Mic,
   Ear,
   Flame,
   Gamepad2,
@@ -41,7 +43,7 @@ import StoryCard from './StoryCard';
 import { useT } from '@/context/LocaleContext';
 import { getGames, getGamificationProfile, savePlanMinutes } from './api';
 
-const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown, Image: ImageIcon, Images: GalleryHorizontal };
+const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown, Footprints, Image: ImageIcon, Images: GalleryHorizontal };
 const PLAN_ICON = { review: ListChecks, weak: Target, new: Sparkles, game: Gamepad2, listening: Ear, writing: PenSquare, speaking: Headphones };
 const MINUTE_OPTIONS = [5, 10, 20, 30, 45];
 const STATUS_KEYS = ['new', 'learning', 'familiar', 'strong', 'advanced', 'mastered'];
@@ -415,6 +417,18 @@ export default function GamesHub() {
           {(games?.games || []).map((g) => (
             <GameCard key={g.key} game={g} />
           ))}
+          <Link
+            href="/games/speak"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent grid place-items-center flex-shrink-0">
+              <Mic size={20} aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-ink">{t('hub.speakTitle')}</span>
+              <span className="block text-xs text-muted">{t('hub.speakBody')}</span>
+            </span>
+          </Link>
         </div>
       </section>
 

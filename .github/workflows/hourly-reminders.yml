@@ -1,0 +1,30 @@
+# Hourly trigger for vocab reminders (TZ 2.0 §6.10: daily plan at the user's chosen hour + 21:00 streak nudge).
+# Vercel Hobby cron runs at most once a day (vercel.json keeps that as a fallback), so the hourly beat comes
+# from here. The endpoint is idempotent per user per day, so duplicate or late runs never double-send.
+#
+# Setup (repo → Settings → Secrets and variables → Actions):
+#   secret   CRON_SECRET  — same value as the CRON_SECRET env on Vercel
+#   variable APP_URL      — optional, default https://www.vocably.uz
+name: hourly-reminders
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Call reminder sweep
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL || 'https://www.vocably.uz' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET secret is not set — skipping"; exit 0; fi
+          code=$(curl -sS -o body.json -w '%{http_code}' --max-time 300 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/internal/vocab/reminders")
+          cat body.json; echo
+          test "$code" = "200"

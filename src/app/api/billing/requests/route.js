@@ -10,9 +10,12 @@ import { cancelAbandonedOnlineRequests, countAwaitingReview } from '@/lib/paymen
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
 import { escapeTelegramHtml } from '@/lib/telegramHtml';
 import { TIER_CONFIG } from '@/lib/entitlements';
+import { refundEligibility, termLabel } from '@/lib/billingTerms';
+import { hadApprovedRefund } from '@/lib/payments/refund';
 import { NextResponse } from 'next/server';
 
-function requestOut(r) {
+function requestOut(r, hadRefund = false) {
+  const elig = refundEligibility(r, { hadRefund });
   return {
     id: String(r._id),
     tier: r.tier,
@@ -24,6 +27,8 @@ function requestOut(r) {
     hasReceipt: !!r.receiptFileId,
     createdAt: r.createdAt,
     reviewedAt: r.reviewedAt,
+    refund: r.refund?.status && r.refund.status !== 'none' ? { status: r.refund.status, note: r.refund.note || '' } : null,
+    refundableUntil: elig.ok ? elig.deadline : null,
   };
 }
 
@@ -32,8 +37,8 @@ export async function GET(req) {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
     await connectToDatabase();
-    const list = await PaymentRequest.find({ userId }).sort({ createdAt: -1 }).limit(10).lean();
-    return NextResponse.json({ requests: list.map(requestOut) });
+    const [list, hadRefund] = await Promise.all([PaymentRequest.find({ userId }).sort({ createdAt: -1 }).limit(10).lean(), hadApprovedRefund(userId)]);
+    return NextResponse.json({ requests: list.map((r) => requestOut(r, hadRefund)) });
   } catch (err) {
     return serverError(err, 'billing/requests:get');
   }
@@ -95,7 +100,7 @@ export async function POST(req) {
         const appUrl = process.env.APP_URL?.replace(/\/$/, '');
         await sendTelegramMessage(
           adminChat,
-          `💳 Yangi to'lov cheki: ${who}\n${TIER_CONFIG[tier].label} · ${months === 12 ? '1 yil' : '1 oy'} · ${amount.toLocaleString('ru-RU')} so'm`,
+          `💳 Yangi to'lov cheki: ${who}\n${TIER_CONFIG[tier].label} · ${termLabel({ months })} · ${amount.toLocaleString('ru-RU')} so'm`,
           appUrl ? { reply_markup: { inline_keyboard: [[{ text: "Ko'rish", url: `${appUrl}/admin/payments` }]] } } : {}
         ).catch((err) => console.error('[billing] admin xabari yuborilmadi', err));
       }

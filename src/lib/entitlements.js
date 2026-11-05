@@ -32,6 +32,7 @@ export const TIER_CONFIG = {
   free: {
     label: 'Bepul',
     priceMonthly: 0,
+    priceQuarterly: 0,
     priceYearly: 0,
     monthlyAiGradingLimit: FREE_MONTHLY_AI_GRADING_LIMIT,
     features: [
@@ -48,6 +49,8 @@ export const TIER_CONFIG = {
   standard: {
     label: 'Standard',
     priceMonthly: 69000,
+    // TZ 2.0 §10: 3 months ≈ 15% off (69 000 × 3 × 0.85 = 175 950 → 176 000).
+    priceQuarterly: 176000,
     priceYearly: 599000,
     monthlyAiGradingLimit: null,
     features: [
@@ -65,6 +68,8 @@ export const TIER_CONFIG = {
   premium: {
     label: 'Premium',
     priceMonthly: 129000,
+    // 129 000 × 3 × 0.85 = 328 950 → 329 000.
+    priceQuarterly: 329000,
     priceYearly: 999000,
     monthlyAiGradingLimit: null,
     features: [

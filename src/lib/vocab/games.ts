@@ -46,7 +46,8 @@ export type GameKey =
   | 'speed_challenge'
   | 'image_to_word'
   | 'word_to_image'
-  | 'vocabulary_boss';
+  | 'vocabulary_boss'
+  | 'vocably_run';
 
 export type Priority = 'P0' | 'P1' | 'P2';
 
@@ -294,6 +295,23 @@ export const GAME_CATALOG: GameDefinition[] = [
     instantFeedback: true,
     needsAudio: true,
   },
+  {
+    // Flagship (TZ 2.0 §7): 3 lanes, a prompt overhead, one right word per gate. The round ends on
+    // 3 lost lives or 90 s, so most rounds use only part of the question set.
+    key: 'vocably_run',
+    title: 'Vocably Run',
+    description: "3 yo'lakli yugurish: to'g'ri so'z turgan yo'lakka o'ting",
+    priority: 'P0',
+    minTier: 'free',
+    icon: 'Footprints',
+    skill: 'recall',
+    minWords: 4,
+    questionCount: cnt(30, 30, 30, 30),
+    timePerQuestionSec: tm(null, null, null, null),
+    lives: 3,
+    instantFeedback: true,
+    needsAudio: false,
+  },
 ];
 
 export function getGame(key: string): GameDefinition | undefined {
@@ -373,16 +391,24 @@ export interface GameQuestion {
   difficulty: Difficulty;
 }
 
-export const SERVER_ONLY_FIELDS = ['answer', 'accepted', 'answerTokens', 'answerMap', 'correctDisplay'] as const;
+export const SERVER_ONLY_FIELDS = ['answer', 'accepted', 'answerTokens', 'answerMap', 'correctDisplay', 'word', 'wordId', 'categoryId', 'explanation'] as const;
 
-/** Klientga yuboriladigan (javobsiz) ko'rinish. */
+/**
+ * Klientga yuboriladigan (javobsiz) ko'rinish. `word`/`explanation` ham yashiriladi: tanlov
+ * savollarida ular to'g'ri javobning o'zi (mc_word'da word === to'g'ri variant), wordId esa
+ * /api/words orqali so'zga aylantirilishi mumkin. Javobdan keyin revealFor() ularni beradi.
+ */
 export function toClientQuestion(q: GameQuestion): Omit<GameQuestion, (typeof SERVER_ONLY_FIELDS)[number]> {
-  const { answer, accepted, answerTokens, answerMap, correctDisplay, ...rest } = q;
+  const { answer, accepted, answerTokens, answerMap, correctDisplay, word, wordId, categoryId, explanation, ...rest } = q;
   void answer;
   void accepted;
   void answerTokens;
   void answerMap;
   void correctDisplay;
+  void word;
+  void wordId;
+  void categoryId;
+  void explanation;
   return rest;
 }
 
@@ -803,12 +829,28 @@ function generatorsFor(gameKey: GameKey, difficulty: Difficulty, rand: Rand): Ge
     if (difficulty === 'medium') return rand() < 0.5 ? [genMcMeaning, genMcWord] : [genMcWord, genMcMeaning];
     return [genMcMeaning, genDefinition, genMcWord];
   }
+  if (gameKey === 'vocably_run') return [runQuestion];
   if (gameKey === 'fill_gap') {
     const typed = difficulty === 'hard' || difficulty === 'expert';
     return [(c) => genFill(c, typed), (c) => genFill(c, !typed)];
   }
   return SIMPLE_GENERATORS[gameKey] || [];
 }
+
+/**
+ * Vocably Run: always 3 lanes — an Uzbek meaning or an English definition above, English words in
+ * the lanes. Easy asks meanings only; harder levels mix in definitions per question.
+ */
+const threeLanes = (gen: Generator): Generator => (c) => {
+  const q = gen({ ...c, difficulty: 'easy' }); // 'easy' = 3 options
+  return q && { ...q, difficulty: c.difficulty };
+};
+const runMeaning = threeLanes(genMcWord);
+const runDefinition = threeLanes(genDefinition);
+const runQuestion: Generator = (c) => {
+  if (c.difficulty === 'easy') return runMeaning(c) || runDefinition(c);
+  return c.rand() < 0.5 ? runDefinition(c) || runMeaning(c) : runMeaning(c) || runDefinition(c);
+};
 
 function dedupeWords(words: GameWord[]): GameWord[] {
   return uniqueBy(words, (w) => w.wordId);

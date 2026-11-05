@@ -6,7 +6,7 @@ import { serverError } from '@/lib/apiError';
 import { ratingFromOutcome } from '@/lib/srs';
 import { applyWordReview, logReviewEvent } from '@/lib/wordReview';
 import { applySkillResult, computeMastery } from '@/lib/vocab/mastery';
-import { applyStreakActivity } from '@/lib/vocab/streak';
+import { touchPlan } from '@/lib/plan/server';
 import { statsToInput } from '@/lib/vocab/server/words';
 import { normalizeOfflineBatch } from '@/lib/vocab/offlineBatch';
 import { NextResponse } from 'next/server';
@@ -62,7 +62,6 @@ export async function POST(req) {
         }
         const engineBefore = statsToInput(word.stats);
         const rating = it.rating || ratingFromOutcome(it.correct, it.responseMs);
-        const streakBefore = { streak: user.reviewStreak || 0, lastDate: user.lastReviewDate || null, freezes: user.streakFreezes || 0, longest: user.longestReviewStreak || 0 };
         const { prevCard, result } = applyWordReview(user, word, { correct: it.correct, rating, now: it.at });
 
         const engineState = applySkillResult(engineBefore, 'recall', it.correct, it.responseMs, it.at);
@@ -86,20 +85,16 @@ export async function POST(req) {
         word.stats.masteryVersion = mastery.version;
         if (mastery.status === 'mastered' && !word.stats.masteredAt) word.stats.masteredAt = it.at;
 
-        const sr = applyStreakActivity(streakBefore, it.at, user.timezone || 'Asia/Tashkent');
-        user.reviewStreak = sr.streak;
-        user.lastReviewDate = sr.lastDate;
-        user.longestReviewStreak = Math.max(streakBefore.longest, sr.streak);
-        user.streakFreezes = sr.freezes;
-
         logs.push({ userId: user._id, categoryId: it.categoryId, wordId: it.wordId, mode: 'offline', rating, correct: it.correct, prevCard, result, now: it.at });
         applied++;
       }
 
       if (applied) await user.save();
       for (const l of logs) await logReviewEvent(l);
+      // TZ 2.0: streak = plan tasks. Offline reviews count toward today's plan when they sync.
+      const streak = applied ? await touchPlan(user._id, new Date(), user.lastReviewDate || null) : null;
 
-      return NextResponse.json({ applied, duplicates, stale, rejected, reviewStreak: user.reviewStreak, xp: user.xp });
+      return NextResponse.json({ applied, duplicates, stale, rejected, reviewStreak: streak?.streak ?? user.reviewStreak, xp: user.xp });
     } catch (err) {
       // Saqlanmadi — "talab qilingan" izlar o'chiriladi, mijoz qayta yuborganda yo'qolib qolmasin.
       await OfflineReviewReceipt.deleteMany({ userId, key: { $in: fresh.map((f) => f.clientSeq) } }).catch(() => {});

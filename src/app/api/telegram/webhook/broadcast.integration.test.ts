@@ -118,9 +118,12 @@ describeDb('telegram webhook — reklama broadcast (integration)', () => {
     await adminMessage({ text: '/admin trial' }, 40);
     expect(sent('sendMessage').at(-1)!.body.text).toContain('yoqilgan');
     await adminMessage({ text: '/admin trial off' }, 41);
-    expect((await M.AppSetting.findOne({ key: 'welcomeTrial' })).value).toEqual({ enabled: false, tier: 'premium', months: 1 });
+    expect((await M.AppSetting.findOne({ key: 'welcomeTrial' })).value).toEqual({ enabled: false, tier: 'premium', months: null, days: 7 });
     await adminMessage({ text: '/admin trial standard 3' }, 42);
-    expect((await M.AppSetting.findOne({ key: 'welcomeTrial' })).value).toEqual({ enabled: true, tier: 'standard', months: 3 });
+    expect((await M.AppSetting.findOne({ key: 'welcomeTrial' })).value).toEqual({ enabled: true, tier: 'standard', months: 3, days: null });
+    await adminMessage({ text: '/admin trial premium 7d' }, 44); // TZ 2.0 §10: 7-day trial
+    expect((await M.AppSetting.findOne({ key: 'welcomeTrial' })).value).toEqual({ enabled: true, tier: 'premium', months: null, days: 7 });
+    expect(sent('sendMessage').at(-1)!.body.text).toContain('7 kun');
     await adminMessage({ text: '/admin trial gold 2' }, 43);
     expect(sent('sendMessage').at(-1)!.body.text).toContain("Noto'g'ri");
     expect(await M.BroadcastDraft.countDocuments({})).toBe(0); // commands never become drafts

@@ -269,6 +269,12 @@ describeDb('Javoblar (batch, idempotent, server-side tekshiruv)', () => {
 // Sinov so'zlari hammasi yangi: birinchi o'yinning o'zi "10 ta yangi so'z" kvestini ham yakunlaydi (to'g'ri xatti-harakat).
 const questXp = (done: any) => (done.questsCompleted || []).reduce((sum: number, q: any) => sum + (q.rewardXp || 0), 0);
 
+/** XP paid for "Bugungi reja" tasks (paid once per task, idempotent). */
+async function planXp(userId: unknown) {
+  const evs = await XpEvent.find({ userId, sourceType: 'plan' }).lean();
+  return evs.reduce((sum, e: any) => sum + e.amount, 0);
+}
+
 describeDb('Yakunlash: XP -> streak -> kvest -> yutuq (idempotent)', () => {
   async function playFull(u: any, now = T0, gameKey = 'multiple_choice', opts: any = {}) {
     const v: any = await startGameSession({ user: (await User.findById(u._id))!.toObject(), gameKey, difficulty: 'medium', now });
@@ -286,7 +292,9 @@ describeDb('Yakunlash: XP -> streak -> kvest -> yutuq (idempotent)', () => {
     expect(done.xp.breakdown.correct).toBe(10 * 5);
 
     const user: any = await User.findById(u._id).lean();
-    expect(user.xp).toBe(done.xp.earned + questXp(done));
+    // + the plan's game task XP (TZ 2.0: finishing a game completes "Bugungi reja" → game)
+    expect(user.xp).toBe(done.xp.earned + questXp(done) + (await planXp(u._id)));
+    expect(await planXp(u._id)).toBe(10);
     expect(user.reviewStreak).toBe(1);
     expect(user.lastReviewDate).toBe('2026-10-01');
     expect(user.gameStats.gamesCompleted).toBe(1);
@@ -308,7 +316,7 @@ describeDb('Yakunlash: XP -> streak -> kvest -> yutuq (idempotent)', () => {
     const again = await completeSession({ userId: u._id, sessionId: v.sessionId, now: new Date(T0.getTime() + 999999) });
     expect(again.duplicate).toBe(true);
     expect(again.xp.earned).toBe(done.xp.earned);
-    expect((await User.findById(u._id))!.xp).toBe(done.xp.earned + questXp(done));
+    expect((await User.findById(u._id))!.xp).toBe(done.xp.earned + questXp(done) + (await planXp(u._id)));
     expect(await XpEvent.countDocuments({ userId: u._id, sourceType: 'game' })).toBe(1);
   });
 
@@ -436,8 +444,14 @@ describeDb('Streak va freeze (o\'yin orqali)', () => {
     expect(d1.streak.streak).toBe(1);
     const d2 = await play(new Date(T0.getTime() + 24 * 3600 * 1000));
     expect(d2.streak.streak).toBe(2);
+    // day 3 missed — the week's free freeze (TZ 2.0) covers it
     const d4 = await play(new Date(T0.getTime() + 3 * 24 * 3600 * 1000));
-    expect(d4.streak.streak).toBe(1);
-    expect(d4.streak.broke).toBe(true);
+    expect(d4.streak).toMatchObject({ streak: 3, usedFreezes: 1, broke: false });
+    // days 5 and 6 missed — next week's single freeze isn't enough
+    const d7 = await play(new Date(T0.getTime() + 6 * 24 * 3600 * 1000));
+    expect(d7.streak).toMatchObject({ streak: 1, broke: true });
+    // a second game the same day doesn't count twice
+    const d7b = await play(new Date(T0.getTime() + 6 * 24 * 3600 * 1000 + 3600_000));
+    expect(d7b.streak).toMatchObject({ streak: 1, extended: false });
   });
 });
