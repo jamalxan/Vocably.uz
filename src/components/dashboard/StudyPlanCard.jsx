@@ -82,7 +82,8 @@ export default function StudyPlanCard() {
 
   if (error && !plan) {
     return (
-      <section className="rounded-2xl border border-border bg-surface shadow-card p-5 text-sm text-muted flex items-center justify-between gap-3">
+      <section aria-labelledby="plan-h" className="rounded-2xl border border-border bg-surface shadow-card p-5 text-sm text-muted flex items-center justify-between gap-3">
+        <h2 id="plan-h" className="sr-only">{t('hub.plan')}</h2>
         {t('plan.loadError')}
         <button type="button" onClick={() => load()} className="p-2 rounded-lg hover:bg-bg" aria-label={t('hub.retry')}>
           <RotateCcw size={16} aria-hidden="true" />
@@ -92,7 +93,8 @@ export default function StudyPlanCard() {
   }
   if (!plan) {
     return (
-      <section className="rounded-2xl border border-border bg-surface shadow-card p-5 h-64 grid place-items-center">
+      <section aria-labelledby="plan-h" aria-busy="true" className="rounded-2xl border border-border bg-surface shadow-card p-5 h-64 grid place-items-center">
+        <h2 id="plan-h" className="sr-only">{t('hub.plan')}</h2>
         <Loader2 className="w-5 h-5 animate-spin text-muted" aria-hidden="true" />
       </section>
     );

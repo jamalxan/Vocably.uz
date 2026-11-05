@@ -53,15 +53,50 @@ test.describe('Vocably 2.0 — today plan', () => {
     await page.goto('/app');
     const card = page.locator('section[aria-labelledby="plan-h"]');
     await expect(card).toBeVisible();
+    // Wait for the stored plan, not the loading skeleton (first dev compile of the API is slow).
+    await expect(card).not.toHaveAttribute('aria-busy', 'true', { timeout: 30_000 });
     const skill = plan.tasks.find((t: { type: string; status: string }) => t.type === 'skill' && t.status !== 'done');
     test.skip(!skill, 'skill task already done in this E2E database');
 
-    await card.getByRole('button', { name: /^Bajardim:/ }).first().click();
-    await expect(card.getByRole('status')).toContainText('XP');
+    const ticks = card.getByRole('button', { name: /^Bajardim:/ });
+    const before = await ticks.count();
+    const posted = page.waitForResponse((r) => r.url().includes('/api/plan/tasks/') && r.request().method() === 'POST');
+    await ticks.first().click();
+    const pr = await posted;
+    expect(pr.ok(), `${pr.url()} → ${pr.status()} ${await pr.text()}`).toBeTruthy();
+    await expect(ticks).toHaveCount(before - 1, { timeout: 15_000 });
+    const after = await (await page.request.get('/api/plan/today')).json();
+    expect(after.progress.xpEarned).toBeGreaterThanOrEqual(skill.xp);
 
     const second = await page.request.post(`/api/plan/tasks/${skill.key}/complete`);
     expect((await second.json()).xpPaid).toBe(0);
     const auto = await page.request.post('/api/plan/tasks/review/complete');
     expect([400, 404]).toContain(auto.status());
+  });
+});
+
+test.describe('Vocably 2.0 — writing word upgrades → SRS', () => {
+  test('adds phrases to the system deck once and rejects junk', async ({ page }) => {
+    await loginAs(page, E2E_PHONE);
+    const items = [
+      { original: 'a lot of', better: 'a considerable number of' },
+      { original: 'big', better: 'substantial' },
+    ];
+    const first = await page.request.post('/api/words/upgrades', { data: { items } });
+    expect(first.ok(), await first.text()).toBeTruthy();
+    const j1 = await first.json();
+    expect(j1.added + j1.skipped).toBe(2);
+
+    const again = await page.request.post('/api/words/upgrades', { data: { items } });
+    expect((await again.json()).added).toBe(0);
+
+    const junk = await page.request.post('/api/words/upgrades', { data: { items: [{ original: '<b>x</b>', better: 'y'.repeat(200) }] } });
+    expect(junk.status()).toBe(400);
+
+    const cats = await page.request.get('/api/words');
+    const body = await cats.json();
+    const list = Array.isArray(body) ? body : body.categories || [];
+    const deck = list.find((c: { name: string }) => c.name === "Writing: kuchliroq so'zlar");
+    expect(deck).toBeTruthy();
   });
 });

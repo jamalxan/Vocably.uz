@@ -407,6 +407,8 @@ export interface WritingScore {
   };
   corrections: { original: string; suggested: string; reason: string }[];
   improvedVersion?: string;
+  // TZ 2.0 §6.6.1 — "a lot of → a considerable number of"; added to SRS in one tap (grader v1.1+).
+  vocabularyUpgrades?: { original: string; better: string; noteUz?: string }[];
   // Audit metadata (writingGrader.ts) — eski (bu maydonlar qo'shilishidan
   // oldingi) saqlangan urinishlarda yo'q bo'lishi mumkin, shuning uchun
   // optional: UI ularsiz ham to'g'ri ishlashi kerak.

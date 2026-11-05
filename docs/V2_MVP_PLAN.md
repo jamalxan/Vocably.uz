@@ -14,7 +14,7 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 | 1 | Game → SRS: correct and <3 s = Easy, correct = Good, slow = Hard, wrong = Again | 7, 6.3.4 | ✅ |
 | 2 | Onboarding wizard (7 steps, resumable) + result screen (X days / Y min / Z words + prices) | 6.1 | ✅ |
 | 3 | "Today's plan": one engine, plan stored in the DB, task marking, 50% carry-over, XP per task, progress ring | 6.2 | ✅ |
-| 4 | Writing word upgrades → SRS in one click (exam grader) | 6.6.1 | ⏳ |
+| 4 | Writing word upgrades → SRS in one click (exam grader) | 6.6.1 | ✅ |
 | 5 | SRS review session: Recognition / Production / Mixed modes | 6.3.3 | ⏳ |
 | 6 | Flagship games without login: Vocably Run (3-lane runner), Gapir yoki yiqil | 7 | ⏳ |
 | 7 | 9:16 result card (download/share) | 7 | ⏳ |
@@ -28,6 +28,10 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
   `GET /api/plan/today`, `POST /api/plan/tasks/:key/complete`. The old `studyPlan.js` was removed (one engine).
   The plan is built at the start of the local day (00:00) on the first read, so no cron is needed. XP is paid once per task (XpEvent idempotency).
   Not done yet: the weekly report (TZ §6.2.4, Premium) and the band forecast in the plan card.
+- Step 4: the exam Writing grader (v1.1) returns `vocabularyUpgrades`; the result card has a "+SRS" button per item and
+  "Add all to SRS" (`POST /api/words/upgrades`, system deck "Writing: kuchliroq so'zlar", dedup, word cap).
+  The band 7.5 model answer (`improvedVersion`) was generated but not shown before — it is shown now.
+- E2E: the dev server flakes on first compile; the reliable check is `next build` + `next start -p 3100` + `E2E_REUSE_SERVER=1`.
 
 ## Should/Could (after the MVP)
 Voice tutor, R/L hint mode, pause map, leagues/duel, SEO tools (CEFR converter, topic generators, university requirements, vocab test),
