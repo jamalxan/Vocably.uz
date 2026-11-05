@@ -1,60 +1,120 @@
 'use client';
 import { useT } from '@/context/LocaleContext';
 import { useEffect, useRef, useState } from 'react';
-import { Send, Paperclip, Loader2, X, Pencil, Reply, FileText } from 'lucide-react';
+import { Send, Paperclip, Loader2, X, Pencil, Reply, FileText, Plus } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
+import { stageFiles, filesFromDataTransfer, ATTACH } from '@/lib/chat/attachments';
+import { formatBytes, fileExtension } from '@/lib/chat/mediaMeta';
+import { getDraft } from '@/lib/chat/drafts';
 import { VoiceRecorderButton } from './VoiceRecorder';
 import VideoRecorderButton from './VideoRecorder';
 import EmojiPicker from './EmojiPicker';
 
-const MAX_SIZE = { image: 10 * 1024 * 1024, video: 60 * 1024 * 1024, file: 25 * 1024 * 1024 };
-// Textarea 1 qatordan boshlanadi va ~5 qatorgacha o'sadi, keyin ichida scroll paydo bo'ladi
-// (AiChat.jsx'dagi bilan bir xil yondashuv — single-line <input> Shift+Enter'ni qo'llab-
-// quvvatlolmaydi va ba'zi brauzerlarda "beep" tovushi bilan rad etadi).
+// Composer (Telegram parity): many attachments in one tray with previews, one caption for an album,
+// "send as file", drag & drop / paste of several files, a draft (text + reply) that survives leaving
+// the chat, and sending that never blocks typing — every file becomes its own bubble at once.
 const MAX_TEXTAREA_HEIGHT = 120;
+const DRAFT_DEBOUNCE_MS = 400;
+
+function TrayItem({ att, onRemove, t }) {
+  // Object URL made once per item (lazy state) and released when the tile goes away.
+  const [url] = useState(() => (att.type === 'file' ? null : URL.createObjectURL(att.file)));
+  useEffect(() => () => url && URL.revokeObjectURL(url), [url]);
+  return (
+    <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-bg border border-border flex-shrink-0" title={att.name}>
+      {att.type === 'image' && url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="w-full h-full object-cover" />
+      )}
+      {att.type === 'video' && url && <video src={url} muted className="w-full h-full object-cover" />}
+      {att.type === 'file' && (
+        <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 text-muted">
+          <FileText size={18} />
+          <span className="text-[9px] font-semibold uppercase">{fileExtension(att.name, att.file.type).slice(0, 4)}</span>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={t('ch.tray.remove')}
+        className="absolute top-0.5 right-0.5 w-6 h-6 rounded-full bg-black/60 text-white grid place-items-center hover:bg-black/80"
+      >
+        <X size={12} />
+      </button>
+      <span className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[9px] px-1 truncate">{formatBytes(att.size)}</span>
+    </div>
+  );
+}
 
 export default function Composer() {
   const { t, ts } = useT();
   const {
     sendMessage,
-    uploadAndSend,
+    sendAttachments,
     editingMessage,
     editMessage,
     cancelEditMessage,
     replyingTo,
+    startReply,
     cancelReply,
     activeConversation,
     sendTyping,
+    drafts,
+    saveDraft,
+    stagedFiles,
+    stageExternalFiles,
   } = useChat();
   const { chatUserId: myId } = useApp();
-  const [text, setText] = useState('');
+  const conversationId = activeConversation?.id;
+  const draft = getDraft(drafts, conversationId);
+  const [text, setText] = useState(() => draft?.text || '');
   const [sending, setSending] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
-  // Fayl tanlash/joylashtirish (paste) darhol yubormaydi — Telegram/WhatsApp uslubida
-  // avval shu preview ko'rsatiladi (ixtiyoriy izoh yozish imkoni bilan), faqat "Yuborish"
-  // tugmasi (yoki Enter) bosilganda haqiqatan yuklab yuboriladi. { file, type, previewUrl }
-  const [pendingAttachment, setPendingAttachment] = useState(null);
-  // Ovozli yozuv ketayotganda mobil tugmalar almashinuvi yozuv popover'ini yashirmasin.
+  const [tray, setTray] = useState([]); // staged attachments: { id, file, type, name, size }
+  const [asFile, setAsFile] = useState(false);
+  const [trayError, setTrayError] = useState('');
   const [voiceActive, setVoiceActive] = useState(false);
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
   const emojiButtonRef = useRef(null);
-  const pendingAttachmentRef = useRef(null);
-  useEffect(() => { pendingAttachmentRef.current = pendingAttachment; });
+  const draftTimer = useRef(null);
+  const textRef = useRef(text);
+  useEffect(() => { textRef.current = text; });
 
-  const clearPendingAttachment = () => {
-    setPendingAttachment((prev) => {
-      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-      return null;
-    });
+  // Draft restore (reply target) once per conversation mount — the text came through useState.
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    if (draft?.replyTo && !replyingTo) startReply({ id: draft.replyTo.id, senderId: draft.replyTo.senderId, type: draft.replyTo.type, text: draft.replyTo.text, mediaKey: draft.replyTo.mediaKey || null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Draft save: debounced on text change, immediately on reply change; cleared on send/unmount flush.
+  const persistDraft = (nextText, nextReply) => {
+    if (!conversationId) return;
+    saveDraft(conversationId, { text: nextText, replyTo: nextReply ? { id: nextReply.id, senderId: nextReply.senderId, type: nextReply.type, text: nextReply.text, mediaKey: nextReply.mediaKey || null } : null });
   };
+  const scheduleDraft = (nextText) => {
+    clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => persistDraft(nextText, replyingTo), DRAFT_DEBOUNCE_MS);
+  };
+  useEffect(() => {
+    if (editingMessage) return;
+    clearTimeout(draftTimer.current);
+    persistDraft(textRef.current, replyingTo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replyingTo]);
+  useEffect(
+    () => () => {
+      clearTimeout(draftTimer.current);
+    },
+    []
+  );
 
-  // Tahrirlash rejimiga o'tilganda xabar matni inputga tushadi va fokus beriladi
-  // (kutilayotgan biriktirma bo'lsa — konflikt bo'lmasligi uchun bekor qilinadi).
-  // Tahrirlash tashqaridan bekor qilinsa (javob berish, suhbat almashishi) — eski matn
-  // inputda qolib, yangi xabar sifatida yuborilib ketmasin.
+  // Edit mode: the message text replaces the input; leaving edit mode restores nothing (draft is separate).
   const [prevEditing, setPrevEditing] = useState(null);
   if (prevEditing !== editingMessage) {
     setPrevEditing(editingMessage);
@@ -62,21 +122,16 @@ export default function Composer() {
       if (prevEditing != null) setText('');
     } else {
       setText(editingMessage.text);
-      clearPendingAttachment();
+      setTray([]);
     }
   }
   useEffect(() => {
     if (editingMessage) textInputRef.current?.focus();
   }, [editingMessage]);
-
-  // Javob berish rejimiga o'tilganda (xabardagi "Reply" tugmasi) inputga fokus
-  // beriladi, lekin matn o'zgarmaydi — foydalanuvchi o'z javobini yozadi.
   useEffect(() => {
     if (replyingTo) textInputRef.current?.focus();
   }, [replyingTo]);
 
-  // Matn o'zgarganda textarea balandligini moslaymiz; xabar yuborilib matn
-  // tozalangach balandlik o'z-o'zidan 1 qatorga qaytadi.
   useEffect(() => {
     const el = textInputRef.current;
     if (!el) return;
@@ -88,23 +143,41 @@ export default function Composer() {
     el.style.overflowY = needed > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
   }, [text]);
 
-  // Faqat unmount'da — biriktirma almashtirilganda/tozalanganda revoke qilish
-  // clearPendingAttachment/setPendingAttachment ichida allaqachon bajariladi.
-  useEffect(() => {
-    return () => {
-      const prev = pendingAttachmentRef.current;
-      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-    };
-  }, []);
+  const addFiles = (files) => {
+    const { accepted, rejected } = stageFiles(files, { existingCount: tray.length, asFile });
+    if (accepted.length) setTray((prev) => [...prev, ...accepted]);
+    const tooBig = rejected.find((r) => r.reason === 'too_big');
+    const tooMany = rejected.find((r) => r.reason === 'too_many');
+    setTrayError(
+      tooBig
+        ? t('ch.tray.tooBig', { name: tooBig.file.name, mb: Math.round(ATTACH.maxBytes[asFile ? 'file' : tooBig.file.type.startsWith('video/') ? 'video' : tooBig.file.type.startsWith('image/') ? 'image' : 'file'] / 1024 / 1024) })
+        : tooMany
+          ? t('ch.tray.tooMany', { n: ATTACH.maxPerMessage })
+          : ''
+    );
+    textInputRef.current?.focus();
+  };
 
-  const handleSendText = async (e) => {
+  // Files dropped on the conversation area land in the tray (effect sits after addFiles on purpose).
+  const addFilesRef = useRef(null);
+  useEffect(() => { addFilesRef.current = addFiles; });
+  useEffect(() => {
+    if (!stagedFiles) return;
+    addFilesRef.current?.(stagedFiles);
+    stageExternalFiles(null);
+  }, [stagedFiles, stageExternalFiles]);
+
+  const clearTray = () => {
+    setTray([]);
+    setTrayError('');
+    setAsFile(false);
+  };
+
+  const handleSend = async (e) => {
     e?.preventDefault();
     const clean = text.trim();
-    // Only edits and attachment uploads are exclusive; plain text never blocks.
-    if (sending && (editingMessage || pendingAttachment)) return;
-
     if (editingMessage) {
-      if (!clean) return;
+      if (!clean || sending) return;
       setSending(true);
       const res = await editMessage(editingMessage.id, clean);
       if (res.error) alert(ts(res.error));
@@ -112,35 +185,22 @@ export default function Composer() {
       setSending(false);
       return;
     }
-
-    if (pendingAttachment) {
-      const { file, type } = pendingAttachment;
-      setSending(true);
+    if (tray.length) {
+      // Attachments: bubbles appear at once, uploads run in the background — the tray is free again.
+      const items = tray.map((a) => ({ ...a, type: asFile ? 'file' : a.type }));
+      const res = sendAttachments(items, { caption: clean, replyTo: replyingTo, asFile });
+      if (res?.error) return alert(ts(res.error));
+      clearTray();
       setText('');
-      clearPendingAttachment();
-      // Video biriktirilgan bo'lsa (fayl tanlash/paste orqali, mikrofon/kamera
-      // yozuvi emas) — yuklanayotgan payt boshqa tomonga "video yubormoqda..."
-      // ko'rsatiladi (VoiceRecorder/VideoRecorder'dagi bilan bir xil kanal).
-      if (type === 'video') sendTyping('video');
-      const res = await uploadAndSend(file, type, clean || undefined);
-      if (res.error) {
-        // Xato bo'lsa biriktirma va izoh yo'qolmasin — qayta yuborish mumkin bo'lsin.
-        setText((cur) => cur || clean);
-        setPendingAttachment((cur) =>
-          cur || { file, type, previewUrl: type !== 'file' ? URL.createObjectURL(file) : null }
-        );
-        alert(ts(res.error));
-      }
-      setSending(false);
+      clearTimeout(draftTimer.current);
+      saveDraft(conversationId, { text: '', replyTo: null });
+      textInputRef.current?.focus();
       return;
     }
-
     if (!clean) return;
-    // Telegram-like: no waiting for the server — the bubble appears at once
-    // (ChatContext keeps sends in order) and the user can type the next
-    // message straight away. A failed one stays in the chat with "Retry";
-    // only a server refusal (e.g. rate limit) is announced.
     setText('');
+    clearTimeout(draftTimer.current);
+    saveDraft(conversationId, { text: '', replyTo: null });
     textInputRef.current?.focus();
     sendMessage({ type: 'text', text: clean }).then((res) => {
       if (res?.error && res.error !== 'Tarmoq xatoligi') alert(ts(res.error));
@@ -152,99 +212,57 @@ export default function Composer() {
     setText('');
   };
 
-  // Enter — yuborish, Shift+Enter — yangi qator (AiChat.jsx bilan bir xil).
-  // IME (koreys/xitoy/yapon klaviaturasi) kompozitsiyasi paytida Enter xabarni
-  // yubormasligi kerak.
   const handleTextareaKeyDown = (e) => {
     if (e.key === 'Escape') {
       if (editingMessage) handleCancelEdit();
-      else if (pendingAttachment) clearPendingAttachment();
+      else if (tray.length) clearTray();
       else if (replyingTo) cancelReply();
       return;
     }
     if (e.key !== 'Enter' || e.shiftKey) return;
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     e.preventDefault();
-    handleSendText();
-  };
-
-  // Darhol yuklab yubormaydi — preview'ga qo'yadi, haqiqiy yuborish faqat
-  // "Yuborish" tugmasi/Enter bosilganda (handleSendText) sodir bo'ladi.
-  const stageAttachment = (file, type) => {
-    if (file.size > MAX_SIZE[type]) {
-      alert(t('ch.fileTooBig', { mb: Math.round(MAX_SIZE[type] / 1024 / 1024) }));
-      return;
-    }
-    clearPendingAttachment();
-    setPendingAttachment({
-      file,
-      type,
-      previewUrl: type !== 'file' ? URL.createObjectURL(file) : null,
-    });
-    textInputRef.current?.focus();
+    handleSend();
   };
 
   const handleFilePick = (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!file) return;
-    const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
-    stageAttachment(file, type);
+    if (files.length) addFiles(files);
   };
 
-  // D (composer, VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 D) — clipboard'dan
-  // rasm/fayl qo'yish (Ctrl/Cmd+V): boshqa joydan (screenshot, brauzer, fayl
-  // menejeri) nusxalangan narsani to'g'ridan-to'g'ri matn maydoniga joylashtirib
-  // preview'ga qo'yadi — fayl tanlash oynasini ochmasdan, Telegram/WhatsApp Web
-  // uslubida. Rasm/video bo'lsa shu turda, boshqa har qanday fayl 'file' turida
-  // biriktiriladi va xuddi shu (handleFilePick bilan bir xil) stageAttachment/
-  // uploadAndSend oqimidan o'tadi — alohida yuklash logikasi YO'Q. mimeType server
-  // tomonda ('file' uchun) faqat hajm bilan emas, xavfli turlar (.html/.json/.svg
-  // va h.k.) uchun ham tekshiriladi (src/lib/s3.js DANGEROUS_MIME_TYPES, C-14).
   const handlePaste = (e) => {
-    const items = Array.from(e.clipboardData?.items || []);
-    const fileItem = items.find((it) => it.kind === 'file');
-    if (!fileItem) return;
+    const files = filesFromDataTransfer(e.clipboardData);
+    if (!files.length) return;
     e.preventDefault();
-    const file = fileItem.getAsFile();
-    if (!file) return;
-    const type = fileItem.type.startsWith('image/') ? 'image' : fileItem.type.startsWith('video/') ? 'video' : 'file';
-    stageAttachment(file, type);
+    addFiles(files);
   };
 
-  // Recorded voice/video uploads run in the background — typing and sending
-  // other messages is never blocked by them (Telegram behaviour).
-  const handleRecordedVoice = (file, durationSec) => {
-    const extra = durationSec > 0 ? { durationSec: Math.round(durationSec) } : undefined;
-    uploadAndSend(file, 'voice', undefined, extra).then((res) => res?.error && alert(ts(res.error)));
+  // Recorded voice/video go straight out as their own bubbles (never blocks typing).
+  const handleRecordedVoice = (file, durationSec, waveform) => {
+    const extra = { ...(durationSec > 0 ? { durationSec: Math.round(durationSec) } : {}), ...(waveform ? { waveform } : {}) };
+    sendAttachments([{ id: `v${Date.now()}`, file, type: 'voice', name: file.name, size: file.size, extra }], { replyTo: replyingTo });
   };
-
-  // Camera recordings are "video notes": sent with `round: true` so every
-  // client shows them in the same circle they were recorded in.
   const handleRecordedVideo = (file, durationSec) => {
     const extra = { round: true, ...(durationSec > 0 ? { durationSec: Math.round(durationSec) } : {}) };
-    uploadAndSend(file, 'video', undefined, extra).then((res) => res?.error && alert(ts(res.error)));
+    sendAttachments([{ id: `r${Date.now()}`, file, type: 'video', name: file.name, size: file.size, extra }], { replyTo: replyingTo });
   };
 
-  // Tanlangan emoji xabar oxiriga emas, aynan kursor turgan joyga qo'shiladi.
   const handleEmojiPick = (emoji) => {
     const input = textInputRef.current;
     const start = input?.selectionStart ?? text.length;
     const end = input?.selectionEnd ?? text.length;
     const next = text.slice(0, start) + emoji + text.slice(end);
     setText(next);
-
+    scheduleDraft(next);
     requestAnimationFrame(() => {
       if (!input) return;
       const pos = start + emoji.length;
-      // Mobil sheet'da qayta fokus klaviaturani sheet ostida ochib yuboradi.
       if (!window.matchMedia('(max-width: 767px)').matches) input.focus();
       input.setSelectionRange(pos, pos);
     });
   };
 
-  // Stiker — Telegram kabi darhol yuboriladi (javob rejimida bo'lsa javob sifatida).
-  // Tahrirlash rejimida stiker yuborilmaydi (matnli xabar stikerga aylanmaydi).
   const handleStickerPick = async (stickerId) => {
     setEmojiOpen(false);
     if (editingMessage) return;
@@ -260,15 +278,14 @@ export default function Composer() {
         : t('ch.user')
     : '';
   const replyPreview = replyingTo && (replyingTo.type === 'text' ? replyingTo.text : ts(REPLY_TYPE_LABEL[replyingTo.type] || ''));
-  // <640px: matn/biriktirma bo'lsa "Yuborish", bo'lmasa mikrofon/video (Telegram uslubi) —
-  // tor ekranda 5 ta 44px tugma matn maydonini siqib qo'ymasligi uchun.
-  const hasContent = !!text.trim() || !!pendingAttachment || sending;
+  const hasContent = !!text.trim() || tray.length > 0 || sending;
   const showRecordersMobile = !hasContent || voiceActive;
   const bannerCloseClass =
     'inline-flex items-center justify-center min-w-11 min-h-11 -m-3 md:min-w-0 md:min-h-0 md:m-0 md:p-0.5 text-muted hover:text-accent transition-colors flex-shrink-0';
+  const mediaCount = tray.filter((a) => a.type !== 'file').length;
 
   return (
-    <div className="border-t border-border bg-surface" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div className="border-t border-border bg-surface" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} data-testid="composer">
       {editingMessage && (
         <div className="flex items-center gap-2 px-3.5 pt-2 text-xs text-accent">
           <Pencil size={12} className="flex-shrink-0" />
@@ -279,7 +296,7 @@ export default function Composer() {
         </div>
       )}
       {!editingMessage && replyingTo && (
-        <div className="flex items-center gap-2 px-3.5 pt-2 text-xs">
+        <div className="flex items-center gap-2 px-3.5 pt-2 text-xs" data-testid="reply-banner">
           <Reply size={12} className="flex-shrink-0 text-accent" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-accent truncate">{t('ch.replyTo', { who: replySenderLabel })}</p>
@@ -290,33 +307,38 @@ export default function Composer() {
           </button>
         </div>
       )}
-      {pendingAttachment && (
-        <div className="flex items-center gap-2.5 px-3.5 pt-2">
-          <div className="w-12 h-12 rounded-lg overflow-hidden bg-bg flex items-center justify-center flex-shrink-0">
-            {pendingAttachment.type === 'image' && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={pendingAttachment.previewUrl} alt="" className="w-full h-full object-cover" />
+      {tray.length > 0 && (
+        <div className="px-3.5 pt-2" data-testid="attachment-tray">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {tray.map((att) => (
+              <TrayItem key={att.id} att={att} t={t} onRemove={() => setTray((prev) => prev.filter((a) => a.id !== att.id))} />
+            ))}
+            {tray.length < ATTACH.maxPerMessage && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label={t('ch.tray.add')}
+                title={t('ch.tray.add')}
+                className="w-16 h-16 rounded-lg border border-dashed border-border text-muted hover:text-accent hover:border-accent/50 grid place-items-center flex-shrink-0"
+              >
+                <Plus size={18} />
+              </button>
             )}
-            {pendingAttachment.type === 'video' && (
-              <video src={pendingAttachment.previewUrl} className="w-full h-full object-cover" muted />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted mt-1">
+            <span>{t('ch.tray.count', { n: tray.length })}</span>
+            {mediaCount > 0 && (
+              <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                <input type="checkbox" checked={asFile} onChange={(e) => setAsFile(e.target.checked)} className="w-3.5 h-3.5 accent-accent" />
+                {t('ch.tray.asFile')}
+              </label>
             )}
-            {pendingAttachment.type === 'file' && <FileText size={18} className="text-muted" />}
+            <button type="button" onClick={clearTray} className="ml-auto text-muted hover:text-danger">{t('ch.cancel')}</button>
           </div>
-          <div className="flex-1 min-w-0 text-xs">
-            <p className="font-semibold text-ink truncate">
-              {pendingAttachment.type === 'image' ? t('ch.attImage') : pendingAttachment.type === 'video' ? t('ch.attVideo') : pendingAttachment.file.name}
-            </p>
-            <p className="text-muted">{(pendingAttachment.file.size / 1024 / 1024).toFixed(1)} MB</p>
-          </div>
-          <button onClick={clearPendingAttachment} aria-label={t('ch.removeAttAria')} type="button" className={bannerCloseClass}>
-            <X size={14} />
-          </button>
+          {trayError && <p className="text-[11px] text-danger mt-0.5" role="alert">{trayError}</p>}
         </div>
       )}
-      <form onSubmit={handleSendText} className="flex items-end gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-2.5 relative">
-        {/* Yagona dumaloq "yozish qutisi" — emoji va fayl biriktirish tugmalari
-            endi alohida qator elementi emas, aynan shu quti ICHIDA (WhatsApp/Telegram
-            uslubi) — tor mobil ekranda ortiqcha qatorlar bosim qilmasligi uchun. */}
+      <form onSubmit={handleSend} className="flex items-end gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-2.5 relative">
         <div className="flex-1 min-w-0 flex items-end gap-0.5 bg-bg rounded-2xl pl-1 pr-1 md:py-1">
           <div className="relative flex-shrink-0">
             <button
@@ -330,14 +352,7 @@ export default function Composer() {
               🙂
             </button>
             {emojiOpen && (
-              <EmojiPicker
-                triggerRef={emojiButtonRef}
-                onPick={(e) => {
-                  handleEmojiPick(e);
-                }}
-                onPickSticker={handleStickerPick}
-                onClose={() => setEmojiOpen(false)}
-              />
+              <EmojiPicker triggerRef={emojiButtonRef} onPick={handleEmojiPick} onPickSticker={handleStickerPick} onClose={() => setEmojiOpen(false)} />
             )}
           </div>
 
@@ -347,17 +362,13 @@ export default function Composer() {
             value={text}
             onChange={(e) => {
               setText(e.target.value);
+              scheduleDraft(e.target.value);
               sendTyping();
             }}
             onKeyDown={handleTextareaKeyDown}
             onPaste={handlePaste}
-            placeholder={pendingAttachment ? t('ch.captionPh') : t('ch.msgPh')}
-            aria-label={pendingAttachment ? t('ch.captionAria') : t('ch.msgAria')}
-            // TZ-vocably-v2.md BUG-2 (chat UI audit) — placeholder rangi hech qachon
-            // aniq belgilanmagan edi (brauzer standarti/meros olingan rangga qolib
-            // ketardi); endi to'g'ridan-to'g'ri `--color-muted` tokeniga bog'langan,
-            // ikkala rejimda ham kontrasti tekshirilgan (check-contrast.mjs'dagi
-            // "ikkinchi darajali matn" juftligi bilan bir xil token).
+            placeholder={tray.length ? (mediaCount > 1 ? t('ch.captionAlbum') : t('ch.captionPh')) : t('ch.msgPh')}
+            aria-label={tray.length ? t('ch.captionAria') : t('ch.msgAria')}
             className="flex-1 min-w-0 px-1.5 py-3 md:py-1.5 bg-transparent text-ink placeholder:text-muted text-base md:text-sm leading-5 outline-none font-chat resize-none"
           />
 
@@ -366,16 +377,11 @@ export default function Composer() {
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 aria-label={t('ch.pickFileAria')}
                 className="hidden"
                 onChange={handleFilePick}
-                // C-14 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2) — .html/.htm/.json
-                // ILGARI shu ro'yxatda edi; brauzerda ochilsa ichidagi skript bajarilishi
-                // mumkin bo'lgani uchun olib tashlandi. Bu faqat fayl tanlash oynasidagi
-                // UI filtri (foydalanuvchi baribir "barcha fayllar" tanlab chetlab o'tishi
-                // mumkin) — haqiqiy himoya server tarafda (src/lib/s3.js validateUpload,
-                // DANGEROUS_MIME_TYPES).
-                accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt"
+                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.mp3,.m4a,.ogg"
               />
               <button
                 type="button"
@@ -399,11 +405,12 @@ export default function Composer() {
 
         <button
           type="submit"
-          disabled={(!text.trim() && !pendingAttachment) || (sending && (!!editingMessage || !!pendingAttachment))}
+          disabled={(!text.trim() && !tray.length) || (sending && !!editingMessage)}
           aria-label={editingMessage ? t('ch.saveEdit') : t('ch.sendMsg')}
+          data-testid="send-button"
           className={`${hasContent || editingMessage ? 'inline-flex' : 'hidden'} sm:inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-on-accent rounded-full transition-colors flex-shrink-0`}
         >
-          {sending ? <Loader2 size={16} className="animate-spin" /> : editingMessage ? <Pencil size={16} /> : <Send size={16} />}
+          {sending && editingMessage ? <Loader2 size={16} className="animate-spin" /> : editingMessage ? <Pencil size={16} /> : <Send size={16} />}
         </button>
       </form>
     </div>

@@ -124,6 +124,8 @@ export async function GET(req) {
         unreadCount: unreadById.get(String(c._id)) || 0,
         // C-10 — pin banner (ConversationView.jsx) shu ro'yxatdan foydalanadi.
         pinnedMessageIds: (c.pinnedMessageIds || []).map(String),
+        archived: (c.archivedBy || []).some((id) => String(id) === String(user._id)),
+        pinned: (c.pinnedBy || []).some((id) => String(id) === String(user._id)),
       };
     });
 

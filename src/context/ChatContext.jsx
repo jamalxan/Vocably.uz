@@ -5,6 +5,12 @@ import { mergePolledMessages, applyDeletedForEveryone } from '@/lib/chatMerge';
 import { enqueueOffline, dequeueOffline, mergeQueuedIntoMessages } from '@/lib/offlineQueue';
 import { PREVIEW_BY_TYPE, isMutedNow } from '@/lib/chatConstants';
 import { STICKER_PACKS as STATIC_STICKER_PACKS } from '@/lib/stickers';
+import { createUploadManager } from '@/lib/chat/uploadManager';
+import { xhrPut } from '@/lib/chat/xhrUpload';
+import { prepareImage, probeVideo } from '@/lib/chat/compressImage';
+import { albumGroups, defaultId } from '@/lib/chat/attachments';
+import { readDrafts, writeDrafts, setDraft as setDraftInMap } from '@/lib/chat/drafts';
+import { applyNewMessageToList, applyBulkAction } from '@/lib/chat/chatList';
 
 function buildStickerCatalog({ packs = [], extra = [] }) {
   const byId = new Map();
@@ -78,9 +84,21 @@ export function ChatProvider({ myUserId, children }) {
   // xabar pufakchasida stikerni topish uchun (o'chirilganlari ham, eski xabarlar
   // uchun). Server javob bermaguncha statik "Standart" to'plam bilan boshlanadi.
   const [stickerCatalog, setStickerCatalog] = useState(() => buildStickerCatalog({ packs: STATIC_STICKER_PACKS }));
+  // Telegram parity: drafts per conversation (text + reply target) survive leaving the chat.
+  const [drafts, setDrafts] = useState(() => readDrafts(myUserId));
+  // Files dropped on the conversation (ConversationView drop zone) → picked up by the Composer tray.
+  const [stagedFiles, setStagedFiles] = useState(null);
 
   const socketRef = useRef(null);
   const pollRef = useRef(null);
+  const listReloadRef = useRef(null);
+  const messagesRef = useRef([]);
+  useEffect(() => { messagesRef.current = messages; });
+  // Uploads: one parallel manager for the whole chat; bubbles of conversations that are not open
+  // live in `pendingMediaRef` (same shape as the offline queue) until their message is stored.
+  const uploadsRef = useRef(null);
+  const pendingMediaRef = useRef([]);
+  const localFilesRef = useRef(new Map()); // clientMessageId → { file, type, name, conversationId, albumId, caption, replyTo, extra }
   // F (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 F) — offline xabar navbati: har
   // yozuv { clientMessageId, conversationId, body (POST payload), message (optimistik
   // pufakcha) }. Alohida React state EMAS — o'zgarishi UI'ni to'g'ridan-to'g'ri
@@ -179,7 +197,7 @@ export function ChatProvider({ myUserId, children }) {
           // oxiriga "yuborilmoqda" pufakchasi sifatida qo'shiladi.
           // Silent refresh (poll) merges instead of replacing — see src/lib/chatMerge.js.
           setMessages((prev) =>
-            mergeQueuedIntoMessages(silent ? mergePolledMessages(prev, list) : list, offlineQueueRef.current, conversationId)
+            mergeQueuedIntoMessages(silent ? mergePolledMessages(prev, list) : list, [...offlineQueueRef.current, ...pendingMediaRef.current], conversationId)
           );
           if (!silent) setMessagesError(false);
         } else if (!silent) {
@@ -201,25 +219,45 @@ export function ChatProvider({ myUserId, children }) {
   }, [loadMessages]);
 
   const loadOlderMessages = useCallback(async () => {
-    if (!activeConversation || messages.length === 0 || !hasMoreOlderRef.current) return;
-    const conversationId = activeConversation.id;
+    const conversationId = activeIdRef.current;
+    const current = messagesRef.current.filter((m) => !m._status);
+    if (!conversationId || current.length === 0 || !hasMoreOlderRef.current) return [];
     try {
-      const before = messages[0].createdAt;
+      const before = current[0].createdAt;
       const res = await fetch(
         `/api/chat/conversations/${conversationId}/messages?before=${encodeURIComponent(before)}`,
         { headers: authHeaders() }
       );
       const data = await res.json();
-      if (String(activeIdRef.current) !== String(conversationId)) return;
+      if (String(activeIdRef.current) !== String(conversationId)) return [];
       if (res.ok) {
         const older = data.messages || [];
         if (older.length < 50) hasMoreOlderRef.current = false;
-        if (older.length) setMessages((prev) => [...older, ...prev]);
+        if (older.length) {
+          setMessages((prev) => [...older, ...prev]);
+          messagesRef.current = [...older, ...messagesRef.current];
+        }
+        return older;
       }
     } catch {
       // jimgina
     }
-  }, [activeConversation, messages, authHeaders]);
+    return [];
+  }, [authHeaders]);
+
+  // Reply quote tapped on a message that is not loaded yet (Telegram loads around it): page back
+  // until it shows up, a few pages at most. Resolves true when the message is in the list.
+  const ensureMessageLoaded = useCallback(
+    async (messageId) => {
+      const has = () => messagesRef.current.some((m) => String(m.id || m._id) === String(messageId));
+      for (let i = 0; i < 8 && !has(); i++) {
+        const older = await loadOlderMessages();
+        if (!older.length) break;
+      }
+      return has();
+    },
+    [loadOlderMessages]
+  );
 
   // Keshda bo'lsa — darhol shuni ko'rsatadi (spinnersiz) va fonda yangilaydi;
   // bo'lmasa (bu suhbat birinchi marta ochilyapti) oddiy spinner bilan yuklaydi.
@@ -228,7 +266,7 @@ export function ChatProvider({ myUserId, children }) {
       const cached = messagesCacheRef.current.get(String(conversationId));
       hasMoreOlderRef.current = true;
       if (cached) {
-        setMessages(mergeQueuedIntoMessages(cached, offlineQueueRef.current, conversationId));
+        setMessages(mergeQueuedIntoMessages(cached, [...offlineQueueRef.current, ...pendingMediaRef.current], conversationId));
         // Oldingi (boshqa suhbatning) yuklanish/xato holati bu suhbatga o'tmasin.
         setLoadingMessages(false);
         setMessagesError(false);
@@ -341,6 +379,21 @@ export function ChatProvider({ myUserId, children }) {
     setReplyingTo(null);
   }, []);
 
+  // Telegram parity: a message updates its row at once (no list reload per message); the full
+  // list is re-fetched shortly after, debounced, as reconciliation.
+  const reloadListSoon = useCallback(() => {
+    clearTimeout(listReloadRef.current);
+    listReloadRef.current = setTimeout(() => loadConversations(), 1500);
+  }, [loadConversations]);
+  const touchList = useCallback(
+    (conversationId, { preview, createdAt, incoming }) => {
+      setConversations((prev) => applyNewMessageToList(prev, { conversationId, preview, createdAt, incoming }));
+      reloadListSoon();
+    },
+    [reloadListSoon]
+  );
+  const previewFor = (payload) => (payload.text ? String(payload.text).slice(0, 80) : PREVIEW_BY_TYPE[payload.type] || '');
+
   const appendMessage = useCallback((msg) => {
     setMessages((prev) => (prev.some((m) => String(m.id || m._id) === String(msg.id || msg._id)) ? prev : [...prev, msg]));
   }, []);
@@ -380,10 +433,13 @@ export function ChatProvider({ myUserId, children }) {
   const sendChainRef = useRef(Promise.resolve());
 
   const sendMessage = useCallback(
-    async (payload, existingClientId) => {
-      if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
-      const replyId = replyingToRef.current?.id;
-      const conversationId = activeConversation.id;
+    async (payload, existingClientId, opts = {}) => {
+      // Uploads finish after the user may have switched chats: the target conversation is explicit.
+      const conversationId = opts.conversationId || activeConversation?.id;
+      if (!conversationId) return { error: 'Suhbat tanlanmagan' };
+      const isActive = String(activeIdRef.current) === String(conversationId);
+      const reply = opts.replyTo !== undefined ? opts.replyTo : isActive ? replyingToRef.current : null;
+      const replyId = reply?.id;
       const clientMessageId = existingClientId || genClientMessageId();
       // F — offline navbatga ham, muvaffaqiyatli bo'lsa serverga ham AYNAN shu tana
       // yuboriladi (src/lib/offlineQueue.js) — ikkalasi mos kelmay qolmasin.
@@ -405,21 +461,23 @@ export function ChatProvider({ myUserId, children }) {
         replyTo: replyId
           ? {
               messageId: replyId,
-              senderId: replyingToRef.current.senderId,
-              type: replyingToRef.current.type,
-              text: replyingToRef.current.text,
+              senderId: reply.senderId,
+              type: reply.type,
+              text: reply.text,
+              mediaKey: reply.mediaKey || null,
             }
           : null,
+        albumId: payload.albumId || null,
         createdAt: new Date().toISOString(),
         _status: 'sending',
       };
 
       // Qayta urinish (retry) bo'lmasa — darhol "yuborilmoqda" optimistik pufakchasini qo'shamiz.
-      if (!existingClientId && String(activeIdRef.current) === String(conversationId)) {
+      if (!existingClientId && isActive) {
         setMessages((prev) => [...prev, optimisticMsg]);
         // The reply quote belongs to this message only — clear it now, not after
         // the server answers, or the next message would quote the same one.
-        if (replyId) setReplyingTo(null);
+        if (replyId && opts.replyTo === undefined) setReplyingTo(null);
       } else if (existingClientId) {
         setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'sending' } : m)));
       }
@@ -459,31 +517,178 @@ export function ChatProvider({ myUserId, children }) {
         }
         // Yuklash davomida boshqa suhbatga o'tilgan bo'lsa, xabar u yerga qo'shilmasin.
         if (String(activeIdRef.current) === String(conversationId)) {
-          const finalMsg = { ...data.message, clientMessageId, _status: 'sent' };
           setMessages((prev) => {
             const idx = prev.findIndex((m) => String(m.clientMessageId) === String(clientMessageId));
+            // Keep the local preview so a just-sent photo does not flash while its signed URL loads.
+            const finalMsg = { ...data.message, clientMessageId, _status: 'sent', _localUrl: idx === -1 ? null : prev[idx]._localUrl || null };
             if (idx === -1) return prev.some((m) => String(m.id || m._id) === String(finalMsg.id || finalMsg._id)) ? prev : [...prev, finalMsg];
             const next = [...prev];
             next[idx] = finalMsg;
             return next;
           });
         }
-        loadConversations();
+        touchList(conversationId, { preview: previewFor(payload), createdAt: data.message?.createdAt || new Date().toISOString(), incoming: false });
         return { message: data.message };
       } catch {
         setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'failed' } : m)));
         return { error: 'Tarmoq xatoligi' };
       }
     },
-    [activeConversation, authHeaders, loadConversations, persistOfflineQueue]
+    [activeConversation, authHeaders, touchList, persistOfflineQueue]
+  );
+
+  // ------------------------------------------------------------------ uploads (Telegram parity)
+  const getUploader = () => {
+    if (!uploadsRef.current) {
+      uploadsRef.current = createUploadManager({
+        presign: async (item) => {
+          const r = await fetch('/api/chat/upload/presign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conversationId: item.conversationId, type: item.type, mimeType: item.mimeType, size: item.file.size }),
+          });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.error || "Yuklab bo'lmadi");
+          return d;
+        },
+        put: xhrPut,
+      });
+    }
+    return uploadsRef.current;
+  };
+
+  /** Updates one optimistic bubble wherever it lives (open chat and/or the pending store). */
+  const patchBubble = useCallback((conversationId, clientMessageId, patch) => {
+    const apply = (m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, ...(typeof patch === 'function' ? patch(m) : patch) } : m);
+    if (String(activeIdRef.current) === String(conversationId)) setMessages((prev) => prev.map(apply));
+    pendingMediaRef.current = pendingMediaRef.current.map((p) => (p.clientMessageId === clientMessageId ? { ...p, message: apply(p.message) } : p));
+  }, []);
+
+  const removeBubble = useCallback((conversationId, clientMessageId) => {
+    if (String(activeIdRef.current) === String(conversationId)) {
+      setMessages((prev) => prev.filter((m) => String(m.clientMessageId) !== String(clientMessageId)));
+    }
+    pendingMediaRef.current = pendingMediaRef.current.filter((p) => p.clientMessageId !== clientMessageId);
+    const job = localFilesRef.current.get(clientMessageId);
+    if (job?.localUrl) URL.revokeObjectURL(job.localUrl);
+    localFilesRef.current.delete(clientMessageId);
+  }, []);
+
+  const runUpload = useCallback(
+    (clientMessageId) => {
+      const job = localFilesRef.current.get(clientMessageId);
+      if (!job) return;
+      job.cancelled = false;
+      patchBubble(job.conversationId, clientMessageId, { _status: 'uploading', _upload: { progress: 0 } });
+      (async () => {
+        let file = job.file;
+        let meta = { ...(job.extra || {}) };
+        if (job.type === 'image' && !job.asFile) {
+          const p = await prepareImage(file);
+          file = p.file;
+          meta = { ...meta, width: p.width, height: p.height };
+        } else if (job.type === 'video') {
+          const p = await probeVideo(file);
+          meta = { ...meta, width: p.width, height: p.height, ...(meta.durationSec ? {} : p.durationSec ? { durationSec: p.durationSec } : {}) };
+        }
+        if (job.cancelled) return removeBubble(job.conversationId, clientMessageId);
+        const mimeType = file.type || 'application/octet-stream';
+        patchBubble(job.conversationId, clientMessageId, (m) => ({ media: { ...m.media, ...meta, size: file.size, mimeType } }));
+        job.managerId = `${clientMessageId}:${Date.now()}`;
+        const res = await getUploader().enqueue({
+          id: job.managerId,
+          file,
+          mimeType,
+          type: job.type,
+          conversationId: job.conversationId,
+          onChange: (it) => {
+            if (it.status === 'uploading') patchBubble(job.conversationId, clientMessageId, { _upload: { progress: it.progress } });
+          },
+        });
+        if (!res) return removeBubble(job.conversationId, clientMessageId); // cancelled
+        const payload = {
+          type: job.type,
+          media: { key: res.key, mimeType, size: file.size, ...meta, ...(job.type === 'file' ? { name: job.name } : {}) },
+          ...(job.caption ? { text: job.caption } : {}),
+          ...(job.albumId ? { albumId: job.albumId } : {}),
+        };
+        const out = await sendMessage(payload, clientMessageId, { conversationId: job.conversationId, replyTo: job.replyTo || null });
+        if (!out?.error) {
+          pendingMediaRef.current = pendingMediaRef.current.filter((p) => p.clientMessageId !== clientMessageId);
+          localFilesRef.current.delete(clientMessageId);
+        }
+      })().catch(() => patchBubble(job.conversationId, clientMessageId, { _status: 'failed', _upload: null }));
+    },
+    [patchBubble, removeBubble, sendMessage]
+  );
+
+  /**
+   * Sends picked files the Telegram way: every file becomes its own bubble right now (local preview,
+   * progress ring, cancel), uploads run in parallel, photos/videos sent together form an album, the
+   * caption goes with the first item. Typing is never blocked. Works for the open chat only.
+   */
+  const sendAttachments = useCallback(
+    (attachments, { caption = '', replyTo = null, asFile = false } = {}) => {
+      const conversationId = activeIdRef.current;
+      if (!conversationId) return { error: 'Suhbat tanlanmagan' };
+      const { albums, singles } = albumGroups(attachments);
+      const jobs = [];
+      albums.forEach((group) => {
+        const albumId = defaultId();
+        group.forEach((att, i) => jobs.push({ att, albumId, first: i === 0 && jobs.length === 0 }));
+      });
+      singles.forEach((att) => jobs.push({ att, albumId: null, first: jobs.length === 0 }));
+      const now = Date.now();
+      jobs.forEach(({ att, albumId, first }, i) => {
+        const clientMessageId = genClientMessageId();
+        const localUrl = att.type !== 'file' ? URL.createObjectURL(att.file) : null;
+        const text = first ? caption : '';
+        const reply = first ? replyTo : null;
+        const optimistic = {
+          id: clientMessageId,
+          clientMessageId,
+          conversationId,
+          senderId: myIdRef.current,
+          type: att.type,
+          text,
+          media: { key: null, mimeType: att.file.type || 'application/octet-stream', size: att.file.size, name: att.name || '', width: null, height: null, ...(att.extra || {}) },
+          albumId,
+          replyTo: reply ? { messageId: reply.id, senderId: reply.senderId, type: reply.type, text: reply.text, mediaKey: reply.mediaKey || null } : null,
+          createdAt: new Date(now + i).toISOString(),
+          _status: 'uploading',
+          _upload: { progress: 0 },
+          _localUrl: localUrl,
+        };
+        localFilesRef.current.set(clientMessageId, { file: att.file, type: att.type, name: att.name || '', conversationId, albumId, caption: text, replyTo: reply, extra: att.extra || null, asFile, localUrl });
+        pendingMediaRef.current = [...pendingMediaRef.current, { clientMessageId, conversationId, message: optimistic }];
+        if (String(activeIdRef.current) === String(conversationId)) setMessages((prev) => [...prev, optimistic]);
+        runUpload(clientMessageId);
+      });
+      if (replyTo) setReplyingTo(null);
+      return { ok: true, count: jobs.length };
+    },
+    [runUpload]
+  );
+
+  // Cancel while preparing (flag) or while uploading (abort the XHR); the bubble goes away at once.
+  const cancelUpload = useCallback(
+    (clientMessageId) => {
+      const job = localFilesRef.current.get(clientMessageId);
+      if (job) job.cancelled = true;
+      if (job?.managerId) uploadsRef.current?.cancel(job.managerId);
+      removeBubble(job?.conversationId ?? activeIdRef.current, clientMessageId);
+    },
+    [removeBubble]
   );
 
   // MessageBubble'dagi "Qayta yuborish" — xuddi shu clientMessageId bilan qayta
-  // yuboradi (server allaqachon saqlagan bo'lsa dublikat yaratmaydi).
+  // yuboradi (server allaqachon saqlagan bo'lsa dublikat yaratmaydi). Media that failed
+  // while uploading is uploaded again from the file kept in memory.
   const retryMessage = useCallback(
     (failedMessage) => {
       const clientMessageId = failedMessage.clientMessageId;
       if (!clientMessageId) return;
+      if (localFilesRef.current.has(clientMessageId) && !failedMessage.media?.key) return runUpload(clientMessageId);
       const payload = { type: failedMessage.type };
       if (failedMessage.type === 'text') payload.text = failedMessage.text;
       else if (failedMessage.type === 'sticker') payload.stickerId = failedMessage.stickerId;
@@ -491,8 +696,20 @@ export function ChatProvider({ myUserId, children }) {
       if (failedMessage.text && failedMessage.type !== 'text') payload.text = failedMessage.text;
       sendMessage(payload, clientMessageId);
     },
-    [sendMessage]
+    [sendMessage, runUpload]
   );
+
+  // Drafts (Telegram parity) — the Composer calls this on every change (debounced) and on send.
+  const saveDraft = useCallback((conversationId, draft) => {
+    setDrafts((prev) => {
+      const next = setDraftInMap(prev, conversationId, draft);
+      writeDrafts(myIdRef.current, next);
+      return next;
+    });
+  }, []);
+
+  // Files dropped onto the conversation → the Composer tray.
+  const stageExternalFiles = useCallback((files) => setStagedFiles(files && files.length ? files : null), []);
 
   const editMessage = useCallback(
     async (messageId, text) => {
@@ -753,8 +970,32 @@ export function ChatProvider({ myUserId, children }) {
   // yuklaydi — chunki server har bir media kalitini "shu suhbatga tegishlimi"
   // deb tekshiradi (messages POST route), asl kalitni boshqa suhbatga bevosita
   // bog'lab bo'lmaydi.
+  // Telegram parity: forward one or many messages; the server copies media inside the bucket, so
+  // nothing is downloaded and re-uploaded by the browser.
+  const forwardMessages = useCallback(
+    async (list, targetConversationId) => {
+      let last = null;
+      for (const message of list) {
+        const res = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ type: message.type, forwardOf: { conversationId: message.conversationId || activeIdRef.current, messageId: message.id || message._id }, clientMessageId: genClientMessageId() }),
+        }).catch(() => null);
+        if (!res) return { error: 'Tarmoq xatoligi' };
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { error: data.error || 'Yuborilmadi' };
+        last = data.message;
+      }
+      if (last) touchList(targetConversationId, { preview: last.text ? last.text.slice(0, 80) : PREVIEW_BY_TYPE[last.type] || '', createdAt: last.createdAt, incoming: false });
+      if (String(activeIdRef.current) === String(targetConversationId)) loadMessages(targetConversationId, { silent: true });
+      return { success: true };
+    },
+    [authHeaders, touchList, loadMessages]
+  );
+
   const forwardMessage = useCallback(
     async (message, targetConversationId) => {
+      if (message.type !== 'legacy-path') return forwardMessages([message], targetConversationId);
       try {
         const type = message.type;
         if (type === 'text') {
@@ -823,7 +1064,41 @@ export function ChatProvider({ myUserId, children }) {
         return { error: 'Tarmoq xatoligi' };
       }
     },
-    [authHeaders, loadConversations, loadMessages]
+    [authHeaders, loadConversations, loadMessages, forwardMessages]
+  );
+
+  // Per-user chat flags (archive / pin) — PATCH /state; the list updates in place.
+  const setConversationFlags = useCallback(async (conversationId, flags) => {
+    try {
+      const res = await fetch(`/api/chat/conversations/${conversationId}/state`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(flags) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: data.error || 'Bajarilmadi' };
+      setConversations((prev) => prev.map((c) => (String(c.id) === String(conversationId) ? { ...c, archived: data.archived, pinned: data.pinned } : c)));
+      return { success: true, ...data };
+    } catch {
+      return { error: 'Tarmoq xatoligi' };
+    }
+  }, []);
+
+  // Multi-select actions on the chat list (delete / archive / read / mute / pin), one request.
+  const bulkConversations = useCallback(
+    async (ids, action, { forEveryone = false } = {}) => {
+      try {
+        const res = await fetch('/api/chat/conversations/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, action, forEveryone }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { error: data.error || 'Bajarilmadi' };
+        const done = data.done || [];
+        setConversations((prev) => applyBulkAction(prev, done, action));
+        if (action === 'delete') {
+          done.forEach((id) => messagesCacheRef.current.delete(String(id)));
+          if (done.includes(String(activeIdRef.current))) closeConversation();
+        }
+        return { success: true, done };
+      } catch {
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [closeConversation]
   );
 
   // Boshqa foydalanuvchiga men (faqat men) uchun ko'rinadigan taxallus qo'yadi —
@@ -1119,7 +1394,8 @@ export function ChatProvider({ myUserId, children }) {
             setNewMessageToast({ conversationId, conversation: conv || null, senderLabel, preview });
           }
         }
-        loadConversations();
+        const preview = message.text ? String(message.text).slice(0, 80) : PREVIEW_BY_TYPE[message.type] || 'Xabar';
+        touchList(conversationId, { preview, createdAt: message.createdAt, incoming: String(message.senderId) !== String(myIdRef.current) });
       });
       // Men yuborgan xabar(lar) boshqa tomonda o'qilganda kelib, bitta ptichkani
       // ikkitaga aylantiradi — faqat hozir ochiq suhbatga tegishli bo'lsa.
@@ -1277,6 +1553,16 @@ export function ChatProvider({ myUserId, children }) {
     pinMessage,
     unpinMessage,
     forwardMessage,
+    forwardMessages,
+    sendAttachments,
+    cancelUpload,
+    ensureMessageLoaded,
+    drafts,
+    saveDraft,
+    stagedFiles,
+    stageExternalFiles,
+    setConversationFlags,
+    bulkConversations,
     livePresence,
     typingByConversation,
     sendTyping,

@@ -4,6 +4,7 @@ import { Mic, Square, X } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
 import { useChat } from '@/context/ChatContext';
 import { useT } from '@/context/LocaleContext';
+import { buildWaveform } from '@/lib/chat/mediaMeta';
 
 // Ovozli xabar uchun yuqori chegara — cheksiz yozuv yuklashda xato bilan yo'qolmasin.
 const MAX_SECONDS = 300;
@@ -19,6 +20,11 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
   const timerRef = useRef(null);
+  // Telegram parity: the waveform is sampled while recording (AnalyserNode, ~20 samples/s) and
+  // travels with the message, so bubbles draw it without decoding the audio.
+  const samplesRef = useRef([]);
+  const analyserRef = useRef(null);
+  const sampleTimerRef = useRef(null);
   // Har bir mount o'z "avlod"iga ega — kech kelgan (eski) mikrofon oqimi darhol yopiladi.
   const genRef = useRef(0);
 
@@ -39,10 +45,31 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
         stream.getTracks().forEach((t) => t.stop());
+        clearInterval(sampleTimerRef.current);
+        analyserRef.current?.ctx?.close?.().catch?.(() => {});
         // MediaRecorder's webm has no duration header (the player reads it as
         // Infinity), so the recorded length travels with the message.
-        onRecorded(file, (Date.now() - startedAt) / 1000);
+        onRecorded(file, (Date.now() - startedAt) / 1000, buildWaveform(samplesRef.current));
       };
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new Ctx();
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        analyserRef.current = { ctx, analyser };
+        samplesRef.current = [];
+        const buf = new Uint8Array(analyser.fftSize);
+        sampleTimerRef.current = setInterval(() => {
+          analyser.getByteTimeDomainData(buf);
+          let peak = 0;
+          for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128) / 128);
+          samplesRef.current.push(peak);
+        }, 50);
+      } catch {
+        analyserRef.current = null; // no Web Audio — the bubble draws a flat waveform
+      }
       mediaRecorderRef.current = recorder;
       recorder.start();
       startedAt = Date.now();
@@ -91,6 +118,8 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
     return () => {
       genRef.current += 1;
       clearInterval(timerRef.current);
+      clearInterval(sampleTimerRef.current);
+      analyserRef.current?.ctx?.close?.().catch?.(() => {});
       const rec = mediaRecorderRef.current;
       if (rec) {
         rec.onstop = null;
@@ -155,9 +184,9 @@ export function VoiceRecorderButton({ onRecorded, onActiveChange }) {
       </button>
       {active && (
         <VoiceRecorder
-          onRecorded={(file, durationSec) => {
+          onRecorded={(file, durationSec, waveform) => {
             setActive(false);
-            onRecorded(file, durationSec);
+            onRecorded(file, durationSec, waveform);
           }}
           onCancel={() => setActive(false)}
         />
