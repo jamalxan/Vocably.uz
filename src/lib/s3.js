@@ -15,6 +15,11 @@ function getClient() {
     endpoint: process.env.S3_ENDPOINT,
     region: process.env.S3_REGION || 'us-east-1',
     forcePathStyle: true,
+    // SDK >= 3.729 adds x-amz-checksum-crc32 to every request by default — including presigned
+    // PUT URLs, where it is computed over an empty body. Garage (and R2) validate it against the
+    // real upload and reject with InvalidDigest, so checksums only go out when an API requires one.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
     credentials: {
       accessKeyId: process.env.S3_ACCESS_KEY,
       secretAccessKey: process.env.S3_SECRET_KEY,
