@@ -14,6 +14,8 @@ const MESSAGES = {
   no_words: "Duel uchun so'zlar yetarli emas",
   not_found: 'Duel topilmadi',
   not_invited: 'Bu duel boshqa foydalanuvchi uchun',
+  already_invited: "Bu do'stga chaqiruv allaqachon yuborilgan — javobini kuting",
+  invite_limit: "Bu do'st bugun chaqiruvlarni rad etdi — ertaga qayta urinib ko'ring",
   closed: 'Bu duelga endi qo‘shilib bo‘lmaydi',
   not_player: 'Siz bu duel ishtirokchisi emassiz',
   finished: 'Siz bu duelni allaqachon tugatgansiz',
@@ -24,8 +26,12 @@ const MESSAGES = {
   rate_limited: "Juda ko'p so'rov — biroz kuting",
 };
 
-/** Runs `fn(userId)` for a signed-in user, with an optional per-minute rate limit. */
+/**
+ * Runs `fn(userId, now)` for a signed-in user, with an optional per-minute rate limit. `now` is taken before
+ * auth / DB round trips so an answer's time is measured from when the request arrived, not when it was graded.
+ */
 export async function duelRoute(req, label, fn, { limit } = {}) {
+  const now = new Date();
   try {
     const userId = await getUserIdFromRequest(req);
     if (!userId) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
@@ -33,7 +39,7 @@ export async function duelRoute(req, label, fn, { limit } = {}) {
     if (limit && !(await checkRateLimit(String(userId), `duel:${label}`, limit))) {
       return NextResponse.json({ error: MESSAGES.rate_limited, code: 'rate_limited' }, { status: 429 });
     }
-    const out = await fn(String(userId));
+    const out = await fn(String(userId), now);
     if (out?.error) {
       const { error, status, ...rest } = out;
       return NextResponse.json({ error: MESSAGES[error] || error, code: error, ...rest }, { status: status || 400 });

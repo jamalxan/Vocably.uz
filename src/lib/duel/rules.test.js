@@ -56,9 +56,9 @@ describe('grading with the server clock', () => {
     expect(gradeAnswer(q, 2, 7000)).toMatchObject({ ok: true, points: 100 });
     expect(gradeAnswer(q, 1, 900)).toMatchObject({ ok: false, points: 0 });
   });
-  it('the 1.5 s network allowance; after it the answer is a timeout', () => {
-    expect(gradeAnswer(q, 2, 8400)).toMatchObject({ ok: true, late: false, points: 100 });
-    expect(gradeAnswer(q, 2, 8600)).toEqual({ ok: false, late: true, implausible: false, ms: 8500, points: 0 });
+  it('the 2.5 s allowance (network + server round trips); after it the answer is a timeout', () => {
+    expect(gradeAnswer(q, 2, 9400)).toMatchObject({ ok: true, late: false, points: 100 });
+    expect(gradeAnswer(q, 2, 9600)).toEqual({ ok: false, late: true, implausible: false, ms: 9500, points: 0 });
   });
   it('inhumanly fast answers are counted but flagged', () => {
     expect(gradeAnswer(q, 2, 120)).toMatchObject({ ok: true, implausible: true });

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { BarChart3, BookOpen, ChevronLeft, ChevronRight, Flame, Lock, Loader2, RotateCcw, Sparkles, Star, Target, TrendingDown, TrendingUp, Zap } from 'lucide-react';
 import useCopy from '@/components/landing/useCopy';
 import { useT } from '@/context/LocaleContext';
-import { addDays, weekKey, weekStartOf } from '@/lib/weeklyReport';
+import { addDays, weekKey, weekStartOf, WEEKLY_REPORT_CONFIG } from '@/lib/weeklyReport';
 
 // "Haftalik hisobot" (TZ 2.0 §6.2.4, §10): words learned, band change and next week's focus for
 // everyone; the personal part (day by day, accuracy, skills, comparison, next week's targets) for
@@ -21,8 +21,10 @@ const COPY = {
     thisWeek: 'Shu hafta (davom etmoqda)',
     loadError: "Hisobotni yuklab bo'lmadi",
     retry: 'Qayta urinish',
-    empty: "Bu haftada mashg'ulot bo'lmagan. Bugungi rejadan bitta vazifa bajaring — hisobot shu yerda paydo bo'ladi.",
+    empty: "Bu haftada mashg'ulot bo'lmagan.",
+    emptyNow: "Bu hafta hali mashg'ulot bo'lmagan — bugungi rejadan boshlang, yakshanba kuni hisobot keladi.",
     toPlan: 'Bugungi rejaga',
+    inProgress: "Solishtirish va keyingi hafta maqsadi hafta tugagach, yakshanba kuni hisoblanadi.",
     words: "Yangi so'zlar",
     wordsGoal: 'maqsad {n}',
     xp: 'XP',
@@ -71,8 +73,10 @@ const COPY = {
     thisWeek: 'This week (in progress)',
     loadError: 'Could not load the report',
     retry: 'Try again',
-    empty: 'No study this week. Finish one task from today’s plan and your report will show up here.',
+    empty: 'No study this week.',
+    emptyNow: 'No study yet this week — start with today’s plan; the report arrives on Sunday.',
     toPlan: 'Go to today’s plan',
+    inProgress: 'The comparison and next week’s goals are worked out once the week ends, on Sunday.',
     words: 'New words',
     wordsGoal: 'goal {n}',
     xp: 'XP',
@@ -192,6 +196,9 @@ export default function WeeklyReport({ week }) {
   }
 
   const prevWeek = weekKey(addDays(weekStartOf(data.week), -7));
+  const weeksBack = Math.round((Date.parse(`${weekStartOf(data.thisWeek)}T00:00:00Z`) - Date.parse(`${weekStartOf(data.week)}T00:00:00Z`)) / (7 * 86400000));
+  const canPrev = weeksBack < WEEKLY_REPORT_CONFIG.maxWeeksBack;
+  const inProgress = data.week === data.thisWeek;
   const nextWeek = weekKey(addDays(weekStartOf(data.week), 7));
   const canNext = data.week < data.thisWeek;
   const p = data.personal;
@@ -210,9 +217,15 @@ export default function WeeklyReport({ week }) {
             {data.week === data.thisWeek ? ` · ${c.thisWeek}` : ''}
           </p>
         </div>
-        <Link href={`/app/report?week=${prevWeek}`} className="p-2 rounded-xl border border-border bg-surface hover:border-accent/40" aria-label={c.prev}>
-          <ChevronLeft size={18} aria-hidden="true" />
-        </Link>
+        {canPrev ? (
+          <Link href={`/app/report?week=${prevWeek}`} className="p-2 rounded-xl border border-border bg-surface hover:border-accent/40" aria-label={c.prev}>
+            <ChevronLeft size={18} aria-hidden="true" />
+          </Link>
+        ) : (
+          <span className="p-2 rounded-xl border border-border bg-surface opacity-40" aria-hidden="true">
+            <ChevronLeft size={18} />
+          </span>
+        )}
         {canNext ? (
           <Link href={`/app/report?week=${nextWeek}`} className="p-2 rounded-xl border border-border bg-surface hover:border-accent/40" aria-label={c.next}>
             <ChevronRight size={18} aria-hidden="true" />
@@ -226,7 +239,7 @@ export default function WeeklyReport({ week }) {
 
       {data.empty ? (
         <div className="rounded-2xl border border-border bg-surface shadow-card p-5 text-sm text-muted" data-testid="report-empty">
-          <p>{c.empty}</p>
+          <p>{inProgress ? c.emptyNow : c.empty}</p>
           <Link href="/app" className="inline-block mt-3 text-accent font-semibold hover:underline">{c.toPlan}</Link>
         </div>
       ) : (
@@ -333,7 +346,9 @@ export default function WeeklyReport({ week }) {
               </div>
               <div className="rounded-2xl border border-border bg-surface shadow-card p-4" data-testid="report-compare">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{c.vsPrev}</p>
-                {p.compare.xp == null ? (
+                {inProgress ? (
+                  <p className="text-sm text-muted mt-2" data-testid="report-in-progress">{c.inProgress}</p>
+                ) : p.compare.xp == null ? (
                   <p className="text-sm text-muted mt-2">{c.noPrev}</p>
                 ) : (
                   <ul className="mt-2 space-y-1.5 text-sm">
@@ -345,6 +360,10 @@ export default function WeeklyReport({ week }) {
               </div>
               <div className="rounded-2xl border border-border bg-surface shadow-card p-4" data-testid="report-next">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{c.nextWeek}</p>
+                {inProgress ? (
+                  <p className="text-sm text-muted mt-2">{c.inProgress}</p>
+                ) : (
+                <>
                 <ul className="mt-2 space-y-1.5 text-sm text-ink list-disc pl-4">
                   <li>{fill(c.goalDays, { n: p.next.days })}</li>
                   <li>{fill(c.goalWords, { n: p.next.words })}</li>
@@ -353,6 +372,8 @@ export default function WeeklyReport({ week }) {
                 <ul className="mt-3 space-y-1 text-xs text-muted">
                   {p.next.tips.map((tip) => <li key={tip}>{c.tips[tip]}</li>)}
                 </ul>
+                </>
+                )}
               </div>
             </div>
           </section>

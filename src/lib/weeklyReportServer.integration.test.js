@@ -1,5 +1,5 @@
 // Weekly report server flow against in-memory MongoDB (TZ 2.0 §6.2.4, §6.10.2, §10).
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
@@ -79,7 +79,7 @@ describeDb('weekly report (integration)', () => {
     const u = await makeUser({ subscriptionTier: 'premium', subscriptionExpiresAt: at('2026-12-01T00:00:00Z') });
     await seedWeek(u);
     const r = await W.getWeeklyReport(u._id, { now: SUNDAY_EVENING });
-    expect(r).toMatchObject({ week: '2026-W45', range: '2–8 noyabr', tier: 'premium', locked: false, thisWeek: '2026-W45', xp: 120, activeDays: 3 });
+    expect(r).toMatchObject({ week: '2026-W45', range: '2–8 noyabr', tier: 'premium', locked: false, thisWeek: '2026-W45', xp: 120, activeDays: 4 }); // Mon XP, Tue review, Wed section test, Thu XP
     expect(r.words.learned).toBe(2);
     expect(r.streak).toEqual({ days: 5, longest: 11 });
     expect(r.band).toMatchObject({ start: 5.5, end: 6, change: 0.5, target: 7 }); // (6.5 + 5.5) / 2
@@ -87,7 +87,28 @@ describeDb('weekly report (integration)', () => {
     expect(r.personal.accuracy).toBe(67);
     expect(r.personal.tasks).toEqual({ done: 1, total: 2, pct: 50 });
     expect(r.personal.skills.reading.sessions).toBe(1);
-    expect(r.personal.compare).toEqual({ xp: 80, words: 1, activeDays: 1 }); // 3 days vs 2
+    expect(r.personal.compare).toEqual({ xp: 80, words: 1, activeDays: 2 }); // 4 days vs 2
+  });
+
+  it('an idle previous week compares as zero, not "no data"; a brand-new account has no comparison', async () => {
+    const u = await makeUser();
+    await M.XpEvent.create({ userId: u._id, amount: 50, reason: 'game', createdAt: at('2026-11-05T10:00:00Z') });
+    await M.User.updateOne({ _id: u._id }, { $set: { createdAt: at('2026-10-01T00:00:00Z') } });
+    const r = await W.getWeeklyReport(u._id, { now: SUNDAY_EVENING });
+    expect(r.locked).toBe(true); // free — comparison is Premium
+    const full = await W.getWeeklyReport((await makeUser({ subscriptionTier: 'premium', subscriptionExpiresAt: at('2026-12-01T00:00:00Z'), createdAt: at('2026-10-01T00:00:00Z') }))._id, { now: SUNDAY_EVENING });
+    expect(full.personal.compare).toEqual({ xp: 0, words: 0, activeDays: 0 }); // idle last week, idle this week
+    const fresh = await makeUser({ subscriptionTier: 'premium', subscriptionExpiresAt: at('2026-12-01T00:00:00Z'), createdAt: at('2026-11-04T00:00:00Z') });
+    expect((await W.getWeeklyReport(fresh._id, { now: SUNDAY_EVENING })).personal.compare).toEqual({ xp: null, words: null, activeDays: null });
+  });
+
+  it('a week with only section tests is not empty and gets sent', async () => {
+    const u = await makeUser();
+    await M.ExamAttempt.create({ userId: u._id, testId: new mongoose.Types.ObjectId(), mode: 'section', sections: ['reading'], currentSection: 'reading', status: 'graded', endsAt: at('2026-11-30T00:00:00Z'),
+      submittedAt: at('2026-11-04T10:00:00Z'), result: { reading: { band: 6 } } });
+    const r = await W.getWeeklyReport(u._id, { now: SUNDAY_EVENING });
+    expect(r).toMatchObject({ empty: false, activeDays: 1 });
+    expect(await W.processWeeklyReport(u, SUNDAY_EVENING, { sendTelegram: async () => {} })).toMatchObject({ sent: true });
   });
 
   it('free users get the core report only', async () => {
@@ -125,13 +146,41 @@ describeDb('weekly report (integration)', () => {
     expect(W.weeklyReportOpen(fresh, SUNDAY_EVENING)).toBe(false);
   });
 
-  it('not on Saturday, not for an empty week, not when reminders are off', async () => {
+  it('not on Saturday, not for an empty week; reminders off → in-app only (no push, no Telegram)', async () => {
     const quiet = await makeUser();
     expect(await W.processWeeklyReport(quiet, at('2026-11-07T14:30:00Z'))).toEqual({ sent: false, reason: 'not_time' });
     expect(await W.processWeeklyReport(quiet, SUNDAY_EVENING)).toEqual({ sent: false, reason: 'empty' });
     expect(await M.Notification.countDocuments({})).toBe(0);
-    const off = await makeUser({ vocabReminders: { enabled: false } });
-    expect(await W.processWeeklyReport(off, SUNDAY_EVENING)).toEqual({ sent: false, reason: 'disabled' });
+    const off = await makeUser({ vocabReminders: { enabled: false, telegram: true }, telegramChatId: 777 });
+    await seedWeek(off);
+    const sent = [];
+    expect(await W.processWeeklyReport(off, SUNDAY_EVENING, { sendTelegram: async (...a) => sent.push(a) })).toEqual({ sent: true, telegram: false });
+    expect(await M.Notification.countDocuments({ userId: off._id, type: 'weekly_report' })).toBe(1);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('Monday-morning catch-up delivers last week once; Monday noon is too late', async () => {
+    const u = await makeUser();
+    await seedWeek(u);
+    const monday9 = at('2026-11-09T04:00:00Z');
+    expect(await W.processWeeklyReport(u, monday9, { sendTelegram: async () => {} })).toMatchObject({ sent: true });
+    const fresh = await M.User.findById(u._id).lean();
+    expect(fresh.vocabReminders.weeklyReportWeek).toBe('2026-W45');
+    expect(await W.processWeeklyReport(fresh, at('2026-11-09T05:00:00Z'))).toEqual({ sent: false, reason: 'already' });
+    const late = await makeUser();
+    await seedWeek(late);
+    expect(await W.processWeeklyReport(late, at('2026-11-09T07:00:00Z'))).toEqual({ sent: false, reason: 'not_time' });
+  });
+
+  it('a failure after the claim hands the week back, so the next hour retries', async () => {
+    const u = await makeUser();
+    await seedWeek(u);
+    const spy = vi.spyOn(M.Notification, 'create').mockRejectedValueOnce(new Error('atlas hiccup'));
+    await expect(W.processWeeklyReport(u, SUNDAY_EVENING, { sendTelegram: async () => {} })).rejects.toThrow('atlas hiccup');
+    expect((await M.User.findById(u._id).lean()).vocabReminders.weeklyReportWeek ?? null).toBeNull();
+    spy.mockRestore();
+    expect(await W.processWeeklyReport(await M.User.findById(u._id).lean(), new Date(SUNDAY_EVENING.getTime() + 3600_000), { sendTelegram: async () => {} })).toMatchObject({ sent: true });
+    expect(await M.Notification.countDocuments({ userId: u._id })).toBe(1);
   });
 
   it('runs inside the hourly reminder sweep', async () => {

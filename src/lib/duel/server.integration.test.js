@@ -26,7 +26,7 @@ describeDb('word duel (integration)', () => {
   });
   beforeEach(async () => {
     S.resetDuelPoolCache();
-    await Promise.all([M.User, M.Duel, M.XpEvent, M.Notification].map((m) => m.deleteMany({})));
+    await Promise.all([M.User, M.Duel, M.XpEvent, M.Notification, M.Block].map((m) => m.deleteMany({})));
   });
 
   let n = 0;
@@ -44,7 +44,7 @@ describeDb('word duel (integration)', () => {
       expect(nx.question.index).toBe(i);
       expect(JSON.stringify(nx)).not.toContain('"answer"');
       if (!step) {
-        now = plus(9000, now); // never answered — the next call records a timeout
+        now = plus(10_000, now); // never answered (past 7 s + 2.5 s allowance) — the next call records a timeout
         continue;
       }
       const duel = await M.Duel.findOne({ code }).lean();
@@ -134,9 +134,9 @@ describeDb('word duel (integration)', () => {
     expect(again.remainingMs).toBe(2000); // reload does not restart the clock
     const right = (await M.Duel.findOne({ code }).lean()).questions[0].answer;
     expect(await S.answerQuestion(a._id, code, { index: 1, choice: right }, plus(5200))).toMatchObject({ error: 'stale' });
-    const late = await S.answerQuestion(a._id, code, { index: 0, choice: right }, plus(9000)); // 8.9 s after serving
+    const late = await S.answerQuestion(a._id, code, { index: 0, choice: right }, plus(9700)); // 9.6 s after serving
     expect(late).toMatchObject({ ok: false, late: true, points: 0 });
-    expect(await S.answerQuestion(a._id, code, { index: 0, choice: right }, plus(9100))).toMatchObject({ error: 'stale' });
+    expect(await S.answerQuestion(a._id, code, { index: 0, choice: right }, plus(9800))).toMatchObject({ error: 'stale' });
 
     await S.nextQuestion(a._id, code, plus(10_000)); // q1 served
     const skip = await S.nextQuestion(a._id, code, plus(20_000)); // q1 never answered → timeout, q2 served
@@ -186,7 +186,8 @@ describeDb('word duel (integration)', () => {
     const lonely = await S.createDuel(a._id, { mode: 'random' }, T0);
     const later = plus(49 * 3600_000);
     const exp = await S.getDuel(a._id, lonely.duel.code, later);
-    expect(exp.duel).toMatchObject({ status: 'expired', canPlay: false, me: { finished: true } });
+    // Never looked at a question → no fabricated 0/10 run, just an expired duel.
+    expect(exp.duel).toMatchObject({ status: 'expired', canPlay: false, me: { finished: false, started: false, review: null } });
     expect(await S.joinDuel(b._id, lonely.duel.code, later)).toMatchObject({ error: 'closed' });
 
     const { duel } = await S.createDuel(a._id, { mode: 'link' }, T0);
@@ -199,14 +200,63 @@ describeDb('word duel (integration)', () => {
     expect(list.stats).toMatchObject({ rating: 1016, played: 1, wins: 1 });
   });
 
+  it('no ghost opponents: a creator who never started cannot be joined after their play deadline', async () => {
+    const [a, b] = [await mkUser(), await mkUser()];
+    const { duel } = await S.createDuel(a._id, { mode: 'link' }, T0);
+    const hour30 = plus(30 * 3600_000);
+    expect((await S.getDuel(b._id, duel.code, hour30)).duel).toMatchObject({ status: 'expired', canJoin: false });
+    expect(await S.joinDuel(b._id, duel.code, hour30)).toMatchObject({ error: 'closed' });
+    expect((await M.User.findById(a._id).lean()).duel?.played || 0).toBe(0);
+    // A creator who did start but stopped keeps a (partial) result and can still be challenged.
+    const { duel: d2 } = await S.createDuel(a._id, { mode: 'link' }, plus(1000));
+    await S.nextQuestion(a._id, d2.code, plus(2000));
+    expect((await S.getDuel(b._id, d2.code, plus(30 * 3600_000 + 1000))).duel).toMatchObject({ status: 'waiting', canJoin: true, opponent: { finished: true, started: true } });
+  });
+
+  it('friend invites are not a spam channel: blocks, one pending invite per pair, decline limit', async () => {
+    const [a, friend] = [await mkUser(), await mkUser()];
+    await M.Block.create({ blockerId: friend._id, blockedId: a._id });
+    expect(await S.createDuel(a._id, { mode: 'friend', username: friend.username }, T0)).toMatchObject({ error: 'user_not_found' }); // block not disclosed
+    await M.Block.deleteMany({});
+    const first = await S.createDuel(a._id, { mode: 'friend', username: friend.username }, T0);
+    expect(first.duel.status).toBe('waiting');
+    expect(await S.createDuel(a._id, { mode: 'friend', username: friend.username }, plus(1000))).toMatchObject({ error: 'already_invited', status: 409 });
+    await S.declineDuel(friend._id, first.duel.code, plus(2000));
+    for (let i = 0; i < 2; i++) {
+      const d = await S.createDuel(a._id, { mode: 'friend', username: friend.username }, plus(3000 + i));
+      await S.declineDuel(friend._id, d.duel.code, plus(4000 + i));
+    }
+    expect(await S.createDuel(a._id, { mode: 'friend', username: friend.username }, plus(10_000))).toMatchObject({ error: 'invite_limit', status: 429 });
+    expect(await M.Notification.countDocuments({ userId: friend._id, type: 'duel' })).toBe(3);
+    expect(await M.Notification.countDocuments({ userId: a._id, type: 'duel' })).toBe(3); // told about each decline
+    // Next day the limit resets.
+    expect((await S.createDuel(a._id, { mode: 'friend', username: friend.username }, plus(25 * 3600_000))).duel.status).toBe('waiting');
+  });
+
+  it('the word list stays hidden until the opponent has played (no cheat sheets)', async () => {
+    const [a, b] = [await mkUser(), await mkUser()];
+    const { duel } = await S.createDuel(a._id, { mode: 'link' }, T0);
+    const endA = await play(a, duel.code, all(false, 1000), plus(10));
+    const waiting = (await S.getDuel(a._id, duel.code, endA)).duel;
+    expect(waiting.me).toMatchObject({ finished: true, review: null, missed: 0 });
+    expect(await S.saveMissedWords(a._id, duel.code, endA)).toMatchObject({ error: 'not_finished' });
+    await S.joinDuel(b._id, duel.code, plus(100, endA));
+    const endB = await play(b, duel.code, all(true, 1000), plus(200, endA));
+    const done = (await S.getDuel(a._id, duel.code, endB)).duel;
+    expect(done.me.review).toHaveLength(10);
+    expect(done.me.missed).toBe(10);
+    expect(await S.saveMissedWords(a._id, duel.code, endB)).toMatchObject({ added: 10 });
+  });
+
   it('missed words go to the "So\'z dueli: xatolar" deck once', async () => {
     const a = await mkUser();
     const { duel } = await S.createDuel(a._id, { mode: 'link' }, T0);
     expect(await S.saveMissedWords(a._id, duel.code, plus(10))).toMatchObject({ error: 'not_finished' });
     await play(a, duel.code, [...all(true, 1500).slice(0, 7), { right: false, ms: 1500 }, { right: false, ms: 1500 }, null], plus(10));
-    const saved = await S.saveMissedWords(a._id, duel.code, plus(600_000));
+    // Nobody joined within 48 h → the duel expires and the review opens.
+    const saved = await S.saveMissedWords(a._id, duel.code, plus(49 * 3600_000));
     expect(saved).toMatchObject({ added: 3, deck: "So'z dueli: xatolar" });
-    expect(await S.saveMissedWords(a._id, duel.code, plus(600_100))).toMatchObject({ added: 0, already: true });
+    expect(await S.saveMissedWords(a._id, duel.code, plus(49 * 3600_000 + 100))).toMatchObject({ added: 0, already: true });
     const u = await M.User.findById(a._id).lean();
     const deck = u.categories.find((c) => c.name === "So'z dueli: xatolar");
     expect(deck.words).toHaveLength(3);

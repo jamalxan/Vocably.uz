@@ -17,17 +17,19 @@ test('kirish va ro‘yxat sahifalarida til tanlagich yo‘q; standart til ingliz
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible({ timeout: 60_000 });
 });
 
+// Cookie'siz landing o'zbekcha boshlanadi (src/app/page.jsx: LocaleFallback locale="uz" — asosiy auditoriya), ilova ichi esa inglizcha.
 test('landing menyusida til almashadi va cookie’da saqlanadi', async ({ page, context, isMobile }) => {
   test.skip(isMobile, 'landing sarlavhasi mobilda gamburger menyuda — desktop');
   await page.goto('/');
   const header = page.getByRole('banner');
-  await expect(header.getByRole('link', { name: 'Pricing' }).first()).toBeVisible({ timeout: 60_000 });
-  await header.getByRole('button', { name: "O'zbekcha" }).first().click();
-  await expect(header.getByRole('link', { name: 'Narxlar' }).first()).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('lang', 'uz');
-  expect((await context.cookies()).find((c) => c.name === 'vocably_lang')?.value).toBe('uz');
-  await page.reload();
   await expect(header.getByRole('link', { name: 'Narxlar' }).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('html')).toHaveAttribute('lang', 'uz');
+  await header.getByRole('radio', { name: 'English' }).first().click(); // the switch is a radiogroup
+  await expect(header.getByRole('link', { name: 'Pricing' }).first()).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  expect((await context.cookies()).find((c) => c.name === 'vocably_lang')?.value).toBe('en');
+  await page.reload();
+  await expect(header.getByRole('link', { name: 'Pricing' }).first()).toBeVisible({ timeout: 60_000 });
 });
 
 test('kirgandan keyin til Sozlamalarda almashadi va qayta yuklanganda saqlanadi', async ({ page, context }) => {

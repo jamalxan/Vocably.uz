@@ -29,7 +29,9 @@ const getLocaleServerSnapshot = () => DEFAULT_LOCALE;
 export function LocaleProvider({ children }) {
   const locale = useSyncExternalStore(subscribeLocale, getLocaleSnapshot, getLocaleServerSnapshot);
 
+  // Child effects run first: a mounted <LocaleFallback> (the landing) owns <html lang> until it unmounts.
   useEffect(() => {
+    if (document.documentElement.dataset.localeFallback) return;
     document.documentElement.lang = locale;
   }, [locale]);
 
@@ -74,9 +76,16 @@ export function LocaleFallback({ locale: fallback, children }) {
   const chosen = useSyncExternalStore(subscribeLocale, getChosenSnapshot, getChosenServerSnapshot);
   const locale = chosen || normalizeLocale(fallback);
 
+  // Owns <html lang> while mounted (see LocaleProvider), and hands it back on unmount.
   useEffect(() => {
-    document.documentElement.lang = locale;
-  }, [locale]);
+    const el = document.documentElement;
+    el.dataset.localeFallback = '1';
+    el.lang = locale;
+    return () => {
+      delete el.dataset.localeFallback;
+      el.lang = parent.locale;
+    };
+  }, [locale, parent.locale]);
 
   const value = useMemo(
     () => ({ ...parent, locale, t: (key, vars) => translate(locale, key, vars), ts: (text) => translateServerText(locale, text), numLocale: locale === 'uz' ? 'uz-UZ' : 'en-US' }),

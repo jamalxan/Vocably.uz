@@ -13,8 +13,9 @@ export const DUEL = {
   words: 10,
   options: 4,
   answerMs: 7000,
-  /** Network allowance on top of the 7 s — beyond this the answer counts as a timeout. */
-  graceMs: 1500,
+  /** Allowance on top of the 7 s for network + the server's own round trips (auth, rate limit) and a
+   *  serverless cold start; it can't buy points (speed is capped at 7 s). Beyond it = timeout. */
+  graceMs: 2500,
   /** Faster than a human can read a word and four options — counted, but flagged. */
   implausibleMs: 250,
   /** This many implausible answers mark the run as suspicious (no rating, no XP). */
@@ -30,6 +31,10 @@ export const DUEL = {
   /** After joining, a player has this long to finish; unanswered words then count as timeouts. */
   playTtlMs: 24 * 3600_000,
   maxOpen: 5,
+  /** Friend invites: after this many declined invites to the same person in 24 h, no more. */
+  maxDeclinedPerDay: 3,
+  /** Duel documents are kept this long (the hub shows the last 30 anyway). */
+  keepDays: 90,
   xp: { win: 30, draw: 20, loss: 10 },
 };
 

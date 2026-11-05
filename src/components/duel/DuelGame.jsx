@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Swords, Loader2, Check, X, Copy, Send, BookPlus, Trophy, Clock } from 'lucide-react';
 import useCopy from '@/components/landing/useCopy';
-import { DUEL_COPY, fill, signed } from './duelCopy';
+import { DUEL_COPY, fill, signed, errorText } from './duelCopy';
 
 // One duel (TZ 2.0 §6.8.4): accept → play 10 questions (7 s each, the clock runs on the server)
 // → result. The browser never learns the right answer before it has answered.
@@ -51,56 +51,74 @@ function Play({ code, c, onDone }) {
   const [score, setScore] = useState(0);
   const [error, setError] = useState('');
   const busy = useRef(false);
+  // Nothing fires after unmount: a "next" request after Back would start the next question's clock.
+  const alive = useRef(true);
+  const timer = useRef(null);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      clearTimeout(timer.current);
+    };
+  }, []);
 
   const loadNext = useCallback(async () => {
     try {
       const j = await api(`/api/duels/${code}/next`, {});
+      if (!alive.current) return;
       if (j.done) return onDone();
       setQ(j.question);
       setEndsAt(Date.now() + j.remainingMs);
       setPicked(null);
       setFeedback(null);
+      setError('');
       busy.current = false;
     } catch (e) {
-      setError(e.message);
+      if (alive.current) setError(errorText(c, e));
+      busy.current = false;
     }
-  }, [code, onDone]);
+  }, [code, onDone, c]);
 
   useEffect(() => {
-    let alive = true;
     api(`/api/duels/${code}/next`, {})
       .then((j) => {
-        if (!alive) return;
+        if (!alive.current) return;
         if (j.done) return onDone();
         setQ(j.question);
         setEndsAt(Date.now() + j.remainingMs);
       })
-      .catch((e) => alive && setError(e.message));
-    return () => {
-      alive = false;
-    };
-  }, [code, onDone]);
+      .catch((e) => alive.current && setError(errorText(c, e)));
+  }, [code, onDone, c]);
 
   const answer = useCallback(
     async (choice) => {
       if (!q || busy.current) return;
       busy.current = true;
       setPicked(choice ?? -1); // -1 = time ran out on this device
+      const send = () => api(`/api/duels/${code}/answer`, { index: q.index, choice });
       try {
-        const r = await api(`/api/duels/${code}/answer`, { index: q.index, choice });
+        let r;
+        try {
+          r = await send();
+        } catch (e) {
+          if (!(e instanceof TypeError)) throw e;
+          r = await send(); // one silent retry on a dropped connection; the server clock decides anyway
+        }
+        if (!alive.current) return;
         setFeedback(r);
         setScore(r.score);
-        setTimeout(() => (r.done ? onDone() : loadNext()), r.ok ? 550 : 1000);
+        timer.current = setTimeout(() => (r.done ? onDone() : loadNext()), r.ok ? 550 : 1000);
       } catch (e) {
+        if (!alive.current) return;
         // Already answered (double tap / another tab) → move on.
         if (e.code === 'stale' || e.code === 'finished') loadNext();
         else {
-          setError(e.message);
+          setError(errorText(c, e));
           busy.current = false;
         }
       }
     },
-    [q, code, loadNext, onDone]
+    [q, code, loadNext, onDone, c]
   );
 
   // Time up on this device → send "no answer" (graded wrong on the server).
@@ -111,11 +129,19 @@ function Play({ code, c, onDone }) {
     return () => clearTimeout(id);
   }, [q, endsAt, picked, answer]);
 
-  if (error) return <p role="alert" className="text-sm text-danger">{error}</p>;
-  if (!q) return <Loader2 className="w-6 h-6 animate-spin text-muted mx-auto" aria-label={c.loading} />;
+  const retry = (
+    <div role="alert" className="rounded-xl bg-danger/10 text-danger text-sm px-3.5 py-2.5 flex items-center justify-between gap-3" data-testid="duel-play-error">
+      <span>{error}</span>
+      <button type="button" onClick={() => loadNext()} className="shrink-0 rounded-lg border border-danger/40 px-2.5 py-1 text-xs font-semibold">
+        {c.retry}
+      </button>
+    </div>
+  );
+  if (!q) return error ? retry : <Loader2 className="w-6 h-6 animate-spin text-muted mx-auto" aria-label={c.loading} />;
 
   return (
     <div className="space-y-4" data-testid="duel-play">
+      {error && retry}
       <div className="flex items-center justify-between text-sm">
         <span className="font-bold text-ink tabular-nums" data-testid="duel-qnum">{fill(c.question, { i: q.index + 1, n: q.total })}</span>
         <span className="text-muted tabular-nums">
@@ -201,7 +227,7 @@ function Result({ duel, c, onSaved }) {
       setSaved(true);
       onSaved?.();
     } catch (e) {
-      setError(e.message);
+      setError(errorText(c, e));
     } finally {
       setSaving(false);
     }
@@ -232,6 +258,7 @@ function Result({ duel, c, onSaved }) {
             </span>
             {me.xp > 0 && <span className="text-accent">{fill(c.xp, { n: me.xp })}</span>}
           </p>
+          {duel.rated === false && <p className="mt-1 text-xs text-muted">{c.unrated}</p>}
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-surface p-5">
@@ -257,6 +284,9 @@ function Result({ duel, c, onSaved }) {
         </div>
       )}
 
+      {!me.review && me.finished && !['finished', 'expired', 'declined'].includes(duel.status) && (
+        <p className="text-xs text-muted" data-testid="duel-review-locked">{c.reviewLocked}</p>
+      )}
       {me.review && (
         <section className="rounded-2xl border border-border bg-surface p-4">
           <h2 className="text-sm font-bold text-ink mb-2">{c.review}</h2>
@@ -310,20 +340,22 @@ export default function DuelGame({ code }) {
       const j = await api(`/api/duels/${code}`);
       setDuel(j.duel);
       setError('');
+      return j.duel;
     } catch (e) {
-      setError(e.status === 404 ? c.notFound : e.message);
+      setError(e.status === 404 ? c.notFound : errorText(c, e));
+      return null;
     }
-  }, [code, c.notFound]);
+  }, [code, c]);
 
   useEffect(() => {
-    let alive = true;
+    let on = true;
     api(`/api/duels/${code}`)
-      .then((j) => alive && setDuel(j.duel))
-      .catch((e) => alive && setError(e.status === 404 ? c.notFound : e.message));
+      .then((j) => on && setDuel(j.duel))
+      .catch((e) => on && setError(e.status === 404 ? c.notFound : errorText(c, e)));
     return () => {
-      alive = false;
+      on = false;
     };
-  }, [code, c.notFound]);
+  }, [code, c]);
 
   // Waiting for the opponent → refresh every 15 s while the tab is visible.
   const waiting = duel && duel.me?.finished && !['finished', 'expired', 'declined'].includes(duel.status);
@@ -333,9 +365,10 @@ export default function DuelGame({ code }) {
     return () => clearInterval(id);
   }, [waiting, load]);
 
-  const onDone = useCallback(() => {
+  // Fetch the result first, then leave the game screen; otherwise the stale "Ready?" card flashes.
+  const onDone = useCallback(async () => {
+    await load();
     setPhase('view');
-    load();
   }, [load]);
 
   const act = async (path) => {
@@ -344,14 +377,22 @@ export default function DuelGame({ code }) {
       const j = await api(`/api/duels/${code}/${path}`, {});
       if (path === 'join') {
         setDuel(j.duel);
+        setError('');
         setPhase('playing');
       } else await load();
     } catch (e) {
-      setError(e.message);
+      setError(errorText(c, e));
+      if (e.status === 409) await load(); // someone else got in / the invite closed: show the real state
     } finally {
       setBusy(false);
     }
   };
+
+  const banner = error && duel && (
+    <p role="alert" className="rounded-xl bg-danger/10 text-danger text-sm px-3.5 py-2.5" data-testid="duel-error">
+      {error}
+    </p>
+  );
 
   let body;
   if (error && !duel) {
@@ -384,7 +425,7 @@ export default function DuelGame({ code }) {
       </div>
     );
   } else if (duel.canPlay) {
-    const started = (duel.me?.progress || 0) > 0;
+    const started = !!duel.me?.started;
     body = started ? (
       <Play code={code} c={c} onDone={onDone} />
     ) : (
@@ -400,9 +441,11 @@ export default function DuelGame({ code }) {
   } else if (duel.me) {
     body = <Result duel={duel} c={c} onSaved={load} />;
   } else {
+    // Not a player: the link was already taken, the invite expired, or it was declined.
+    const text = duel.status === 'expired' ? c.expiredBody : duel.status === 'declined' ? c.declinedBody : c.closedBody;
     body = (
-      <div className="text-center space-y-3" data-testid="duel-notfound">
-        <p className="text-sm text-muted">{c.notFound}</p>
+      <div className="text-center space-y-3" data-testid="duel-closed">
+        <p className="text-sm text-muted">{text}</p>
         <Link href="/app/duel" className="text-accent font-semibold hover:underline">{c.back}</Link>
       </div>
     );
@@ -413,6 +456,7 @@ export default function DuelGame({ code }) {
       <h1 className="text-lg font-bold text-ink flex items-center gap-2">
         <Swords size={18} className="text-accent" aria-hidden="true" /> {c.title}
       </h1>
+      {banner}
       {body}
     </div>
   );

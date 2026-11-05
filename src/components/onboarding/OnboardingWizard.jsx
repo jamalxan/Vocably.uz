@@ -157,9 +157,18 @@ export default function OnboardingWizard() {
       });
     }
     setHydrated(true);
-    fetch('/api/onboarding', { credentials: 'same-origin' })
-      .then((r) => setLoggedIn(r.ok))
-      .catch(() => {});
+    // Guests (no session flag) are not asked — it would only be a 401 in their console.
+    let authed = false;
+    try {
+      authed = localStorage.getItem('vocably_authed') === '1';
+    } catch {
+      authed = false;
+    }
+    if (authed) {
+      fetch('/api/onboarding', { credentials: 'same-origin' })
+        .then((r) => setLoggedIn(r.ok))
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {

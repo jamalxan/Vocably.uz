@@ -1,5 +1,6 @@
 import FunnelBeacon from '@/components/analytics/FunnelBeacon';
 import LandingHeader from '@/components/landing/LandingHeader';
+import PricingIntro from '@/components/pricing/PricingIntro';
 import { serializeJsonLd } from '@/lib/jsonLd';
 import LandingFooter from '@/components/landing/LandingFooter';
 import PricingTable from '@/components/pricing/PricingTable';
@@ -26,10 +27,7 @@ export default function NarxlarPage() {
       <FunnelBeacon stage="landing" />
       <main className="flex-1 px-4 sm:px-6 py-12 sm:py-16">
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <h1 className="font-luxury text-3xl sm:text-4xl font-bold text-ink mb-3">Tariflar</h1>
-          <p className="text-sm sm:text-base text-muted">
-            IELTS tayyorgarligingizga mos rejani tanlang. Bepul rejada ham darhol boshlashingiz mumkin.
-          </p>
+          <PricingIntro />
         </div>
         <PricingTable />
       </main>

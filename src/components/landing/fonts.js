@@ -43,6 +43,8 @@ export const jetbrainsMono = localFont({
   ],
   variable: '--font-landing-mono',
   display: 'swap',
+  // Used by a handful of landing labels only — preloading 3 files on every app page is waste.
+  preload: false,
 });
 
 export const landingFontVariables = `${sora.variable} ${inter.variable} ${jetbrainsMono.variable}`;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  weekKey, weekStartOf, mondayOf, weekDates, defaultReportWeek, resolveReportWeek, isWeeklyReportTime, formatWeekRange,
+  weekKey, weekStartOf, mondayOf, weekDates, defaultReportWeek, resolveReportWeek, isWeeklyReportTime, weeklyReportTarget, formatWeekRange,
   localParts, safeTimeZone, buildWeeklyReport, nextWeekTargets, reportForTier, weeklyReportNotice, formatWeeklyTelegram,
   shouldSendWeeklyReport,
 } from './weeklyReport';
@@ -55,11 +55,13 @@ describe('which week, and when', () => {
     expect(resolveReportWeek('2026-W32', now, TZ)).toBeNull();
     expect(resolveReportWeek('2026-W45; drop', now, TZ)).toBeNull();
   });
-  it('report time = Sunday 19:00–22:59 local', () => {
-    expect(isWeeklyReportTime(at('2026-11-08T13:59:00Z'), TZ)).toBe(false); // 18:59
-    expect(isWeeklyReportTime(at('2026-11-08T14:00:00Z'), TZ)).toBe(true); // 19:00
-    expect(isWeeklyReportTime(at('2026-11-08T17:59:00Z'), TZ)).toBe(true); // 22:59
-    expect(isWeeklyReportTime(at('2026-11-08T18:00:00Z'), TZ)).toBe(false); // 23:00
+  it('delivery window = Sunday from 19:00 local, catch-up until Monday noon; the target week follows', () => {
+    expect(isWeeklyReportTime(at('2026-11-08T13:59:00Z'), TZ)).toBe(false); // Sun 18:59
+    expect(weeklyReportTarget(at('2026-11-08T14:00:00Z'), TZ)).toBe('2026-W45'); // Sun 19:00
+    expect(weeklyReportTarget(at('2026-11-08T18:30:00Z'), TZ)).toBe('2026-W45'); // Sun 23:30 — a late cron still sends
+    expect(weeklyReportTarget(at('2026-11-09T04:00:00Z'), TZ)).toBe('2026-W45'); // Mon 09:00 — catch-up, last week
+    expect(weeklyReportTarget(at('2026-11-09T06:59:00Z'), TZ)).toBe('2026-W45'); // Mon 11:59
+    expect(weeklyReportTarget(at('2026-11-09T07:00:00Z'), TZ)).toBeNull(); // Mon 12:00
     expect(isWeeklyReportTime(at('2026-11-07T14:00:00Z'), TZ)).toBe(false); // Saturday
     expect(isWeeklyReportTime(at('2026-11-08T14:00:00Z'), 'America/New_York')).toBe(false); // 09:00 there
   });
@@ -106,7 +108,7 @@ describe('buildWeeklyReport', () => {
   it('personal: days, accuracy, tasks, skills, comparison', () => {
     const p = r.personal;
     expect(p.days).toHaveLength(7);
-    expect(p.days[0]).toEqual({ date: '2026-11-02', xp: 120, reviews: 20, tasksDone: 3, tasksTotal: 4, active: true });
+    expect(p.days[0]).toEqual({ date: '2026-11-02', xp: 120, reviews: 20, sessions: 0, tasksDone: 3, tasksTotal: 4, active: true });
     expect(p.days[2]).toMatchObject({ date: '2026-11-04', xp: 0, reviews: 5, active: true });
     expect(p.days[4]).toMatchObject({ date: '2026-11-06', active: false });
     expect(p.reviews).toBe(40);
@@ -115,6 +117,12 @@ describe('buildWeeklyReport', () => {
     expect(p.skills.reading).toEqual({ sessions: 2, band: 6.5 });
     expect(p.skills.writing).toEqual({ sessions: 0, band: 5.5 });
     expect(p.compare).toEqual({ xp: 60, words: -10, activeDays: 2 });
+  });
+  it('a week with only section tests counts as active (tests award no XP)', () => {
+    const x = buildWeeklyReport({ ...base, xpByDay: {}, reviewsByDay: {}, plans: [], newWords: 0, sessionsByDay: { '2026-11-03': 2, '2026-11-06': 1 } });
+    expect(x.empty).toBe(false);
+    expect(x.activeDays).toBe(2);
+    expect(x.personal.days[1]).toMatchObject({ date: '2026-11-03', sessions: 2, active: true });
   });
   it('first week ever: no comparison, empty flag', () => {
     const x = buildWeeklyReport({ ...base, xpByDay: {}, reviewsByDay: {}, plans: [], newWords: 0, previous: null });
@@ -129,7 +137,9 @@ describe('buildWeeklyReport', () => {
 describe('next week targets', () => {
   it('one step up, capped', () => {
     expect(nextWeekTargets({ activeDays: 2, newWords: 10, wordGoal: 56, focusSkill: 'writing', focusBand: 5.5, focusSessions: 0 }))
-      .toEqual({ days: 5, words: 34, focusSkill: 'writing', focusSessions: 2, tips: ['consistency', 'words', 'focusMissed'] });
+      .toEqual({ days: 3, words: 34, focusSkill: 'writing', focusSessions: 2, tips: ['consistency', 'words', 'focusMissed'] });
+    expect(nextWeekTargets({ activeDays: 0, newWords: 0, wordGoal: 56, focusSkill: 'writing', focusBand: 5.5, focusSessions: 0 }).days).toBe(3);
+    expect(nextWeekTargets({ activeDays: 4, newWords: 0, wordGoal: 56, focusSkill: 'writing', focusBand: 5.5, focusSessions: 0 }).days).toBe(5);
     expect(nextWeekTargets({ activeDays: 7, newWords: 80, wordGoal: 56, focusSkill: 'reading', focusBand: null, focusSessions: 3 }))
       .toEqual({ days: 7, words: 56, focusSkill: 'reading', focusSessions: 2, tips: ['testFocus'] });
     expect(nextWeekTargets({ activeDays: 6, newWords: 50, wordGoal: 56, focusSkill: 'reading', focusBand: 6, focusSessions: 1 }).words).toBe(56);

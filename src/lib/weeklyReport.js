@@ -4,15 +4,16 @@
 //
 // Rules:
 //   - A week is the ISO week, Monday 00:00 → Sunday 24:00 in the user's timezone.
-//   - The report goes out on Sunday evening (WEEKLY_REPORT_CONFIG.hour, local), so on Sunday the
-//     "current" week is reported; on any other day the last finished week.
+//   - The report goes out on Sunday evening (WEEKLY_REPORT_CONFIG.hour, local); if the hourly sweep
+//     missed the evening, it catches up until Monday noon. On Sunday the "current" week is reported;
+//     on any other day the last finished week.
 //   - Everyone gets the core report (TZ §6.2.4): words learned, XP, streak, active days, band
 //     change and next week's focus skill. Premium also gets the personal part (TZ §10): day by
 //     day activity, accuracy, skill practice, comparison with the week before and next week's
 //     concrete targets.
 import { pickWeakest, newWordTarget, SKILLS } from './todayPlan';
 
-export const WEEKLY_REPORT_CONFIG = { hour: 19, lastHour: 22, maxWeeksBack: 12 };
+export const WEEKLY_REPORT_CONFIG = { hour: 19, lastHour: 22, catchUpUntilHour: 12, maxWeeksBack: 12 };
 const DAY_MS = 86400000;
 const UZ_MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
 const SKILL_LABEL = { reading: 'Reading', listening: 'Listening', writing: 'Writing', speaking: 'Speaking' };
@@ -96,11 +97,17 @@ export function resolveReportWeek(requested, now, tz) {
   return requested;
 }
 
-/** Sunday, from the report hour until the evening ends (the hourly sweep may run late). */
-export function isWeeklyReportTime(now, tz) {
-  const { weekday, hour } = localParts(now, tz);
-  return weekday === 7 && hour >= WEEKLY_REPORT_CONFIG.hour && hour <= WEEKLY_REPORT_CONFIG.lastHour;
+/**
+ * Which week should be delivered right now, or null: Sunday from the report hour, plus a catch-up
+ * window until Monday noon in case the hourly sweep missed the evening (cron jitter, outage).
+ */
+export function weeklyReportTarget(now, tz) {
+  const { date, weekday, hour } = localParts(now, tz);
+  if (weekday === 7 && hour >= WEEKLY_REPORT_CONFIG.hour) return weekKey(date);
+  if (weekday === 1 && hour < WEEKLY_REPORT_CONFIG.catchUpUntilHour) return weekKey(addDays(date, -7));
+  return null;
 }
+export const isWeeklyReportTime = (now, tz) => weeklyReportTarget(now, tz) !== null;
 
 /** "2–8 noyabr" / "27 oktabr – 2 noyabr". */
 export function formatWeekRange(monday) {
@@ -118,6 +125,7 @@ const delta = (cur, prev) => (prev == null ? null : cur - prev);
  * @param {string} p.week                 ISO week key
  * @param {Record<string, number>} p.xpByDay        local date → XP
  * @param {Record<string, number>} p.reviewsByDay   local date → answered reviews
+ * @param {Record<string, number>} p.sessionsByDay  local date → finished exam / section tests
  * @param {number} p.newWords             distinct words seen for the first time this week
  * @param {number} p.correct              correct answers this week
  * @param {{ xp: number, newWords: number, activeDays: number } | null} p.previous   the week before
@@ -139,7 +147,8 @@ export function buildWeeklyReport(p) {
     const plan = plansByDate.get(date);
     const xp = Math.max(0, Math.round(p.xpByDay?.[date] || 0));
     const reviews = Math.max(0, p.reviewsByDay?.[date] || 0);
-    return { date, xp, reviews, tasksDone: plan?.done || 0, tasksTotal: plan?.total || 0, active: xp > 0 || reviews > 0 || (plan?.done || 0) > 0 };
+    const sessions = Math.max(0, p.sessionsByDay?.[date] || 0);
+    return { date, xp, reviews, sessions, tasksDone: plan?.done || 0, tasksTotal: plan?.total || 0, active: xp > 0 || reviews > 0 || sessions > 0 || (plan?.done || 0) > 0 };
   });
 
   const xp = days.reduce((s, d) => s + d.xp, 0);
@@ -184,9 +193,9 @@ export function buildWeeklyReport(p) {
   return { ...core, personal };
 }
 
-/** Next week's concrete targets: one step up from this week, never a cliff. */
+/** Next week's concrete targets: one step up from this week, never a cliff (3 days at the least). */
 export function nextWeekTargets({ activeDays, newWords, wordGoal, focusSkill, focusBand, focusSessions }) {
-  const days = Math.min(7, Math.max(5, activeDays + 1));
+  const days = Math.min(7, Math.max(3, activeDays + 1));
   const words = newWords >= wordGoal ? wordGoal : Math.min(wordGoal, Math.max(newWords + 10, Math.ceil(wordGoal * 0.6)));
   const tips = [];
   if (activeDays < 5) tips.push('consistency');

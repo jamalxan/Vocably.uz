@@ -34,6 +34,18 @@ export default function PricingTable() {
 
   useEffect(() => {
     const ctrl = new AbortController();
+    // Guests (no session flag) are not asked — it would only be a 401 in their console.
+    let authed = false;
+    try {
+      authed = localStorage.getItem('vocably_authed') === '1';
+    } catch {
+      authed = false;
+    }
+    if (!authed) {
+      // Microtask, not a synchronous setState in the effect body (same pattern as the fetch chain below).
+      Promise.resolve().then(() => !ctrl.signal.aborted && setAuthState('out'));
+      return () => ctrl.abort();
+    }
     fetch('/api/profile', { signal: ctrl.signal })
       .then((res) => {
         if (!res.ok) {

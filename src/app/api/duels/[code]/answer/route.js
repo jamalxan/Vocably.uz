@@ -5,5 +5,5 @@ import { answerQuestion } from '@/lib/duel/server';
 export async function POST(req, { params }) {
   const { code } = await params;
   const body = await readJson(req);
-  return duelRoute(req, 'answer', (userId) => answerQuestion(userId, code, { index: body.index, choice: body.choice }), { limit: 60 });
+  return duelRoute(req, 'answer', (userId, now) => answerQuestion(userId, code, { index: body.index, choice: body.choice }, now), { limit: 60 });
 }
