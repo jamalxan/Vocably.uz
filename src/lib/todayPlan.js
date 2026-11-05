@@ -28,7 +28,7 @@ const SKILL_TASK = {
 };
 
 /** New words per day by the daily-minutes choice (onboarding offers 10/20/40/60). */
-function newWordTarget(minutes) {
+export function newWordTarget(minutes) {
   if (minutes >= 60) return 15;
   if (minutes >= 40) return 12;
   if (minutes >= 20) return 8;

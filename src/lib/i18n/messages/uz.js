@@ -563,6 +563,7 @@ const uz = {
   'plan.examPassed': 'Imtihon sanasi o‘tib ketgan — yangisini kiriting',
   'plan.carried': 'Kechadan',
   'plan.markDone': 'Bajardim',
+  'plan.weeklyReport': 'Haftalik hisobot',
   'plan.allDone': 'Bugungi reja bajarildi! +{xp} XP',
   'plan.xpToday': '{earned}/{total} XP',
   'plan.loadError': 'Rejani yuklab bo‘lmadi',

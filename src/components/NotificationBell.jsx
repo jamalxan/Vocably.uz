@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useBackClose } from '@/lib/useBackClose';
 import { useT } from '@/context/LocaleContext';
-import { Bell, BellRing, MessageCircle, Megaphone, Loader2, CreditCard, Gift } from 'lucide-react';
+import { Bell, BellRing, MessageCircle, Megaphone, Loader2, CreditCard, Gift, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { pushSupported, getPushPermissionState, isPushSubscribed, subscribeToPush } from '@/lib/pushClient';
 
@@ -151,7 +151,7 @@ export default function NotificationBell({ onOpenFriends }) {
     if (n.type === 'chat_message') {
       setOpen(false);
       onOpenFriends?.();
-    } else if ((n.type === 'subscription' || n.type === 'vocab_reminder' || n.type === 'announcement') && n.link?.startsWith('/app/')) {
+    } else if ((n.type === 'subscription' || n.type === 'vocab_reminder' || n.type === 'weekly_report' || n.type === 'announcement') && n.link?.startsWith('/app/')) {
       // Announcements with their own page (media, buttons) open there; older
       // text-only ones (link /announcements/…, no page) still expand inline.
       setOpen(false);
@@ -245,7 +245,7 @@ export default function NotificationBell({ onOpenFriends }) {
                 }`}
               >
                 <div className="w-7 h-7 rounded-full bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {n.type === 'chat_message' ? <MessageCircle size={13} /> : n.type === 'gift' ? <Gift size={13} /> : n.type === 'subscription' || n.type === 'payment' ? <CreditCard size={13} /> : n.type === 'vocab_reminder' ? <BellRing size={13} /> : <Megaphone size={13} />}
+                  {n.type === 'chat_message' ? <MessageCircle size={13} /> : n.type === 'gift' ? <Gift size={13} /> : n.type === 'subscription' || n.type === 'payment' ? <CreditCard size={13} /> : n.type === 'vocab_reminder' ? <BellRing size={13} /> : n.type === 'weekly_report' ? <BarChart3 size={13} /> : <Megaphone size={13} />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className={`text-xs break-words ${n.read ? 'text-ink/80' : 'text-ink font-semibold'}`}>

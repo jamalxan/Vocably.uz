@@ -563,6 +563,7 @@ const en = {
   'plan.examPassed': 'Your exam date has passed — set a new one',
   'plan.carried': 'From yesterday',
   'plan.markDone': 'Done',
+  'plan.weeklyReport': 'Weekly report',
   'plan.allDone': "Today's plan is done! +{xp} XP",
   'plan.xpToday': '{earned}/{total} XP',
   'plan.loadError': "Couldn't load the plan",
