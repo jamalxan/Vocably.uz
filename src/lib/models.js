@@ -270,6 +270,16 @@ const UserSchema = new mongoose.Schema({
     sendHour: { type: Number, default: 20, min: 8, max: 21 },
     lastSentOn: { type: String, default: null },
     lastCheckedOn: { type: String, default: null },
+    // TZ 2.0 §6.10: kunduzgi eslatma turi va 21:00 seriya turtkisi (ikkinchi slot) holati.
+    lastKind: { type: String, default: null },
+    riskSentOn: { type: String, default: null },
+    riskCheckedOn: { type: String, default: null },
+  },
+  // Kuniga ko'pi bilan 2 ta proaktiv Telegram xabari (TZ 2.0 §6.10.5) — eslatmalar va kunlik mini-test birga
+  // hisoblanadi. src/lib/telegramCap.js atomik "band qiladi". day — foydalanuvchi mahalliy sanasi.
+  tgNudge: {
+    day: { type: String, default: null },
+    count: { type: Number, default: 0 },
   },
   // Lug'at onboarding diagnostikasi (TZ §64) — o'tkazib yuborish mumkin.
   vocabOnboarding: {

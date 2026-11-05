@@ -641,7 +641,7 @@ const en = {
   'cefr.target': 'target',
   'cefr.setTarget': 'Set your target band in profile settings.',
   'rem.title': 'Review reminders',
-  'rem.intro': 'About words ready for review and your streak — no spam, at most one a day.',
+  'rem.intro': 'Your daily plan at the time you pick, plus a short nudge at 21:00 if your streak is at risk — at most two a day.',
   'rem.enable': 'Enable reminders',
   'rem.freqAria': 'Reminder frequency',
   'rem.daily': 'Every day',

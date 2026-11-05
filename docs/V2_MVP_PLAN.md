@@ -19,7 +19,7 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 | 6 | Flagship games without login: Vocably Run (3-lane runner), Gapir yoki yiqil | 7 | ✅ |
 | 7 | 9:16 result card (download/share) | 7 | ✅ |
 | 8 | Streak: ≥1 plan task = streak, 1 free freeze per week | 6.8.2 | ✅ |
-| 9 | Telegram Login Widget + reminder at a user-chosen time, max 2 messages per day | 6.10 | ⏳ |
+| 9 | Telegram Login Widget + reminder at a user-chosen time, max 2 messages per day | 6.10 | ✅ |
 | 10 | 7-day trial (setting), 14-day refund request, 3-month plan | 10 | ⏳ |
 | 11 | Admin: landing→onboarding→signup→payment funnel | 6.12.3 | ⏳ |
 
@@ -50,6 +50,17 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
   re-evaluates the plan until today is settled. The streak day starts at 00:00 (like the plan). Every ISO week the user
   gets 1 free freeze (`User.freezeWeek`); the old "earn a freeze every 7 days" is gone. The game task is now always in
   the plan, so there is always a quick task. Trade-off: an offline review done on an earlier day no longer back-fills that day.
+- Step 9: Telegram Login Widget on /login and /register (`TelegramLoginButton.jsx` → `POST /api/auth/telegram`, JSON only,
+  HMAC check in `src/lib/telegramLogin.js`, data older than 1 h refused, IP rate limit). A Telegram id that phone sign-up already
+  linked (`telegramChatId`) opens that account; otherwise a new account with phone `tg:<id>` and an unusable password.
+  CSP allows `https://telegram.org` scripts and `https://oauth.telegram.org` frames. **Needs @BotFather `/setdomain` → www.vocably.uz**,
+  otherwise the widget shows "Bot domain invalid".
+  Reminders: two slots a day — the daily plan at the chosen hour (`kind: plan` for users active in the last 7 days, otherwise
+  due/streak as before) and a 21:00 streak-at-risk nudge (`decideRiskNudge`). Every proactive bot message (both slots + the daily
+  mini-test, now one message instead of two) takes a slot in `src/lib/telegramCap.js` → never more than 2 a day. Every reminder in
+  Telegram has a one-tap "🔕 Eslatmalarni o'chirish" (`rm:off`, also stops the mini-test).
+  **Hourly trigger:** Vercel Hobby cron is daily only, so `.github/workflows/hourly-reminders.yml` calls the sweep hourly —
+  needs the repo secret `CRON_SECRET` (same as on Vercel). Not done: the Sunday weekly report message.
 - E2E: the dev server flakes on first compile; the reliable check is `next build` + `next start -p 3100` + `E2E_REUSE_SERVER=1`.
 
 ## Should/Could (after the MVP)

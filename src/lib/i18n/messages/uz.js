@@ -641,7 +641,7 @@ const uz = {
   'cefr.target': 'maqsad',
   'cefr.setTarget': 'Maqsad bandini profil sozlamalarida belgilang.',
   'rem.title': 'Takrorlash eslatmalari',
-  'rem.intro': "Takrorlashga tayyor so'zlar va seriyangiz haqida — spamsiz, kuniga ko'pi bilan bitta.",
+  'rem.intro': "Tanlagan vaqtingizda kunlik reja, seriya xavfda bo'lsa 21:00 da qisqa turtki — kuniga ko'pi bilan 2 ta.",
   'rem.enable': 'Eslatmalarni yoqish',
   'rem.freqAria': 'Eslatma chastotasi',
   'rem.daily': 'Har kuni',

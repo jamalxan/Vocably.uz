@@ -2,6 +2,8 @@ import { connectToDatabase } from '@/lib/db';
 import { bearerMatches } from '@/lib/safeEqual';
 import { User } from '@/lib/models';
 import { sendDailyPractice, tashkentDate } from '@/lib/telegramQuiz';
+import { claimTelegramSlot, releaseTelegramSlot } from '@/lib/telegramCap';
+import { localDateWithCutoff } from '@/lib/srs';
 import { NextResponse } from 'next/server';
 
 // Daily Telegram mini-test / reminder (Vercel cron, see vercel.json). Same
@@ -26,15 +28,23 @@ export async function GET(req) {
     tgDailySentOn: { $ne: today },
     chatBanned: { $ne: true },
   })
-    .select('categories reviewStreak telegramChatId')
+    .select('categories reviewStreak telegramChatId timezone')
     .limit(BATCH);
 
-  const stats = { quiz: 0, reminder: 0, failed: 0 };
+  const stats = { quiz: 0, reminder: 0, capped: 0, failed: 0 };
   for (const u of users) {
+    // Shares the 2-a-day bot message cap with vocab reminders (TZ 2.0 §6.10.5).
+    const day = localDateWithCutoff(new Date(), u.timezone || 'Asia/Tashkent');
+    if (!(await claimTelegramSlot(u._id, day))) {
+      stats.capped++;
+      await User.updateOne({ _id: u._id }, { $set: { tgDailySentOn: today } });
+      continue;
+    }
     try {
       stats[await sendDailyPractice(u)]++;
     } catch (err) {
       stats.failed++;
+      await releaseTelegramSlot(u._id, day);
       // A user who blocked the bot: stop trying every day.
       if (/blocked|chat not found|deactivated/i.test(String(err?.message))) {
         await User.updateOne({ _id: u._id }, { $set: { tgDailyPractice: false } });

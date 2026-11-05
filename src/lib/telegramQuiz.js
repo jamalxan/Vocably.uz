@@ -80,9 +80,9 @@ export async function sendDailyPractice(user, now = new Date()) {
     await User.updateOne({ _id: user._id }, { $set: { tgDailySentOn: tashkentDate(now), tgQuiz: null } });
     return 'reminder';
   }
-  await sendMessage(user.telegramChatId, `${header}\n${quiz.items.length} ta so‘z — javobni tugma bilan tanlang.`);
+  // One message (header + first question): the daily cap counts messages (TZ 2.0 §6.10.5).
   const q = questionMarkup(quiz);
-  await sendMessage(user.telegramChatId, q.text, { reply_markup: q.reply_markup });
+  await sendMessage(user.telegramChatId, `${header}\n${quiz.items.length} ta so‘z — javobni tugma bilan tanlang.\n\n${q.text}`, { reply_markup: q.reply_markup });
   await User.updateOne({ _id: user._id }, { $set: { tgDailySentOn: tashkentDate(now), tgQuiz: quiz } });
   return 'quiz';
 }

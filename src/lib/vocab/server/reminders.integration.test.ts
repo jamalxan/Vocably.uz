@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import * as Models from '@/lib/models';
 import { runReminderSweep } from './reminderService';
+import { claimTelegramSlot } from '@/lib/telegramCap';
 
 const User: any = Models.User;
 const Notification: any = Models.Notification;
@@ -147,5 +148,64 @@ describeDb('vocab reminders (integration)', () => {
     await mk();
     const r = await runReminderSweep({ now: NOW, flagEnv: { VOCAB_ENGINE_ENABLED: 'false' } as any });
     expect(r.sent).toBe(0);
+  });
+
+  describe('TZ 2.0 §6.10: ikki slot, kuniga ko‘pi bilan 2 ta', () => {
+    const at = (h: number) => new Date(Date.UTC(2026, 9, 10, h - 5, 0)); // Toshkent soati h, 2026-10-10
+    const tgUser = () => mk({ telegramChatId: 777, vocabReminders: { telegram: true, sendHour: 9 } });
+
+    it('09:00 da reja eslatmasi, 21:00 da seriya turtkisi; soatlik cron butun kun davomida 2 tadan oshirmaydi', async () => {
+      const u = await mk({ vocabReminders: { sendHour: 9 }, categories: [{ name: 'c', words: dueWords(8) }] });
+      let sent = 0;
+      for (let h = 8; h <= 23; h++) sent += (await runReminderSweep({ now: at(h) })).sent;
+      expect(sent).toBe(2);
+      const notes = await Notification.find({ userId: u._id }).sort({ _id: 1 }).lean();
+      expect(notes).toHaveLength(2);
+      expect(notes[1].title).toContain('12');
+      const prefs = (await User.findById(u._id).lean()).vocabReminders;
+      expect(prefs).toMatchObject({ lastSentOn: '2026-10-10', riskSentOn: '2026-10-10' });
+    });
+
+    it('kunduzgi eslatma seriya haqida bo‘lsa (soat 21 tanlangan) 21:00 da takrorlanmaydi', async () => {
+      const u = await mk({ vocabReminders: { sendHour: 21 } });
+      expect((await runReminderSweep({ now: at(21) })).sent).toBe(1);
+      expect((await runReminderSweep({ now: at(22) })).sent).toBe(0);
+      expect(await Notification.countDocuments({ userId: u._id })).toBe(1);
+    });
+
+    it('bugun mashq qilgan foydalanuvchiga 21:00 turtkisi bormaydi', async () => {
+      await mk({ lastReviewDate: '2026-10-10', vocabReminders: { sendHour: 9 } });
+      let sent = 0;
+      for (let h = 8; h <= 23; h++) sent += (await runReminderSweep({ now: at(h) })).sent;
+      expect(sent).toBe(0);
+    });
+
+    it('Telegram: kunlik mini-test slotni olgan bo‘lsa, uchinchi xabar yuborilmaydi; tugmada bir bosishda o‘chirish', async () => {
+      const u = await tgUser();
+      const calls: any[] = [];
+      const sendTelegram = async (id: number, text: string, extra: any) => void calls.push({ id, text, extra });
+      await runReminderSweep({ now: at(9), sendTelegram }); // 1-slot
+      expect(await claimTelegramSlot(u._id, '2026-10-10')).toBe(true); // 19:00 mini-test 2-slotni oldi
+      await runReminderSweep({ now: at(21), sendTelegram }); // 21:00 turtki — Telegram limitda
+      expect(calls).toHaveLength(1);
+      expect(calls[0].extra.reply_markup.inline_keyboard.flat().some((b: any) => b.callback_data === 'rm:off')).toBe(true);
+      // ilova ichidagi bildirishnoma baribir yetadi (ikki slot)
+      expect(await Notification.countDocuments({ userId: u._id })).toBe(2);
+      expect(await claimTelegramSlot(u._id, '2026-10-10')).toBe(false);
+      expect(await claimTelegramSlot(u._id, '2026-10-11')).toBe(true); // ertasi kun — yangi limit
+    });
+
+    it('limit parallel so‘rovlarda ham 2 dan oshmaydi', async () => {
+      const u = await mk();
+      const res = await Promise.all(Array.from({ length: 8 }, () => claimTelegramSlot(u._id, '2026-10-10')));
+      expect(res.filter(Boolean)).toHaveLength(2);
+      expect((await User.findById(u._id).lean()).tgNudge).toMatchObject({ day: '2026-10-10', count: 2 });
+    });
+
+    it('Telegram yuborilmasa slot qaytariladi', async () => {
+      const u = await tgUser();
+      await runReminderSweep({ now: at(9), sendTelegram: async () => { throw new Error('timeout'); } });
+      expect((await User.findById(u._id).lean()).tgNudge.count).toBe(0);
+    });
   });
 });

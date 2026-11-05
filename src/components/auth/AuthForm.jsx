@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { normalizePhone } from '@/lib/phone';
 import { useT } from '@/context/LocaleContext';
+import TelegramLoginButton from '@/components/auth/TelegramLoginButton';
 
 // Where to go after login/registration: `?next=/app/...` (e.g. from the
 // pricing page's "Sotib olish") — only in-app paths, never another origin.
@@ -53,7 +54,7 @@ function validatePassword(password, t) {
 // va orqaga tugmasi ishlaydi.
 //
 // register/forgot ichidagi bosqichlar: 'form' -> 'telegram' -> 'code' -> (forgot uchun) 'newPassword'
-export default function AuthForm({ initialMode = 'login' }) {
+export default function AuthForm({ initialMode = 'login', telegramBot = null }) {
   const router = useRouter();
   const { t } = useT();
   const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'forgot'
@@ -535,6 +536,17 @@ export default function AuthForm({ initialMode = 'login' }) {
               </Field>
               <SubmitButton loading={loading}>{t('auth.savePassword')}</SubmitButton>
             </form>
+          )}
+
+          {(mode === 'login' || mode === 'register') && step === 'form' && (
+            <TelegramLoginButton
+              bot={telegramBot}
+              onSuccess={(data) => {
+                localStorage.setItem('vocably_authed', '1');
+                localStorage.setItem('username', data.name || '');
+                router.replace(afterAuthPath());
+              }}
+            />
           )}
 
           {/* Rejim almashtirish — login<->register endi haqiqiy sahifa (Link), URL to'g'ri

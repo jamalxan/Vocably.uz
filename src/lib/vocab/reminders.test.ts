@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideReminder, formatTelegramReminder, isReminderHour, isTelegramBlockedError, localHour, normalizePrefs, normalizeSendHour } from './reminders';
+import { decideReminder, decideRiskNudge, formatTelegramReminder, isReminderHour, isRiskHour, isTelegramBlockedError, localHour, normalizePrefs, normalizeSendHour, telegramReminderMarkup, REMINDER_CONFIG } from './reminders';
 
 const TZ = 'Asia/Tashkent';
 const NOW = new Date('2026-10-10T15:00:00Z'); // 20:00 Toshkent -> bugun 2026-10-10
@@ -17,8 +17,15 @@ describe('decideReminder', () => {
     expect(r.body).toContain('18');
   });
 
-  it('seriya qisqa bo‘lsa va takrorlash kam bo‘lsa — jim', () => {
-    expect(decideReminder({ dueCount: 2, streak: streak({ streak: 1 }), timeZone: TZ, now: NOW })).toBeNull();
+  it('seriya qisqa, takrorlash kam, lekin yaqinda faol — kunlik reja eslatmasi (TZ 2.0 §6.10.2)', () => {
+    const r = decideReminder({ dueCount: 2, streak: streak({ streak: 1 }), timeZone: TZ, now: NOW })!;
+    expect(r).toMatchObject({ kind: 'plan', url: '/app' });
+    expect(r.body).toContain('2');
+  });
+
+  it('uzoq vaqt faol bo‘lmagan va aytadigan gap yo‘q — jim', () => {
+    expect(decideReminder({ dueCount: 2, streak: streak({ streak: 0, lastDate: '2026-10-02' }), timeZone: TZ, now: NOW })).toBeNull();
+    expect(decideReminder({ dueCount: 2, streak: streak({ streak: 0, lastDate: '2026-10-03' }), timeZone: TZ, now: NOW })?.kind).toBe('plan');
   });
 
   it('seriya uzilgan bo‘lsa ayblamaydi: faqat takrorlash xabari', () => {
@@ -85,12 +92,41 @@ describe('Telegram matni', () => {
   it('HTML belgilarni ekranlaydi va to‘liq havola qo‘shadi', () => {
     const t = formatTelegramReminder(r, 'https://vocably.uz');
     expect(t).toContain('&lt;so\'z&gt; &amp; ko‘proq');
-    expect(t).toContain('<a href="https://vocably.uz/app/vocabulary/review">');
+    const kb = telegramReminderMarkup(r, 'https://vocably.uz').inline_keyboard.flat();
+    expect(kb).toContainEqual({ text: 'Ochish', url: 'https://vocably.uz/app/vocabulary/review' });
+    expect(kb.find((b: any) => b.callback_data === 'rm:off')).toBeTruthy();
   });
   it('faqat bloklash/o‘chirilgan chat xatolarini aniqlaydi', () => {
     expect(isTelegramBlockedError('Forbidden: bot was blocked by the user')).toBe(true);
     expect(isTelegramBlockedError('Bad Request: chat not found')).toBe(true);
     expect(isTelegramBlockedError('Too Many Requests: retry after 5')).toBe(false);
     expect(isTelegramBlockedError('timeout')).toBe(false);
+  });
+});
+
+describe('21:00 seriya turtkisi (ikkinchi slot)', () => {
+  const at21 = new Date('2026-10-10T16:00:00Z'); // 21:00 Toshkent
+  const base = { dueCount: 0, streak: streak(), timeZone: TZ, now: at21 };
+  it('kuniga ko‘pi bilan 2 ta xabar', () => expect(REMINDER_CONFIG.maxPerDay).toBe(2));
+  it('faqat 21:00–22:59 oralig‘ida', () => {
+    expect(isRiskHour(new Date('2026-10-10T15:59:00Z'), TZ)).toBe(false);
+    expect(isRiskHour(at21, TZ)).toBe(true);
+    expect(isRiskHour(new Date('2026-10-10T18:00:00Z'), TZ)).toBe(false); // 23:00
+    expect(decideRiskNudge({ ...base, now: NOW })).toBeNull(); // 20:00
+  });
+  it('seriya xavfda va bugun mashq yo‘q — turtki', () => {
+    expect(decideRiskNudge(base)).toMatchObject({ kind: 'risk', url: '/app/games' });
+  });
+  it('bugun bajarilgan, qisqa seriya, o‘chirilgan, allaqachon yuborilgan — jim', () => {
+    expect(decideRiskNudge({ ...base, streak: streak({ lastDate: '2026-10-10' }) })).toBeNull();
+    expect(decideRiskNudge({ ...base, streak: streak({ streak: 2 }) })).toBeNull();
+    expect(decideRiskNudge({ ...base, prefs: { enabled: false } })).toBeNull();
+    expect(decideRiskNudge({ ...base, prefs: { riskSentOn: '2026-10-10' } })).toBeNull();
+  });
+  it('kunduzgi eslatmadan qat’i nazar kechki turtki alohida slot', () => {
+    expect(decideRiskNudge({ ...base, prefs: { lastSentOn: '2026-10-10', lastKind: 'streak' } })).not.toBeNull();
+  });
+  it('chastota sozlamasi turtkini to‘xtatmaydi (seriyani saqlash — kundalik xavfsizlik)', () => {
+    expect(decideRiskNudge({ ...base, prefs: { frequency: 'weekly', lastSentOn: '2026-10-08' } })).not.toBeNull();
   });
 });

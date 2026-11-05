@@ -50,12 +50,14 @@ function buildMediaImgSrc() {
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   // `next dev` (react-refresh/HMR) eval ishlatadi — faqat dev'da ruxsat; production CSP o'zgarmaydi.
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  // telegram.org — Telegram Login Widget script (/login, /register); oauth.telegram.org — its button/popup iframe.
+  `script-src 'self' 'unsafe-inline' https://telegram.org${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src ${buildMediaImgSrc()}`,
   `media-src ${buildMediaImgSrc()}`,
   "font-src 'self' data:",
   `connect-src ${buildConnectSrc()}`,
+  "frame-src 'self' https://oauth.telegram.org",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

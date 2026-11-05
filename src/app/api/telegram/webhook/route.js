@@ -3,7 +3,7 @@ import { safeEqual } from '@/lib/safeEqual';
 import { OtpSession, User, Conversation, Message, AdminAuditLog } from '@/lib/models';
 import { phonesMatch, normalizePhone, formatPhoneDisplay } from '@/lib/phone';
 import { generateCode } from '@/lib/otp';
-import { sendMessage, requestContactKeyboard, removeKeyboard, answerCallbackQuery } from '@/lib/telegram';
+import { sendMessage, requestContactKeyboard, removeKeyboard, answerCallbackQuery, editMessageReplyMarkup } from '@/lib/telegram';
 import { handleQuizCallback, sendDailyPractice } from '@/lib/telegramQuiz';
 import { handleAdminBroadcastMessage, handleBroadcastCallback, handleTrialCommand, isAdminChat } from '@/lib/telegramBroadcast';
 import { NextResponse } from 'next/server';
@@ -237,8 +237,20 @@ export async function POST(req) {
     await connectToDatabase();
     const update = await req.json();
 
-    // Daily mini-test answers (inline buttons) — src/lib/telegramQuiz.js.
     const cb = update.callback_query;
+
+    // One-tap "turn reminders off" under every reminder (TZ 2.0 §6.10.5). Covers every account linked to this
+    // Telegram (the person controls the chat) and the daily mini-test too — silence means silence.
+    if (cb?.data === 'rm:off' && cb.message) {
+      const chatId = cb.message.chat.id;
+      await User.updateMany({ telegramChatId: chatId }, { $set: { 'vocabReminders.telegram': false, tgDailyPractice: false, tgQuiz: null } });
+      await answerCallbackQuery(cb.id, '🔕 Eslatmalar o‘chirildi').catch(() => {});
+      await editMessageReplyMarkup(chatId, cb.message.message_id, { inline_keyboard: [] }).catch(() => {});
+      await sendMessage(chatId, '🔕 Telegram eslatmalari o‘chirildi. Qayta yoqish: saytda Sozlamalar → Eslatmalar; kunlik mashq — /mashq').catch(() => {});
+      return NextResponse.json({ ok: true });
+    }
+
+    // Daily mini-test answers (inline buttons) — src/lib/telegramQuiz.js.
     if (cb?.data?.startsWith('tq:') && cb.message) {
       const toast = await handleQuizCallback(cb.message.chat.id, cb.message.message_id, cb.data).catch((err) => {
         console.error('[telegram quiz]', err);

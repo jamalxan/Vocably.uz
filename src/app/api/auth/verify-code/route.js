@@ -3,34 +3,16 @@ import { User, OtpSession } from '@/lib/models';
 import jwt from 'jsonwebtoken';
 import { serverError } from '@/lib/apiError';
 import { setAuthCookie } from '@/lib/auth';
-import { sendMessage } from '@/lib/telegram';
-import { formatPhoneDisplay } from '@/lib/phone';
 import { safeEqual } from '@/lib/safeEqual';
 import { checkRateLimit } from '@/lib/chatAuth';
 import { clientIp } from '@/lib/clientIp';
-import { escapeTelegramHtml } from '@/lib/telegramHtml';
+import { starterCategories, notifyAdminNewUser } from '@/lib/newUser';
 import { grantWelcomeTrial } from '@/lib/welcomeTrial';
 import { NextResponse } from 'next/server';
 
 const SESSION_TOKEN_RE = /^[a-f0-9]{32}$/;
 const CODE_RE = /^\d{6}$/;
 const MAX_OTP_ATTEMPTS = 5;
-
-// Yangi ro'yxatdan o'tgan foydalanuvchi haqida admin'ga Telegram orqali xabar.
-// Xato bo'lsa faqat log qilinadi — bildirishnoma muvaffaqiyatsiz bo'lishi
-// ro'yxatdan o'tishning o'zini bloklamasligi kerak.
-async function notifyAdminNewUser(user) {
-  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-  if (!adminChatId) return;
-  try {
-    await sendMessage(
-      adminChatId,
-      `🆕 <b>Yangi foydalanuvchi qo'shildi</b>\n\n👤 Ism: <b>${escapeTelegramHtml(user.name) || '(ismsiz)'}</b>\n📱 Telefon: <b>${formatPhoneDisplay(user.phone)}</b>`
-    );
-  } catch (err) {
-    console.error('[telegram] yangi user bildirishnomasi yuborilmadi', err?.message || err);
-  }
-}
 
 export async function POST(req) {
   try {
@@ -91,18 +73,7 @@ export async function POST(req) {
         name: session.name || '',
         password: session.passwordHash,
         telegramChatId: session.telegramChatId,
-        categories: [
-          {
-            name: 'Words 1',
-            words: [
-              { word: 'arise', syns: ["paydo bo'lmoq", "tug'ilmoq"] },
-              { word: 'benefactor', syns: ["muruvvat ko'rsatuvchi"] },
-              { word: 'blacksmith', syns: ['temirchi'] },
-              { word: 'charitable', syns: ['marhamatli'] },
-              { word: 'chimney', syns: ["mo'ri"] },
-            ],
-          },
-        ],
+        categories: starterCategories(),
         chatHistory: [],
       });
 
