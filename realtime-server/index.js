@@ -12,7 +12,9 @@ const crypto = require('crypto');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 4001;
-const JWT_SECRET = process.env.JWT_SECRET;
+// Socket tiketlari ham, Next.js'dan keladigan ichki so'rovlar ham bitta umumiy sir bilan
+// himoyalanadi (src/app/api/chat/socket-ticket shu sir bilan imzolaydi) — bu xizmat
+// sessiya JWT sirini (JWT_SECRET) hech qachon ko'rmaydi.
 const INTERNAL_SECRET = process.env.REALTIME_SHARED_SECRET;
 // Foydalanuvchi onlaynga o'tganda Next.js'ga xabar berish uchun (Telegram
 // "onlayn bo'ldi" bildirishnomasi, src/app/api/internal/presence-online) —
@@ -20,7 +22,6 @@ const INTERNAL_SECRET = process.env.REALTIME_SHARED_SECRET;
 // yuboriladi, presence'ning o'zi (socket) baribir odatdagidek ishlayveradi.
 const NEXTJS_INTERNAL_URL = process.env.NEXTJS_INTERNAL_URL;
 
-if (!JWT_SECRET) throw new Error('JWT_SECRET sozlanmagan');
 if (!INTERNAL_SECRET) throw new Error('REALTIME_SHARED_SECRET sozlanmagan');
 
 const app = express();
@@ -48,7 +49,7 @@ const onlineCounts = new Map();
 io.use((socket, next) => {
   try {
     const token = socket.handshake.auth?.token;
-    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+    const decoded = jwt.verify(token, INTERNAL_SECRET, { algorithms: ['HS256'] });
     // Faqat 60 soniyalik realtime-tiket (src/app/api/chat/socket-ticket) — 30 kunlik sessiya tokeni bilan ulanib bo'lmaydi.
     if (decoded.scope !== 'realtime') throw new Error('bad scope');
     socket.userId = String(decoded.userId);
