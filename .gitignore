@@ -33,3 +33,6 @@ public/emojibase/
 
 # local design-QA scratch (screenshots, launchers)
 .tmp-design/
+
+# Impeccable (design tool) local cache
+.impeccable/
