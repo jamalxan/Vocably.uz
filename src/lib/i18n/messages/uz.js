@@ -122,6 +122,8 @@ const uz = {
   'hub.statMastered': "O'zlashtirilgan",
   'hub.statLearning': "O'rganilmoqda",
   'hub.statWeak': "Zaif so'zlar",
+  'hub.speakTitle': "Gapir yoki yiqil",
+  'hub.speakBody': "60 soniya Speaking: pauza qilsangiz — yiqilasiz",
   'hub.plan': 'Bugungi reja',
   'hub.dailyTime': 'Kunlik vaqt',
   'hub.minShort': '{n} daq',

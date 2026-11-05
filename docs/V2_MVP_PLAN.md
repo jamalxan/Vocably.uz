@@ -16,7 +16,7 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 | 3 | "Today's plan": one engine, plan stored in the DB, task marking, 50% carry-over, XP per task, progress ring | 6.2 | ✅ |
 | 4 | Writing word upgrades → SRS in one click (exam grader) | 6.6.1 | ✅ |
 | 5 | SRS review session: Recognition / Production / Mixed modes | 6.3.3 | ✅ |
-| 6 | Flagship games without login: Vocably Run (3-lane runner), Gapir yoki yiqil | 7 | ⏳ |
+| 6 | Flagship games without login: Vocably Run (3-lane runner), Gapir yoki yiqil | 7 | ✅ |
 | 7 | 9:16 result card (download/share) | 7 | ⏳ |
 | 8 | Streak: ≥1 plan task = streak, 1 free freeze per week | 6.8.2 | ⏳ |
 | 9 | Telegram Login Widget + reminder at a user-chosen time, max 2 messages per day | 6.10 | ⏳ |
@@ -34,6 +34,14 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 - Step 5: `/app/vocabulary/review` has a Recognise / Type / Mixed switcher (`src/lib/reviewModes.js`). Type mode:
   meaning + example with the word blanked → typed answer is checked automatically (one typo on a long word = Hard),
   the result goes into SRS as `mode: typing` (spelling skill). The mode is remembered in localStorage.
+- Step 6: `/games/run` and `/games/speak` (public, in the sitemap). Vocably Run: signed in → `vocably_run` in the game catalog,
+  questions from the user's own words, every gate graded on the server and written to SRS (by response time), XP/plan like any game;
+  guest → 60-word public bank (`src/lib/flagship/runBank.js`), graded on the device, missed words saved after sign-up
+  (`POST /api/flagship/run/claim`, bank words only, deck "Vocably Run: xatolar"). 3D: R3F, signs are canvas textures; no WebGL / reduced motion → 2D.
+  Gapir yoki yiqil: microphone level on the device (Web Audio VAD), allowed pause 12/8/5/3 s, pause map; fillers via browser
+  SpeechRecognition (opt-out; in Chrome this goes to Google — the intro says so). Speaking has no words → no SRS write.
+  Also fixed: game questions sent `word`/`explanation`/`wordId` to the client before answering — the answer itself in choice games.
+  Not done: a dedicated weekly Run leaderboard (game XP goes into the existing XP leaderboard), the share card (step 7).
 - E2E: the dev server flakes on first compile; the reliable check is `next build` + `next start -p 3100` + `E2E_REUSE_SERVER=1`.
 
 ## Should/Could (after the MVP)

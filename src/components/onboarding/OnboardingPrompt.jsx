@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import useCopy from '@/components/landing/useCopy';
 import { ONBOARDING_STORAGE_KEY, normalizeAnswers, isComplete } from '@/lib/onboarding';
+import { claimGuestMissed } from '@/lib/flagship/client';
 
 // Dashboard companion of the public /start quiz (TZ 2.0 §6.1):
 //  1. If the browser holds a finished, not-yet-saved quiz (user took it as a guest, then
 //     signed up), post it to /api/onboarding once and refresh the dashboard (onSynced).
 //  2. Otherwise, if the account was never onboarded, show a card linking to /start.
+//  3. Words missed in a guest Vocably Run round go into a review deck (once).
 
 const COPY = {
   uz: { title: 'Shaxsiy rejangizni oling', body: "7 ta savol, 2 daqiqa — imtihon sanangiz va kunlik vaqtingizga mos reja.", cta: 'Boshlash' },
@@ -29,6 +31,7 @@ export default function OnboardingPrompt({ onSynced }) {
 
   useEffect(() => {
     let cancelled = false;
+    claimGuestMissed().then((added) => !cancelled && added > 0 && onSynced?.());
     (async () => {
       const stored = readStored();
       const answers = stored ? normalizeAnswers(stored.answers) : null;

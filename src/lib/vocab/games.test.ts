@@ -75,6 +75,17 @@ describe('savol generatsiyasi', () => {
       expect(client.answerTokens).toBeUndefined();
       expect(client.answerMap).toBeUndefined();
       expect(client.correctDisplay).toBeUndefined();
+      expect(client.word).toBeUndefined();
+      expect(client.wordId).toBeUndefined();
+      expect(client.explanation).toBeUndefined();
+      // no field other than the option list may contain the right option's text
+      // (listen_choose is the exception by design: browser TTS needs audioText = the word)
+      const right = q.options?.find((o) => o.id === q.answer)?.text;
+      if (right && q.kind !== 'listen_choose') {
+        const { options, ...rest } = client;
+        void options;
+        expect(JSON.stringify(rest).toLowerCase()).not.toContain(`"${right.toLowerCase()}"`);
+      }
       expect(q.explanation.length).toBeGreaterThan(0);
     }
   });
@@ -249,5 +260,24 @@ describe('availabilityFor', () => {
     expect(availabilityFor(getGame('fill_gap')!, BARE_WORDS).available).toBe(false);
     expect(availabilityFor(getGame('listen_choose')!, BARE_WORDS).available).toBe(true);
     expect(availabilityFor(getGame('word_match')!, BARE_WORDS).available).toBe(true);
+  });
+});
+
+describe('vocably_run (TZ 2.0 flagship)', () => {
+  it('always has 3 lanes with one right word; keeps the chosen difficulty', () => {
+    for (const d of DIFFICULTIES) {
+      const s = build('vocably_run', d, `run-${d}`);
+      expect(s.questions.length).toBe(30);
+      for (const q of s.questions) {
+        expect(q.options).toHaveLength(3);
+        expect(['mc_word', 'definition']).toContain(q.kind);
+        expect(q.difficulty).toBe(d);
+        expect(q.options!.find((o) => o.id === q.answer)?.text).toBe(q.word);
+      }
+    }
+  });
+  it('easy asks Uzbek meanings; harder levels mix in definitions', () => {
+    expect(build('vocably_run', 'easy').questions.every((q) => q.kind === 'mc_word')).toBe(true);
+    expect(new Set(build('vocably_run', 'hard').questions.map((q) => q.kind))).toEqual(new Set(['mc_word', 'definition']));
   });
 });

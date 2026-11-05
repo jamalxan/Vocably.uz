@@ -193,6 +193,8 @@ const en = {
     "10 ta o'yin tugating": 'Finish 10 games',
     "Bu hafta 10 ta o'yinni tugating": 'Finish 10 games this week',
     'Vocabulary Boss': 'Vocabulary Boss',
+    'Vocably Run': 'Vocably Run',
+    "3 yo'lakli yugurish: to'g'ri so'z turgan yo'lakka o'ting": 'Three-lane run: switch to the lane with the right word',
     'Haftalik Vocabulary Boss sinovini tugating': 'Complete the weekly Vocabulary Boss challenge',
 
     // --- Achievements (src/lib/vocab/achievements.ts)

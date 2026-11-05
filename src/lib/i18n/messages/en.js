@@ -122,6 +122,8 @@ const en = {
   'hub.statMastered': 'Mastered',
   'hub.statLearning': 'Learning',
   'hub.statWeak': 'Weak words',
+  'hub.speakTitle': "Speak or Fall",
+  'hub.speakBody': "60-second Speaking: pause too long and you fall",
   'hub.plan': "Today's plan",
   'hub.dailyTime': 'Daily time',
   'hub.minShort': '{n} min',
