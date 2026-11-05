@@ -21,9 +21,16 @@ export function getBotUsername() {
   return (process.env.TELEGRAM_BOT_USERNAME || DEFAULT_BOT_USERNAME).replace(/^@/, '');
 }
 
-/** Bot for the Telegram Login Widget, or null when login through Telegram is not configured on this server. */
+/**
+ * Bot for "Telegram orqali kirish", or null when it is not configured on this server.
+ * `id` is the numeric bot id — the public part of the token before ":" (Telegram shows it to every user of
+ * the login popup); the secret part never leaves the server.
+ */
 export function loginWidgetBot() {
-  return process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_LOGIN_WIDGET !== 'off' ? getBotUsername() : null;
+  const token = process.env.TELEGRAM_BOT_TOKEN || '';
+  const id = Number(token.split(':')[0]);
+  if (!token || !Number.isSafeInteger(id) || id <= 0 || process.env.TELEGRAM_LOGIN_WIDGET === 'off') return null;
+  return { id, username: getBotUsername() };
 }
 
 export function getTelegramDeepLink(sessionToken) {
