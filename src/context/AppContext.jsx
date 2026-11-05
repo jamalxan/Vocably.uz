@@ -100,7 +100,7 @@ export function AppProvider({ children }) {
   const triggerWriteReset = useCallback(() => setWriteResetNonce((n) => n + 1), []);
   const triggerMatchReshuffle = useCallback(() => setMatchGameNonce((n) => n + 1), []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback((next) => {
     localStorage.removeItem('vocably_authed');
     localStorage.removeItem('username');
     localStorage.removeItem('phone');
@@ -124,7 +124,8 @@ export function AppProvider({ children }) {
     }
     // '/' endi ochiq marketing landing (VOCABLY-TZ.md T3 tuzatildi) — chiqqan
     // foydalanuvchi qayta kirish formasiga to'g'ridan-to'g'ri tushsin.
-    router.replace('/login'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /login ga tushib, tuzoq bo'lardi)
+    // `next` — sessiyasiz ochilgan havola (masalan Telegram'dagi duel taklifi) kirgandan keyin qayta ochiladi.
+    router.replace(typeof next === 'string' && next.startsWith('/app/') ? `/login?next=${encodeURIComponent(next)}` : '/login'); // replace: himoyalangan sahifa tarixda qolmasin (orqaga bosilsa qayta /login ga tushib, tuzoq bo'lardi)
   }, [router]);
 
   // Promise zanjiri (async/catch emas): effekt tanasida chaqirilganda kompilyator `catch` ichidagi setState'ni sinxron deb hisoblaydi.
@@ -138,7 +139,7 @@ export function AppProvider({ children }) {
         // Faqat 401 (sessiya yaroqsiz/muddati o'tgan) chiqishga olib keladi; tarmoq yoki
         // server xatosida sessiya saqlanadi va foydalanuvchi qayta urinadi.
         if (res.status === 401) {
-          logout();
+          logout(pathname?.startsWith('/app/duel/') ? pathname : undefined);
           return undefined;
         }
         if (!res.ok) throw new Error();

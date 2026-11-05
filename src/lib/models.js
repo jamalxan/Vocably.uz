@@ -283,6 +283,15 @@ const UserSchema = new mongoose.Schema({
     day: { type: String, default: null },
     count: { type: Number, default: 0 },
   },
+  // So'z dueli (TZ 2.0 §6.8.4, src/lib/duel): ELO reyting va natijalar. Reyting $inc bilan o'zgaradi —
+  // parallel tugagan duellar bir-birining yozuvini bosib ketmaydi.
+  duel: {
+    rating: { type: Number, default: 1000 },
+    played: { type: Number, default: 0 },
+    wins: { type: Number, default: 0 },
+    draws: { type: Number, default: 0 },
+    losses: { type: Number, default: 0 },
+  },
   // Lug'at onboarding diagnostikasi (TZ §64) — o'tkazib yuborish mumkin.
   vocabOnboarding: {
     completedAt: { type: Date, default: null },
@@ -741,7 +750,7 @@ export const AiUsage = mongoose.models.AiUsage || mongoose.model('AiUsage', AiUs
 
 const NotificationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment', 'gift', 'vocab_reminder', 'weekly_report'], required: true },
+  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment', 'gift', 'vocab_reminder', 'weekly_report', 'duel'], required: true },
   title: { type: String, required: true, trim: true },
   body: { type: String, default: '', trim: true },
   // 'chat_message' uchun suhbat ID'si, 'announcement' uchun Announcement ID'si —
@@ -1308,6 +1317,51 @@ DailyPlanSchema.index({ userId: 1, date: -1 }, { unique: true });
 DailyPlanSchema.index({ createdAt: 1 }, { expireAfterSeconds: 120 * 24 * 60 * 60 });
 
 export const DailyPlan = mongoose.models.DailyPlan || mongoose.model('DailyPlan', DailyPlanSchema);
+
+// So'z dueli (TZ 2.0 §6.8.4, §7, §7.4) — src/lib/duel/rules.js (qoidalar), src/lib/duel/server.js (oqim).
+// Ikki o'yinchi bir xil 10 savolni o'z vaqtida o'ynaydi (asinxron). `questions` faqat serverda — javob
+// indeksi brauzerga chiqmaydi. `servedAt[i]` — savol berilgan server vaqti; javob vaqti shu bilan o'lchanadi.
+const DuelPlayerSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    name: { type: String, default: '' },
+    rating: { type: Number, default: 1000 }, // duel boshlanganidagi reyting (ko'rsatish uchun)
+    joinedAt: { type: Date, default: Date.now },
+    deadline: { type: Date, required: true },
+    servedAt: { type: [Date], default: [] },
+    answers: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    finishedAt: { type: Date, default: null },
+    score: { type: Number, default: 0 },
+    correct: { type: Number, default: 0 },
+    totalMs: { type: Number, default: 0 },
+    suspicious: { type: Boolean, default: false },
+    ratingDelta: { type: Number, default: 0 },
+    xp: { type: Number, default: 0 },
+    savedWords: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+const DuelSchema = new mongoose.Schema({
+  code: { type: String, required: true, unique: true },
+  mode: { type: String, enum: ['random', 'friend', 'link'], required: true },
+  status: { type: String, enum: ['waiting', 'active', 'finished', 'expired', 'declined'], default: 'waiting' },
+  seed: { type: Number, required: true },
+  questions: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  a: { type: DuelPlayerSchema, required: true },
+  b: { type: DuelPlayerSchema, default: null },
+  invitedUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  ratingAtCreate: { type: Number, default: 1000 }, // matchmaking oynasi uchun
+  expiresAt: { type: Date, required: true }, // raqib qo'shilmasa
+  winner: { type: String, enum: ['a', 'b', 'draw', null], default: null },
+  finishedAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+DuelSchema.index({ mode: 1, status: 1, ratingAtCreate: 1, createdAt: 1 });
+DuelSchema.index({ 'a.userId': 1, createdAt: -1 });
+DuelSchema.index({ 'b.userId': 1, createdAt: -1 });
+DuelSchema.index({ invitedUserId: 1, status: 1, createdAt: -1 });
+
+export const Duel = mongoose.models.Duel || mongoose.model('Duel', DuelSchema);
 
 // ============================================================================
 // TZ-vocably-v2.md (AI Content Ingestion Agent, 2026-09-12) §6 — "admin kitob
