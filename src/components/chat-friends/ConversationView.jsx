@@ -151,7 +151,8 @@ export default function ConversationView({ onBack }) {
         });
       } else scrollToBottom('auto');
     } else if (lastId && lastId !== prevLastIdRef.current) {
-      if (isNearBottomRef.current) scrollToBottom('smooth');
+      const mine = last && String(last.senderId) === String(myId) && !!last.clientMessageId;
+      if (isNearBottomRef.current || mine) scrollToBottom('smooth');
       else setNewMessageCount((n) => n + 1);
     }
     prevLenRef.current = messages.length;

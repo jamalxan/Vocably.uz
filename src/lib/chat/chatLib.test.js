@@ -108,6 +108,9 @@ describe('attachments', () => {
     expect(g.albums[0]).toHaveLength(2);
     expect(g.singles).toEqual([{ type: 'file' }]);
     expect(albumGroups([{ type: 'image' }]).albums).toHaveLength(0);
+    // Voice notes are never part of an album and must not be dropped.
+    expect(albumGroups([{ type: 'voice' }])).toEqual({ albums: [], singles: [{ type: 'voice' }] });
+    expect(albumGroups([{ type: 'image' }, { type: 'voice' }]).singles).toEqual([{ type: 'image' }, { type: 'voice' }]);
   });
 });
 

@@ -48,7 +48,10 @@ export function mergePolledMessages(prev, page) {
   const prevByClient = new Map(prev.filter((m) => m.clientMessageId).map((m) => [String(m.clientMessageId), m]));
   const merged = page.map((m) => {
     const local = m.clientMessageId && prevByClient.get(String(m.clientMessageId));
-    return local && local._status === 'sent' ? { ...m, _status: 'sent' } : m;
+    if (!local) return m;
+    const out = local._status === 'sent' ? { ...m, _status: 'sent' } : m;
+    // Keep the local preview (object URL) so a just-sent photo never flashes to a blank tile.
+    return local._localUrl ? { ...out, _localUrl: local._localUrl } : out;
   });
   return [...older, ...merged, ...pending];
 }

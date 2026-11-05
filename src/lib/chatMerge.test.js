@@ -22,6 +22,14 @@ describe('mergePolledMessages', () => {
     expect(out.map((m) => m.id)).toEqual(['old', 'a', 'b']);
   });
 
+  it('keeps the local preview when the server copy arrives', () => {
+    const prev = [msg('c1', 5, { clientMessageId: 'c1', _status: 'sending', _localUrl: 'blob:x' })];
+    const out = mergePolledMessages(prev, [msg('srv1', 5, { clientMessageId: 'c1' })]);
+    expect(out).toEqual([{ ...msg('srv1', 5, { clientMessageId: 'c1' }), _localUrl: 'blob:x' }]);
+    const sent = mergePolledMessages([{ ...prev[0], _status: 'sent' }], [msg('srv1', 5, { clientMessageId: 'c1' })]);
+    expect(sent[0]).toMatchObject({ id: 'srv1', _status: 'sent', _localUrl: 'blob:x' });
+  });
+
   it('keeps a failed bubble for Retry', () => {
     const prev = [msg('x', 3, { clientMessageId: 'x', _status: 'failed' })];
     expect(mergePolledMessages(prev, [msg('a', 1)]).map((m) => m.id)).toEqual(['a', 'x']);
