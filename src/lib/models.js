@@ -292,6 +292,14 @@ const UserSchema = new mongoose.Schema({
     draws: { type: Number, default: 0 },
     losses: { type: Number, default: 0 },
   },
+  // Referral (TZ 2.0 §10 "O'sish kanallari" 3): shaxsiy kod (dangasa yaratiladi, src/lib/referral.js), kim taklif qilgani,
+  // nechta mukofot olgani. Kodning o'zi `referral.code` bo'yicha unique+sparse indeks bilan.
+  referral: {
+    code: { type: String, default: undefined },
+    invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    rewardCount: { type: Number, default: 0 },
+    rewardedDays: { type: Number, default: 0 },
+  },
   // Lug'at onboarding diagnostikasi (TZ §64) — o'tkazib yuborish mumkin.
   vocabOnboarding: {
     completedAt: { type: Date, default: null },
@@ -353,6 +361,7 @@ UserSchema.index({ createdAt: -1 });
 UserSchema.index({ telegramChatId: 1 });
 // Reminder sweep scans only paid users near/after their expiry.
 UserSchema.index({ subscriptionTier: 1, subscriptionExpiresAt: 1 });
+UserSchema.index({ 'referral.code': 1 }, { unique: true, sparse: true });
 UserSchema.index({ xp: -1 }); // umumiy reyting: TOP-N va "mendan yuqorida" hisobi to'liq skanersiz
 
 export const User = mongoose.models.User || mongoose.model('User', UserSchema);
@@ -708,6 +717,17 @@ const PaymentRequestSchema = new mongoose.Schema({
   },
   // TZ 2.0 §10: 14-day full refund, requested in the app (src/lib/billingTerms.js). The money goes back by hand
   // (card / Payme / Click merchant cabinet); approving here takes the paid term back from the subscription.
+  // Promo / creator kodi (TZ 2.0 §10 4): ro'yxat narxi, chegirma va creator ulushi — tasdiqlanganda hisoblanadi.
+  promo: {
+    code: { type: String, default: undefined },
+    kind: { type: String, default: undefined },
+    percentOff: { type: Number, default: undefined },
+    listPrice: { type: Number, default: undefined },
+    discount: { type: Number, default: undefined },
+    creatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: undefined },
+    creatorShare: { type: Number, default: undefined },
+    commission: { type: Number, default: undefined },
+  },
   refund: {
     status: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },
     reason: { type: String, default: '', maxlength: 500 },
@@ -1364,6 +1384,43 @@ DuelSchema.index({ invitedUserId: 1, status: 1, createdAt: -1 });
 DuelSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
 
 export const Duel = mongoose.models.Duel || mongoose.model('Duel', DuelSchema);
+
+// Referral yozuvi (TZ 2.0 §8 `referrals`): kim kimni taklif qildi, mukofot berildimi. `inviteeId` unique —
+// bir hisob faqat bir marta taklif qilingan bo'la oladi. src/lib/referral.js.
+const ReferralSchema = new mongoose.Schema({
+  code: { type: String, required: true },
+  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  inviteeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  // granted — ikkalasi ham kun oldi; capped — taklif qilingan oldi, taklif qilgan oylik chegaraga yetgan.
+  rewardStatus: { type: String, enum: ['granted', 'capped'], required: true },
+  days: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+ReferralSchema.index({ ownerId: 1, createdAt: -1 });
+
+export const Referral = mongoose.models.Referral || mongoose.model('Referral', ReferralSchema);
+
+// Promo va creator kodlari (TZ 2.0 §6.11 5, §10 4). Admin yaratadi; checkout'da foiz chegirma beradi; creator
+// kodida har tasdiqlangan to'lovdan ulush hisoblanadi (`usedCount`/`revenue`/`commission` approvePayment'da o'sadi).
+const PromoCodeSchema = new mongoose.Schema({
+  code: { type: String, required: true, unique: true }, // UPPERCASE A–Z0–9, 3–20
+  kind: { type: String, enum: ['promo', 'creator'], required: true },
+  percentOff: { type: Number, required: true, min: 1, max: 100 },
+  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // creator
+  creatorShare: { type: Number, default: 0, min: 0, max: 100 }, // % of the paid amount
+  maxUses: { type: Number, default: null }, // null = cheksiz
+  usedCount: { type: Number, default: 0 },
+  revenue: { type: Number, default: 0 }, // so'm, tasdiqlangan to'lovlar
+  commission: { type: Number, default: 0 }, // so'm, creatorga tegishli
+  expiresAt: { type: Date, default: null },
+  active: { type: Boolean, default: true },
+  note: { type: String, default: '' },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+PromoCodeSchema.index({ active: 1, createdAt: -1 });
+
+export const PromoCode = mongoose.models.PromoCode || mongoose.model('PromoCode', PromoCodeSchema);
 
 // ============================================================================
 // TZ-vocably-v2.md (AI Content Ingestion Agent, 2026-09-12) §6 — "admin kitob

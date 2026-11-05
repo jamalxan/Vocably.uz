@@ -12,6 +12,8 @@ import { escapeTelegramHtml } from '@/lib/telegramHtml';
 import { TIER_CONFIG } from '@/lib/entitlements';
 import { refundEligibility, termLabel } from '@/lib/billingTerms';
 import { hadApprovedRefund } from '@/lib/payments/refund';
+import { resolvePromo, promoSnapshot } from '@/lib/promoServer';
+import { PROMO_MESSAGES } from '@/lib/promoMessages';
 import { NextResponse } from 'next/server';
 
 function requestOut(r, hadRefund = false) {
@@ -24,6 +26,7 @@ function requestOut(r, hadRefund = false) {
     method: r.method,
     status: r.status,
     rejectReason: r.rejectReason || '',
+    promo: r.promo?.code ? { code: r.promo.code, percentOff: r.promo.percentOff, discount: r.promo.discount, listPrice: r.promo.listPrice } : null,
     hasReceipt: !!r.receiptFileId,
     createdAt: r.createdAt,
     reviewedAt: r.reviewedAt,
@@ -60,8 +63,18 @@ export async function POST(req) {
     const tier = String(get('tier') || '');
     const months = Number(get('months'));
     const method = String(get('method') || 'manual');
-    const amount = priceFor(tier, months);
-    if (!amount) return NextResponse.json({ error: "Noto'g'ri tarif yoki muddat" }, { status: 400 });
+    const listPrice = priceFor(tier, months);
+    if (!listPrice) return NextResponse.json({ error: "Noto'g'ri tarif yoki muddat" }, { status: 400 });
+    // Promo / creator code (TZ 2.0 §10): priced on the server, never trusted from the client.
+    let amount = listPrice;
+    let promo = null;
+    const promoCode = String(get('promoCode') || '').trim();
+    if (promoCode) {
+      const r = await resolvePromo(promoCode, { userId, listPrice });
+      if (r.error) return NextResponse.json({ error: PROMO_MESSAGES[r.error] || PROMO_MESSAGES.not_found, code: r.error }, { status: 400 });
+      amount = r.quote.amount;
+      promo = promoSnapshot(r.promo, r.quote);
+    }
     if (!['manual', 'payme', 'click'].includes(method)) return NextResponse.json({ error: "Noto'g'ri to'lov usuli" }, { status: 400 });
     if (method === 'payme' && !paymeConfig()) return NextResponse.json({ error: 'Payme hali ulanmagan' }, { status: 400 });
     if (method === 'click' && !clickConfig()) return NextResponse.json({ error: 'Click hali ulanmagan' }, { status: 400 });
@@ -74,7 +87,7 @@ export async function POST(req) {
     }
     if (method !== 'manual') await cancelAbandonedOnlineRequests(userId);
 
-    const doc = { userId, tier, months, amount, method, note: String(get('note') || '').slice(0, 500) };
+    const doc = { userId, tier, months, amount, method, note: String(get('note') || '').slice(0, 500), ...(promo ? { promo } : {}) };
 
     if (method === 'manual') {
       const file = form?.get('receipt');
@@ -100,7 +113,7 @@ export async function POST(req) {
         const appUrl = process.env.APP_URL?.replace(/\/$/, '');
         await sendTelegramMessage(
           adminChat,
-          `💳 Yangi to'lov cheki: ${who}\n${TIER_CONFIG[tier].label} · ${termLabel({ months })} · ${amount.toLocaleString('ru-RU')} so'm`,
+          `💳 Yangi to'lov cheki: ${who}\n${TIER_CONFIG[tier].label} · ${termLabel({ months })} · ${amount.toLocaleString('ru-RU')} so'm${promo ? ` · promo ${promo.code} (−${promo.percentOff}%)` : ''}`,
           appUrl ? { reply_markup: { inline_keyboard: [[{ text: "Ko'rish", url: `${appUrl}/admin/payments` }]] } } : {}
         ).catch((err) => console.error('[billing] admin xabari yuborilmadi', err));
       }

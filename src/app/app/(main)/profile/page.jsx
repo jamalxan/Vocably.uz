@@ -10,6 +10,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import MyProfilePhoto from '@/components/avatar/MyProfilePhoto';
 import ProfileStats from '@/components/profile/ProfileStats';
 import ProfileSettings from '@/components/profile/ProfileSettings';
+import ReferralCard from '@/components/profile/ReferralCard';
 
 // Profil sahifasi: foydalanuvchi, daraja/XP/nishonlar va statistika. Sozlama xarakteridagi bo'limlar (IELTS tayyorgarlik, Telegram,
 // ko'rinish/mavzu, maxfiylik) "Sozlamalar" oynasiga ko'chirildi (components/profile/ProfileSettings.jsx) — sahifa qisqa, tez ochiladi
@@ -109,6 +110,8 @@ export default function ProfilPage() {
           )}
         </section>
       )}
+
+      <ReferralCard />
 
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted mb-2.5 flex items-center gap-1.5">

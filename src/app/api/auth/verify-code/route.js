@@ -8,6 +8,8 @@ import { checkRateLimit } from '@/lib/chatAuth';
 import { clientIp } from '@/lib/clientIp';
 import { starterCategories, notifyAdminNewUser } from '@/lib/newUser';
 import { grantWelcomeTrial } from '@/lib/welcomeTrial';
+import { applyReferral } from '@/lib/referralServer';
+import { readRefCookie, clearRefCookie } from '@/lib/refCookie';
 import { NextResponse } from 'next/server';
 
 const SESSION_TOKEN_RE = /^[a-f0-9]{32}$/;
@@ -79,10 +81,12 @@ export async function POST(req) {
 
       // Yangi foydalanuvchiga bepul boshlang'ich tarif (admin sozlamasi: welcomeTrial).
       await grantWelcomeTrial(newUser);
+      // `?ref=` from a friend's link (cookie set on the landing, src/components/RefCapture.jsx) → 7 days each.
+      const referral = await applyReferral(newUser, readRefCookie(req));
       await notifyAdminNewUser(newUser);
 
       const token = jwt.sign({ userId: newUser._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
-      return setAuthCookie(NextResponse.json({ done: true, token, name: newUser.name, phone: newUser.phone }), token);
+      return clearRefCookie(setAuthCookie(NextResponse.json({ done: true, token, name: newUser.name, phone: newUser.phone, referral: !!referral }), token));
     }
 
     if (session.purpose === 'reset') {

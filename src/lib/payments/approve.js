@@ -2,6 +2,7 @@ import { PaymentRequest, User, Notification } from '@/lib/models';
 import { activationUpdate } from '@/lib/subscription';
 import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
 import { notifySubscriptionActivated } from '@/lib/subscriptionNotify';
+import { recordPromoUse } from '@/lib/promoServer';
 
 // The single place a payment turns into an active plan — used by the admin
 // "Tasdiqlash" button today and by the Payme/Click callbacks later. The
@@ -19,6 +20,8 @@ export async function approvePayment(requestId, { by = null, method } = {}) {
   if (!user) return { ok: false, reason: 'no_user' };
   const update = activationUpdate(user, req.tier, { months: req.months, by });
   await User.updateOne({ _id: user._id }, { $set: update });
+  // Promo / creator code numbers move only here — once per approved payment.
+  await recordPromoUse(req).catch((err) => console.error('[promo] use not recorded', err?.message));
 
   await notifySubscriptionActivated(user, {
     kind: 'purchase',

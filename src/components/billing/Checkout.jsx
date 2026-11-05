@@ -57,6 +57,10 @@ export default function Checkout() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [promo, setPromo] = useState(null); // { code, percentOff, amount, discount, listPrice }
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoError, setPromoError] = useState('');
   const inputRef = useRef(null);
 
   // Back from Payme/Click (`?paid=<request id>`): the provider confirms the
@@ -109,7 +113,34 @@ export default function Checkout() {
 
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
-  const amount = options?.prices?.[tier]?.[months] ?? (months === 12 ? TIER_CONFIG[tier].priceYearly : months === 3 ? TIER_CONFIG[tier].priceQuarterly : TIER_CONFIG[tier].priceMonthly);
+  const listPrice = options?.prices?.[tier]?.[months] ?? (months === 12 ? TIER_CONFIG[tier].priceYearly : months === 3 ? TIER_CONFIG[tier].priceQuarterly : TIER_CONFIG[tier].priceMonthly);
+  // A quote is for one tier+term; changing either re-prices it on the server.
+  const promoValid = promo && promo.tier === tier && promo.months === months;
+  const amount = promoValid ? promo.amount : listPrice;
+
+  const applyPromo = async (code = promoInput) => {
+    const typed = String(code || '').trim();
+    if (!typed) return;
+    setPromoBusy(true);
+    setPromoError('');
+    try {
+      const res = await fetch('/api/billing/promo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: typed, tier, months }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data.error || t('co.promoBad')), { code: data.code });
+      setPromo({ ...data, tier, months });
+      setPromoInput(data.code);
+    } catch (e) {
+      setPromo(null);
+      setPromoError(e.code && t(`co.promoErr.${e.code}`) !== `co.promoErr.${e.code}` ? t(`co.promoErr.${e.code}`) : ts(e.message));
+    } finally {
+      setPromoBusy(false);
+    }
+  };
+  const clearPromo = () => {
+    setPromo(null);
+    setPromoInput('');
+    setPromoError('');
+  };
 
   const pick = (f) => {
     setError('');
@@ -129,6 +160,7 @@ export default function Checkout() {
     fd.append('months', String(months));
     fd.append('method', 'manual');
     fd.append('note', note);
+    if (promoValid) fd.append('promoCode', promo.code);
     fd.append('receipt', file);
     try {
       const res = await fetch('/api/billing/requests', { method: 'POST', body: fd });
@@ -153,7 +185,7 @@ export default function Checkout() {
       const res = await fetch('/api/billing/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, months, method }),
+        body: JSON.stringify({ tier, months, method, ...(promoValid ? { promoCode: promo.code } : {}) }),
       });
       const data = await res.json();
       if (!res.ok || !data.checkoutUrl) throw new Error(ts(data.error) || t('co.noPage'));
@@ -232,8 +264,44 @@ export default function Checkout() {
             </button>
           ))}
         </div>
+        <div className="space-y-2" data-testid="promo-box">
+          <label htmlFor="promo-code" className="text-xs font-semibold text-muted">{t('co.promo')}</label>
+          <div className="flex gap-2">
+            <input
+              id="promo-code"
+              value={promoInput}
+              onChange={(e) => {
+                setPromoInput(e.target.value.toUpperCase());
+                setPromoError('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  applyPromo();
+                }
+              }}
+              placeholder={t('co.promoPh')}
+              autoComplete="off"
+              maxLength={20}
+              className="min-w-0 flex-1 rounded-xl border border-border bg-bg px-3 py-2 text-sm font-semibold tracking-wider text-ink focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            {promoValid ? (
+              <button type="button" onClick={clearPromo} className="rounded-xl border border-border px-3 text-sm font-semibold text-muted">
+                {t('co.promoRemove')}
+              </button>
+            ) : (
+              <button type="button" onClick={() => applyPromo()} disabled={promoBusy || !promoInput.trim()} className="rounded-xl bg-accent text-on-accent px-3.5 text-sm font-semibold disabled:opacity-50">
+                {promoBusy ? '…' : t('co.promoApply')}
+              </button>
+            )}
+          </div>
+          {promoError && <p className="text-xs text-danger" role="alert" data-testid="promo-error">{promoError}</p>}
+          {promoValid && <p className="text-xs text-success font-semibold" data-testid="promo-applied">{t('co.promoApplied', { pct: promo.percentOff, off: som(promo.discount) })}</p>}
+        </div>
         <p className="text-sm text-ink">
-          {t('co.amount')} <strong className="font-display text-lg">{som(amount)}</strong>
+          {t('co.amount')}{' '}
+          {promoValid && <s className="text-muted mr-1">{som(listPrice)}</s>}
+          <strong className="font-display text-lg" data-testid="checkout-amount">{som(amount)}</strong>
         </p>
       </section>
 
@@ -350,6 +418,7 @@ export default function Checkout() {
                 </span>
                 <span className="min-w-0 flex-1 text-sm text-ink">
                   {ts(TIER_CONFIG[r.tier]?.label)} · {termLabel({ months: r.months }, locale)} · {som(r.amount)}
+                  {r.promo && <span className="text-xs text-muted"> · {r.promo.code} −{r.promo.percentOff}%</span>}
                   {r.status === 'rejected' && r.rejectReason && <span className="block text-xs text-danger mt-0.5">{r.rejectReason}</span>}
                   {r.status === 'approved' && (
                     <RefundRequest request={r} onChange={(next) => setRequests((list) => list.map((x) => (x.id === next.id ? next : x)))} />

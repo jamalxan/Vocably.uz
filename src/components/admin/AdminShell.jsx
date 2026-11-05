@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker, Wallet, Gauge, Gamepad2, BookMarked, Wand2, Settings } from 'lucide-react';
+import { BarChart3, Activity, GraduationCap, Users, MessagesSquare, Flag, ScrollText, LogOut, ShieldCheck, Menu, X, Megaphone, BookOpen, Library, ClipboardCheck, Sparkles, Sticker, Wallet, Gauge, Gamepad2, BookMarked, Wand2, Settings, Ticket } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { registerChatsTap } from '@/lib/adminHiddenChats';
@@ -36,6 +36,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
       { href: '/admin/payments', label: "To'lovlar", icon: Wallet, badgeKey: 'payments' },
+      { href: '/admin/promo', label: 'Promo va referral', icon: Ticket },
       // `/admin/c/<id>` — bitta suhbatning to'g'ridan-to'g'ri havolasi, ham shu bo'limga tegishli.
       { href: '/admin/conversations', label: 'Suhbatlar', icon: MessagesSquare, also: ['/admin/c/'], secretTap: true },
       { href: '/admin/reports', label: 'Reportlar', icon: Flag },
