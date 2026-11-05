@@ -122,6 +122,8 @@ const en = {
   'hub.statMastered': 'Mastered',
   'hub.statLearning': 'Learning',
   'hub.statWeak': 'Weak words',
+  'hub.duelTitle': 'Word duel',
+  'hub.duelBody': '1v1 with a friend or a random opponent: same 10 words, 7 seconds',
   'hub.speakTitle': "Speak or Fall",
   'hub.speakBody': "60-second Speaking: pause too long and you fall",
   'hub.plan': "Today's plan",

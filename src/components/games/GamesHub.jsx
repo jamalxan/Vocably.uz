@@ -418,6 +418,19 @@ export default function GamesHub() {
             <GameCard key={g.key} game={g} />
           ))}
           <Link
+            href="/app/duel"
+            data-testid="hub-duel"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent grid place-items-center flex-shrink-0">
+              <Swords size={20} aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-ink">{t('hub.duelTitle')}</span>
+              <span className="block text-xs text-muted">{t('hub.duelBody')}</span>
+            </span>
+          </Link>
+          <Link
             href="/games/speak"
             className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >

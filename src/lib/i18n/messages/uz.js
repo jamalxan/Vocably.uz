@@ -122,6 +122,8 @@ const uz = {
   'hub.statMastered': "O'zlashtirilgan",
   'hub.statLearning': "O'rganilmoqda",
   'hub.statWeak': "Zaif so'zlar",
+  'hub.duelTitle': "So'z dueli",
+  'hub.duelBody': "Do'st yoki tasodifiy raqib bilan 1v1: bir xil 10 so'z, 7 soniya",
   'hub.speakTitle': "Gapir yoki yiqil",
   'hub.speakBody': "60 soniya Speaking: pauza qilsangiz — yiqilasiz",
   'hub.plan': 'Bugungi reja',
