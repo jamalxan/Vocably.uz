@@ -3,6 +3,7 @@ import { landingFontVariables } from '@/components/landing/fonts';
 import { ThemeProvider, themeInitScript } from '@/context/ThemeContext';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import { LocaleProvider } from '@/context/LocaleContext';
+import RefCapture from '@/components/RefCapture';
 
 // Type system (self-hosted, src/components/landing/fonts.js): Sora for
 // headings and the word being learned, Inter for text, JetBrains Mono for
@@ -101,6 +102,7 @@ export default function RootLayout({ children }) {
           <LocaleProvider>{children}</LocaleProvider>
         </ThemeProvider>
         <ServiceWorkerRegister />
+        <RefCapture />
       </body>
     </html>
   );

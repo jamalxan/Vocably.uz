@@ -11,6 +11,8 @@ import { clientIp } from '@/lib/clientIp';
 import { verifyTelegramLogin, telegramPhone } from '@/lib/telegramLogin';
 import { starterCategories, notifyAdminNewUser } from '@/lib/newUser';
 import { grantWelcomeTrial } from '@/lib/welcomeTrial';
+import { applyReferral } from '@/lib/referralServer';
+import { readRefCookie, clearRefCookie } from '@/lib/refCookie';
 
 // Sign up / log in with the Telegram Login Widget (TZ 2.0 §6.10.1).
 // The widget calls our page's JS callback with signed user data; the page POSTs it here as JSON.
@@ -69,12 +71,13 @@ export async function POST(req) {
       }
       if (isNew) {
         await grantWelcomeTrial(user);
+        await applyReferral(user, readRefCookie(req));
         await notifyAdminNewUser(user, { via: 'telegram', username: tg.username });
       }
     }
 
     const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    return setAuthCookie(NextResponse.json({ ok: true, isNew, name: user.name }), token);
+    return clearRefCookie(setAuthCookie(NextResponse.json({ ok: true, isNew, name: user.name }), token));
   } catch (err) {
     return serverError(err, 'auth/telegram');
   }
