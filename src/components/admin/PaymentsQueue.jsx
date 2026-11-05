@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Check, X, Loader2, FileText, ExternalLink } from 'lucide-react';
 import { TIER_CONFIG } from '@/lib/entitlements';
 import { formatUzDate } from '@/lib/uzDate';
+import { termLabel } from '@/lib/billingTerms';
 
 // Manual payments: the user transferred money and uploaded a receipt. Look at
 // the receipt, check the amount arrived, press "Tasdiqlash" — the plan opens
@@ -11,6 +12,7 @@ const FILTERS = [
   ['pending', 'Kutilmoqda'],
   ['approved', 'Tasdiqlangan'],
   ['rejected', 'Rad etilgan'],
+  ['refund', 'Qaytarish'],
   ['all', 'Hammasi'],
 ];
 const som = (n) => `${String(n || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
@@ -66,10 +68,12 @@ export default function PaymentsQueue() {
 
   const act = async (r, action) => {
     let reason = '';
-    if (action === 'reject') {
-      reason = prompt('Rad etish sababi (foydalanuvchiga ko‘rsatiladi):', 'Summa tushmadi');
+    if (action === 'reject' || action === 'refund_decline') {
+      reason = prompt('Rad etish sababi (foydalanuvchiga ko‘rsatiladi):', action === 'reject' ? 'Summa tushmadi' : '');
       if (reason === null) return;
-    } else if (!confirm(`${r.user?.name || r.user?.phone}: ${TIER_CONFIG[r.tier].label} (${r.months === 12 ? '1 yil' : '1 oy'}) faollashtirilsinmi?`)) {
+    } else if (action === 'refund_approve') {
+      if (!confirm(`${som(r.amount)} foydalanuvchiga QAYTARILDIMI? (karta / Payme yoki Click kabineti). Tasdiqlasangiz tarif ${termLabel({ months: r.months })}ga qisqaradi.`)) return;
+    } else if (!confirm(`${r.user?.name || r.user?.phone}: ${TIER_CONFIG[r.tier].label} (${termLabel({ months: r.months })}) faollashtirilsinmi?`)) {
       return;
     }
     setBusy(r.id);
@@ -103,6 +107,7 @@ export default function PaymentsQueue() {
           >
             {label}
             {k === 'pending' && data?.pendingCount ? ` (${data.pendingCount})` : ''}
+            {k === 'refund' && data?.refundCount ? ` (${data.refundCount})` : ''}
           </button>
         ))}
       </div>
@@ -122,7 +127,7 @@ export default function PaymentsQueue() {
             </p>
             <p className="text-xs text-muted">{r.user?.phone}</p>
             <p className="text-sm text-ink">
-              <strong>{TIER_CONFIG[r.tier]?.label}</strong> · {r.months === 12 ? '1 yil' : '1 oy'} · <strong>{som(r.amount)}</strong>
+              <strong>{TIER_CONFIG[r.tier]?.label}</strong> · {termLabel({ months: r.months })} · <strong>{som(r.amount)}</strong>
             </p>
             <p className="text-xs text-muted">
               {formatUzDate(r.createdAt, { year: true })} · {r.method === 'manual' ? 'karta + chek' : r.method}
@@ -130,6 +135,13 @@ export default function PaymentsQueue() {
             </p>
             {r.note && <p className="text-sm text-ink bg-bg rounded-lg px-3 py-2">“{r.note}”</p>}
             {r.status === 'rejected' && r.rejectReason && <p className="text-xs text-danger">Sabab: {r.rejectReason}</p>}
+            {r.refund && (
+              <p className={`text-xs font-semibold ${r.refund.status === 'requested' ? 'text-warning' : r.refund.status === 'approved' ? 'text-danger' : 'text-muted'}`}>
+                ↩️ Qaytarish: {r.refund.status === 'requested' ? "so'ralgan" : r.refund.status === 'approved' ? 'qaytarilgan' : 'rad etilgan'}
+                {r.refund.requestedAt ? ` · ${formatUzDate(r.refund.requestedAt)}` : ''}
+                {r.refund.reason ? ` — “${r.refund.reason}”` : ''}
+              </p>
+            )}
             {r.status !== 'pending' && (
               <p className={`text-xs font-semibold ${r.status === 'approved' ? 'text-success' : 'text-muted'}`}>
                 {r.status === 'approved' ? 'Tasdiqlangan' : r.status === 'rejected' ? 'Rad etilgan' : 'Bekor qilingan'}
@@ -137,6 +149,26 @@ export default function PaymentsQueue() {
               </p>
             )}
           </div>
+          {r.refund?.status === 'requested' && (
+            <div className="flex sm:flex-col gap-2 sm:w-36">
+              <button
+                type="button"
+                disabled={busy === r.id}
+                onClick={() => act(r, 'refund_approve')}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 rounded-xl bg-accent text-on-accent text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
+              >
+                {busy === r.id ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Qaytarildi
+              </button>
+              <button
+                type="button"
+                disabled={busy === r.id}
+                onClick={() => act(r, 'refund_decline')}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 rounded-xl border border-border text-sm font-semibold text-danger hover:bg-danger-soft disabled:opacity-50"
+              >
+                <X size={15} /> Rad etish
+              </button>
+            </div>
+          )}
           {r.status === 'pending' && r.method !== 'manual' && (
             // Payme/Click order the provider hasn't finished: it approves itself
             // on the provider callback, so there is nothing for the admin to

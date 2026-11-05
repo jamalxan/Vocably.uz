@@ -20,7 +20,7 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
 | 7 | 9:16 result card (download/share) | 7 | ✅ |
 | 8 | Streak: ≥1 plan task = streak, 1 free freeze per week | 6.8.2 | ✅ |
 | 9 | Telegram Login Widget + reminder at a user-chosen time, max 2 messages per day | 6.10 | ✅ |
-| 10 | 7-day trial (setting), 14-day refund request, 3-month plan | 10 | ⏳ |
+| 10 | 7-day trial (setting), 14-day refund request, 3-month plan | 10 | ✅ |
 | 11 | Admin: landing→onboarding→signup→payment funnel | 6.12.3 | ⏳ |
 
 ## Notes on what's done
@@ -61,6 +61,13 @@ Payme/Click, Free/Standard/Premium pricing, teacher panel, AI content approval q
   Telegram has a one-tap "🔕 Eslatmalarni o'chirish" (`rm:off`, also stops the mini-test).
   **Hourly trigger:** Vercel Hobby cron is daily only, so `.github/workflows/hourly-reminders.yml` calls the sweep hourly —
   needs the repo secret `CRON_SECRET` (same as on Vercel). Not done: the Sunday weekly report message.
+- Step 10: 3-month term (`priceQuarterly`: Standard 176 000, Premium 329 000 = −15%) on /pricing, checkout, Payme/Click/manual
+  (`PaymentRequest.months` 1/3/12, labels via `src/lib/billingTerms.js`). Welcome trial can now be in days (3/7/14) — admin
+  /admin/settings or bot `/admin trial premium 7d`. **The default stays 1 month Premium (the 2026-10-22 product rule);
+  switching to TZ 2.0's 7 days is one click in /admin/settings.** Refund: "Pulni qaytarish" under a paid request in /app/billing,
+  14 days from confirmation, once per account (`src/lib/payments/refund.js`, `POST /api/billing/refunds`); admin "Qaytarish" tab in
+  /admin/payments → "Qaytarildi" after sending the money back by hand (Payme/Click have no merchant refund API we can call),
+  which takes the paid term off the subscription (nothing left → Free).
 - E2E: the dev server flakes on first compile; the reliable check is `next build` + `next start -p 3100` + `E2E_REUSE_SERVER=1`.
 
 ## Should/Could (after the MVP)

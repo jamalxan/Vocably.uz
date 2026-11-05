@@ -6,6 +6,8 @@ import { Check, Copy, CreditCard, FileImage, Loader2, Upload, Clock, XCircle, Ch
 import { TIER_CONFIG } from '@/lib/entitlements';
 import { formatDateLocale } from '@/lib/uzDate';
 import { useT } from '@/context/LocaleContext';
+import { BILLING_MONTHS, termLabel } from '@/lib/billingTerms';
+import RefundRequest from '@/components/billing/RefundRequest';
 
 // Paid plan checkout. Today: pay by card transfer and upload the receipt —
 // the admin approves and the plan opens (the user gets an in-app, push and
@@ -46,7 +48,7 @@ export default function Checkout() {
   const som = (n) => t('pr.som', { n: fmtNum(n) });
   const params = useSearchParams();
   const [tier, setTier] = useState(TIERS.includes(params.get('tier')) ? params.get('tier') : 'standard');
-  const [months, setMonths] = useState(params.get('months') === '12' ? 12 : 1);
+  const [months, setMonths] = useState(BILLING_MONTHS.includes(Number(params.get('months'))) ? Number(params.get('months')) : 1);
   const [options, setOptions] = useState(null);
   const [requests, setRequests] = useState(null);
   const [file, setFile] = useState(null);
@@ -107,7 +109,7 @@ export default function Checkout() {
 
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
-  const amount = options?.prices?.[tier]?.[months] ?? (months === 12 ? TIER_CONFIG[tier].priceYearly : TIER_CONFIG[tier].priceMonthly);
+  const amount = options?.prices?.[tier]?.[months] ?? (months === 12 ? TIER_CONFIG[tier].priceYearly : months === 3 ? TIER_CONFIG[tier].priceQuarterly : TIER_CONFIG[tier].priceMonthly);
 
   const pick = (f) => {
     setError('');
@@ -216,6 +218,7 @@ export default function Checkout() {
         <div className="inline-flex gap-1 p-1 rounded-xl bg-bg border border-border">
           {[
             [1, t('co.1m')],
+            [3, t('co.3m')],
             [12, t('co.1y')],
           ].map(([m, label]) => (
             <button
@@ -346,8 +349,11 @@ export default function Checkout() {
                   <st.icon size={13} aria-hidden="true" /> {t(st.label)}
                 </span>
                 <span className="min-w-0 flex-1 text-sm text-ink">
-                  {ts(TIER_CONFIG[r.tier]?.label)} · {r.months === 12 ? t('co.1yShort') : t('co.1m')} · {som(r.amount)}
+                  {ts(TIER_CONFIG[r.tier]?.label)} · {termLabel({ months: r.months }, locale)} · {som(r.amount)}
                   {r.status === 'rejected' && r.rejectReason && <span className="block text-xs text-danger mt-0.5">{r.rejectReason}</span>}
+                  {r.status === 'approved' && (
+                    <RefundRequest request={r} onChange={(next) => setRequests((list) => list.map((x) => (x.id === next.id ? next : x)))} />
+                  )}
                 </span>
                 <span className="text-xs text-muted flex-shrink-0">{formatDateLocale(locale, r.createdAt)}</span>
               </div>

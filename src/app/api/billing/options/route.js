@@ -9,13 +9,13 @@ import { getWelcomeTrial } from '@/lib/settings';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const prices = Object.fromEntries(PAID_TIERS.map((t) => [t, { 1: priceFor(t, 1), 12: priceFor(t, 12) }]));
+  const prices = Object.fromEntries(PAID_TIERS.map((t) => [t, { 1: priceFor(t, 1), 3: priceFor(t, 3), 12: priceFor(t, 12) }]));
   // Welcome trial (new accounts get a free starter plan) — shown on /pricing.
   let welcomeTrial = null;
   try {
     await connectToDatabase();
     const trial = await getWelcomeTrial();
-    if (trial.enabled) welcomeTrial = { tier: trial.tier, months: trial.months };
+    if (trial.enabled) welcomeTrial = { tier: trial.tier, months: trial.months, days: trial.days || null };
   } catch (err) {
     console.error('[billing/options] welcomeTrial', err?.message || err);
   }

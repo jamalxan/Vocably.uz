@@ -676,7 +676,7 @@ export const BillingInterest =
 const PaymentRequestSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   tier: { type: String, enum: ['standard', 'premium'], required: true },
-  months: { type: Number, enum: [1, 12], required: true },
+  months: { type: Number, enum: [1, 3, 12], required: true },
   amount: { type: Number, required: true }, // so'm
   method: { type: String, enum: ['manual', 'payme', 'click'], default: 'manual' },
   status: { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'], default: 'pending' },
@@ -695,9 +695,20 @@ const PaymentRequestSchema = new mongoose.Schema({
     cancelledAt: { type: Date, default: null },
     reason: { type: Number, default: null },
   },
+  // TZ 2.0 §10: 14-day full refund, requested in the app (src/lib/billingTerms.js). The money goes back by hand
+  // (card / Payme / Click merchant cabinet); approving here takes the paid term back from the subscription.
+  refund: {
+    status: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },
+    reason: { type: String, default: '', maxlength: 500 },
+    requestedAt: { type: Date, default: null },
+    decidedAt: { type: Date, default: null },
+    decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    note: { type: String, default: '', maxlength: 300 },
+  },
   createdAt: { type: Date, default: Date.now },
 });
 PaymentRequestSchema.index({ status: 1, createdAt: -1 });
+PaymentRequestSchema.index({ 'refund.status': 1, 'refund.requestedAt': -1 });
 PaymentRequestSchema.index({ userId: 1, createdAt: -1 });
 PaymentRequestSchema.index({ 'provider.txId': 1 }, { sparse: true });
 

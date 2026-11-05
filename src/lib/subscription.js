@@ -75,7 +75,7 @@ export function effectiveTier(user, now = new Date()) {
  * Renewing the same tier before it has locked (active or grace) continues
  * from the current expiry date — remaining paid days are kept, and grace
  * days are not free days. Otherwise the new term starts now. */
-export function activationUpdate(user, tier, { months = 1, now = new Date(), by = null } = {}) {
+export function activationUpdate(user, tier, { months = 1, days = null, now = new Date(), by = null } = {}) {
   if (tier === 'free') {
     return {
       subscriptionTier: 'free',
@@ -91,7 +91,8 @@ export function activationUpdate(user, tier, { months = 1, now = new Date(), by 
   return {
     subscriptionTier: tier,
     subscriptionStartedAt: continuing ? user.subscriptionStartedAt || now : now,
-    subscriptionExpiresAt: addMonths(base, months),
+    // `days` — short trial terms (e.g. 7-day Premium trial, TZ 2.0 §10); otherwise calendar months.
+    subscriptionExpiresAt: days ? new Date(new Date(base).getTime() + days * DAY_MS) : addMonths(base, months),
     subscriptionSetAt: now,
     subscriptionSetBy: by,
   };

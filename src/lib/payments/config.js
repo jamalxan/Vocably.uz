@@ -6,11 +6,12 @@ import { TIER_CONFIG } from '@/lib/entitlements';
 
 export const PAID_TIERS = ['standard', 'premium'];
 
-/** Price in so'm for a tier and term (1 = monthly, 12 = yearly). */
+/** Price in so'm for a tier and term (1 = monthly, 3 = quarterly, 12 = yearly). */
 export function priceFor(tier, months) {
   const cfg = TIER_CONFIG[tier];
   if (!cfg || !PAID_TIERS.includes(tier)) return null;
   if (months === 1) return cfg.priceMonthly;
+  if (months === 3) return cfg.priceQuarterly;
   if (months === 12) return cfg.priceYearly;
   return null;
 }
