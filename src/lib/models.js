@@ -274,6 +274,8 @@ const UserSchema = new mongoose.Schema({
     lastKind: { type: String, default: null },
     riskSentOn: { type: String, default: null },
     riskCheckedOn: { type: String, default: null },
+    // Haftalik hisobot (TZ 2.0 §6.10.2, src/lib/weeklyReportServer.js): oxirgi yuborilgan ISO hafta ('2026-W45').
+    weeklyReportWeek: { type: String, default: null },
   },
   // Kuniga ko'pi bilan 2 ta proaktiv Telegram xabari (TZ 2.0 §6.10.5) — eslatmalar va kunlik mini-test birga
   // hisoblanadi. src/lib/telegramCap.js atomik "band qiladi". day — foydalanuvchi mahalliy sanasi.
@@ -739,7 +741,7 @@ export const AiUsage = mongoose.models.AiUsage || mongoose.model('AiUsage', AiUs
 
 const NotificationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment', 'gift', 'vocab_reminder'], required: true },
+  type: { type: String, enum: ['chat_message', 'announcement', 'subscription', 'payment', 'gift', 'vocab_reminder', 'weekly_report'], required: true },
   title: { type: String, required: true, trim: true },
   body: { type: String, default: '', trim: true },
   // 'chat_message' uchun suhbat ID'si, 'announcement' uchun Announcement ID'si —

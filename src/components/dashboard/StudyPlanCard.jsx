@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CalendarCheck, CheckCircle2, Circle, ChevronRight, Star, RotateCcw, Check, Loader2, Flame, Snowflake } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, Circle, ChevronRight, Star, RotateCcw, Check, Loader2, Flame, Snowflake, BarChart3 } from 'lucide-react';
 import { useT } from '@/context/LocaleContext';
 
 const SKILL_LABEL = { listening: 'Listening', reading: 'Reading', writing: 'Writing', speaking: 'Speaking' };
@@ -201,6 +201,10 @@ export default function StudyPlanCard() {
           );
         })}
       </ul>
+
+      <Link href="/app/report" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline" data-testid="plan-weekly-report">
+        <BarChart3 size={13} aria-hidden="true" /> {t('plan.weeklyReport')} <ChevronRight size={13} aria-hidden="true" />
+      </Link>
 
       {toast && (
         <div role="status" className="absolute top-3 right-3 rounded-full bg-accent text-on-accent text-xs font-bold px-3 py-1 shadow-card">
