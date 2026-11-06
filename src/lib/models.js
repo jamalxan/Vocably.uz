@@ -431,6 +431,18 @@ export const ReviewEvent = mongoose.models.ReviewEvent || mongoose.model('Review
 // qatnasha oladigan bo'lib qolardi. Shuning uchun oddiy skalyar `pairKey`ga unique
 // qo'yamiz, `participantIds`dagi indeks esa faqat "mening suhbatlarim" so'rovi uchun
 // (unique emas, multikey qidiruv).
+// PARITY_PLAN WP6 — server orqali sinxronlanadigan qoralama (har ishtirokchiga alohida, faqat egasi ko'radi).
+// Bo'sh matn + replyTo=null — "tombstone": tozalangan qoralama boshqa qurilma keshidan qayta tirilmasin.
+// `updatedAt` faqat server soati bilan yoziladi (klientlar shu bo'yicha yarashtiradi).
+const DraftSchema = new mongoose.Schema(
+  {
+    text: { type: String, default: '', maxlength: 4000 },
+    replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+    updatedAt: { type: Date, required: true },
+  },
+  { _id: false }
+);
+
 const ConversationSchema = new mongoose.Schema({
   participantIds: {
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
@@ -506,6 +518,9 @@ const ConversationSchema = new mongoose.Schema({
   // uchun UMUMIY (kim qadagan bo'lishidan qat'iy nazar, ikkalasi ham ko'radi) —
   // mutedBy/nicknames kabi faqat-o'zimga-tegishli maydonlardan farqli.
   pinnedMessageIds: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }], default: [] },
+  // Kalit — userId (String), qiymat — shu userning qoralamasi (DraftSchema). Faqat egasiga qaytariladi
+  // (GET /conversations, /draft); ikkinchi tomon hech qachon ko'rmaydi.
+  drafts: { type: Map, of: DraftSchema, default: {} },
 });
 // Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
 // yangisi birinchi (src/app/api/chat/conversations); (2) admin panelning BARCHA
@@ -578,9 +593,19 @@ const MessageSchema = new mongoose.Schema({
   replyTo: { type: ReplyToSchema, default: null },
   // Birga yuborilgan 2–10 rasm/video bitta albom (grid) bo'lib ko'rinadi — klient yaratgan id.
   albumId: { type: String, default: null },
-  // Forward qilingan xabar: asl yuboruvchi (Telegram "… dan yuborilgan").
+  // Forward qilingan xabar: asl yuboruvchi (Telegram "… dan yuborilgan"). `messageId` — birinchi
+  // asl xabar; `hidden` — "yuboruvchi nomini yashirish" (PARITY_PLAN WP5): yorliq ko'rsatilmaydi,
+  // lekin admin audit uchun asl muallif saqlanadi.
   forwardedFrom: {
-    type: new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, name: { type: String, default: '' } }, { _id: false }),
+    type: new mongoose.Schema(
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        name: { type: String, default: '' },
+        messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+        hidden: { type: Boolean, default: false },
+      },
+      { _id: false }
+    ),
     default: null,
   },
   // Faqat `type: 'call'` xabarlarda (qolganlarida null).

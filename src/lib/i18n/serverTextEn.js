@@ -62,6 +62,13 @@ const en = {
     "Bajarilmadi": "Not completed",
     "Bu bo'lim uchun ruxsatingiz yo'q": "You don't have access to this section",
     "Xatolik yuz berdi": "An error occurred",
+    // --- Forward to many chats (PARITY_PLAN WP5) and drafts (WP6)
+    "Noto'g'ri so'rov": "Invalid request",
+    "Juda ko'p xabar tanlandi": "Too many messages selected",
+    "Bu chatga yuborib bo'lmaydi": "Can't send to this chat",
+    "Foydalanuvchi mavjud emas": "This user is unavailable",
+    "Server xatoligi. Keyinroq qayta urinib ko'ring.": "Server error. Please try again later.",
+    "Faylni yuborib bo'lmadi": "Couldn't send the file",
     // --- Emoji (EmojiPicker.jsx)
     "Smaylik": "Smileys",
     "Odamlar": "People",

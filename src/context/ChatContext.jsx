@@ -10,6 +10,7 @@ import { xhrPut } from '@/lib/chat/xhrUpload';
 import { prepareImage, probeVideo } from '@/lib/chat/compressImage';
 import { albumGroups, defaultId } from '@/lib/chat/attachments';
 import { readDrafts, writeDrafts, setDraft as setDraftInMap } from '@/lib/chat/drafts';
+import { ackDraft, createDraftSync, getDeviceId, mergeDraftMap } from '@/lib/chat/draftSync';
 import { applyNewMessageToList, applyBulkAction } from '@/lib/chat/chatList';
 
 function buildStickerCatalog({ packs = [], extra = [] }) {
@@ -89,8 +90,24 @@ export function ChatProvider({ myUserId, children }) {
   const [stickerCatalog, setStickerCatalog] = useState(() => buildStickerCatalog({ packs: STATIC_STICKER_PACKS }));
   // Telegram parity: drafts per conversation (text + reply target) survive leaving the chat.
   const [drafts, setDrafts] = useState(() => readDrafts(myUserId));
+  // PARITY_PLAN WP6 — qoralamalar server bilan sinxron: `draftsRef` doim eng so'nggi xarita (yon ta'sirlar
+  // setState updater ichida emas, shu ref orqali), `draftSyncRef` — 600 ms debounce'li PUT navbati.
+  const draftsRef = useRef(drafts);
+  const draftSyncRef = useRef(null);
+  const deviceIdRef = useRef(null);
+  const mergeRemoteDraftsRef = useRef(null); // loadConversations (yuqorida) shu orqali chaqiradi
   // Files dropped on the conversation (ConversationView drop zone) → picked up by the Composer tray.
   const [stagedFiles, setStagedFiles] = useState(null);
+  // Qisqa holat xabari (masalan "3 ta chatga yuborildi", PARITY_PLAN WP5) — ConversationView pastda ko'rsatadi.
+  const [chatNotice, setChatNotice] = useState(null); // { id, text } | null
+  const chatNoticeTimer = useRef(null);
+  const showChatNotice = useCallback((text) => {
+    clearTimeout(chatNoticeTimer.current);
+    if (!text) return setChatNotice(null);
+    setChatNotice({ id: Date.now(), text });
+    chatNoticeTimer.current = setTimeout(() => setChatNotice(null), 3500);
+  }, []);
+  useEffect(() => () => clearTimeout(chatNoticeTimer.current), []);
 
   const pollRef = useRef(null);
   const listReloadRef = useRef(null);
@@ -160,6 +177,8 @@ export function ChatProvider({ myUserId, children }) {
             if (res.ok) {
               setConversations(data.conversations || []);
               setConversationsError(false);
+              // WP6: serverdagi qoralamalar (boshqa qurilmada yozilgani) mahalliy kesh bilan yarashtiriladi.
+              mergeRemoteDraftsRef.current?.((data.conversations || []).filter((c) => 'draft' in c).map((c) => [c.id, c.draft]));
             } else {
               setConversationsError(true);
             }
@@ -711,14 +730,76 @@ export function ChatProvider({ myUserId, children }) {
     [sendMessage, runUpload]
   );
 
-  // Drafts (Telegram parity) — the Composer calls this on every change (debounced) and on send.
-  const saveDraft = useCallback((conversationId, draft) => {
-    setDrafts((prev) => {
-      const next = setDraftInMap(prev, conversationId, draft);
-      writeDrafts(myIdRef.current, next);
-      return next;
-    });
+  // Drafts (Telegram parity) — the Composer calls this on every change (debounced).
+  // WP6: localStorage darhol (kesh), server esa draftSync orqali (600 ms debounce). Mazmun
+  // o'zgarmagan bo'lsa (masalan chat ochilganda) hech narsa yozilmaydi va PUT ketmaydi.
+  const commitDrafts = useCallback((next) => {
+    if (next === draftsRef.current) return;
+    draftsRef.current = next;
+    setDrafts(next);
+    writeDrafts(myIdRef.current, next);
   }, []);
+  const saveDraft = useCallback(
+    (conversationId, draft) => {
+      const prev = draftsRef.current;
+      const next = setDraftInMap(prev, conversationId, draft);
+      if (next === prev) return;
+      commitDrafts(next);
+      const entry = next[String(conversationId)];
+      if (entry?.dirty) draftSyncRef.current?.schedule(conversationId, entry);
+    },
+    [commitDrafts]
+  );
+  // Xabar yuborildi: qoralama mahalliy "toza tombstone" bo'ladi; serverdagini messages POST o'zi tozalaydi
+  // (shu sabab alohida PUT yuborilmaydi — draftSync faqat yo'lda qolgan eski PUT'dan keyin tombstone yuboradi).
+  const clearDraftAfterSend = useCallback(
+    (conversationId) => {
+      commitDrafts(setDraftInMap(draftsRef.current, conversationId, { text: '', replyTo: null }, Date.now(), { dirty: false }));
+      draftSyncRef.current?.clearAfterSend(conversationId);
+    },
+    [commitDrafts]
+  );
+  // Server qiymatlari (ro'yxat yuklanishi yoki `draft:update`) — src/lib/chat/draftSync.js#mergeDraft qoidasi.
+  const mergeRemoteDrafts = useCallback(
+    (entries) => {
+      if (entries?.length) commitDrafts(mergeDraftMap(draftsRef.current, entries));
+    },
+    [commitDrafts]
+  );
+  useEffect(() => {
+    mergeRemoteDraftsRef.current = mergeRemoteDrafts;
+  });
+  // Oflayn yozilgan (yoki eski versiyadan qolgan) va hali serverga yetmagan qoralamalar — ulanishda yuboriladi.
+  const syncDirtyDrafts = useCallback(() => {
+    const sync = draftSyncRef.current;
+    if (!sync) return;
+    for (const [id, entry] of Object.entries(draftsRef.current)) {
+      if (entry?.dirty && !sync.isPending(id)) sync.schedule(id, entry);
+    }
+  }, []);
+  useEffect(() => {
+    deviceIdRef.current = getDeviceId();
+    const sync = createDraftSync({
+      deviceId: deviceIdRef.current,
+      onAck: (conversationId, sent, serverDraft) => commitDrafts(ackDraft(draftsRef.current, conversationId, sent, serverDraft)),
+    });
+    draftSyncRef.current = sync;
+    syncDirtyDrafts();
+    // Sahifa yopilayotganda/yashirilganda kutayotgan PUT'lar darhol (keepalive — javobsiz ham yetadi).
+    const flush = () => sync.flush({ keepalive: true });
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVisibility);
+      sync.flush({ keepalive: true });
+      sync.dispose();
+      draftSyncRef.current = null;
+    };
+  }, [commitDrafts, syncDirtyDrafts]);
 
   // Files dropped onto the conversation → the Composer tray.
   const stageExternalFiles = useCallback((files) => setStagedFiles(files && files.length ? files : null), []);
@@ -974,109 +1055,52 @@ export function ChatProvider({ myUserId, children }) {
     [activeConversation, authHeaders]
   );
 
-  // C-10 — "Yuborish" (forward): tanlangan xabarni BOSHQA suhbatga (target,
-  // hozir ochiq bo'lishi shart emas) yuboradi. Matn/stiker uchun to'g'ridan-to'g'ri
-  // POST; media uchun (rasm/video/ovoz/fayl) asl faylning imzolangan URL'i orqali
-  // olib (useAuthedMediaUrl'dagi bilan bir xil endpoint), qayta uploadAndSend
-  // bosqichlarini (presign -> PUT -> POST) takrorlab, TARGET suhbat papkasiga qayta
-  // yuklaydi — chunki server har bir media kalitini "shu suhbatga tegishlimi"
-  // deb tekshiradi (messages POST route), asl kalitni boshqa suhbatga bevosita
-  // bog'lab bo'lmaydi.
-  // Telegram parity: forward one or many messages; the server copies media inside the bucket, so
-  // nothing is downloaded and re-uploaded by the browser.
+  // Forward (Telegram parity, PARITY_PLAN WP5): bir yoki bir nechta xabarni 10 tagacha chatga BITTA
+  // so'rov bilan (POST /api/chat/messages/forward). Media server tomonda bucket ichida nusxalanadi.
+  // Natija nishonma-nishon: { results, okCount, total, failed: [{ conversationId, error, code }], skipped }.
+  // Muvaffaqiyatli nishonlar ro'yxatda darhol yuqoriga chiqadi; ochiq suhbat nishon bo'lsa nusxalar
+  // shu zahoti qo'shiladi (jonli echo kelganda id bo'yicha dublikat bo'lmaydi).
   const forwardMessages = useCallback(
-    async (list, targetConversationId) => {
-      let last = null;
-      for (const message of list) {
-        const res = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
+    async (list, targets, { hideAuthor = false, comment = '' } = {}) => {
+      const targetConversationIds = (Array.isArray(targets) ? targets : [targets]).filter(Boolean).map(String);
+      const items = (list || []).filter((m) => m && m.type !== 'call' && (m.id || m._id) && !m._status);
+      if (!items.length || !targetConversationIds.length) return { error: 'Xabar topilmadi' };
+      const sourceConversationId = String(items[0].conversationId || activeIdRef.current);
+      let res;
+      try {
+        res = await fetch('/api/chat/messages/forward', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ type: message.type, forwardOf: { conversationId: message.conversationId || activeIdRef.current, messageId: message.id || message._id }, clientMessageId: genClientMessageId() }),
-        }).catch(() => null);
-        if (!res) return { error: 'Tarmoq xatoligi' };
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) return { error: data.error || 'Yuborilmadi' };
-        last = data.message;
-      }
-      if (last) touchList(targetConversationId, { preview: previewForMessage(last), createdAt: last.createdAt, incoming: false });
-      if (String(activeIdRef.current) === String(targetConversationId)) loadMessages(targetConversationId, { silent: true });
-      return { success: true };
-    },
-    [authHeaders, touchList, loadMessages]
-  );
-
-  const forwardMessage = useCallback(
-    async (message, targetConversationId) => {
-      if (message.type !== 'legacy-path') return forwardMessages([message], targetConversationId);
-      try {
-        const type = message.type;
-        if (type === 'text') {
-          const res = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ type: 'text', text: message.text, clientMessageId: genClientMessageId() }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) return { error: data.error || "Yuborilmadi" };
-        } else if (type === 'sticker') {
-          const res = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ type: 'sticker', stickerId: message.stickerId, clientMessageId: genClientMessageId() }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) return { error: data.error || "Yuborilmadi" };
-        } else if (['image', 'video', 'voice', 'file'].includes(type) && message.media?.key) {
-          const getRes = await fetch(`/api/chat/media/${message.media.key}`, { headers: authHeaders() });
-          if (!getRes.ok) return { error: 'Media topilmadi' };
-          const { url: sourceUrl } = await getRes.json();
-          const blobRes = await fetch(sourceUrl);
-          if (!blobRes.ok) return { error: 'Media yuklanmadi' };
-          const blob = await blobRes.blob();
-          const mimeType = message.media.mimeType || blob.type || 'application/octet-stream';
-          const file = new File([blob], 'forwarded', { type: mimeType });
-
-          const presignRes = await fetch('/api/chat/upload/presign', {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ conversationId: targetConversationId, type, mimeType, size: file.size }),
-          });
-          const presignData = await presignRes.json();
-          if (!presignRes.ok) return { error: presignData.error || "Yuklab bo'lmadi" };
-
-          const putRes = await fetch(presignData.uploadUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': mimeType },
-            body: file,
-          });
-          if (!putRes.ok) return { error: 'Faylni yuklashda xatolik' };
-
-          const sendRes = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({
-              type,
-              media: { key: presignData.key, mimeType, size: file.size },
-              ...(message.text ? { text: message.text } : {}),
-              clientMessageId: genClientMessageId(),
-            }),
-          });
-          const sendData = await sendRes.json().catch(() => ({}));
-          if (!sendRes.ok) return { error: sendData.error || "Yuborilmadi" };
-        } else {
-          return { error: "Bu xabarni yuborib bo'lmaydi" };
-        }
-
-        loadConversations();
-        if (String(activeIdRef.current) === String(targetConversationId)) {
-          loadMessages(targetConversationId, { silent: true });
-        }
-        return { success: true };
+          body: JSON.stringify({
+            sourceConversationId,
+            messageIds: items.map((m) => String(m.id || m._id)),
+            targetConversationIds,
+            hideAuthor: !!hideAuthor,
+            ...(comment && comment.trim() ? { comment: comment.trim() } : {}),
+            clientBatchId: genClientMessageId(),
+          }),
+        });
       } catch {
         return { error: 'Tarmoq xatoligi' };
       }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: data.error || 'Yuborilmadi', code: data.code, skipped: data.skipped || [] };
+      const results = Array.isArray(data.results) ? data.results : [];
+      for (const r of results) {
+        if (!r.ok || !r.messages?.length) continue;
+        const last = r.messages[r.messages.length - 1];
+        touchList(r.conversationId, { preview: previewForMessage(last), createdAt: last.createdAt, incoming: false });
+        if (String(activeIdRef.current) === String(r.conversationId)) r.messages.forEach((m) => upsertLiveMessage(m));
+      }
+      const failed = results.filter((r) => !r.ok).map((r) => ({ conversationId: r.conversationId, error: r.error, code: r.code }));
+      return { success: failed.length === 0, results, okCount: results.length - failed.length, total: results.length, failed, skipped: data.skipped || [] };
     },
-    [authHeaders, loadConversations, loadMessages, forwardMessages]
+    [authHeaders, touchList, upsertLiveMessage]
+  );
+
+  const forwardMessage = useCallback(
+    (message, targetConversationId, options) => forwardMessages([message], [targetConversationId], options),
+    [forwardMessages]
   );
 
   // Per-user chat flags (archive / pin) — PATCH /state; the list updates in place.
@@ -1321,7 +1345,7 @@ export function ChatProvider({ myUserId, children }) {
   // uchun obuna faqat bir marta (mount'da) qilinadi.
   const liveRef = useRef(null);
   useEffect(() => {
-    liveRef.current = { loadConversations, loadMessages, flushOfflineQueue, upsertLiveMessage, markRead, touchList };
+    liveRef.current = { loadConversations, loadMessages, flushOfflineQueue, upsertLiveMessage, markRead, touchList, mergeRemoteDrafts, syncDirtyDrafts };
   });
   useEffect(() => {
     const live = () => liveRef.current;
@@ -1359,6 +1383,14 @@ export function ChatProvider({ myUserId, children }) {
         l.loadConversations();
         if (activeIdRef.current) l.loadMessages(activeIdRef.current, { silent: true });
         l.flushOfflineQueue();
+        l.syncDirtyDrafts();
+      }),
+      // WP6: shu userning boshqa tab/qurilmasida qoralama o'zgardi (yoki xabar yuborilib tozalandi).
+      // O'zimiz yuborgan PUT'ning aks-sadosi (`deviceId` bir xil) e'tiborsiz qoldiriladi.
+      on('draft:update', ({ conversationId, draft, deviceId } = {}) => {
+        if (!conversationId || !draft) return;
+        if (deviceId && deviceId === deviceIdRef.current) return;
+        live().mergeRemoteDrafts([[conversationId, draft]]);
       }),
       on('message:new', ({ conversationId, message } = {}) => {
         // Eski realtime-server (emit-edited/emit-deleted endpointlarisiz) uchun fallback:
@@ -1521,11 +1553,14 @@ export function ChatProvider({ myUserId, children }) {
     unpinMessage,
     forwardMessage,
     forwardMessages,
+    chatNotice,
+    showChatNotice,
     sendAttachments,
     cancelUpload,
     ensureMessageLoaded,
     drafts,
     saveDraft,
+    clearDraftAfterSend,
     stagedFiles,
     stageExternalFiles,
     setConversationFlags,

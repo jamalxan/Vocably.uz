@@ -3,6 +3,7 @@ import { requireChatUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, User, Block } from '@/lib/models';
 import { unreadByConversation } from '@/lib/chat/unread';
+import { draftsForConversations } from '@/lib/chat/draftServer';
 import { isConversationMuted, isTgMessageNotifyOn, shouldShowLastSeen } from '@/lib/chatConstants';
 import { currentPhotoId } from '@/lib/avatars';
 import { NextResponse } from 'next/server';
@@ -66,6 +67,8 @@ export async function GET(req) {
     // "Do'stlar" ro'yxatida kimdan o'qilmagan xabar borligini ko'rsatish uchun — bitta aggregatsiya
     // bilan HAMMA suhbat uchun (src/lib/chat/unread.js, GET /api/chat/unread bilan umumiy).
     const unreadById = await unreadByConversation(user._id, conversations);
+    // PARITY_PLAN WP6 — shu userning server qoralamalari (ro'yxatdagi "Qoralama:" boshqa qurilmada ham).
+    const draftById = await draftsForConversations(conversations, user._id);
 
     const result = conversations.map((c) => {
       const otherId = c.participantIds.find((id) => String(id) !== String(user._id));
@@ -110,6 +113,7 @@ export async function GET(req) {
         pinnedMessageIds: (c.pinnedMessageIds || []).map(String),
         archived: (c.archivedBy || []).some((id) => String(id) === String(user._id)),
         pinned: (c.pinnedBy || []).some((id) => String(id) === String(user._id)),
+        draft: draftById.get(String(c._id)) || null,
       };
     });
 
@@ -200,6 +204,7 @@ export async function POST(req) {
         notifyOnline: (convo.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
         tgMessageNotify: isTgMessageNotifyOn(convo, user._id, user.tgMessageNotify),
         pinnedMessageIds: (convo.pinnedMessageIds || []).map(String),
+        draft: (await draftsForConversations([convo], user._id)).get(String(convo._id)) || null,
       },
     });
   } catch (err) {
