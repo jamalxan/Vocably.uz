@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, X } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import Avatar from '@/components/avatar/Avatar';
 import { useT } from '@/context/LocaleContext';
@@ -12,7 +12,7 @@ const MIN_QUERY_LEN = 2;
 const DEBOUNCE_MS = 250;
 
 export default function UserSearchBar({ onOpen }) {
-  const { searchUsername, openConversationByUsername } = useChat();
+  const { searchUsername, openConversationByUsername, showChatNotice } = useChat();
   const { t, ts } = useT();
   const [q, setQ] = useState('');
   const [results, setResults] = useState(undefined); // undefined=hech qidirilmagan, []=topilmadi
@@ -21,6 +21,7 @@ export default function UserSearchBar({ onOpen }) {
   const debounceRef = useRef(null);
   // Eskiroq so'rov javobi yangisining ustiga yozilmasin.
   const requestIdRef = useRef(0);
+  const inputRef = useRef(null);
 
   useEffect(() => () => clearTimeout(debounceRef.current), []);
 
@@ -47,7 +48,7 @@ export default function UserSearchBar({ onOpen }) {
     setOpeningUsername(username);
     const res = await openConversationByUsername(username);
     setOpeningUsername(null);
-    if (res.error) alert(ts(res.error));
+    if (res.error) showChatNotice(ts(res.error), 'error');
     else {
       setQ('');
       setResults(undefined);
@@ -56,20 +57,41 @@ export default function UserSearchBar({ onOpen }) {
   };
 
   return (
-    <div className="px-3 pt-3 pb-2 flex-shrink-0">
+    <div className="px-3 pt-2 pb-2 flex-shrink-0">
       <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+        <Search size={15} aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
         <input
-          type="text"
+          ref={inputRef}
+          type="search"
+          enterKeyHint="search"
           value={q}
           onChange={(e) => onChange(e.target.value)}
           // Panel torroq (masalan lg breakpoint atrofida) bo'lganda uzun matn
           // kesilib "...kiriti" bo'lib chiqardi — qisqaroq, mazmuni bir xil matn.
           placeholder={t('ch.searchPh')}
           aria-label={t('ch.searchPh')}
-          className="w-full pl-9 pr-3 py-2 bg-bg rounded-lg text-base md:text-sm text-ink placeholder:text-muted outline-none focus:ring-2 focus:ring-accent/20"
+          // PARITY_PLAN WP8 — Telegram uslubidagi "pill" qidiruv: to'liq yumaloq, o'ngda tozalash tugmasi.
+          className="w-full h-10 pl-10 pr-11 bg-bg rounded-full text-base md:text-sm text-ink placeholder:text-muted outline-none focus:ring-2 focus:ring-accent/30 [&::-webkit-search-cancel-button]:appearance-none"
         />
-        {searching && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted" />}
+        {searching ? (
+          <Loader2 size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-muted" />
+        ) : (
+          q && (
+            <button
+              type="button"
+              onClick={() => {
+                onChange('');
+                inputRef.current?.focus();
+              }}
+              aria-label={t('ch.searchClear')}
+              title={t('ch.searchClear')}
+              data-testid="search-clear"
+              className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 md:w-9 md:h-9 inline-flex items-center justify-center rounded-full text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          )
+        )}
       </div>
 
       {results !== undefined && q.trim().length >= MIN_QUERY_LEN && !searching && (
