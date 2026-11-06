@@ -24,7 +24,7 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: 'Bugungi takrorlash', url: '/app/vocabulary/review' },
-      { name: "Tezkor o'yin", url: '/app/vocabulary/speed' },
+      { name: "O'yinlar", url: '/app/games' },
     ],
   };
 }
