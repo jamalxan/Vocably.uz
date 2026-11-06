@@ -1,13 +1,14 @@
 import FunnelBeacon from '@/components/analytics/FunnelBeacon';
 import LandingHeader from '@/components/landing/LandingHeader';
 import SpeakOrFall from '@/components/flagship/SpeakOrFall';
+import { pageOpenGraph } from '@/lib/seo/site';
 
 export const metadata = {
   title: "Gapir yoki yiqil — IELTS Speaking fluency o'yini | Vocably",
   description:
     "IELTS Part 2 mavzusida 60 soniya to'xtamasdan gapiring: jim qolsangiz, qahramon jarga yaqinlashadi. Pauza xaritasi va filler so'zlar soni — bepul, ro'yxatsiz.",
   alternates: { canonical: '/games/speak' },
-  openGraph: { title: 'Gapir yoki yiqil', description: '60 soniya IELTS Speaking — pauza qilsangiz, yiqilasiz.' },
+  openGraph: pageOpenGraph({ path: '/games/speak', title: 'Gapir yoki yiqil', description: '60 soniya IELTS Speaking — pauza qilsangiz, yiqilasiz.' }),
 };
 
 export default function SpeakPage() {

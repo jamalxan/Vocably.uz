@@ -7,6 +7,7 @@ import { levenshtein } from '../levenshtein';
 import { normalizeForCompare } from '../textCompare';
 import { type Difficulty, type SkillKey, type Tier } from './config';
 import { pick, sample, shuffle, type Rand } from './rng';
+import { typedAcceptedForWord } from './typedForms';
 
 // ---------------------------------------------------------------------------
 // Kirish: o'yin uchun so'z
@@ -47,7 +48,9 @@ export type GameKey =
   | 'image_to_word'
   | 'word_to_image'
   | 'vocabulary_boss'
-  | 'vocably_run';
+  | 'vocably_run'
+  | 'word_tunnel'
+  | 'word_defense';
 
 export type Priority = 'P0' | 'P1' | 'P2';
 
@@ -312,6 +315,43 @@ export const GAME_CATALOG: GameDefinition[] = [
     instantFeedback: true,
     needsAudio: false,
   },
+  {
+    // Flagship typing game (concept adapted from cooltypinggame, Apache-2.0 — THIRD_PARTY_NOTICES.md):
+    // the meaning is shown, the English word is typed, every typed letter becomes a ring in a 3D tunnel.
+    // Graded on the server from the raw text (typed input); the round is timed on the device.
+    key: 'word_tunnel',
+    title: "So'z tunneli",
+    description: "Ma'nosini ko'ring, inglizchasini yozing — har bir harf 3D tunnelga aylanadi",
+    priority: 'P0',
+    minTier: 'free',
+    icon: 'Keyboard',
+    skill: 'spelling',
+    // One question per word (every verdict reveals the answer), so a round needs a few distinct words.
+    minWords: 5,
+    // 90 s round: the server's 80 % "completed" bar then needs ≥ 7.5 s per word on every level.
+    questionCount: cnt(12, 12, 14, 15),
+    timePerQuestionSec: tm(null, null, null, null),
+    lives: null,
+    instantFeedback: true,
+    needsAudio: false,
+  },
+  {
+    // Flagship typing defence: enemies carry a meaning toward the base; typing the English word for the
+    // targeted enemy shoots it. A breach costs one of 5 lives and is recorded as a wrong (empty) answer.
+    key: 'word_defense',
+    title: 'Word Defense',
+    description: "Ma'no ko'targan dushmanlar bazaga yaqinlashadi — inglizchasini yozib, ularni urib tushiring",
+    priority: 'P0',
+    minTier: 'free',
+    icon: 'Crosshair',
+    skill: 'spelling',
+    minWords: 8,
+    questionCount: cnt(16, 20, 24, 26),
+    timePerQuestionSec: tm(null, null, null, null),
+    lives: 5,
+    instantFeedback: true,
+    needsAudio: false,
+  },
 ];
 
 export function getGame(key: string): GameDefinition | undefined {
@@ -341,7 +381,8 @@ export type QuestionKind =
   | 'memory_pairs'
   | 'spell_drop'
   | 'image_word'
-  | 'word_image';
+  | 'word_image'
+  | 'type_definition';
 
 export type InputType = 'choice' | 'typed' | 'arrange' | 'match';
 
@@ -382,6 +423,11 @@ export interface GameQuestion {
    * (Bu foydalanuvchining o'z so'zlari — sir emas; yakuniy natija baribir SERVERda tekshiriladi.)
    */
   memoryMap?: Record<string, string>;
+  /**
+   * Typed flagship games (word_tunnel / word_defense): number of characters in the answer, shown as
+   * empty slots. Only on easy/medium — never on hard/expert. It is not the answer, only its length.
+   */
+  answerLength?: number;
   // --- faqat server ---
   answer?: string; // choice: option id
   accepted?: string[]; // typed: normallashgan qabul qilinadigan javoblar
@@ -830,6 +876,7 @@ function generatorsFor(gameKey: GameKey, difficulty: Difficulty, rand: Rand): Ge
     return [genMcMeaning, genDefinition, genMcWord];
   }
   if (gameKey === 'vocably_run') return [runQuestion];
+  if (gameKey === 'word_tunnel' || gameKey === 'word_defense') return [typedQuestion];
   if (gameKey === 'fill_gap') {
     const typed = difficulty === 'hard' || difficulty === 'expert';
     return [(c) => genFill(c, typed), (c) => genFill(c, !typed)];
@@ -850,6 +897,80 @@ const runDefinition = threeLanes(genDefinition);
 const runQuestion: Generator = (c) => {
   if (c.difficulty === 'easy') return runMeaning(c) || runDefinition(c);
   return c.rand() < 0.5 ? runDefinition(c) || runMeaning(c) : runMeaning(c) || runDefinition(c);
+};
+
+/**
+ * Typed flagship games (word_tunnel, word_defense): the English word is typed from a prompt.
+ * Hints shrink with difficulty — easy: first letter + length, medium: length only, hard/expert: none.
+ * `answerLength` is the only extra the client gets; the answer itself stays in `accepted` (server-only).
+ */
+function withTypedHints(q: GameQuestion, word: string, difficulty: Difficulty): GameQuestion {
+  // Hints describe the primary accepted form ("look after (sb)" → "look after").
+  const primary = typedAcceptedForWord(word)[0] || word.trim();
+  const length = primary.length;
+  const accepted = typedAcceptedForWord(word);
+  if (difficulty === 'easy') return { ...q, accepted, hint: firstLetterHint(primary), answerLength: length };
+  if (difficulty === 'medium') return { ...q, accepted, hint: undefined, answerLength: length };
+  return { ...q, accepted, hint: undefined, answerLength: undefined };
+}
+
+// Accepted typed forms live in typedForms.ts (shared with the device-side correction check).
+export { typedAcceptedForWord };
+
+/** Idioms and long multi-word headwords are not fair "type it from the meaning" questions. */
+function typeableWord(word: GameWord): boolean {
+  const tokens = norm(word.word).replace(/\([^)]*\)/g, ' ').trim().split(/\s+/).filter(Boolean);
+  return tokens.length > 0 && tokens.length <= 3 && (word.pos || '').toLowerCase() !== 'idiom';
+}
+
+/** Typed flagship games build at most one question per word: a verdict reveals the answer. */
+export const ONE_QUESTION_PER_WORD = new Set<GameKey>(['word_tunnel', 'word_defense']);
+
+/** Hides the answer (and its inflected forms) inside an English definition: "to maintain …" → "to _____ …". */
+export function maskWordIn(text: string, word: string): string {
+  let out = text;
+  for (let guard = 0; guard < 6; guard++) {
+    const found = findWordInSentence(out, word);
+    if (!found) break;
+    out = blankSentence(out, found);
+  }
+  return out;
+}
+
+/** Uzbek meaning → type the English word (the Word Rain question, with the typed-game hints). */
+function genTypedMeaning(ctx: Ctx): GameQuestion | null {
+  if (!typeableWord(ctx.word)) return null;
+  const q = genSpellDrop(ctx);
+  return q && withTypedHints({ ...q, secondarySkill: 'recall' }, ctx.word.word, ctx.difficulty);
+}
+
+/** English definition (answer masked) → type the word. Only words that have a definition qualify. */
+function genTypedDefinition(ctx: Ctx): GameQuestion | null {
+  const { word, difficulty } = ctx;
+  if (!typeableWord(word)) return null;
+  const def = (word.definitionEn || '').trim();
+  if (!def) return null;
+  let prompt = maskWordIn(def, word.word);
+  for (const form of typedAcceptedForWord(word.word)) prompt = maskWordIn(prompt, form);
+  // A definition that is (almost) only the word itself would be an empty prompt after masking.
+  if (prompt.replace(/_+/g, '').replace(/[^A-Za-z]/g, '').length < 6) return null;
+  return withTypedHints(
+    {
+      ...base(ctx, 'type_definition', 'typed', 'spelling'),
+      secondarySkill: 'recall',
+      prompt,
+      accepted: acceptedForWord(word.word),
+      correctDisplay: word.word,
+    },
+    word.word,
+    difficulty
+  );
+}
+
+/** Easy/medium ask Uzbek meanings; hard/expert mix in masked English definitions (≈ half the time). */
+const typedQuestion: Generator = (c) => {
+  if (c.difficulty === 'easy' || c.difficulty === 'medium') return genTypedMeaning(c) || genTypedDefinition(c);
+  return c.rand() < 0.5 ? genTypedDefinition(c) || genTypedMeaning(c) : genTypedMeaning(c) || genTypedDefinition(c);
 };
 
 function dedupeWords(words: GameWord[]): GameWord[] {
@@ -900,6 +1021,10 @@ export function buildGameSession(opts: BuildOptions): BuiltSession {
   let cursor = 0;
   const maxAttempts = count * Math.max(4, words.length) * 2;
   const usedCount = new Map<string, number>();
+  // One-question-per-word games: entries that share an accepted answer ("significant" saved in two
+  // decks, "to improve" and "improve") are one word — the first verdict would reveal the other's answer.
+  const oneShot = ONE_QUESTION_PER_WORD.has(opts.gameKey);
+  const usedForms = new Set<string>();
   while (questions.length < count && guard++ < maxAttempts) {
     const w = words[cursor % words.length];
     cursor += 1;
@@ -907,16 +1032,21 @@ export function buildGameSession(opts: BuildOptions): BuiltSession {
     const used = usedCount.get(w.wordId) || 0;
     const fairShare = Math.floor(questions.length / Math.max(1, words.length)) + 1;
     if (used >= fairShare) continue;
+    if (used >= 1 && oneShot) continue;
+    const forms = oneShot ? typedAcceptedForWord(w.word) : [];
+    if (forms.some((f) => usedForms.has(f))) continue;
     for (const gen of gens) {
       const q = gen({ word: w, pool, difficulty, rand, index: questions.length, timeLimit });
       if (q) {
         questions.push(q);
         usedCount.set(w.wordId, used + 1);
+        for (const f of forms) usedForms.add(f);
         break;
       }
     }
   }
-  const shortfall = questions.length < count ? `Faqat ${questions.length}/${count} ta savol tuzildi (so'zlarda ma'lumot yetarli emas)` : undefined;
+  // One-question-per-word games are expected to be shorter than `count` when the deck is small.
+  const shortfall = questions.length < count && !ONE_QUESTION_PER_WORD.has(opts.gameKey) ? `Faqat ${questions.length}/${count} ta savol tuzildi (so'zlarda ma'lumot yetarli emas)` : undefined;
   return { gameKey: opts.gameKey, difficulty, questions, shortfall };
 }
 
@@ -982,7 +1112,8 @@ export function availabilityFor(def: GameDefinition, words: GameWord[]): Availab
   if (def.key === 'fill_gap' && words.filter((w) => (w.examples || []).some((e) => findWordInSentence(e.en || '', w.word))).length < 4) {
     return { available: false, reason: "Kamida 4 ta so'zda misol gap bo'lishi kerak (AI bilan boyiting)" };
   }
-  if ((def.key === 'word_drop' || def.key === 'word_match' || def.key === 'memory' || def.key === 'speed_challenge') && words.filter((w) => w.translations.some(Boolean)).length < def.minWords) {
+  const needsTranslations = ['word_drop', 'word_match', 'memory', 'speed_challenge', 'word_tunnel', 'word_defense'].includes(def.key);
+  if (needsTranslations && words.filter((w) => w.translations.some(Boolean)).length < def.minWords) {
     return { available: false, reason: "Tarjimali so'zlar yetarli emas" };
   }
   return { available: true, reason: null };

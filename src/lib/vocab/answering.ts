@@ -15,6 +15,9 @@ export interface Verdict {
   totalParts?: number;
 }
 
+/** Longest typed answer that is graded at all (the session stores at most 200 characters too). */
+export const MAX_TYPED_CHARS = 200;
+
 function normSentence(s: string): string {
   return normalizeForCompare(String(s || ''))
     .replace(/[.,!?;:"“”()]/g, '')
@@ -30,11 +33,15 @@ export function validateAnswer(q: GameQuestion, raw: unknown): Verdict {
       return { isCorrect: id !== '' && id === q.answer };
     }
     case 'typed': {
+      // No typed answer is anywhere near 200 characters; refusing oversized input up front keeps one
+      // request from costing seconds of CPU (normalising + Levenshtein over megabytes).
+      if (typeof raw === 'string' && raw.length > MAX_TYPED_CHARS) return { isCorrect: false };
       const typed = normalizeForCompare(typeof raw === 'string' ? raw : '');
       if (!typed) return { isCorrect: false };
       const accepted = q.accepted || [];
       if (accepted.includes(typed)) return { isCorrect: true };
-      const near = accepted.some((a) => a.length >= 5 && levenshtein(typed, a) === 1);
+      // "near" means exactly one edit, which is only possible when the lengths differ by ≤ 1.
+      const near = accepted.some((a) => a.length >= 5 && Math.abs(a.length - typed.length) <= 1 && levenshtein(typed, a) === 1);
       return { isCorrect: false, near };
     }
     case 'arrange': {

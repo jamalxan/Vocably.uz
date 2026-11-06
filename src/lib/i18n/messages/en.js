@@ -180,6 +180,7 @@ const en = {
   'game.kind.spell_drop': 'Type it in English',
   'game.kind.image_word': 'Find the word that matches the picture',
   'game.kind.word_image': 'Choose the picture that matches the word',
+  'game.kind.type_definition': 'Type the word for the definition',
   'game.notFound': 'Game not found.',
   'game.startError': 'Could not start the game',
   'game.resultError': 'Failed to get the result',

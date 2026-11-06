@@ -9,8 +9,11 @@ import {
   getGame,
   tierAllows,
   toClientQuestion,
+  typedAcceptedForWord,
   type GameKey,
 } from './games';
+import { validateAnswer } from './answering';
+import { normalizeForCompare } from '../textCompare';
 import { DIFFICULTIES } from './config';
 import { seededRandom } from './rng';
 import { BARE_WORDS, SAMPLE_WORDS } from './fixtures';
@@ -279,5 +282,125 @@ describe('vocably_run (TZ 2.0 flagship)', () => {
   it('easy asks Uzbek meanings; harder levels mix in definitions', () => {
     expect(build('vocably_run', 'easy').questions.every((q) => q.kind === 'mc_word')).toBe(true);
     expect(new Set(build('vocably_run', 'hard').questions.map((q) => q.kind))).toEqual(new Set(['mc_word', 'definition']));
+  });
+});
+
+describe('typing flagship games (word_tunnel, word_defense)', () => {
+  const TYPED_KEYS: GameKey[] = ['word_tunnel', 'word_defense'];
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  it.each(TYPED_KEYS)('%s: typed questions, one per word, hints by difficulty, no answer in the client view', (key) => {
+    for (const d of DIFFICULTIES) {
+      const s = build(key, d, `${key}-${d}`);
+      expect(s.questions.length).toBeGreaterThanOrEqual(Math.min(SAMPLE_WORDS.length, getGame(key)!.minWords));
+      expect(s.questions.length).toBeLessThanOrEqual(getGame(key)!.questionCount[d]);
+      expect(new Set(s.questions.map((q) => q.wordId)).size).toBe(s.questions.length);
+      expect(s.shortfall).toBeUndefined();
+      for (const q of s.questions) {
+        expect(q.inputType).toBe('typed');
+        expect(['spell_drop', 'type_definition']).toContain(q.kind);
+        expect(q.secondarySkill).toBe('recall');
+        expect(validateAnswer(q, q.correctDisplay).isCorrect).toBe(true);
+        const c = toClientQuestion(q) as Record<string, unknown>;
+        for (const f of ['answer', 'accepted', 'word', 'wordId', 'correctDisplay', 'explanation', 'categoryId']) expect(c[f]).toBeUndefined();
+        const prompt = normalizeForCompare(q.prompt);
+        for (const a of q.accepted!) expect(prompt).not.toMatch(new RegExp(`\\b${escape(a)}\\b`));
+        if (d === 'easy') {
+          expect(c.answerLength).toBe(q.accepted![0].length);
+          expect(String(c.hint).charAt(0)).toBe(q.accepted![0].charAt(0));
+        } else if (d === 'medium') {
+          expect(c.answerLength).toBe(q.accepted![0].length);
+          expect(c.hint).toBeUndefined();
+        } else {
+          expect(c.answerLength).toBeUndefined();
+          expect(c.hint).toBeUndefined();
+        }
+      }
+      if (d === 'easy' || d === 'medium') expect(s.questions.every((q) => q.kind === 'spell_drop')).toBe(true);
+    }
+  });
+
+  it('hard/expert mix in English definitions with the answer masked', () => {
+    const kinds = new Set(TYPED_KEYS.flatMap((k) => (['hard', 'expert'] as const).flatMap((d) => build(k, d, `mix-${k}-${d}`).questions.map((q) => q.kind))));
+    expect(kinds).toEqual(new Set(['spell_drop', 'type_definition']));
+  });
+
+  it('masks a definition that uses the headword itself', () => {
+    const words = SAMPLE_WORDS.map((w) => ({ ...w, definitionEn: `the quality of being ${w.word}; ${w.word.toUpperCase()}S and more ${w.word}` }));
+    for (const seed of ['m1', 'm2', 'm3']) {
+      const s = buildGameSession({ gameKey: 'word_tunnel', difficulty: 'expert', words, rand: seededRandom(seed) });
+      for (const q of s.questions.filter((x) => x.kind === 'type_definition')) {
+        expect(normalizeForCompare(q.prompt)).not.toMatch(new RegExp(`\\b${escape(q.accepted![0])}`));
+        expect(q.prompt).toContain('_____');
+      }
+    }
+  });
+
+  it('accepts fair spellings of the headword', () => {
+    expect(typedAcceptedForWord('long-term')).toEqual(['long-term', 'long term', 'longterm']);
+    expect(typedAcceptedForWord('look after (sb)')).toEqual(['look after', 'look-after', 'look after sb', 'look after (sb)']);
+    expect(typedAcceptedForWord('to improve')).toContain('improve');
+    expect(typedAcceptedForWord('affect / influence')).toEqual(expect.arrayContaining(['affect', 'influence']));
+    expect(typedAcceptedForWord("Don't")).toEqual(['dont']);
+    expect(typedAcceptedForWord('Reliable')).toEqual(['reliable']);
+  });
+
+  it('treats sb/sth as placeholders and bracketed parts as optional, never as answers of their own', () => {
+    const rely = typedAcceptedForWord('rely on sb/sth');
+    expect(rely[0]).toBe('rely on');
+    expect(rely).toEqual(expect.arrayContaining(['rely on', 'rely on sb', 'rely on sth', 'rely on sb/sth']));
+    expect(rely).not.toContain('sth');
+    expect(rely).not.toContain('sb');
+    expect(typedAcceptedForWord('in charge (of)')).toEqual(expect.arrayContaining(['in charge', 'in charge of', 'in charge (of)']));
+    expect(typedAcceptedForWord('(be) responsible for')).toEqual(expect.arrayContaining(['responsible for', 'be responsible for']));
+    expect(typedAcceptedForWord('make (a) decision')).toEqual(expect.arrayContaining(['make decision', 'make a decision']));
+    expect(typedAcceptedForWord('colour/color')).toEqual(expect.arrayContaining(['colour', 'color']));
+    expect(typedAcceptedForWord('look after/for')).toEqual(expect.arrayContaining(['look after', 'look for']));
+    // a slash between numbers or single letters is part of the word, not an alternative
+    expect(typedAcceptedForWord('24/7')).toEqual(['24/7']);
+    expect(typedAcceptedForWord('w/o')).toEqual(['w/o']);
+    // the headword exactly as the verdict shows it is always right, and a typed form is graded by the server
+    for (const word of ['rely on sb/sth', 'in charge (of)', '(be) responsible for', 'make (a) decision', 'look after (sb)']) {
+      const words = SAMPLE_WORDS.map((w, i) => (i === 0 ? { ...w, word } : w));
+      const s = buildGameSession({ gameKey: 'word_tunnel', difficulty: 'hard', words, rand: seededRandom(`ph-${word}`) });
+      const q = s.questions.find((x) => x.wordId === words[0].wordId)!;
+      expect(q).toBeDefined();
+      expect(validateAnswer(q, word).isCorrect).toBe(true);
+      expect(validateAnswer(q, typedAcceptedForWord(word)[0]).isCorrect).toBe(true);
+    }
+    const rq = buildGameSession({ gameKey: 'word_defense', difficulty: 'easy', words: SAMPLE_WORDS.map((w, i) => (i === 0 ? { ...w, word: 'rely on sb/sth' } : w)), rand: seededRandom('rely') }).questions.find((x) => x.wordId === SAMPLE_WORDS[0].wordId)!;
+    expect(validateAnswer(rq, 'rely on').isCorrect).toBe(true);
+    expect(validateAnswer(rq, 'rely on sth').isCorrect).toBe(true);
+    expect(validateAnswer(rq, 'sth').isCorrect).toBe(false);
+    expect(toClientQuestion(rq)).toMatchObject({ answerLength: 'rely on'.length });
+  });
+
+  it('asks one question per answer: duplicated headwords (two decks, "to x" / "x") are asked once', () => {
+    const dupes = [
+      ...SAMPLE_WORDS,
+      { ...SAMPLE_WORDS[0], wordId: 'dup-a', categoryId: 'deck-b', translations: ['boshqa tarjima'] },
+      { ...SAMPLE_WORDS[1], wordId: 'dup-b', word: `to ${SAMPLE_WORDS[1].word}` },
+    ];
+    for (const key of TYPED_KEYS) {
+      for (const seed of ['d1', 'd2', 'd3']) {
+        const s = buildGameSession({ gameKey: key, difficulty: 'expert', words: dupes, rand: seededRandom(`${key}-${seed}`) });
+        const firstForms = s.questions.map((q) => typedAcceptedForWord(q.correctDisplay));
+        for (let i = 0; i < firstForms.length; i++) for (let j = i + 1; j < firstForms.length; j++) expect(firstForms[i].some((f) => firstForms[j].includes(f))).toBe(false);
+      }
+    }
+  });
+
+  it('skips idioms and long phrases instead of asking them as typed recall', () => {
+    const words = SAMPLE_WORDS.map((w, i) => (i === 0 ? { ...w, pos: 'idiom' } : i === 1 ? { ...w, word: 'bite off more than you can chew' } : w));
+    const s = buildGameSession({ gameKey: 'word_tunnel', difficulty: 'easy', words, rand: seededRandom('idiom') });
+    expect(s.questions.map((q) => q.wordId)).not.toContain(words[0].wordId);
+    expect(s.questions.map((q) => q.wordId)).not.toContain(words[1].wordId);
+  });
+
+  it('a small deck gives a short round instead of repeating words', () => {
+    const words = SAMPLE_WORDS.slice(0, 6);
+    const s = buildGameSession({ gameKey: 'word_defense', difficulty: 'expert', words, rand: seededRandom('small') });
+    expect(s.questions.length).toBeLessThanOrEqual(6);
+    expect(new Set(s.questions.map((q) => q.wordId)).size).toBe(s.questions.length);
   });
 });

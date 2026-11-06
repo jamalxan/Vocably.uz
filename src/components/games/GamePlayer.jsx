@@ -17,7 +17,7 @@ const DIFFICULTY_KEYS = ['auto', 'easy', 'medium', 'hard', 'expert'];
 const MODE_KEYS = ['mixed', 'review', 'weak', 'new'];
 const NO_TIMER_KEY = 'vocably-games-no-timer';
 const AUTO_ADVANCE_MS = 1000;
-const KNOWN_KINDS = new Set(['mc_meaning', 'mc_word', 'definition', 'syn_ant', 'fill_choice', 'fill_typed', 'listen_choose', 'listen_type', 'sentence_build', 'match_pairs', 'memory_pairs', 'spell_drop', 'image_word', 'word_image']);
+const KNOWN_KINDS = new Set(['mc_meaning', 'mc_word', 'definition', 'syn_ant', 'fill_choice', 'fill_typed', 'listen_choose', 'listen_type', 'sentence_build', 'match_pairs', 'memory_pairs', 'spell_drop', 'image_word', 'word_image', 'type_definition']);
 
 const REDUCED_QUERY = '(prefers-reduced-motion: reduce)';
 function subscribeReduced(cb) {

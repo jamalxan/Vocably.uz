@@ -8,6 +8,23 @@ import { TIER_CONFIG, SUBSCRIPTION_TIERS } from '@/lib/entitlements';
 // redirect orqali topadi (2026-10-16 jonli tekshiruvda aniqlandi).
 export const SITE_URL = 'https://www.vocably.uz';
 export const SITE_NAME = 'Vocably';
+
+/**
+ * A page's full OpenGraph block. Next replaces the root layout's `openGraph` object instead of
+ * merging it, so a page that sets only title/description would share links without an image, url,
+ * type, site name or locale.
+ */
+export function pageOpenGraph({ path, title, description }) {
+  return {
+    url: path,
+    title,
+    description,
+    type: 'website',
+    siteName: SITE_NAME,
+    locale: 'uz_UZ',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: SITE_NAME }],
+  };
+}
 export const SITE_TAGLINE = "O'zbek tilida so'zlashuvchilar uchun ingliz tili va IELTS tayyorgarlik platformasi";
 export const SITE_SUMMARY_EN =
   'Vocably is an English-learning and IELTS preparation platform for Uzbek speakers: a spaced-repetition (SRS) vocabulary notebook, ' +
