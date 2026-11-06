@@ -261,15 +261,19 @@ Timing and grading (all from the anti-cheat and builder reviews)
 - **Pauses** stop only the round clock, never the answer clock. The pause overlay hides the prompt,
   and paste/drop are blocked in the input, so looking a word up never earns an "easy" SRS rating.
 - **Verdict delivery**: `gradeTyped` re-flushes the queue until its own `qid#attempt` comes back
-  (bounded). `completeRound` drains the queue before `complete`. `answerQueue.js` is unchanged.
+  (bounded). `completeRound` drains the queue before `complete`, and never completes over answers
+  still pending. Revised by the review fixes in §14: an 8 s request limit (`createAnswerQueue`'s
+  optional `requestTimeoutMs`), retries, a spinner budget with a background save, and a settle wait
+  before the summary.
 - **One question per word** in `word_tunnel`/`word_defense`. Every verdict reveals `correctDisplay`,
   so a repeated word would be answered by copying. minWords: Tunnel 5, Defense 8.
 - **Empty submissions**: Enter on an empty field does nothing, and a second submit within 300 ms is
   ignored. Only the explicit Skip control sends an empty answer, and it unlocks after
   `minPlausibleMs(prompt)`. Unanswered prompts at time-up / HP 0 are left unanswered, not sent.
 - **Typed accepted forms** for the new games: hyphen / space / no-space variants, a leading "to ",
-  "(sb)/(sth)" parentheticals and "a / b" alternatives are accepted. Idioms and headwords of more
-  than 3 tokens are excluded. Near misses (1 edit) stay wrong, the same as `word_drop` today.
+  "(sb)/(sth)" parentheticals and "a / b" alternatives are accepted. Idioms are excluded, and so
+  are headwords whose primary typed form has more than 3 words or does not fit the 40-character
+  input, and headwords whose raw text is over 60 characters (§14). Near misses (1 edit) stay wrong, the same as `word_drop` today.
 - **Server hardening**: typed answers longer than 200 characters are wrong without grading, and
   Levenshtein runs only when the lengths differ by ≤ 1 (a 3 MB answer used to cost ~10 s of CPU).
 - **Cyrillic input** (common keyboard layout in Uzbekistan) blocks submit and shows "switch the
@@ -387,3 +391,69 @@ Scope
   Chromium composites on the CPU, and at the Pixel 7's 2.625× a keystroke took seconds, so the
   targeted enemy reached the base mid-word. Real devices with a software renderer get 2D from
   detection; only the forced `?render=low` QA path runs 3D on SwiftShader.
+
+## 14. Review fixes before merge (PR #30, 2026-11-06)
+
+An independent review found eight problems, each confirmed by a second agent before it was fixed.
+
+- **Saving a signed-in round** (`useFlagshipRound.js`):
+  - Every request of the round (each answer flush, complete) is aborted after 8 s, using
+    AbortController. An aborted request is an ordinary non-fatal failure, and its answers stay
+    queued.
+  - The drain tries a failed flush 3 times per stall, 600 ms and then 1200 ms apart, as
+    GamePlayer does. A fatal reply (404, 409 or 410) ends the drain.
+  - Answers still pending after those tries are never completed over: a completed session
+    refuses every later answer with 409, so they would be lost for good. Instead the result
+    screen says the result has not reached the server and offers "Qayta yuborish" (send again).
+  - The server's complete is idempotent: a second call returns the finalized result. So it is
+    retried once after a dropped connection or a 5xx.
+  - One save runs per round (`round.sync`). "Send again" joins a save that is still running.
+- **Finishing spinner budget**: the spinner stays up at most 8 s from the moment `finish()`
+  starts, counting the settle wait below, and the save always gets at least 2 s. After that the
+  result shows without XP and with the send-again notice, and the save carries on in the
+  background. Its outcome is merged into the result when it lands, if that result is still the one
+  shown.
+- **Ending a round settles first**:
+  - On every ending, `finish()` waits for verdicts still held or in flight before it makes the
+    summary. The wait is bounded by `gradeTimeoutMs + 500 ms`, the same as the time-up wait.
+  - Meanwhile a verdict changes only the score; `s.closed` then marks the summary as final.
+  - So pressing "End" right after a shot counts that shot in the score, accuracy, missed list,
+    share card and the guest's saved words.
+- **WebGL context loss** is handled like the watchdog's last step: the round moves to 2D, shows a
+  notice ("3D grafika to'xtadi — 2D rejimda davom etamiz."), and the intro and result screens offer
+  "Try 3D again". Unlike that step, the stored render preference is left alone, because a context
+  loss can be transient.
+- **No prompt shows another question's answer**:
+  - Once a typing round's questions are final, every other question's headword and accepted forms
+    are masked in each `type_definition` prompt (`maskOtherAnswers`).
+  - A prompt left with fewer than 6 letters is asked by its meaning instead, or dropped.
+  - This runs before the session is stored, so the stored prompt and the client's prompt are the
+    same string. The server's plausibility floor and the client's hold therefore agree.
+  - `maskWordIn` turns curly apostrophes (’ ‘ ʼ ʻ and the backtick) into a straight one in both the
+    text and the word first. Enriched definitions use curly apostrophes ("o’clock"), and without
+    this an answer such as "o'clock" stayed visible.
+- **Typed forms, revised** (`typedForms.ts`; this extends the §13 list):
+  - **Cost**: brackets are found with one linear scan. A headword over 80 characters is accepted
+    only as written, without parsing. `typeableWord` refuses a raw headword over 60 characters
+    before any parsing. It then asks only for a primary typed form of at most 3 words that fits the
+    40-character answer input. A typing round works out forms only for words it can ask. Before
+    this, a 100 KB bracketed headword took a typing-game start 32 s.
+  - **Optional letters**: a bracket that touches a letter on both sides is part of the word. Both
+    spellings are accepted, the bracket-free one first: "colo(u)r" → "color", "colour";
+    "judg(e)ment" → "judgment", "judgement".
+  - A bracket that touches a letter on one side only gets the joined reading first, then the spaced
+    one: "(un)able" → "able", "unable", "un able"; "interested(in)" → "interestedin",
+    "interested in".
+  - A word bracket with a slash picks one part: "organi(s/z)e" → "organise", "organize".
+  - A bracket holding a placeholder, or a space, is always read as whole words: "look after(sb)"
+    reads like "look after (sb)".
+  - **Labels**: "[…]" is dropped ("ascertain [formal]" → "ascertain").
+  - **Phrase alternatives**: a bare slash splits whole phrases only when the phrases are parallel.
+    Every side must have 2 or more typed words, and all sides must share their first word or their
+    last word: "deal with/cope with", "kind of/sort of", "look after/look for". Any other slash is
+    read word by word, so "get on/along with" → "get on with", "get along with", and never
+    "get on" alone.
+  - **Known gaps**:
+    - Phrase pairs that share no word ("come across/run into") keep the word-by-word reading, and
+      only the headword exactly as written is right for them.
+    - "in spite of/despite" accepts only "in spite of", and the headword as written.

@@ -8,6 +8,8 @@ export class ApiError extends Error {
   }
 }
 
+const networkError = () => new ApiError("Internet aloqasi yo'q. Ulanishni tekshiring.", { status: 0, code: 'network' });
+
 async function jsonFetch(url, options = {}) {
   let res;
   try {
@@ -17,7 +19,7 @@ async function jsonFetch(url, options = {}) {
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     });
   } catch {
-    throw new ApiError("Internet aloqasi yo'q. Ulanishni tekshiring.", { status: 0, code: 'network' });
+    throw networkError(); // also an aborted request (options.signal)
   }
   let data = null;
   try {
@@ -25,16 +27,23 @@ async function jsonFetch(url, options = {}) {
   } catch {
     // bo'sh/yaroqsiz JSON
   }
+  // Aborted while the body was still arriving: a dropped connection too, not an empty success.
+  if (options.signal?.aborted) throw networkError();
   if (!res.ok) throw new ApiError(data?.error || 'Xatolik yuz berdi', { status: res.status, code: data?.code || '', data });
   return data;
 }
+
+/** Adds an optional AbortSignal to a request; without one the request is exactly as before. */
+const withSignal = (init, signal) => (signal ? { ...init, signal } : init);
 
 export const getGames = () => jsonFetch('/api/games');
 export const getGamificationProfile = () => jsonFetch('/api/gamification/profile');
 export const getActiveSession = (key) => jsonFetch(`/api/games/${encodeURIComponent(key)}/active`);
 export const startGame = (key, body) => jsonFetch(`/api/games/${encodeURIComponent(key)}/start`, { method: 'POST', body: JSON.stringify(body || {}) });
-export const sendAnswers = (sessionId, answers) => jsonFetch(`/api/games/sessions/${sessionId}/answer`, { method: 'POST', body: JSON.stringify({ answers }) });
-export const completeGame = (sessionId) => jsonFetch(`/api/games/sessions/${sessionId}/complete`, { method: 'POST', body: '{}' });
+// `opts.signal` (optional) aborts the request; it then fails like a dropped connection (status 0).
+export const sendAnswers = (sessionId, answers, { signal } = {}) =>
+  jsonFetch(`/api/games/sessions/${sessionId}/answer`, withSignal({ method: 'POST', body: JSON.stringify({ answers }) }, signal));
+export const completeGame = (sessionId, { signal } = {}) => jsonFetch(`/api/games/sessions/${sessionId}/complete`, withSignal({ method: 'POST', body: '{}' }, signal));
 export const abandonGame = (sessionId) => jsonFetch(`/api/games/sessions/${sessionId}/abandon`, { method: 'POST', body: '{}' });
 export const getWeakWords = (limit = 100) => jsonFetch(`/api/vocabulary/weak?limit=${limit}`);
 export const getPlan = (minutes) => jsonFetch(`/api/vocabulary/plan${minutes ? `?minutes=${minutes}` : ''}`);

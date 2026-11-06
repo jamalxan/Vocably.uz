@@ -11,10 +11,13 @@ import {
   toClientQuestion,
   typedAcceptedForWord,
   type GameKey,
+  type GameWord,
 } from './games';
 import { validateAnswer } from './answering';
+import { minPlausibleMs } from './antiCheat';
 import { normalizeForCompare } from '../textCompare';
-import { DIFFICULTIES } from './config';
+import { typedFloorMs } from '../flagship/typing';
+import { DIFFICULTIES, type Difficulty } from './config';
 import { seededRandom } from './rng';
 import { BARE_WORDS, SAMPLE_WORDS } from './fixtures';
 
@@ -397,10 +400,235 @@ describe('typing flagship games (word_tunnel, word_defense)', () => {
     expect(s.questions.map((q) => q.wordId)).not.toContain(words[1].wordId);
   });
 
+  it('skips a word whose typed form does not fit the 40-character answer input', () => {
+    // 3 words, so the word count allows it, but 45 characters cannot be typed into the input
+    // (TypingInput's maxLength, flagship/typing.js TYPED_MAX). A form that fits is still asked.
+    const tooLong = 'internationalisation counterrevolutionaries x';
+    const fits = 'internationalisation counterrevolution';
+    expect(tooLong.length).toBeGreaterThan(40);
+    expect(fits.length).toBeLessThanOrEqual(40);
+    for (const [word, asked] of [
+      [tooLong, false],
+      [fits, true],
+    ] as const) {
+      const words = SAMPLE_WORDS.map((w, i) => (i === 0 ? { ...w, word, pos: 'noun' } : w));
+      for (const seed of ['a', 'b', 'c']) {
+        const s = buildGameSession({ gameKey: 'word_tunnel', difficulty: 'easy', words, rand: seededRandom(`fit-${seed}`) });
+        if (!asked) expect(s.questions.map((q) => q.wordId)).not.toContain(words[0].wordId);
+        else if (s.questions.some((q) => q.wordId === words[0].wordId)) return; // asked at least once: enough
+      }
+      if (asked) throw new Error('a 40-character typed form should still be asked');
+    }
+  });
+
   it('a small deck gives a short round instead of repeating words', () => {
     const words = SAMPLE_WORDS.slice(0, 6);
     const s = buildGameSession({ gameKey: 'word_defense', difficulty: 'expert', words, rand: seededRandom('small') });
     expect(s.questions.length).toBeLessThanOrEqual(6);
     expect(new Set(s.questions.map((q) => q.wordId)).size).toBe(s.questions.length);
+  });
+
+  /** SAMPLE_WORDS with the first headword replaced; the question asked for it in one round. */
+  const withWord = (word: string): GameWord[] => SAMPLE_WORDS.map((w, i) => (i === 0 ? { ...w, word } : w));
+  const questionFor = (key: GameKey, difficulty: Difficulty, words: GameWord[], seed: string) =>
+    buildGameSession({ gameKey: key, difficulty, words, rand: seededRandom(seed) }).questions.find((x) => x.wordId === words[0].wordId);
+
+  it('grades both spellings of an optional letter right and hints the bracket-free one', () => {
+    for (const [word, short, long] of [
+      ['colo(u)r', 'color', 'colour'],
+      ['behavio(u)r', 'behavior', 'behaviour'],
+      ['judg(e)ment', 'judgment', 'judgement'],
+      ['travel(l)er', 'traveler', 'traveller'],
+      ['(un)able', 'able', 'unable'],
+    ]) {
+      const q = questionFor('word_tunnel', 'easy', withWord(word), `opt-${word}`)!;
+      expect(q, word).toBeDefined();
+      for (const typed of [short, long, word]) expect(validateAnswer(q, typed), typed).toEqual({ isCorrect: true });
+      expect(validateAnswer(q, `${short}x`).isCorrect).toBe(false);
+      const c = toClientQuestion(q);
+      expect(c.answerLength).toBe(short.length);
+      expect(String(c.hint).charAt(0)).toBe(short.charAt(0));
+    }
+    // a [label] is not typed: "ascertain [formal]" is answered "ascertain"
+    const label = questionFor('word_defense', 'medium', withWord('ascertain [formal]'), 'label')!;
+    expect(validateAnswer(label, 'ascertain').isCorrect).toBe(true);
+    expect(validateAnswer(label, 'ascertain [formal]').isCorrect).toBe(true);
+    expect(toClientQuestion(label).answerLength).toBe('ascertain'.length);
+  });
+
+  it('counts the words a player types: an optional letter is not a word of its own', () => {
+    // 4 tokens as written, but "labor force survey" is 3 typed words, so it is asked
+    const q = questionFor('word_tunnel', 'easy', withWord('labo(u)r force survey'), 'typed-words')!;
+    expect(q).toBeDefined();
+    expect(validateAnswer(q, 'labour force survey').isCorrect).toBe(true);
+    expect(toClientQuestion(q).answerLength).toBe('labor force survey'.length);
+  });
+
+  it('grades each phrase of a multi-word slash alternative right, never a lone word of it', () => {
+    for (const [word, a, b] of [
+      ['deal with/cope with', 'deal with', 'cope with'],
+      ['kind of/sort of', 'kind of', 'sort of'],
+      ['get up/wake up', 'get up', 'wake up'],
+      ['look for/search for', 'look for', 'search for'],
+    ]) {
+      const q = questionFor('word_defense', 'medium', withWord(word), `alt-${word}`)!;
+      expect(validateAnswer(q, a).isCorrect, a).toBe(true);
+      expect(validateAnswer(q, b).isCorrect, b).toBe(true);
+      expect(toClientQuestion(q).answerLength).toBe(a.length);
+    }
+    const look = questionFor('word_tunnel', 'medium', withWord('look after/for'), 'alt-look')!;
+    expect(validateAnswer(look, 'look after').isCorrect).toBe(true);
+    expect(validateAnswer(look, 'look for').isCorrect).toBe(true);
+    expect(validateAnswer(look, 'for').isCorrect).toBe(false);
+  });
+
+  it('grades a mid-phrase word alternative and a word bracket by the whole word, never a fragment', () => {
+    // [headword, right answers, fragments that stay wrong, primary form (answerLength)]
+    const cases: Array<[string, string[], string[], string]> = [
+      ['get on/along with', ['get on with', 'get along with'], ['get on', 'along with'], 'get on with'],
+      ['a great/good deal', ['a great deal', 'a good deal'], ['a great', 'good deal'], 'a great deal'],
+      ['take part/place in', ['take part in', 'take place in'], ['take part', 'place in'], 'take part in'],
+      ['put someone/something off', ['put someone off', 'put something off'], ['put someone', 'something off'], 'put someone off'],
+      ['organi(s/z)e', ['organise', 'organize'], ['ze', 'organie', 'organis'], 'organise'],
+      ['some(one/thing)', ['someone', 'something'], ['some', 'thing'], 'someone'],
+      ['look after(sb)', ['look after', 'look after sb'], ['look aftersb'], 'look after'],
+      ['interested(in)', ['interested', 'interested in'], [], 'interested'],
+      ['make(a) decision', ['make decision', 'make a decision'], [], 'make decision'],
+    ];
+    for (const [word, right, wrong, primary] of cases) {
+      const q = questionFor('word_defense', 'medium', withWord(word), `frag-${word}`)!;
+      expect(q, word).toBeDefined();
+      for (const typed of right) expect(validateAnswer(q, typed).isCorrect, `${word}: ${typed}`).toBe(true);
+      for (const typed of wrong) expect(validateAnswer(q, typed).isCorrect, `${word}: ${typed}`).toBe(false);
+      expect(toClientQuestion(q).answerLength, word).toBe(primary.length);
+    }
+    // typed out in full these are 4 words, so they stay out of the typing games (as before)
+    for (const word of ['in the long/short term', 'take someone/something for granted', 'at the end/beginning of', "make up one's/your mind"]) {
+      expect(questionFor('word_tunnel', 'easy', withWord(word), `long-${word}`), word).toBeUndefined();
+    }
+  });
+
+  it('a mid-phrase word alternative does not block a card for one of its fragments', () => {
+    const deck: GameWord[] = [
+      { wordId: 'g1', categoryId: 'c1', word: 'get on/along with', translations: ['chiqishmoq'] },
+      { wordId: 'g2', categoryId: 'c1', word: 'get on', translations: ['muvaffaqiyat qozonmoq'] },
+      ...SAMPLE_WORDS,
+    ];
+    for (const key of TYPED_KEYS) {
+      const ids = buildGameSession({ gameKey: key, difficulty: 'medium', words: deck, rand: seededRandom(`frag-overlap-${key}`) }).questions.map((q) => q.wordId);
+      expect(ids).toEqual(expect.arrayContaining(['g1', 'g2']));
+    }
+  });
+
+  it('one question per answer also across optional letters and phrase alternatives', () => {
+    const words: GameWord[] = [
+      ...SAMPLE_WORDS,
+      { ...SAMPLE_WORDS[2], wordId: 'o1', word: 'colo(u)r', translations: ['rang'] },
+      { ...SAMPLE_WORDS[3], wordId: 'o2', word: 'colour', translations: ['tus'] },
+      { ...SAMPLE_WORDS[4], wordId: 'o3', word: 'deal with/cope with', translations: ['bardosh bermoq'] },
+      { ...SAMPLE_WORDS[5], wordId: 'o4', word: 'cope with', translations: ['uddalamoq'] },
+    ];
+    for (const key of TYPED_KEYS) {
+      const ids = buildGameSession({ gameKey: key, difficulty: 'expert', words, rand: seededRandom(`overlap-${key}`) }).questions.map((q) => q.wordId);
+      expect(ids.filter((id) => id === 'o1' || id === 'o2')).toHaveLength(1);
+      expect(ids.filter((id) => id === 'o3' || id === 'o4')).toHaveLength(1);
+    }
+  });
+
+  it('skips a huge bracketed headword without parsing it, so starting a round stays fast', () => {
+    const words = SAMPLE_WORDS.slice(0, 5).map((w, i) => (i === 0 ? { ...w, word: 'a('.repeat(51_200) } : w)); // 100 KB
+    for (const key of TYPED_KEYS) {
+      const t0 = performance.now();
+      const s = buildGameSession({ gameKey: key, difficulty: 'expert', words, rand: seededRandom(`huge-${key}`) });
+      expect(performance.now() - t0).toBeLessThan(250);
+      expect(s.questions).toHaveLength(4);
+      expect(s.questions.map((q) => q.wordId)).not.toContain(words[0].wordId);
+    }
+  });
+
+  it("a definition never shows another question's answer, and the client gets the stored prompt", () => {
+    // "scarce" is defined as "not available in large quantities"; Defense shows every live prompt at once.
+    const deck: GameWord[] = [...SAMPLE_WORDS, { wordId: 'w-av', categoryId: 'c1', word: 'available', translations: ['mavjud'] }];
+    let definitions = 0;
+    let scarce = 0;
+    for (const key of TYPED_KEYS) {
+      for (const d of ['hard', 'expert'] as const) {
+        for (let seed = 0; seed < 50; seed++) {
+          const s = buildGameSession({ gameKey: key, difficulty: d, words: deck, rand: seededRandom(`leak-${key}-${d}-${seed}`) });
+          expect(s.questions.map((q) => q.qid)).toEqual(s.questions.map((_, i) => `q${i + 1}`));
+          for (const q of s.questions) {
+            // the server's plausibility floor counts the stored prompt; the client counts the one it gets
+            const client = toClientQuestion(q);
+            expect(client.prompt).toBe(q.prompt);
+            expect(typedFloorMs(client.prompt)).toBe(minPlausibleMs({ inputType: q.inputType, promptLength: q.prompt.length, units: 1 }));
+            if (q.kind !== 'type_definition') continue;
+            definitions += 1;
+            if (q.wordId === 'w7') {
+              scarce += 1;
+              expect(q.prompt).toBe('not _____ in large quantities');
+            }
+            const prompt = normalizeForCompare(q.prompt);
+            for (const other of s.questions) {
+              if (other === q) continue;
+              for (const a of other.accepted!) expect(prompt, `${q.qid} shows "${a}"`).not.toMatch(new RegExp(`\\b${escape(a)}\\b`));
+            }
+          }
+        }
+      }
+    }
+    expect(definitions).toBeGreaterThan(100);
+    expect(scarce).toBeGreaterThan(10);
+  });
+
+  it('masks an answer written with another apostrophe than the definition uses', () => {
+    // AI-written definitions often have a curly apostrophe, headwords a straight one (or the other way
+    // round). The literals below use U+2019 (’) and, in the o'clock definition, U+02BC (ʼ).
+    for (const [clock, noonDefinition] of [
+      ["o'clock", 'twelve o’clock in the middle of the day'],
+      ['o’clock', "twelve o'clock in the middle of the day"],
+    ]) {
+      const deck: GameWord[] = [
+        { wordId: 'a1', categoryId: 'c1', word: clock, translations: ['soat'], definitionEn: 'used after a number to say the time: five oʼclock' },
+        { wordId: 'a2', categoryId: 'c1', word: 'noon', translations: ['peshin'], definitionEn: noonDefinition },
+        ...SAMPLE_WORDS,
+      ];
+      let own = 0;
+      let other = 0;
+      for (const key of TYPED_KEYS) {
+        for (let seed = 0; seed < 30; seed++) {
+          const s = buildGameSession({ gameKey: key, difficulty: 'expert', words: deck, rand: seededRandom(`apos-${key}-${seed}`) });
+          const clockAsked = s.questions.some((q) => q.wordId === 'a1');
+          for (const q of s.questions) {
+            expect(toClientQuestion(q).prompt).toBe(q.prompt);
+            if (q.kind !== 'type_definition' || (q.wordId === 'a2' && !clockAsked)) continue;
+            if (q.wordId === 'a1') own += 1;
+            if (q.wordId === 'a2') other += 1;
+            expect(normalizeForCompare(q.prompt), `${clock}: ${q.prompt}`).not.toMatch(/\boclock/);
+          }
+        }
+      }
+      expect(own).toBeGreaterThan(5);
+      expect(other).toBeGreaterThan(5);
+    }
+  });
+
+  it('a definition masked (almost) blank falls back to the meaning, or the word is not asked', () => {
+    const deck: GameWord[] = [
+      // the definition is only other answers: asked by its meaning instead
+      { wordId: 'w-keep', categoryId: 'c1', word: 'keep up', translations: ['davom ettirmoq'], definitionEn: 'maintain; generate' },
+      // nothing is left and there is no meaning to ask instead: not asked
+      { wordId: 'w-bare', categoryId: 'c1', word: 'carry on', translations: [], definitionEn: 'to maintain and generate' },
+      ...SAMPLE_WORDS,
+    ];
+    for (const key of TYPED_KEYS) {
+      for (const d of DIFFICULTIES) {
+        for (const seed of ['f1', 'f2', 'f3', 'f4']) {
+          const s = buildGameSession({ gameKey: key, difficulty: d, words: deck, rand: seededRandom(`${seed}-${key}-${d}`) });
+          expect(s.questions.find((q) => q.wordId === 'w-keep')).toMatchObject({ kind: 'spell_drop', prompt: 'davom ettirmoq' });
+          expect(s.questions.find((q) => q.wordId === 'w-bare')).toBeUndefined();
+          expect(s.questions.map((q) => q.qid)).toEqual(s.questions.map((_, i) => `q${i + 1}`));
+        }
+      }
+    }
   });
 });

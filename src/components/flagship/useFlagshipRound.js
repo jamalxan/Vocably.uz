@@ -14,6 +14,15 @@ import { gradeGuest } from '@/lib/flagship/typing';
 //  - guest (or a signed-in user with too few words → practice): questions from the public bank,
 //    graded on the device with the server's normalisation; no XP.
 
+/** Every request of a signed-in round (each answer flush, complete) is aborted after this long. */
+export const REQUEST_TIMEOUT_MS = 8000;
+/**
+ * The 'finishing' spinner stays up at most about this long, the wait for verdicts still in flight
+ * included; then the result screen shows and the save carries on in the background.
+ */
+export const FINISH_BUDGET_MS = 8000;
+const MIN_DEADLINE_MS = 2000;
+
 /** Audience, sound/vibration prefs and render tier, detected once per mount. */
 export function useFlagshipAudience(gameKey, onClaimed) {
   const [audience, setAudience] = useState(null); // null (checking) | 'guest' | 'user'
@@ -84,7 +93,10 @@ export async function startRound({ gameKey, audience, toQuestion, guestQuestions
     try {
       const session = await startGame(gameKey, { difficulty: 'auto', mode: 'mixed' });
       const qs = (session.questions || []).map(toQuestion);
-      if (qs.length) return { qs, session, queue: createAnswerQueue(session.sessionId), saveGuest: false, practice: false, reason: null };
+      if (qs.length) {
+        const queue = createAnswerQueue(session.sessionId, { requestTimeoutMs: REQUEST_TIMEOUT_MS });
+        return { qs, session, queue, saveGuest: false, practice: false, reason: null };
+      }
     } catch (e) {
       if (!Object.hasOwn(PRACTICE_REASON, e?.code || '')) throw e;
       reason = PRACTICE_REASON[e.code];
@@ -132,46 +144,127 @@ export function gradeTyped(round, q, typed, responseMs, { timeoutMs = 4000 } = {
   return Promise.race([verdict, timeout]).finally(() => clearTimeout(timer));
 }
 
-/** Sends whatever is still queued (bounded: a dead network must not hold the result screen). */
-async function drain(queue) {
-  for (let i = 0; i < 4 && queue.size; i++) {
-    const res = await queue.flush();
-    if (!res.ok) return;
-  }
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Worth another try: a dropped or timed-out connection (status 0) or a server error. */
+const transient = (e) => e?.status === 0 || e?.status >= 500;
+
+/** completeGame within REQUEST_TIMEOUT_MS (an aborted request fails like a dropped connection). */
+function completeWithLimit(sessionId) {
+  if (typeof AbortController === 'undefined') return completeGame(sessionId);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+  return completeGame(sessionId, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
 }
 
 /**
- * Ends a round. Guests: missed bank words are kept for sign-up. Signed in: drain the queue, complete
- * (XP once, on the server) and use the server's mistake list. Returns { xp, missed, flagged }.
+ * Sends whatever is still queued. A flush that fails for a non-fatal reason (offline, timed out,
+ * 5xx) is tried 3 times per stall, 600 then 1200 ms apart (as GamePlayer.finish does); a fatal
+ * reply (404 / 409 / 410: the session is gone) ends the drain. Resolves to false when answers are
+ * still pending after those tries.
  */
-export async function completeRound(round, missed) {
+async function drain(queue) {
+  let failures = 0;
+  while (queue.size) {
+    const res = await queue.flush();
+    if (res.ok) failures = 0;
+    else if (res.fatal) return true;
+    else if (++failures >= 3) return false;
+    else await wait(600 * failures);
+  }
+  return true;
+}
+
+/**
+ * The save of a signed-in round: drain the queue, then complete (XP once, on the server). Answers
+ * still pending after the drain's tries are not completed over: a completed session refuses every
+ * later answer (409), so they would be lost for good; the result offers "send again" instead
+ * (retry: true). The server's complete is idempotent (a second call returns the finalized result),
+ * so it is retried once on a dropped connection or a server error.
+ */
+async function syncRound(round, list) {
+  const unsaved = { xp: null, flagged: false, missed: list, retry: true };
+  const closed = { xp: null, flagged: false, missed: list, retry: false };
+  if (!(await drain(round.queue))) return unsaved;
+  let r;
+  try {
+    r = await completeWithLimit(round.session.sessionId);
+  } catch (e) {
+    if (!transient(e)) return closed; // 404 / 410: the session expired or was closed, nothing left to save
+    await wait(1200);
+    try {
+      r = await completeWithLimit(round.session.sessionId);
+    } catch (e2) {
+      return transient(e2) ? unsaved : closed;
+    }
+  }
+  const mistakes = Array.isArray(r?.mistakes)
+    ? r.mistakes.map((m) => ({ word: m.correctAnswer || m.word || '', note: m.prompt || m.explanation || '', yours: m.yourAnswer || '' }))
+    : list;
+  return { xp: r?.xp?.earned ?? null, flagged: Boolean(r?.notice), missed: mistakes, retry: false };
+}
+
+/** Starts the round's save, or joins the one still running (never two completes at once). */
+function syncOnce(round, list) {
+  if (!round.sync) {
+    const sync = syncRound(round, list)
+      .catch(() => ({ xp: null, flagged: false, missed: list, retry: false })) // never rejects: the result is still shown
+      .finally(() => {
+        if (round.sync === sync) round.sync = null;
+      });
+    round.sync = sync;
+  }
+  return round.sync;
+}
+
+/**
+ * Ends a round → { xp, flagged, missed, retry }. Guests: missed bank words are kept for sign-up.
+ * Signed in: the round's save (syncRound) and the server's mistake list; retry: true means the
+ * result has not reached the server yet (the result screen offers "send again", which calls this
+ * again and joins a save that is still running). With `deadlineMs` the save is waited for at most
+ * that long: past it this resolves at once with the local list, retry: true and `later` (the save,
+ * still running in the background; it resolves to the same shape).
+ */
+export async function completeRound(round, missed, { deadlineMs = 0 } = {}) {
   if (!round.session) {
     if (round.saveGuest && missed.length) saveGuestMissed(missed.map((m) => m.word));
-    return { xp: null, flagged: false, missed: missed.map((m) => ({ word: m.word, note: m.note || m.prompt || '', yours: m.yours || '' })) };
+    return { xp: null, flagged: false, missed: missed.map((m) => ({ word: m.word, note: m.note || m.prompt || '', yours: m.yours || '' })), retry: false };
   }
-  let xp = null;
-  let flagged = false;
-  let list = missed.map((m) => ({ word: m.word, note: m.prompt || '', yours: m.yours || '' }));
-  try {
-    await drain(round.queue);
-    let r;
-    try {
-      r = await completeGame(round.session.sessionId);
-    } catch (e) {
-      if (e?.status !== 0) throw e;
-      await new Promise((resolve) => setTimeout(resolve, 1200)); // one retry on a dropped connection
-      await drain(round.queue);
-      r = await completeGame(round.session.sessionId);
-    }
-    xp = r?.xp?.earned ?? null;
-    flagged = Boolean(r?.notice);
-    if (Array.isArray(r?.mistakes)) {
-      list = r.mistakes.map((m) => ({ word: m.correctAnswer || m.word || '', note: m.prompt || m.explanation || '', yours: m.yourAnswer || '' }));
-    }
-  } catch {
-    /* the result is still shown; the session expires on its own */
-  }
-  return { xp, flagged, missed: list };
+  const list = missed.map((m) => ({ word: m.word, note: m.prompt || '', yours: m.yours || '' }));
+  const sync = syncOnce(round, list);
+  if (!(deadlineMs > 0)) return sync;
+  let timer;
+  const deadline = new Promise((resolve) => {
+    timer = setTimeout(() => resolve({ xp: null, flagged: false, missed: list, retry: true, later: sync }), deadlineMs);
+  });
+  return Promise.race([sync, deadline]).finally(() => clearTimeout(timer));
+}
+
+/** What is left of FINISH_BUDGET_MS after `elapsedMs` on the finishing spinner, but at least 2 s. */
+export function finishDeadline(elapsedMs) {
+  return Math.max(MIN_DEADLINE_MS, FINISH_BUDGET_MS - Math.max(0, elapsedMs));
+}
+
+/**
+ * Resolves once `done()` is true or `timeoutMs` has passed, whichever comes first (checked at once,
+ * then every `stepMs`). The games use it to let verdicts that are still held or in flight land
+ * before a round's summary is made.
+ */
+export function waitUntil(done, timeoutMs, stepMs = 50) {
+  return new Promise((resolve) => {
+    let poll = 0;
+    let limit = 0;
+    const stop = () => {
+      clearTimeout(poll);
+      clearTimeout(limit);
+      resolve();
+    };
+    const check = () => {
+      if (done()) stop();
+      else poll = setTimeout(check, stepMs);
+    };
+    limit = setTimeout(stop, Math.max(0, timeoutMs));
+    check();
+  });
 }
 
 /**

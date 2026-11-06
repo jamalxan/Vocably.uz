@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Heart, Pause, Play, RotateCcw, Volume2, VolumeX, Smartphone, ArrowRight, Loader2, Crosshair, Box } from 'lucide-react';
+import { Heart, Pause, Play, RotateCcw, Volume2, VolumeX, Smartphone, ArrowRight, Loader2, Crosshair, Box, RefreshCw } from 'lucide-react';
 import useCopy from '@/components/landing/useCopy';
 import {
   DEFENSE,
@@ -28,7 +28,7 @@ import { RUN_BANK, bankEntry } from '@/lib/flagship/runBank';
 import { beep } from '@/lib/flagship/client';
 import { createFpsWatchdog, stepDown, writeRenderPref, readRenderPref, detectRenderTier } from '@/lib/flagship/gpu';
 import { abandonGame } from '@/components/games/api';
-import { useFlagshipAudience, startRound, gradeTyped, completeRound, useVisualViewport } from './useFlagshipRound';
+import { useFlagshipAudience, startRound, gradeTyped, completeRound, useVisualViewport, waitUntil, finishDeadline, FINISH_BUDGET_MS } from './useFlagshipRound';
 import TypingInput, { LetterSlots, keepTypingFocus } from './TypingInput';
 import DefenseScene2D from './DefenseScene2D';
 import SceneBoundary from './SceneBoundary';
@@ -127,6 +127,9 @@ const COPY = {
     corrections: (n) => `${n} ta tuzatish`,
     xp: (n) => `+${n} XP`,
     flagged: 'Bu raund tekshiruv uchun belgilandi — XP berilmadi.',
+    notSaved: 'Natija hali serverga yetmadi. Internet aloqasini tekshirib, qayta yuboring — javoblaringiz shu oynada saqlanib turadi.',
+    resend: 'Qayta yuborish',
+    resending: 'Yuborilmoqda…',
     missedTitle: "Xato qilingan so'zlar",
     yours: 'Siz yozdingiz:',
     noMissed: "Birorta ham xato yo'q — zo'r!",
@@ -139,6 +142,7 @@ const COPY = {
     errorStart: "O'yinni boshlab bo'lmadi",
     claimed: (n) => `Oldingi o'yindagi ${n} ta xato so'z takrorlashga qo'shildi.`,
     lite: "Qurilma sekinlashdi — yengil (2D) rejimga o'tdik.",
+    liteLost: "3D grafika to'xtadi — 2D rejimda davom etamiz.",
     try3d: '3D rejimni qayta sinash',
   },
   en: {
@@ -203,6 +207,9 @@ const COPY = {
     corrections: (n) => `${n} corrections`,
     xp: (n) => `+${n} XP`,
     flagged: 'This round was flagged for review — no XP was awarded.',
+    notSaved: "Your result hasn't reached the server yet. Check your connection and send it again — your answers are kept in this tab.",
+    resend: 'Send again',
+    resending: 'Sending…',
     missedTitle: 'Words you missed',
     yours: 'You typed:',
     noMissed: 'No mistakes at all — great!',
@@ -215,6 +222,7 @@ const COPY = {
     errorStart: 'Could not start the game',
     claimed: (n) => `${n} missed words from your last game were added to your reviews.`,
     lite: 'Your device slowed down — switched to light (2D) mode.',
+    liteLost: '3D graphics stopped — continuing in 2D.',
     try3d: 'Try 3D mode again',
   },
 };
@@ -235,9 +243,10 @@ export default function WordDefense() {
   const [warn, setWarn] = useState('');
   const [hud, setHud] = useState(INITIAL_HUD);
   const [result, setResult] = useState(null);
+  const [resending, setResending] = useState(false); // "send again" of a result the server has not got yet
   const [error, setError] = useState('');
   const [practice, setPractice] = useState(null); // null | 'few_words' | 'limit'
-  const [lite, setLite] = useState(false);
+  const [lite, setLite] = useState(''); // '' | 'slow' (the watchdog's last step) | 'lost' (WebGL context lost)
   const [pref2d, setPref2d] = useState(false);
   const [sayTarget, setSayTarget] = useState('');
   const [sayVerdict, setSayVerdict] = useState('');
@@ -274,10 +283,19 @@ export default function WordDefense() {
     if (next === 'none') {
       writeRenderPref('2d');
       setPref2d(true);
-      setLite(true);
+      setLite('slow');
     }
     g.current.watchdog?.reset(performance.now());
   }, [setTier]);
+
+  // A lost WebGL context counts like the watchdog's last step (design §12): 2D from here on, a
+  // notice, and "try 3D again" on the intro and result screens. The stored preference is left
+  // alone: a context loss can be transient (a GPU reset), unlike a device that is too slow.
+  const onContextLost = useCallback(() => {
+    to2d();
+    setPref2d(true);
+    setLite('lost');
+  }, [to2d]);
 
   const try3d = () => {
     writeRenderPref('auto');
@@ -337,18 +355,36 @@ export default function WordDefense() {
   );
 
   // ---------- round ----------
+  /** Merges a save outcome into the result of round s, only while that result is still the one shown. */
+  const applyDone = useCallback((s, done) => {
+    if (g.current !== s || disposedRef.current) return;
+    setResult((r) => (r ? { ...r, xp: done.xp, flagged: done.flagged, missed: done.missed, retry: done.retry } : r));
+  }, []);
+
   const finish = useCallback(
     async (why) => {
       const s = g.current;
       if (!s.active) return;
       s.active = false;
       cancelAnimationFrame(s.raf);
-      s.hold.release(); // answers still held for the timing floor are queued before the session completes
+      s.hold.release(); // answers still held for the timing floor are sent now; their verdicts are awaited below
+      const now = performance.now();
       const stopped = why === 'stopped' || why === 'expired';
       setPaused(false);
       setOffline(false);
+      // Settle: a shot still held or in flight belongs to this round (the server counts it), so the
+      // summary waits for its verdict, bounded like the time-up / base-fell wait (already spent when
+      // endAt is set). Meanwhile onShot applies only its score. A guest verdict lands in a microtask.
+      if (s.inflight > 0) {
+        setPhase('finishing');
+        await waitUntil(() => s.inflight === 0 || g.current !== s || disposedRef.current, (s.endAt || now) + DEFENSE.gradeTimeoutMs + 500 - now);
+        if (g.current !== s) return;
+      }
+      s.closed = true; // the summary below is final: later verdicts are ignored
+      // Stopped before a single word was sent: no result screen (and no empty session left open).
       if (stopped && !s.state.results.length && !s.inflight) {
         if (s.round.session && why === 'stopped') abandonGame(s.round.session.sessionId).catch(() => {});
+        if (disposedRef.current) return;
         if (why === 'expired') setError(c.expired);
         inputRef.current?.blur();
         setPhase('intro');
@@ -357,11 +393,18 @@ export default function WordDefense() {
       const resolved = s.enemies.filter((e) => !isLive(e)).length + s.resolvedGone;
       const sum = summary(s.state, s.gameMs, { resolved });
       const reason = why === 'expired' ? c.expired : why === 'stopped' ? c.finished : why === 'over' ? c.over : why === 'cleared' ? c.cleared : why === 'held' ? c.held : c.timeUp;
+      const local = sum.missed.map((m) => ({ word: m.word, prompt: m.prompt, yours: m.yours, note: s.round.session ? m.prompt : bankEntry(m.word)?.uz || m.prompt }));
+      s.local = local; // kept for "send again"
+      if (disposedRef.current) {
+        completeRound(s.round, local); // the page was left while the round settled: save it all the same
+        return;
+      }
       beep('end', fxRef.current);
       setPhase('finishing');
-      const local = sum.missed.map((m) => ({ word: m.word, prompt: m.prompt, yours: m.yours, note: s.round.session ? m.prompt : bankEntry(m.word)?.uz || m.prompt }));
-      const done = await completeRound(s.round, local);
-      if (g.current !== s) return;
+      // The spinner (the settle wait included) stays up for FINISH_BUDGET_MS at most; a save that
+      // takes longer goes on in the background and is merged into the result when it lands.
+      const done = await completeRound(s.round, local, { deadlineMs: finishDeadline(performance.now() - now) });
+      if (g.current !== s || disposedRef.current) return;
       inputRef.current?.blur();
       setResult({
         ...sum,
@@ -369,14 +412,31 @@ export default function WordDefense() {
         why,
         xp: done.xp,
         flagged: done.flagged,
+        retry: done.retry,
         guest: s.round.saveGuest,
         practice: s.round.practice ? s.round.reason || 'few_words' : null,
         missed: done.missed,
       });
       setPhase('result');
+      done.later?.then((late) => applyDone(s, late));
     },
-    [c, fxRef]
+    [applyDone, c, fxRef]
   );
+
+  // "Send again" for a result the server has not got yet: the same round's save once more (joining
+  // one still running in the background), merged into the result on screen.
+  const resend = useCallback(async () => {
+    const s = g.current;
+    if (!s.closed || !s.local || s.resending) return;
+    s.resending = true;
+    setResending(true);
+    const done = await completeRound(s.round, s.local, { deadlineMs: FINISH_BUDGET_MS });
+    s.resending = false;
+    if (g.current !== s || disposedRef.current) return;
+    setResending(false);
+    applyDone(s, done);
+    done.later?.then((late) => applyDone(s, late));
+  }, [applyDone]);
 
   const pauseRound = useCallback((isOffline = false) => {
     const s = g.current;
@@ -471,14 +531,20 @@ export default function WordDefense() {
 
   const onShot = useCallback(
     (s, e, answer, responseMs, progress, res) => {
-      if (g.current !== s || !s.active) return;
+      if (g.current !== s || s.closed) return;
       s.inflight = Math.max(0, s.inflight - 1);
+      const word = res.correctDisplay || e.q.word || '';
+      if (!s.active) {
+        // The round is settling (finish waits for the shots in flight): only the score changes, no
+        // scene, HUD, sound or pause. A fatal verdict (the session is gone) just counts as landed.
+        if (!res.fatal) s.state = resolveShot(s.state, { ok: res.ok, qid: e.qid, word, prompt: e.q.prompt, typed: answer, responseMs, progress });
+        return;
+      }
       if (res.fatal) {
         finish('expired');
         return;
       }
       const now = performance.now();
-      const word = res.correctDisplay || e.q.word || '';
       const before = s.state.score;
       s.state = resolveShot(s.state, { ok: res.ok, qid: e.qid, word, prompt: e.q.prompt, typed: answer, responseMs, progress });
       e.pending = false;
@@ -538,7 +604,7 @@ export default function WordDefense() {
     s.lastFrame = now;
     if (sceneRef.current.contextLost) {
       sceneRef.current.contextLost = false;
-      to2d();
+      onContextLost();
     }
     if (!s.pausedAt) {
       if (s.stage === 'countdown') {
@@ -601,7 +667,7 @@ export default function WordDefense() {
       if (tierRef.current !== 'none' && document.visibilityState === 'visible') s.watchdog.sample(now);
     }
     s.raf = requestAnimationFrame(() => tickRef.current());
-  }, [breach, finish, retarget, spawn, syncHud, to2d]);
+  }, [breach, finish, onContextLost, retarget, spawn, syncHud]);
   useEffect(() => {
     tickRef.current = tick;
   }, [tick]);
@@ -653,6 +719,9 @@ export default function WordDefense() {
       lastCountedAt: 0,
       hold: createSendHold(),
       inflight: 0,
+      closed: false, // set by finish once the round has settled and its summary is made
+      local: null, // that summary's missed list, kept for "send again"
+      resending: false,
       nullStreak: 0,
       lastSubmitAt: 0,
       endAt: 0,
@@ -665,7 +734,7 @@ export default function WordDefense() {
     // A context lost between rounds (and not given back) is only noticed here: play this round in 2D.
     if (sceneRef.current.contextLost) {
       sceneRef.current.contextLost = false;
-      if (tierRef.current !== 'none') to2d();
+      if (tierRef.current !== 'none') onContextLost();
     }
     setPractice(round.practice ? round.reason || 'few_words' : null);
     setHud({ ...INITIAL_HUD, countdown: 3 });
@@ -679,9 +748,10 @@ export default function WordDefense() {
     setError('');
     setNotice('');
     setResult(null);
+    setResending(false);
     setPaused(false);
     setOffline(false);
-    setLite(false);
+    setLite('');
     setWarn('');
     // Mount the stage synchronously and focus the input inside this click: iOS only opens the
     // keyboard for a focus() that happens within the user gesture. The HUD is reset in the same
@@ -953,7 +1023,7 @@ export default function WordDefense() {
               <p className={`${compact ? 'py-1' : 'py-3'} text-center text-sm font-semibold text-[#0b1020]/60`}>{phase === 'loading' ? c.loading : phase === 'countdown' ? c.getReady : c.noTarget}</p>
             )}
           </div>
-          {lite && <p className="mx-4 mt-1 text-center text-[11px] text-white/55">{c.lite}</p>}
+          {lite && <p className="mx-4 mt-1 text-center text-[11px] text-white/55">{lite === 'lost' ? c.liteLost : c.lite}</p>}
 
           {/* scene */}
           <div className={`relative flex-1 overflow-hidden select-none ${compact ? 'min-h-12' : 'min-h-28'}`}>
@@ -1030,7 +1100,9 @@ export default function WordDefense() {
         )}
       </div>
 
-      {phase === 'result' && result && <DefenseResult c={c} result={result} onAgain={start} canTry3d={pref2d && tier === 'none'} onTry3d={try3d} />}
+      {phase === 'result' && result && (
+        <DefenseResult c={c} result={result} onAgain={start} canTry3d={pref2d && tier === 'none'} onTry3d={try3d} onResend={resend} resending={resending} />
+      )}
     </div>
   );
 }
@@ -1048,7 +1120,26 @@ function FxToggle({ on, label, Icon, onClick }) {
   );
 }
 
-function DefenseResult({ c, result, onAgain, canTry3d, onTry3d }) {
+/** The result has not reached the server yet: say so, and offer to send it again. */
+function RetryNotice({ c, onResend, resending }) {
+  return (
+    <div className="mt-3 rounded-xl bg-bg border border-border px-3.5 py-2.5 text-xs text-muted">
+      <p role="status">{c.notSaved}</p>
+      <button
+        type="button"
+        onClick={onResend}
+        disabled={resending}
+        aria-busy={resending}
+        className="mt-2 inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border border-border bg-surface text-xs font-semibold text-ink hover:border-accent/40 disabled:opacity-60"
+      >
+        {resending ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={14} aria-hidden="true" />}
+        {resending ? c.resending : c.resend}
+      </button>
+    </div>
+  );
+}
+
+function DefenseResult({ c, result, onAgain, canTry3d, onTry3d, onResend, resending }) {
   const stats = [
     [c.kills, result.kills],
     [c.accuracy, `${result.accuracy}%`],
@@ -1071,6 +1162,7 @@ function DefenseResult({ c, result, onAgain, canTry3d, onTry3d }) {
       </h2>
       <p className="text-sm text-muted">{[c.score, ...extra].join(' · ')}</p>
       {result.flagged && <p role="status" className="mt-3 rounded-xl bg-bg border border-border px-3.5 py-2.5 text-xs text-muted">{c.flagged}</p>}
+      {result.retry && <RetryNotice c={c} onResend={onResend} resending={resending} />}
       {result.practice && (
         <p className="mt-3 rounded-xl bg-bg border border-border px-3.5 py-2.5 text-xs text-muted">
           {result.practice === 'limit' ? c.practiceLimit : c.practiceFewWords}

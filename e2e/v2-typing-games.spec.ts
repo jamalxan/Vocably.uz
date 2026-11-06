@@ -222,6 +222,50 @@ test.describe('Word Defense', () => {
     expect(errors).toEqual([]);
   });
 
+  test('guest, 2D: a miss still held for the timing floor when the round is ended counts in the result', async ({ page }) => {
+    const errors = watchErrors(page);
+    // Even a guest answer is held until the prompt's plausibility floor (over 1 s after the enemy
+    // appeared) before it is graded. Ending the round right after Enter used to make the result
+    // before that verdict landed: no mistakes, and nothing kept for sign-up. Only an End inside that
+    // hold shows it, so the page clock is paused for that part: on a slow machine the hold cannot
+    // run out first and let the test pass without the fix.
+    await page.clock.install(); // the page's timers run in real time until the clock is paused
+    await page.goto('/games/defense?render=2d');
+    const startButton = page.getByRole('button', { name: 'Boshlash' });
+    await expect(startButton).toBeEnabled();
+    // pauseAt takes a wall-clock time and refuses one already past, so aim 1 s ahead: room for a
+    // slow call, and a 1 s jump on the intro screen changes nothing.
+    await page.clock.pauseAt(Date.now() + 1000);
+    await startButton.click();
+    const stage = page.getByRole('region', { name: 'Word Defense' });
+    const input = stage.getByRole('textbox', { name: "Nishondagi so'zni inglizcha yozing" });
+    await expect(input).toBeFocused();
+    // The countdown (3 × 700 ms) and the first spawn (600 ms into play), 100 ms at a time: the enemy
+    // is seen a step or two after it appeared, long before its hold ends (floor + 150 ms, over 1 s).
+    const chip = stage.getByRole('group', { name: 'Nishon' }).getByRole('button').first();
+    for (let i = 0; i < 60 && !(await chip.isVisible()); i++) await page.clock.runFor(100);
+    await expect(chip).toBeVisible();
+    await expect(chip).toBeEnabled();
+
+    await input.pressSequentially('zzzq', { delay: 20 });
+    await input.press('Enter');
+    await expect(chip).toBeDisabled(); // the shot is out: its enemy waits behind the shield for the verdict…
+    await expect(announced(page, /To'g'risi/)).toHaveCount(0); // …which cannot land while the clock is paused
+    await endRound(page);
+    await page.clock.resume(); // the settle wait, and everything after it, runs in real time again
+
+    const result = page.getByRole('heading', { level: 2 });
+    await expect(result).toBeVisible({ timeout: 15_000 });
+    await expect(result).toHaveAccessibleName(/^Raund tugadi\. Ball: 0$/);
+    await expect(page.getByText("Xato qilingan so'zlar")).toBeVisible();
+    await expect(page.getByText('Siz yozdingiz: zzzq')).toBeVisible(); // the missed word is listed with what was typed
+    await expect(page.getByText("Birorta ham xato yo'q")).toHaveCount(0);
+    // …and kept for sign-up (saveGuestMissed, RUN_STORAGE_KEY in src/lib/flagship/run.js)
+    const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('vocably.run.guest.v1') || 'null'));
+    expect(kept?.words).toHaveLength(1);
+    expect(errors).toEqual([]);
+  });
+
   test('signed in: answers carry no verdict, wait for the plausibility floor and are graded on the server', async ({ page }) => {
     const errors = watchErrors(page);
     await loginAs(page, E2E_PHONE);

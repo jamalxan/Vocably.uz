@@ -4,6 +4,9 @@ import { RUN_BANK } from './runBank';
 import { validateAnswer } from '../vocab/answering';
 import { assessSession, minPlausibleMs } from '../vocab/antiCheat';
 import { seededRandom } from '../vocab/rng';
+import { buildGameSession } from '../vocab/games';
+import { typedAcceptedForWord } from '../vocab/typedForms';
+import { SAMPLE_WORDS } from '../vocab/fixtures';
 
 describe('typing games — shared rules', () => {
   it('normalises like the server (case, spaces, apostrophes)', () => {
@@ -103,6 +106,48 @@ describe('typing games — shared rules', () => {
     expect(matchesRevealed('color', 'colour / color')).toBe(true);
     expect(matchesRevealed('look after (sb)', 'look after (sb)')).toBe(true);
     expect(matchesRevealed('sth', 'rely on sb/sth')).toBe(false);
+  });
+
+  it('agrees with the server on optional letters, labels and phrase alternatives', () => {
+    // [headword, right answers, fragments that are wrong on the server, on the device and as a correction]
+    const cases = [
+      ['colo(u)r', ['color', 'colour'], []],
+      ['behavio(u)r', ['behavior', 'behaviour'], []],
+      ['judg(e)ment', ['judgment', 'judgement'], []],
+      ['travel(l)er', ['traveler', 'traveller'], []],
+      ['(un)able', ['able', 'unable'], []],
+      ['ascertain [formal]', ['ascertain'], []],
+      ['deal with/cope with', ['deal with', 'cope with'], []],
+      ['look after/for', ['look after', 'look for'], ['for']],
+      ['get on/along with', ['get on with', 'get along with'], ['get on', 'along with']],
+      ['organi(s/z)e', ['organise', 'organize'], ['ze', 'organie']],
+      ['look after(sb)', ['look after', 'look after sb'], []],
+      ['interested(in)', ['interested', 'interested in'], []],
+    ];
+    for (const [word, right, wrong] of cases) {
+      const words = SAMPLE_WORDS.map((w, i) => (i === 0 ? { ...w, word } : w));
+      const server = buildGameSession({ gameKey: 'word_defense', difficulty: 'medium', words, rand: seededRandom(word) }).questions.find((q) => q.wordId === words[0].wordId);
+      const guest = { word, accepted: typedAcceptedForWord(word) };
+      for (const typed of right) {
+        expect(validateAnswer(server, typed).isCorrect, `${word}: ${typed}`).toBe(true);
+        expect(matchesRevealed(typed, word), `${word}: ${typed}`).toBe(true); // Defense correction
+      }
+      for (const typed of wrong) {
+        expect(validateAnswer(server, typed).isCorrect, `${word}: ${typed}`).toBe(false);
+        expect(matchesRevealed(typed, word), `${word}: ${typed}`).toBe(false);
+      }
+      for (const typed of [...right, ...wrong, word, `${right[0]}x`, 'colr', 'for', '']) {
+        const v = validateAnswer(server, typed);
+        const g = gradeGuest(guest, typed);
+        expect(g.ok).toBe(v.isCorrect);
+        expect(g.near).toBe(!!v.near);
+        if (v.isCorrect) expect(matchesRevealed(typed, word)).toBe(true);
+      }
+    }
+    expect(matchesRevealed('for', 'look after/for')).toBe(false);
+    expect(matchesRevealed('colr', 'colo(u)r')).toBe(false);
+    // guest questions (public bank) carry exactly the forms the server accepts for the same headword
+    for (const q of guestTypedQuestions(RUN_BANK, seededRandom(3), RUN_BANK.length)) expect(q.accepted).toEqual(typedAcceptedForWord(q.word));
   });
 
   it('spots a Cyrillic keyboard layout', () => {
