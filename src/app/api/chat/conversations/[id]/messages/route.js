@@ -13,7 +13,7 @@ import { notifyRecipientViaTelegram } from '@/lib/chatNotify';
 import { loadConversationForUser } from '@/lib/chat/conversationAccess';
 import { serializeReactions } from '@/lib/chat/reactions';
 import { isConversationMuted, previewForMessage } from '@/lib/chatConstants';
-import { isObjectIdString, materializeCopies, partitionSources, planForwardCopies } from '@/lib/chat/forward';
+import { isObjectIdString, materializeCopies, partitionSources, planForwardCopies, publicForwardedFrom } from '@/lib/chat/forward';
 import { isTombstone, rawDraftOf, serializeDraft } from '@/lib/chat/draftServer';
 import { after, NextResponse } from 'next/server';
 
@@ -96,8 +96,8 @@ export async function GET(req, props) {
     // `reactions` (PARITY_PLAN WP7) — har doim massiv, `userId` satr; o'chirilgan xabarda bo'sh.
     const sanitized = messages.map((m) =>
       m.deletedForEveryone
-        ? { ...m, text: '', media: null, stickerId: null, call: null, reactions: [], originalText: undefined }
-        : { ...m, call: m.type === 'call' ? m.call || null : null, reactions: serializeReactions(m.reactions), originalText: undefined }
+        ? { ...m, text: '', media: null, stickerId: null, call: null, reactions: [], forwardedFrom: publicForwardedFrom(m.forwardedFrom), originalText: undefined }
+        : { ...m, call: m.type === 'call' ? m.call || null : null, reactions: serializeReactions(m.reactions), forwardedFrom: publicForwardedFrom(m.forwardedFrom), originalText: undefined }
     );
 
     return NextResponse.json({ messages: sanitized, nextCursor });
@@ -287,7 +287,7 @@ export async function POST(req, props) {
       stickerId: message.stickerId,
       replyTo: message.replyTo,
       albumId: message.albumId,
-      forwardedFrom: message.forwardedFrom,
+      forwardedFrom: publicForwardedFrom(message.forwardedFrom),
       clientMessageId: message.clientMessageId,
       reactions: [],
       createdAt: message.createdAt,

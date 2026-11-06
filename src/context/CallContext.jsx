@@ -45,6 +45,8 @@ const CONNECT_WATCHDOG_MS = 35_000;
 const RECONNECT_WATCHDOG_MS = 20_000;
 const END_FALLBACK_MS = 3_000;
 const ICE_CACHE_MS = 50 * 60 * 1000;
+// Server bergan TTL (ttlSec/iceTtlSec/ttl) dan 60 s kam, lekin 50 daqiqadan oshmaydi — TURN kredensiallari muddati o'tgach relay ishlamaydi.
+const iceCacheTtl = (data) => Math.max(30_000, Math.min(ICE_CACHE_MS, (Number(data?.ttlSec || data?.iceTtlSec || data?.ttl) || 600) * 1000 - 60_000));
 const INVITE_ACK_MS = 5_000;
 
 const noop = () => {};
@@ -154,13 +156,13 @@ export function CallProvider({ children }) {
 
   const fetchIceServers = useCallback(() => {
     const cached = iceCacheRef.current;
-    if (cached && Date.now() - cached.at < ICE_CACHE_MS) return Promise.resolve(cached.iceServers);
+    if (cached && Date.now() - cached.at < (cached.ttlMs || ICE_CACHE_MS)) return Promise.resolve(cached.iceServers);
     if (icePrefetchRef.current) return icePrefetchRef.current;
     icePrefetchRef.current = fetch('/api/chat/ice-servers', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         const iceServers = Array.isArray(data?.iceServers) ? data.iceServers : [];
-        if (data) iceCacheRef.current = { iceServers, at: Date.now() };
+        if (data) iceCacheRef.current = { iceServers, at: Date.now(), ttlMs: iceCacheTtl(data) };
         return iceServers;
       })
       .catch(() => [])
@@ -309,7 +311,7 @@ export function CallProvider({ children }) {
         act({ type: 'GRANT_FAILED', code, message: data.error });
         return;
       }
-      if (Array.isArray(data.iceServers)) iceCacheRef.current = { iceServers: data.iceServers, at: Date.now() };
+      if (Array.isArray(data.iceServers)) iceCacheRef.current = { iceServers: data.iceServers, at: Date.now(), ttlMs: iceCacheTtl(data) };
       act({ type: 'GRANT_OK', callId: data.callId, peer: data.peer || null });
       // Taklif va ICE yig'ish jiringlash paytida boshlanadi; signal'lar call:accept'gacha navbatda.
       const p = makePeer({ polite: false, startOpen: false, iceServers: data.iceServers || [] });
@@ -535,6 +537,8 @@ export function CallProvider({ children }) {
     const offs = [
       on('call:invite', (p = {}) => {
         if (!p.callId) return;
+        // Tugagan qo'ng'iroq ekrani hali yopilmagan (1.5-2.5 s) — bu band emas, yangi taklif qabul qilinadi.
+        if (cur().status === 'ended') act({ type: 'RESET' });
         const next = act({ type: 'INVITE_RECEIVED', ...p });
         if (next.status !== 'incoming' || String(next.callId) !== String(p.callId)) {
           // Bu qurilma band (boshqa qo'ng'iroqda) — avtomatik "band" (CALLS_SPEC §3.2).
@@ -596,6 +600,7 @@ export function CallProvider({ children }) {
         const s = cur();
         if (s.status === 'outgoing') act({ type: 'TIMEOUT', which: 'ring' });
         else if (s.status === 'incoming') act({ type: 'TIMEOUT', which: 'incoming' });
+        else if (s.status === 'accepting') act({ type: 'END', callId: p.callId, reason: 'timeout' });
         else if (s.status === 'inviting') act({ type: 'ACK_FAIL', callId: p.callId, code: 'timeout' });
       }),
       on('call:end', (p = {}) => {

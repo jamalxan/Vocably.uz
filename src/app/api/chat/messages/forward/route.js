@@ -8,7 +8,7 @@ import { sendPushToUser } from '@/lib/webPush';
 import { notifyRecipientViaTelegram } from '@/lib/chatNotify';
 import { loadConversationForUser } from '@/lib/chat/conversationAccess';
 import { isConversationMuted, previewForMessage } from '@/lib/chatConstants';
-import { albumIdMapper, cleanBatchId, materializeCopies, partitionSources, planForwardCopies, validateForwardBody } from '@/lib/chat/forward';
+import { albumIdMapper, cleanBatchId, materializeCopies, partitionSources, planForwardCopies, publicForwardedFrom, validateForwardBody } from '@/lib/chat/forward';
 import { after, NextResponse } from 'next/server';
 
 // POST /api/chat/messages/forward — PARITY_PLAN WP5: tanlangan xabar(lar)ni bitta so'rovda 10 tagacha
@@ -29,7 +29,7 @@ const serialize = (m) => ({
   stickerId: m.stickerId || null,
   replyTo: null,
   albumId: m.albumId || null,
-  forwardedFrom: m.forwardedFrom || null,
+  forwardedFrom: publicForwardedFrom(m.forwardedFrom),
   clientMessageId: m.clientMessageId,
   readAt: m.readAt || null,
   createdAt: m.createdAt,

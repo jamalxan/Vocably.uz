@@ -25,8 +25,9 @@ const isActiveVisible = ({ conversationId, activeConversationId, hidden }) =>
  * o'qilmagan bor edimi; noma'lum bo'lsa oshirilmaydi, keyingi refreshUnread to'g'rilaydi).
  * O'zgarmasa AYNAN shu `state` obyektini qaytaradi (React keraksiz qayta chizmasin).
  */
-export function applyUnreadOnMessage(state, { conversationId, message, silent, myId, activeConversationId, hidden, wasUnread = true }) {
+export function applyUnreadOnMessage(state, { conversationId, message, silent, myId, activeConversationId, hidden, wasUnread = true, archived = false }) {
   if (!message || String(message.senderId) === String(myId) || message.readAt) return state;
+  if (archived) return state; // arxivdagi suhbat — server countUnread kabi hisoblanmaydi
   if (isActiveVisible({ conversationId, activeConversationId, hidden })) return state;
   if (silent) return { ...state, mutedTotal: state.mutedTotal + 1 };
   return { ...state, total: state.total + 1, chats: state.chats + (wasUnread ? 0 : 1) };

@@ -37,7 +37,9 @@ services:
     # TURN_SECRET shu yerdan (konteyner env'iga) keladi. coturn konfiguratsiya faylida env
     # o'zgaruvchilarini ochmaydi, shuning uchun sir faylda EMAS — buyruq satrida beriladi.
     # `$$` — compose interpolatsiyasi emas, konteyner ichidagi sh o'zgaruvchisi.
-    env_file: .env
+    # Faqat TURN_SECRET (compose .env dan interpolatsiya) — REALTIME_SHARED_SECRET coturn'ga kerak emas.
+    environment:
+      TURN_SECRET: ${TURN_SECRET}
     # coturn root EMAS (nobody) bo'lib ishlaydi: fayl o'qiladigan bo'lishi shart (chmod 644),
     # faqat o'qish uchun ulanadi.
     volumes:

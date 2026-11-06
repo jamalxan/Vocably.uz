@@ -81,6 +81,14 @@ export function partitionSources(requestedIds, found, userId) {
  * "… dan yuborilgan" yorlig'i: forward'ning forward'i birinchi muallifni saqlaydi.
  * `authorsById` — Map(userId -> { _id, name, username }); `hidden` — "yuboruvchi nomini yashirish".
  */
+/** Tashqariga (API/socket) beriladigan forwardedFrom: muallif yashirilgan bo'lsa faqat `{ hidden: true }`. */
+export function publicForwardedFrom(ff) {
+  if (!ff) return null;
+  if (ff.hidden) return { hidden: true };
+  const { userId, name, messageId } = ff;
+  return { userId: userId ?? null, name: name ?? null, ...(messageId ? { messageId } : {}), hidden: false };
+}
+
 export function forwardedFromFor(original, authorsById, hideAuthor = false) {
   const prev = original.forwardedFrom || null;
   const authorId = prev?.userId || original.senderId;

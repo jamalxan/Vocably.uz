@@ -110,6 +110,7 @@ export function RealtimeProvider({ children }) {
         label: u.nickname || (u.username ? `@${u.username}` : u.name || ''),
         muted: isMutedNow(c),
         unreadCount: Number(c.unreadCount) || 0,
+        archived: !!c.archived,
         otherUserId: u.id ? String(u.id) : null,
       });
     });
@@ -283,7 +284,7 @@ export function RealtimeProvider({ children }) {
       const known = metaRef.current.get(id);
       const silent = typeof payload.silent === 'boolean' ? payload.silent : !!known?.muted;
       const ctx = { conversationId: id, message, silent, myId, activeConversationId: activeIdRef.current, hidden };
-      setUnread((prev) => applyUnreadOnMessage(prev, { ...ctx, wasUnread: (known?.unreadCount || 0) > 0 }));
+      setUnread((prev) => applyUnreadOnMessage(prev, { ...ctx, wasUnread: (known?.unreadCount || 0) > 0, archived: !!known?.archived }));
       if (known && String(message.senderId) !== String(myId) && !message.readAt) {
         metaRef.current.set(id, { ...known, unreadCount: known.unreadCount + 1 });
       }

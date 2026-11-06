@@ -1126,7 +1126,7 @@ export function ChatProvider({ myUserId, children }) {
   // Muvaffaqiyatli nishonlar ro'yxatda darhol yuqoriga chiqadi; ochiq suhbat nishon bo'lsa nusxalar
   // shu zahoti qo'shiladi (jonli echo kelganda id bo'yicha dublikat bo'lmaydi).
   const forwardMessages = useCallback(
-    async (list, targets, { hideAuthor = false, comment = '' } = {}) => {
+    async (list, targets, { hideAuthor = false, comment = '', clientBatchId = null } = {}) => {
       const targetConversationIds = (Array.isArray(targets) ? targets : [targets]).filter(Boolean).map(String);
       // `_status:'sent'` — serverdan qaytgan (yuborilgan) xabar, uni forward qilish mumkin; faqat hali
       // yuborilmagan/yuklanayotgan/xato bo'lganlari o'tkazilmaydi.
@@ -1144,7 +1144,7 @@ export function ChatProvider({ myUserId, children }) {
             targetConversationIds,
             hideAuthor: !!hideAuthor,
             ...(comment && comment.trim() ? { comment: comment.trim() } : {}),
-            clientBatchId: genClientMessageId(),
+            clientBatchId: clientBatchId || genClientMessageId(), // qayta urinishda bir xil — server dublikat yaratmaydi
           }),
         });
       } catch {

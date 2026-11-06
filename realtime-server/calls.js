@@ -466,6 +466,7 @@ function createCallManager({
 
     if (call.state === 'ringing') {
       if (side === 'caller') finish(call, 'cancelled', 'cancel');
+      else if (reason === 'media_error' || reason === 'failed') finish(call, 'failed', reason); // qabul qilishda mikrofon/kamera xatosi — rad etish emas
       else finish(call, 'declined', 'rejected');
     } else if (call.state === 'connecting') {
       if (reason === 'media_error' || reason === 'failed') finish(call, 'failed', reason);

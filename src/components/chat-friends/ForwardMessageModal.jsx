@@ -30,6 +30,7 @@ export default function ForwardMessageModal({ open, message, messages, onClose, 
   const [notice, setNotice] = useState('');
   const titleId = useId();
   const closeRef = useRef(null);
+  const batchIdRef = useRef(null); // bitta oyna sessiyasining forward batch id'si (qayta urinishda saqlanadi)
   const list = useMemo(() => (messages || (message ? [message] : [])).filter((m) => m && m.type !== 'call'), [messages, message]);
 
   const [prevOpen, setPrevOpen] = useState(open);
@@ -59,6 +60,10 @@ export default function ForwardMessageModal({ open, message, messages, onClose, 
       if (prevFocus instanceof HTMLElement) prevFocus.focus();
     };
   }, [open, onClose]);
+  // Oyna yopilganda batch id tozalanadi — keyingi forward yangi batch.
+  useEffect(() => {
+    if (!open) batchIdRef.current = null;
+  }, [open]);
 
   const byId = useMemo(() => new Map(conversations.map((c) => [String(c.id), c])), [conversations]);
   const filtered = useMemo(() => {
@@ -87,7 +92,9 @@ export default function ForwardMessageModal({ open, message, messages, onClose, 
     if (sending || !selected.length || !list.length) return;
     setSending(true);
     setNotice('');
-    const res = await forwardMessages(list, selected, { hideAuthor: canHideAuthor && hideAuthor, comment });
+    // Bitta oyna sessiyasi = bitta batch id: tarmoq xatosidan keyin qayta bosilsa server nusxalarni takrorlamaydi.
+    if (!batchIdRef.current) batchIdRef.current = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const res = await forwardMessages(list, selected, { hideAuthor: canHideAuthor && hideAuthor, comment, clientBatchId: batchIdRef.current });
     setSending(false);
     if (res.error) {
       setNotice(ts(res.error));
@@ -102,6 +109,7 @@ export default function ForwardMessageModal({ open, message, messages, onClose, 
       setNotice(res.okCount ? `${t('ch.forwardPartial', { ok: res.okCount, total: res.total })}. ${names}` : `${ts(res.failed[0].error || 'Yuborilmadi')}: ${names}`);
       return;
     }
+    batchIdRef.current = null;
     const done = t('ch.forwardDone', { n: res.okCount });
     showChatNotice?.(skippedCalls ? `${done}. ${t('ch.forwardSkippedCalls')}` : done);
     onSent?.(res);
