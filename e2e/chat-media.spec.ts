@@ -229,7 +229,9 @@ test('forward copies the photo inside the bucket; a reply to it shows a thumbnai
   await expect(bubble.locator('img')).toBeVisible({ timeout: 15_000 });
   await bubble.getByRole('button', { name: /Xabar amallari/ }).click();
   await page.getByRole('button', { name: /^Yuborish$/ }).first().click();
-  await page.getByTestId('forward-modal').getByRole('button').filter({ hasText: E2E_FRIEND_USERNAME }).first().click();
+  // PARITY_PLAN WP5: ko'p tanlovli oyna — chatni belgilash, keyin "Yuborish (1)".
+  await page.getByTestId('forward-modal').getByTestId('forward-target').filter({ hasText: E2E_FRIEND_USERNAME }).first().click();
+  await page.getByTestId('forward-modal').getByTestId('forward-send').click();
   await expect(page.getByTestId('forwarded-label').last()).toBeVisible({ timeout: 20_000 });
   const copy: any = await expect
     .poll(

@@ -222,6 +222,11 @@ export function ChatProvider({ myUserId, children }) {
             mergeQueuedIntoMessages(silent ? mergePolledMessages(prev, list) : list, [...offlineQueueRef.current, ...pendingMediaRef.current], conversationId)
           );
           if (!silent) setMessagesError(false);
+          // Suhbat ochilganda server (GET /messages, noRead'siz) o'qildi deb belgilaydi — ro'yxatdagi
+          // o'qilmaganlar sonini ham darhol nolga tushiramiz (qator belgisi, nav belgisi, tab sarlavhasi).
+          if (!silent && !noRead) {
+            setConversations((prev) => prev.map((c) => (String(c.id) === String(conversationId) && c.unreadCount ? { ...c, unreadCount: 0 } : c)));
+          }
         } else if (!silent) {
           setMessagesError(true);
         }
@@ -436,10 +441,15 @@ export function ChatProvider({ myUserId, children }) {
   const markRead = useCallback(
     async (conversationId) => {
       try {
-        await fetch(`/api/chat/conversations/${conversationId}/read`, {
+        const res = await fetch(`/api/chat/conversations/${conversationId}/read`, {
           method: 'PATCH',
           headers: authHeaders(),
         });
+        // Server o'zimizga "conversation:read" qaytarmaydi — ro'yxatdagi o'qilmaganlar sonini (va
+        // undan hisoblanadigan nav belgisi/tab sarlavhasini) darhol lokal nolga tushiramiz.
+        if (res.ok) {
+          setConversations((prev) => prev.map((c) => (String(c.id) === String(conversationId) && c.unreadCount ? { ...c, unreadCount: 0 } : c)));
+        }
       } catch {
         // jimgina — keyingi safar suhbat qayta ochilganda/yuklanganda baribir belgilanadi
       }
@@ -1117,7 +1127,9 @@ export function ChatProvider({ myUserId, children }) {
   const forwardMessages = useCallback(
     async (list, targets, { hideAuthor = false, comment = '' } = {}) => {
       const targetConversationIds = (Array.isArray(targets) ? targets : [targets]).filter(Boolean).map(String);
-      const items = (list || []).filter((m) => m && m.type !== 'call' && (m.id || m._id) && !m._status);
+      // `_status:'sent'` — serverdan qaytgan (yuborilgan) xabar, uni forward qilish mumkin; faqat hali
+      // yuborilmagan/yuklanayotgan/xato bo'lganlari o'tkazilmaydi.
+      const items = (list || []).filter((m) => m && m.type !== 'call' && (m.id || m._id) && (!m._status || m._status === 'sent'));
       if (!items.length || !targetConversationIds.length) return { error: 'Xabar topilmadi' };
       const sourceConversationId = String(items[0].conversationId || activeIdRef.current);
       let res;
