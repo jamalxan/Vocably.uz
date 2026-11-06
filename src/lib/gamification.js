@@ -61,7 +61,7 @@ export const BADGE_DEFS = [
   { key: 'perfect_session', label: 'Mukammal sessiya', icon: '✨', check: (s) => s.hadPerfectSession },
   // Gamified Vocabulary Engine (TZ §17) — yangi yutuqlar (src/lib/vocab/achievements.ts).
   // Eski kalitlar o'zgarmadi; bir xil kalit ikki marta berilmaydi (User.badges.key bo'yicha).
-  ...NEW_ACHIEVEMENT_DEFS.map((d) => ({ key: d.key, label: d.label, icon: d.icon, description: d.description, check: d.check })),
+  ...NEW_ACHIEVEMENT_DEFS.map((d) => ({ key: d.key, label: d.label, icon: d.icon, description: d.description, check: d.check, retired: d.retired })),
 ];
 
 /** `user` — Mongoose User hujjati (chaqiruvchi keyin `user.save()` qiladi).

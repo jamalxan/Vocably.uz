@@ -137,7 +137,8 @@ describeDb('O\'yin sessiyasi: start', () => {
 
   it('bepul tarifda premium/standard o\'yinlar yopiq (backend)', async () => {
     const u = await createUser();
-    await expect(startGameSession({ user: u.toObject(), gameKey: 'vocabulary_boss', now: T0 })).rejects.toMatchObject({ status: 403, code: 'tier' });
+    // Olib tashlangan eski o'yin (premium Boss) — endi noma'lum o'yin.
+    await expect(startGameSession({ user: u.toObject(), gameKey: 'vocabulary_boss', now: T0 })).rejects.toMatchObject({ status: 404, code: 'unknown_game' });
     await expect(startGameSession({ user: u.toObject(), gameKey: 'listen_type', now: T0 })).rejects.toMatchObject({ status: 403 });
     const std = await createUser({ subscriptionTier: 'standard' });
     await expect(startGameSession({ user: std.toObject(), gameKey: 'listen_type', now: T0 })).resolves.toBeTruthy();
@@ -145,15 +146,15 @@ describeDb('O\'yin sessiyasi: start', () => {
 
   it("kam so'z — 422 va sabab", async () => {
     const u = await createUser({ categories: [{ name: 'x', words: makeWords().slice(0, 2) }] });
-    await expect(startGameSession({ user: u.toObject(), gameKey: 'word_match', now: T0 })).rejects.toMatchObject({ status: 422, code: 'not_enough_words' });
+    await expect(startGameSession({ user: u.toObject(), gameKey: 'multiple_choice', now: T0 })).rejects.toMatchObject({ status: 422, code: 'not_enough_words' });
   });
 
   it('kunlik sessiya limiti majburlanadi (free: 6)', async () => {
     const u = await createUser();
     for (let i = 0; i < 6; i++) {
-      await startGameSession({ user: u.toObject(), gameKey: 'word_match', now: new Date(T0.getTime() + i * 90_000) });
+      await startGameSession({ user: u.toObject(), gameKey: 'multiple_choice', now: new Date(T0.getTime() + i * 90_000) });
     }
-    await expect(startGameSession({ user: u.toObject(), gameKey: 'word_match', now: new Date(T0.getTime() + 7 * 90_000) })).rejects.toMatchObject({ code: 'daily_limit' });
+    await expect(startGameSession({ user: u.toObject(), gameKey: 'multiple_choice', now: new Date(T0.getTime() + 7 * 90_000) })).rejects.toMatchObject({ code: 'daily_limit' });
   });
 
   it("daqiqada ko'p sessiya boshlash cheklanadi", async () => {
@@ -161,7 +162,7 @@ describeDb('O\'yin sessiyasi: start', () => {
     let err: any = null;
     for (let i = 0; i < 8; i++) {
       try {
-        await startGameSession({ user: u.toObject(), gameKey: 'word_match', now: new Date(T0.getTime() + i * 1000) });
+        await startGameSession({ user: u.toObject(), gameKey: 'multiple_choice', now: new Date(T0.getTime() + i * 1000) });
       } catch (e) {
         err = e;
       }
@@ -398,13 +399,6 @@ describeDb('Yakunlash: XP -> streak -> kvest -> yutuq (idempotent)', () => {
     expect(m.yourAnswer).not.toBe(m.correctAnswer);
     expect(done.weakWordCount).toBeGreaterThan(0);
     expect(done.accuracy).toBeLessThan(100);
-  });
-
-  it("juftlik o'yini (match) juftliklar bo'yicha hisoblanadi", async () => {
-    const u = await createUser();
-    const { done } = await playFull(u, T0, 'word_match');
-    expect(done.accuracy).toBe(100);
-    expect(done.total).toBe(3 * 5);
   });
 
   it("yozma o'yin (fill_gap hard) va tinglab yozish ishlaydi; listening/spelling statistikasi yig'iladi", async () => {

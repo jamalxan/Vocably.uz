@@ -134,6 +134,8 @@ const LEGACY_REDIRECTS = [
   ['/lugat/:word', '/dictionary/:word'],
   ['/lugat', '/dictionary'],
   ['/ielts/band-kalkulyator', '/ielts/band-calculator'],
+  // 2026-11-06 — eski 2D o'yinlar olib tashlandi (yangi 3D o'yinlar o'rnini egalladi): eski havolalar o'yinlar ro'yxatiga.
+  ...['word_match', 'memory', 'word_drop', 'speed_challenge', 'image_to_word', 'word_to_image', 'vocabulary_boss'].map((key) => [`/app/games/${key}`, '/app/games']),
 ];
 
 /** @type {import('next').NextConfig} */

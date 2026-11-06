@@ -16,7 +16,7 @@ export async function GET(req) {
 
     const level = levelForXp(user.xp || 0);
     const earnedKeys = new Set((user.badges || []).map((b) => b.key));
-    const badges = BADGE_DEFS.map((def) => ({
+    const badges = BADGE_DEFS.filter((def) => !def.retired || earnedKeys.has(def.key)).map((def) => ({
       key: def.key,
       label: def.label,
       icon: def.icon,

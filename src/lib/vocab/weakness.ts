@@ -158,22 +158,15 @@ export function buildSkillProfile(words: WeakInput[]): SkillProfile {
 
 /** O'yin kalit -> ko'nikma xaritasi (personalization uchun). */
 export const GAME_SKILL: Record<string, keyof SkillProfile> = {
-  word_match: 'recall',
-  memory: 'recall',
   multiple_choice: 'recall',
   definition_challenge: 'recall',
   synonym_antonym: 'recall',
-  speed_challenge: 'recall',
   listen_choose: 'listening',
   listen_type: 'spelling',
-  word_drop: 'spelling',
   word_tunnel: 'spelling',
   word_defense: 'spelling',
   fill_gap: 'context',
   sentence_builder: 'context',
-  image_to_word: 'recall',
-  word_to_image: 'recall',
-  vocabulary_boss: 'recall',
 };
 
 /**

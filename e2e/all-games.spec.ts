@@ -1,4 +1,4 @@
-// Har bir savol turi (tanlov / yozma / jumla / juftlash) uchun umumiy haydovchi bilan P0 o'yinlarni oxirigacha o'tkazadi.
+// Har bir savol turi (tanlov / yozma / jumla) uchun umumiy haydovchi bilan P0 o'yinlarni oxirigacha o'tkazadi.
 // Javoblar ataylab to'g'ri bo'lishi shart emas — tekshiriladigan narsa: UI ishlaydi, sessiya yakunlanadi, natija chiqadi.
 import { expect, test, type Page } from '@playwright/test';
 import { E2E_FREE_PHONE, E2E_PHONE } from './global-setup';
@@ -9,90 +9,29 @@ const GAMES = [
   'listen_choose',
   'listen_type',
   'sentence_builder',
-  'word_match',
-  'memory',
   'definition_challenge',
   'synonym_antonym',
-  'speed_challenge',
-  'word_drop',
-  'image_to_word',
-  'word_to_image',
-  'vocabulary_boss', // premium: aralash savol turlari, 25+ savol
 ];
-const TIMED = new Set(['speed_challenge', 'word_drop', 'vocabulary_boss']);
 
-// Xotira kartalari DOM'da faqat ochilganda matn ko'rsatadi; juftlik xaritasi esa sessiya javobida (`memoryMap`).
-// Javobni tinglab, juft matnlarini (chap<->o'ng) yig'amiz va oddiy o'yinchidek: ochilganini eslab qolib, juftini ochamiz.
-const memoryPartner = new Map<string, string>();
-
-function collectMemoryPairs(node: any) {
-  if (!node || typeof node !== 'object') return;
-  if (node.memoryMap && Array.isArray(node.lefts) && Array.isArray(node.rights)) {
-    for (const l of node.lefts) {
-      const r = node.rights.find((x: any) => x.id === node.memoryMap[l.id]);
-      if (r) {
-        memoryPartner.set(l.text, r.text);
-        memoryPartner.set(r.text, l.text);
-      }
-    }
-  }
-  for (const v of Object.values(node)) collectMemoryPairs(v);
-}
-
-async function playMemory(page: Page) {
-  const cards = page.locator('button[aria-pressed]');
-  const n = await cards.count();
-  const known: (string | undefined)[] = Array(n).fill(undefined);
-  const matched = new Set<number>();
-  const flip = async (i: number) => {
-    await cards.nth(i).click();
-    await expect(cards.nth(i)).not.toHaveAttribute('aria-label', 'Yopiq karta');
-    known[i] = (await cards.nth(i).getAttribute('aria-label')) || '';
-    return known[i]!;
-  };
-  for (let guard = 0; guard < n * 3 && matched.size < n; guard++) {
-    const p = [...Array(n).keys()].find((i) => !matched.has(i))!;
-    const text = await flip(p);
-    const want = memoryPartner.get(text);
-    let q = known.findIndex((t, i) => i !== p && !matched.has(i) && t === want);
-    if (q < 0) q = [...Array(n).keys()].find((i) => i !== p && !matched.has(i) && known[i] === undefined) ?? -1;
-    if (q < 0) break;
-    const other = await flip(q);
-    if (other === want) {
-      matched.add(p);
-      matched.add(q);
-      await page.waitForTimeout(450);
-    } else await page.waitForTimeout(1000); // mos emas — kartalar yopilishini kutamiz
-  }
-}
+// 2026-11-06 olib tashlangan eski 2D o'yinlar (yangi 3D o'yinlar o'rnini egalladi).
+const RETIRED = ['word_match', 'memory', 'word_drop', 'speed_challenge', 'image_to_word', 'word_to_image', 'vocabulary_boss'];
+const RETIRED_TITLES = ["So'z juftligi", 'Xotira kartalari', "So'z yomg'iri", 'Tezlik sinovi', "Rasm → so'z", "So'z → rasm", 'Vocabulary Boss'];
 
 async function answerCurrent(page: Page, waitMs = 15_000) {
   const choice = page.getByRole('radiogroup', { name: 'Javob variantlari' });
   const typed = page.getByPlaceholder('Javobni yozing…');
   const arrange = page.locator('[aria-label="Mavjud so\'zlar"]');
-  const lefts = page.locator('[aria-label="So\'zlar"] button');
-  const memory = page.getByText(/juftlik topildi/);
-  await expect(choice.or(typed).or(arrange).or(lefts).or(memory).first()).toBeVisible({ timeout: waitMs });
+  await expect(choice.or(typed).or(arrange).first()).toBeVisible({ timeout: waitMs });
   const check = page.getByRole('button', { name: 'Tekshirish' });
 
-  if (await memory.isVisible()) {
-    await playMemory(page);
-  } else if (await choice.isVisible()) {
+  if (await choice.isVisible()) {
     await choice.getByRole('radio').first().click();
   } else if (await typed.isVisible()) {
     await typed.fill('zzz');
     await check.click();
-  } else if (await arrange.isVisible()) {
+  } else {
     const avail = page.locator('[aria-label="Mavjud so\'zlar"] button');
     while ((await avail.count()) > 0) await avail.first().click();
-    await check.click();
-  } else {
-    const rights = page.locator('[aria-label="Tarjimalar"] button');
-    const n = await lefts.count();
-    for (let i = 0; i < n; i++) {
-      await lefts.nth(i).click();
-      await rights.nth(i).click();
-    }
     await check.click();
   }
 }
@@ -113,12 +52,6 @@ test.describe("P0 o'yinlar (desktop)", () => {
 
   for (const game of GAMES) {
     test(`${game} oxirigacha o'tadi`, async ({ page }) => {
-      if (TIMED.has(game) || game === 'memory') test.setTimeout(game === 'vocabulary_boss' ? 300_000 : 150_000); // taymer / karta aylanishi o'yinni uzaytiradi
-      memoryPartner.clear();
-      page.on('response', async (r) => {
-        if (r.request().method() !== 'POST' || !r.url().includes('/api/games')) return;
-        collectMemoryPairs(await r.json().catch(() => null));
-      });
       await page.goto(`/app/games/${game}`);
       const start = page.getByRole('button', { name: "O'yinni boshlash" });
       await expect(start).toBeVisible({ timeout: 45_000 });
@@ -136,20 +69,6 @@ test.describe("P0 o'yinlar (desktop)", () => {
       await expect(counter).toBeVisible({ timeout: 15_000 });
       const total = Number((await counter.textContent())!.match(/\/ (\d+)/)![1]);
 
-      const xp = page.getByText(/XP/).first();
-      if (TIMED.has(game)) {
-        // Taymer savolni o'zi almashtirishi mumkin — qat'iy indeks o'rniga holatga qarab harakat qilamiz.
-        const next = page.getByRole('button', { name: /Keyingisi|Yakunlash/ });
-        page.setDefaultTimeout(1500); // bloklangan (javoblangan) savolda click uzoq kutmasin
-        for (let guard = 0; guard < total * 4 && !(await xp.isVisible()); guard++) {
-          if (await next.isVisible()) await next.click({ timeout: 2000 }).catch(() => {});
-          else await answerCurrent(page, 1500).catch(() => {});
-          await page.waitForTimeout(150);
-        }
-        await expect(xp).toBeVisible({ timeout: 15_000 });
-        return;
-      }
-
       for (let i = 0; i < total; i++) {
         await expect(page.getByText(`Savol ${i + 1} / ${total}`)).toBeVisible();
         await answerCurrent(page);
@@ -161,4 +80,25 @@ test.describe("P0 o'yinlar (desktop)", () => {
       await expect(page.getByText(/XP/).first()).toBeVisible({ timeout: 15_000 });
     });
   }
+});
+
+test.describe("olib tashlangan eski o'yinlar", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAs(page, E2E_PHONE);
+  });
+
+  for (const game of RETIRED) {
+    test(`${game}: eski havola o'yinlar ro'yxatiga yo'naltiriladi`, async ({ page }) => {
+      await page.goto(`/app/games/${game}`);
+      await expect(page).toHaveURL(/\/app\/games$/);
+    });
+  }
+
+  test("o'yinlar ro'yxatida eski o'yinlar yo'q, yangi 3D o'yinlar bor", async ({ page }) => {
+    await page.goto('/app/games');
+    await expect(page.getByRole('link', { name: /Vocably Run/ }).first()).toBeVisible({ timeout: 45_000 });
+    for (const title of RETIRED_TITLES) {
+      await expect(page.getByRole('link', { name: new RegExp(`^${title}`) })).toHaveCount(0);
+    }
+  });
 });

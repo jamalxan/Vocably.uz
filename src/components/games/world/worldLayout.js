@@ -16,12 +16,12 @@ export const PORTAL_RADIUS = 2.8;
 // Har bir portal mavjud, server-authoritative o'yinga (/app/games/:key) olib boradi —
 // ball, XP, kunlik limit va anti-cheat o'sha yerda hisoblanadi.
 export const PORTALS = [
-  { key: 'memory', title: 'Xotira kartalari', x: -7, z: 12, color: '#00f0b5', shape: 'torus' },
+  { key: 'multiple_choice', title: "Ko'p variantli test", x: -7, z: 12, color: '#00f0b5', shape: 'torus' },
   { key: 'listen_choose', title: 'Eshiting va tanlang', x: 7, z: 12, color: '#38bdf8', shape: 'sphere' },
-  { key: 'speed_challenge', title: 'Tezlik sinovi', x: -9, z: -14, color: '#3b82f6', shape: 'box' },
+  { key: 'vocably_run', title: 'Vocably Run', x: -9, z: -14, color: '#3b82f6', shape: 'box' },
   { key: 'fill_gap', title: "Bo'sh joyni to'ldiring", x: 9, z: -14, color: '#a855f7', shape: 'octahedron' },
-  { key: 'image_to_word', title: "Rasm → so'z", x: -11, z: -21, color: '#eab308', shape: 'dodecahedron' },
-  { key: 'vocabulary_boss', title: 'Vocabulary Boss', x: 0, z: -18, color: '#ef4444', shape: 'boss' },
+  { key: 'word_tunnel', title: "So'z tunneli", x: -11, z: -21, color: '#eab308', shape: 'dodecahedron' },
+  { key: 'word_defense', title: 'Word Defense', x: 0, z: -18, color: '#ef4444', shape: 'boss' },
 ];
 
 const inDisc = (disc, r, x, z) => (x - disc.x) ** 2 + (z - disc.z) ** 2 <= r * r;

@@ -9,7 +9,7 @@ import Button, { buttonClasses } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { abandonGame, completeGame, getActiveSession, getGames, startGame } from './api';
 import { createAnswerQueue } from './answerQueue';
-import { ArrangeQuestion, AudioPlayer, ChoiceQuestion, Feedback, MatchQuestion, MemoryQuestion, TypedQuestion } from './QuestionViews';
+import { ArrangeQuestion, AudioPlayer, ChoiceQuestion, Feedback, TypedQuestion } from './QuestionViews';
 import ResultScreen from './ResultScreen';
 
 // Matnlar i18n kalitlarida: game.diff.<key>(.hint), game.mode.<key>, game.kind.<kind>.
@@ -17,7 +17,7 @@ const DIFFICULTY_KEYS = ['auto', 'easy', 'medium', 'hard', 'expert'];
 const MODE_KEYS = ['mixed', 'review', 'weak', 'new'];
 const NO_TIMER_KEY = 'vocably-games-no-timer';
 const AUTO_ADVANCE_MS = 1000;
-const KNOWN_KINDS = new Set(['mc_meaning', 'mc_word', 'definition', 'syn_ant', 'fill_choice', 'fill_typed', 'listen_choose', 'listen_type', 'sentence_build', 'match_pairs', 'memory_pairs', 'spell_drop', 'image_word', 'word_image', 'type_definition']);
+const KNOWN_KINDS = new Set(['mc_meaning', 'mc_word', 'definition', 'syn_ant', 'fill_choice', 'fill_typed', 'listen_choose', 'listen_type', 'sentence_build', 'spell_drop', 'type_definition']);
 
 const REDUCED_QUERY = '(prefers-reduced-motion: reduce)';
 function subscribeReduced(cb) {
@@ -530,13 +530,8 @@ export default function GamePlayer({ gameKey }) {
           </div>
         )}
 
-        {q.kind !== 'listen_choose' && q.kind !== 'listen_type' && q.inputType !== 'match' && (
+        {q.kind !== 'listen_choose' && q.kind !== 'listen_type' && (
           <h2 className="text-xl sm:text-2xl font-bold text-ink font-display mb-4 break-words">{q.prompt}</h2>
-        )}
-        {q.inputType === 'match' && <h2 className="text-lg font-bold text-ink font-display mb-4">{q.prompt}</h2>}
-        {q.imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={q.imageUrl} alt={t('game.imageAlt')} loading="lazy" className="mb-4 max-h-64 w-full rounded-xl border border-border object-contain bg-bg-sunken" />
         )}
         {showAudio && (
           <div className="mb-4">
@@ -553,10 +548,6 @@ export default function GamePlayer({ gameKey }) {
         {q.inputType === 'choice' && <ChoiceQuestion question={q} result={result} locked={checking || phase === 'finishing'} onAnswer={handleAnswer} />}
         {q.inputType === 'typed' && <TypedQuestion question={q} result={result} locked={checking || phase === 'finishing'} onAnswer={handleAnswer} near={result?.near} />}
         {q.inputType === 'arrange' && <ArrangeQuestion question={q} result={result} locked={checking || phase === 'finishing'} onAnswer={handleAnswer} />}
-        {q.inputType === 'match' && q.kind === 'match_pairs' && <MatchQuestion question={q} result={result} locked={checking || phase === 'finishing'} onAnswer={handleAnswer} />}
-        {q.inputType === 'match' && q.kind === 'memory_pairs' && (
-          <MemoryQuestion question={q} result={result} locked={checking || phase === 'finishing'} onAnswer={handleAnswer} reducedMotion={reducedMotion} />
-        )}
 
         {instant && result && !result.pending && <Feedback result={result} near={result.near} />}
         {result?.pending && (
