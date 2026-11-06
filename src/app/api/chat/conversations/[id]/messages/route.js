@@ -11,6 +11,7 @@ import { sendPushToUser } from '@/lib/webPush';
 import { markConversationRead } from '@/lib/chatRead';
 import { notifyRecipientViaTelegram } from '@/lib/chatNotify';
 import { loadConversationForUser } from '@/lib/chat/conversationAccess';
+import { serializeReactions } from '@/lib/chat/reactions';
 import { isConversationMuted, previewForMessage } from '@/lib/chatConstants';
 import { isObjectIdString, materializeCopies, partitionSources, planForwardCopies } from '@/lib/chat/forward';
 import { isTombstone, rawDraftOf, serializeDraft } from '@/lib/chat/draftServer';
@@ -92,10 +93,11 @@ export async function GET(req, props) {
     // xabarning joylashuvi (vaqt tartibi) suhbatda saqlanib qoladi, Telegram'dagidek.
     // `call` — faqat `type: 'call'` qatorlarda (realtime-server/call-event yaratadi);
     // boshqa turlarda har doim null, o'chirilgan qo'ng'iroq yozuvida ham tafsilot ko'rsatilmaydi.
+    // `reactions` (PARITY_PLAN WP7) — har doim massiv, `userId` satr; o'chirilgan xabarda bo'sh.
     const sanitized = messages.map((m) =>
       m.deletedForEveryone
-        ? { ...m, text: '', media: null, stickerId: null, call: null, originalText: undefined }
-        : { ...m, call: m.type === 'call' ? m.call || null : null, originalText: undefined }
+        ? { ...m, text: '', media: null, stickerId: null, call: null, reactions: [], originalText: undefined }
+        : { ...m, call: m.type === 'call' ? m.call || null : null, reactions: serializeReactions(m.reactions), originalText: undefined }
     );
 
     return NextResponse.json({ messages: sanitized, nextCursor });
@@ -287,6 +289,7 @@ export async function POST(req, props) {
       albumId: message.albumId,
       forwardedFrom: message.forwardedFrom,
       clientMessageId: message.clientMessageId,
+      reactions: [],
       createdAt: message.createdAt,
     };
     // Brauzer push — qabul qiluvchi shu suhbatni "ovozsiz" qilgan bo'lsa (doimiy `mutedBy`

@@ -159,6 +159,9 @@ hujjatiga embed qilinmagan — cross-user so'rovlar (qidiruv, admin nazorati) ke
   qoralamalari, faqat egasiga qaytariladi; bo'sh matn + `replyTo: null` — tombstone (tozalangan qoralama
   qayta tirilmasligi uchun). Xabar yuborilganda yuboruvchining qoralamasi tombstone bo'ladi (PARITY_PLAN WP6,
   `GET/PUT/DELETE /api/chat/conversations/[id]/draft`, socket `draft:update`).
+  `reactions: [{ emoji, userId, at }]` (`_id: false`, default `[]`) — bir foydalanuvchiga bitta reaksiya,
+  `POST/DELETE /api/chat/conversations/[id]/messages/[messageId]/reactions` atomik pipeline update bilan
+  yozadi; preview/o'qilmaganlarga ta'sir qilmaydi (docs/chat/PARITY_PLAN.md WP7).
 - **`Block`**, **`Report`**, **`AdminAuditLog`** — bloklash, shikoyat va admin audit jurnali.
 - **`RateLimitHit`** — Redis'siz oddiy tezlik cheklash uchun, TTL indeks bilan avtomatik tozalanadi.
 

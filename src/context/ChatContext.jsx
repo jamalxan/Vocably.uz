@@ -12,6 +12,7 @@ import { albumGroups, defaultId } from '@/lib/chat/attachments';
 import { readDrafts, writeDrafts, setDraft as setDraftInMap } from '@/lib/chat/drafts';
 import { ackDraft, createDraftSync, getDeviceId, mergeDraftMap } from '@/lib/chat/draftSync';
 import { applyNewMessageToList, applyBulkAction } from '@/lib/chat/chatList';
+import { applyReaction } from '@/lib/chat/reactions';
 
 function buildStickerCatalog({ packs = [], extra = [] }) {
   const byId = new Map();
@@ -877,6 +878,59 @@ export function ChatProvider({ myUserId, children }) {
     [activeConversation, authHeaders, loadConversations]
   );
 
+  // Reaksiya (PARITY_PLAN WP7): `emoji` — qo'yish/almashtirish, `null` — olib tashlash. Optimistik:
+  // pufakcha darhol yangilanadi, server javobi (to'liq massiv) bilan moslashtiriladi, xatoda esa
+  // oldingi holatga qaytariladi. Tez-tez bosilsa faqat ENG OXIRGI so'rov javobi qo'llanadi
+  // (`reactSeqRef`) — eski javob yangi optimistik holatni bosib ketmasin. Boshqa tomon va mening
+  // boshqa tablarim `message:reacted` orqali oladi (pastdagi socket handler).
+  const reactSeqRef = useRef(new Map());
+  const setMessageReactions = useCallback((conversationId, messageId, reactions) => {
+    const apply = (list) => {
+      let changed = false;
+      const next = list.map((m) => {
+        if (String(m.id || m._id) !== String(messageId)) return m;
+        changed = true;
+        return { ...m, reactions };
+      });
+      return changed ? next : list;
+    };
+    if (String(activeIdRef.current) === String(conversationId)) setMessages(apply);
+    const cached = messagesCacheRef.current.get(String(conversationId));
+    if (cached) messagesCacheRef.current.set(String(conversationId), apply(cached));
+  }, []);
+  const reactToMessage = useCallback(
+    async (messageId, emoji) => {
+      const conversationId = activeIdRef.current;
+      if (!conversationId) return { error: 'Suhbat tanlanmagan' };
+      const id = String(messageId);
+      const target = messagesRef.current.find((m) => String(m.id || m._id) === id);
+      if (!target) return { error: 'Xabar topilmadi' };
+      const before = target.reactions || [];
+      const seq = (reactSeqRef.current.get(id) || 0) + 1;
+      reactSeqRef.current.set(id, seq);
+      const isLatest = () => reactSeqRef.current.get(id) === seq;
+      setMessageReactions(conversationId, id, applyReaction(before, { userId: myIdRef.current, emoji: emoji || null, at: new Date().toISOString() }));
+      try {
+        const res = await fetch(`/api/chat/conversations/${conversationId}/messages/${id}/reactions`, {
+          method: emoji ? 'POST' : 'DELETE',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: emoji ? JSON.stringify({ emoji }) : undefined,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (isLatest()) setMessageReactions(conversationId, id, before);
+          return { error: data.error || "Reaksiya qo'yib bo'lmadi" };
+        }
+        if (isLatest()) setMessageReactions(conversationId, id, data.reactions || []);
+        return { reactions: data.reactions || [] };
+      } catch {
+        if (isLatest()) setMessageReactions(conversationId, id, before);
+        return { error: 'Tarmoq xatoligi' };
+      }
+    },
+    [authHeaders, setMessageReactions]
+  );
+
   const uploadAndSend = useCallback(
     async (file, type, caption, mediaExtra) => {
       if (!activeConversation) return { error: 'Suhbat tanlanmagan' };
@@ -1345,7 +1399,7 @@ export function ChatProvider({ myUserId, children }) {
   // uchun obuna faqat bir marta (mount'da) qilinadi.
   const liveRef = useRef(null);
   useEffect(() => {
-    liveRef.current = { loadConversations, loadMessages, flushOfflineQueue, upsertLiveMessage, markRead, touchList, mergeRemoteDrafts, syncDirtyDrafts };
+    liveRef.current = { loadConversations, loadMessages, flushOfflineQueue, upsertLiveMessage, markRead, touchList, mergeRemoteDrafts, syncDirtyDrafts, setMessageReactions };
   });
   useEffect(() => {
     const live = () => liveRef.current;
@@ -1427,6 +1481,13 @@ export function ChatProvider({ myUserId, children }) {
         setMessages((prev) =>
           prev.map((m) => (m.readAt || String(m.senderId) !== String(myIdRef.current) ? m : { ...m, readAt }))
         );
+      }),
+      // Reaksiya o'zgardi (PARITY_PLAN WP7) — to'liq massiv keladi, almashtiramiz (delta emas).
+      // Ro'yxat preview'i va o'qilmaganlar soniga tegmaydi. O'z so'rovim hali kutilayotgan bo'lsa,
+      // bu hodisa uning natijasi yoki undan oldingisi — javob baribir oxirida moslashtiradi.
+      on('message:reacted', ({ conversationId, messageId, reactions } = {}) => {
+        if (!conversationId || !messageId || !Array.isArray(reactions)) return;
+        live().setMessageReactions(conversationId, messageId, reactions);
       }),
       on('message:edited', onMessageEdited),
       on('message:deleted', onMessageDeleted),
@@ -1533,6 +1594,7 @@ export function ChatProvider({ myUserId, children }) {
     retryMessage,
     editMessage,
     deleteMessage,
+    reactToMessage,
     editingMessage,
     startEditMessage,
     cancelEditMessage,

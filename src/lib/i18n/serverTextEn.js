@@ -38,6 +38,10 @@ const en = {
     "Bu fayl haqiqiy rasm emas": "This file is not a real image",
     "Noto'g'ri xabar turi": "Invalid message type",
     "Xabar topilmadi": "Message not found",
+    // --- Reaksiyalar (PARITY_PLAN WP7)
+    "Bu xabarga reaksiya qo'yib bo'lmaydi": "You can't react to this message",
+    "Noto'g'ri emoji": "Invalid emoji",
+    "Reaksiya qo'yib bo'lmadi": "Couldn't add the reaction",
     "Faqat o'z xabaringizni tahrirlay olasiz": "You can only edit your own messages",
     "Bu turdagi xabarni tahrirlab bo'lmaydi": "This type of message can't be edited",
     "O'chirilgan xabarni tahrirlab bo'lmaydi": "A deleted message can't be edited",

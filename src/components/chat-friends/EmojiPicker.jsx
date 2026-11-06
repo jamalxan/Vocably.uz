@@ -461,24 +461,36 @@ function usePanelTab(enabled) {
 // `onPick(emoji)` — tanlangan emoji belgisi (masalan "😀"). Joylashtirish joyi
 // (kursor pozitsiyasi) chaqiruvchi (Composer.jsx) tomonidan hal qilinadi.
 // `onPickSticker(stickerId)` — ixtiyoriy; berilsa pastda "Emoji / Stikerlar" tablari chiqadi.
-export default function EmojiPicker({ onPick, onPickSticker, onClose, triggerRef }) {
+// `mode="reaction"` (PARITY_PLAN WP7, xabar menyusidagi "+"): stikerlar yo'q, tanlash bilan
+// darhol yopiladi, desktop'da Composer tugmasiga yopishgan popover o'rniga ekran markazidagi
+// modal (pufakcha ro'yxat ichida — absolute joylashuv u yerda ma'nosiz).
+export default function EmojiPicker({ onPick, onPickSticker, onClose, triggerRef, mode = 'insert' }) {
   const { t } = useT();
+  const reaction = mode === 'reaction';
+  const handlePick = useCallback(
+    (emoji) => {
+      onPick(emoji);
+      if (reaction) onClose();
+    },
+    [onPick, onClose, reaction]
+  );
+  const pickSticker = reaction ? undefined : onPickSticker;
   const rootRef = useRef(null);
   const headerRefs = useRef({});
   const viewportRef = useRef(null);
   const columns = useResponsiveColumns();
   const isMobile = useIsMobile();
   const touchStartY = useRef(null);
-  const [tab, setTab] = usePanelTab(!!onPickSticker);
+  const [tab, setTab] = usePanelTab(!!pickSticker);
 
   const body = (
     <>
       {tab === 'sticker' ? (
-        <StickerBody onPickSticker={onPickSticker} />
+        <StickerBody onPickSticker={pickSticker} />
       ) : (
-        <PickerBody onPick={onPick} headerRefs={headerRefs} viewportRef={viewportRef} columns={columns} />
+        <PickerBody onPick={handlePick} headerRefs={headerRefs} viewportRef={viewportRef} columns={columns} />
       )}
-      {onPickSticker && (
+      {pickSticker && (
         <div
           role="tablist"
           aria-label={t('em.tabAria')}
@@ -547,9 +559,11 @@ export default function EmojiPicker({ onPick, onPickSticker, onClose, triggerRef
     if (delta > 60) onClose(); // pastga siljitish — yopish
   };
 
+  const dialogProps = reaction ? { role: 'dialog', 'aria-modal': true, 'aria-label': t('mb.reactMore'), 'data-testid': 'reaction-picker' } : {};
+
   if (isMobile) {
     return (
-      <div className="fixed inset-0 z-50 flex items-end">
+      <div className="fixed inset-0 z-50 flex items-end" {...dialogProps}>
         <div onClick={onClose} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" />
         <div
           ref={rootRef}
@@ -561,6 +575,17 @@ export default function EmojiPicker({ onPick, onPickSticker, onClose, triggerRef
           <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-border" />
           </div>
+          {body}
+        </div>
+      </div>
+    );
+  }
+
+  if (reaction) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" {...dialogProps}>
+        <div onClick={onClose} className="absolute inset-0 bg-primary/40 backdrop-blur-sm" />
+        <div ref={rootRef} className="relative w-80 max-w-full h-96 max-h-[70dvh] bg-surface border border-border rounded-2xl shadow-card flex flex-col overflow-hidden">
           {body}
         </div>
       </div>
