@@ -171,7 +171,7 @@ test.describe('desktop', () => {
       const a = track(await openUser(browser, E2E_PHONE, `/app/friends/${E2E_FRIEND_USERNAME}`));
       await expect(composer(a.page)).toBeVisible({ timeout: 30_000 });
       await composer(a.page).fill(text);
-      // draftSync 1500 ms debounce -> PUT /draft; server vaqti bilan saqlanadi.
+      // Composer 400 ms + draftSync 600 ms debounce -> PUT /draft; server vaqti bilan saqlanadi.
       const serverDraft = () =>
         withDb(async (db) => {
           const c: any = await db.collection('conversations').findOne({ _id: oid(E2E_CONVERSATION_ID) });

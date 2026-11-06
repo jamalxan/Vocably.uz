@@ -10,6 +10,7 @@ import { xhrPut } from '@/lib/chat/xhrUpload';
 import { prepareImage, probeVideo } from '@/lib/chat/compressImage';
 import { albumGroups, defaultId } from '@/lib/chat/attachments';
 import { readDrafts, writeDrafts, setDraft as setDraftInMap } from '@/lib/chat/drafts';
+import { ackDraft, createDraftSync, getDeviceId, mergeDraftMap } from '@/lib/chat/draftSync';
 import { applyNewMessageToList, applyBulkAction } from '@/lib/chat/chatList';
 
 function buildStickerCatalog({ packs = [], extra = [] }) {
@@ -89,6 +90,12 @@ export function ChatProvider({ myUserId, children }) {
   const [stickerCatalog, setStickerCatalog] = useState(() => buildStickerCatalog({ packs: STATIC_STICKER_PACKS }));
   // Telegram parity: drafts per conversation (text + reply target) survive leaving the chat.
   const [drafts, setDrafts] = useState(() => readDrafts(myUserId));
+  // PARITY_PLAN WP6 — qoralamalar server bilan sinxron: `draftsRef` doim eng so'nggi xarita (yon ta'sirlar
+  // setState updater ichida emas, shu ref orqali), `draftSyncRef` — 600 ms debounce'li PUT navbati.
+  const draftsRef = useRef(drafts);
+  const draftSyncRef = useRef(null);
+  const deviceIdRef = useRef(null);
+  const mergeRemoteDraftsRef = useRef(null); // loadConversations (yuqorida) shu orqali chaqiradi
   // Files dropped on the conversation (ConversationView drop zone) → picked up by the Composer tray.
   const [stagedFiles, setStagedFiles] = useState(null);
   // Qisqa holat xabari (masalan "3 ta chatga yuborildi", PARITY_PLAN WP5) — ConversationView pastda ko'rsatadi.
@@ -170,6 +177,8 @@ export function ChatProvider({ myUserId, children }) {
             if (res.ok) {
               setConversations(data.conversations || []);
               setConversationsError(false);
+              // WP6: serverdagi qoralamalar (boshqa qurilmada yozilgani) mahalliy kesh bilan yarashtiriladi.
+              mergeRemoteDraftsRef.current?.((data.conversations || []).filter((c) => 'draft' in c).map((c) => [c.id, c.draft]));
             } else {
               setConversationsError(true);
             }
@@ -721,14 +730,76 @@ export function ChatProvider({ myUserId, children }) {
     [sendMessage, runUpload]
   );
 
-  // Drafts (Telegram parity) — the Composer calls this on every change (debounced) and on send.
-  const saveDraft = useCallback((conversationId, draft) => {
-    setDrafts((prev) => {
-      const next = setDraftInMap(prev, conversationId, draft);
-      writeDrafts(myIdRef.current, next);
-      return next;
-    });
+  // Drafts (Telegram parity) — the Composer calls this on every change (debounced).
+  // WP6: localStorage darhol (kesh), server esa draftSync orqali (600 ms debounce). Mazmun
+  // o'zgarmagan bo'lsa (masalan chat ochilganda) hech narsa yozilmaydi va PUT ketmaydi.
+  const commitDrafts = useCallback((next) => {
+    if (next === draftsRef.current) return;
+    draftsRef.current = next;
+    setDrafts(next);
+    writeDrafts(myIdRef.current, next);
   }, []);
+  const saveDraft = useCallback(
+    (conversationId, draft) => {
+      const prev = draftsRef.current;
+      const next = setDraftInMap(prev, conversationId, draft);
+      if (next === prev) return;
+      commitDrafts(next);
+      const entry = next[String(conversationId)];
+      if (entry?.dirty) draftSyncRef.current?.schedule(conversationId, entry);
+    },
+    [commitDrafts]
+  );
+  // Xabar yuborildi: qoralama mahalliy "toza tombstone" bo'ladi; serverdagini messages POST o'zi tozalaydi
+  // (shu sabab alohida PUT yuborilmaydi — draftSync faqat yo'lda qolgan eski PUT'dan keyin tombstone yuboradi).
+  const clearDraftAfterSend = useCallback(
+    (conversationId) => {
+      commitDrafts(setDraftInMap(draftsRef.current, conversationId, { text: '', replyTo: null }, Date.now(), { dirty: false }));
+      draftSyncRef.current?.clearAfterSend(conversationId);
+    },
+    [commitDrafts]
+  );
+  // Server qiymatlari (ro'yxat yuklanishi yoki `draft:update`) — src/lib/chat/draftSync.js#mergeDraft qoidasi.
+  const mergeRemoteDrafts = useCallback(
+    (entries) => {
+      if (entries?.length) commitDrafts(mergeDraftMap(draftsRef.current, entries));
+    },
+    [commitDrafts]
+  );
+  useEffect(() => {
+    mergeRemoteDraftsRef.current = mergeRemoteDrafts;
+  });
+  // Oflayn yozilgan (yoki eski versiyadan qolgan) va hali serverga yetmagan qoralamalar — ulanishda yuboriladi.
+  const syncDirtyDrafts = useCallback(() => {
+    const sync = draftSyncRef.current;
+    if (!sync) return;
+    for (const [id, entry] of Object.entries(draftsRef.current)) {
+      if (entry?.dirty && !sync.isPending(id)) sync.schedule(id, entry);
+    }
+  }, []);
+  useEffect(() => {
+    deviceIdRef.current = getDeviceId();
+    const sync = createDraftSync({
+      deviceId: deviceIdRef.current,
+      onAck: (conversationId, sent, serverDraft) => commitDrafts(ackDraft(draftsRef.current, conversationId, sent, serverDraft)),
+    });
+    draftSyncRef.current = sync;
+    syncDirtyDrafts();
+    // Sahifa yopilayotganda/yashirilganda kutayotgan PUT'lar darhol (keepalive — javobsiz ham yetadi).
+    const flush = () => sync.flush({ keepalive: true });
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVisibility);
+      sync.flush({ keepalive: true });
+      sync.dispose();
+      draftSyncRef.current = null;
+    };
+  }, [commitDrafts, syncDirtyDrafts]);
 
   // Files dropped onto the conversation → the Composer tray.
   const stageExternalFiles = useCallback((files) => setStagedFiles(files && files.length ? files : null), []);
@@ -1274,7 +1345,7 @@ export function ChatProvider({ myUserId, children }) {
   // uchun obuna faqat bir marta (mount'da) qilinadi.
   const liveRef = useRef(null);
   useEffect(() => {
-    liveRef.current = { loadConversations, loadMessages, flushOfflineQueue, upsertLiveMessage, markRead, touchList };
+    liveRef.current = { loadConversations, loadMessages, flushOfflineQueue, upsertLiveMessage, markRead, touchList, mergeRemoteDrafts, syncDirtyDrafts };
   });
   useEffect(() => {
     const live = () => liveRef.current;
@@ -1312,6 +1383,14 @@ export function ChatProvider({ myUserId, children }) {
         l.loadConversations();
         if (activeIdRef.current) l.loadMessages(activeIdRef.current, { silent: true });
         l.flushOfflineQueue();
+        l.syncDirtyDrafts();
+      }),
+      // WP6: shu userning boshqa tab/qurilmasida qoralama o'zgardi (yoki xabar yuborilib tozalandi).
+      // O'zimiz yuborgan PUT'ning aks-sadosi (`deviceId` bir xil) e'tiborsiz qoldiriladi.
+      on('draft:update', ({ conversationId, draft, deviceId } = {}) => {
+        if (!conversationId || !draft) return;
+        if (deviceId && deviceId === deviceIdRef.current) return;
+        live().mergeRemoteDrafts([[conversationId, draft]]);
       }),
       on('message:new', ({ conversationId, message } = {}) => {
         // Eski realtime-server (emit-edited/emit-deleted endpointlarisiz) uchun fallback:
@@ -1481,6 +1560,7 @@ export function ChatProvider({ myUserId, children }) {
     ensureMessageLoaded,
     drafts,
     saveDraft,
+    clearDraftAfterSend,
     stagedFiles,
     stageExternalFiles,
     setConversationFlags,

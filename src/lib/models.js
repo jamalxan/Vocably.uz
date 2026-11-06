@@ -431,6 +431,18 @@ export const ReviewEvent = mongoose.models.ReviewEvent || mongoose.model('Review
 // qatnasha oladigan bo'lib qolardi. Shuning uchun oddiy skalyar `pairKey`ga unique
 // qo'yamiz, `participantIds`dagi indeks esa faqat "mening suhbatlarim" so'rovi uchun
 // (unique emas, multikey qidiruv).
+// PARITY_PLAN WP6 — server orqali sinxronlanadigan qoralama (har ishtirokchiga alohida, faqat egasi ko'radi).
+// Bo'sh matn + replyTo=null — "tombstone": tozalangan qoralama boshqa qurilma keshidan qayta tirilmasin.
+// `updatedAt` faqat server soati bilan yoziladi (klientlar shu bo'yicha yarashtiradi).
+const DraftSchema = new mongoose.Schema(
+  {
+    text: { type: String, default: '', maxlength: 4000 },
+    replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+    updatedAt: { type: Date, required: true },
+  },
+  { _id: false }
+);
+
 const ConversationSchema = new mongoose.Schema({
   participantIds: {
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
@@ -506,6 +518,9 @@ const ConversationSchema = new mongoose.Schema({
   // uchun UMUMIY (kim qadagan bo'lishidan qat'iy nazar, ikkalasi ham ko'radi) —
   // mutedBy/nicknames kabi faqat-o'zimga-tegishli maydonlardan farqli.
   pinnedMessageIds: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }], default: [] },
+  // Kalit — userId (String), qiymat — shu userning qoralamasi (DraftSchema). Faqat egasiga qaytariladi
+  // (GET /conversations, /draft); ikkinchi tomon hech qachon ko'rmaydi.
+  drafts: { type: Map, of: DraftSchema, default: {} },
 });
 // Ikkita boshqa-boshqa so'rov shakli: (1) bitta userning suhbatlar ro'yxati, eng
 // yangisi birinchi (src/app/api/chat/conversations); (2) admin panelning BARCHA

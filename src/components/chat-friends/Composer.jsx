@@ -63,6 +63,7 @@ export default function Composer() {
     sendTyping,
     drafts,
     saveDraft,
+    clearDraftAfterSend,
     stagedFiles,
     stageExternalFiles,
   } = useChat();
@@ -92,16 +93,32 @@ export default function Composer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Draft save: debounced on text change, immediately on reply change; cleared on send/unmount flush.
+  // Draft save: debounced on text change, immediately on reply change; cleared on send; a pending
+  // save is flushed on unmount (leaving the chat right after typing keeps the last characters).
+  // `syncedTextRef` — the text this composer last saved or received from the draft store: when the
+  // textarea still equals it, nothing local is unsaved and a newer remote draft may replace it (WP6).
+  const syncedTextRef = useRef(text);
+  const pendingSaveRef = useRef(null); // () => void while a debounced save is waiting
   const persistDraft = (nextText, nextReply) => {
     if (!conversationId) return;
+    pendingSaveRef.current = null;
+    syncedTextRef.current = nextText;
     saveDraft(conversationId, { text: nextText, replyTo: nextReply ? { id: nextReply.id, senderId: nextReply.senderId, type: nextReply.type, text: nextReply.text, mediaKey: nextReply.mediaKey || null } : null });
   };
   const scheduleDraft = (nextText) => {
     clearTimeout(draftTimer.current);
-    draftTimer.current = setTimeout(() => persistDraft(nextText, replyingTo), DRAFT_DEBOUNCE_MS);
+    const save = () => persistDraft(nextText, replyingTo);
+    pendingSaveRef.current = save;
+    draftTimer.current = setTimeout(save, DRAFT_DEBOUNCE_MS);
   };
+  // Saves only when the reply target really changed: on mount (and its StrictMode re-run) the target is
+  // restored right after this effect, so saving then would write a transient "no reply" draft and
+  // bounce a needless PUT to the server.
+  const lastReplyIdRef = useRef(replyingTo?.id ?? null);
   useEffect(() => {
+    const replyId = replyingTo?.id ?? null;
+    if (replyId === lastReplyIdRef.current) return;
+    lastReplyIdRef.current = replyId;
     if (editingMessage) return;
     clearTimeout(draftTimer.current);
     persistDraft(textRef.current, replyingTo);
@@ -110,9 +127,26 @@ export default function Composer() {
   useEffect(
     () => () => {
       clearTimeout(draftTimer.current);
+      pendingSaveRef.current?.();
     },
     []
   );
+
+  // WP6: a newer draft from another tab/device (server) replaces the text only when this composer has
+  // nothing unsaved and the user is not typing here (textarea not focused); otherwise local text wins.
+  const appliedSyncRef = useRef(draft?.syncedAt || 0);
+  const remoteSyncedAt = draft?.syncedAt || 0;
+  const remoteDirty = !!draft?.dirty;
+  const remoteText = draft?.text ?? '';
+  useEffect(() => {
+    if (remoteDirty || remoteSyncedAt <= appliedSyncRef.current) return;
+    appliedSyncRef.current = remoteSyncedAt;
+    if (editingMessage || pendingSaveRef.current) return;
+    if (textInputRef.current && document.activeElement === textInputRef.current) return;
+    if (textRef.current !== syncedTextRef.current || textRef.current === remoteText) return;
+    syncedTextRef.current = remoteText;
+    setText(remoteText);
+  }, [remoteSyncedAt, remoteDirty, remoteText, editingMessage]);
 
   // Edit mode: the message text replaces the input; leaving edit mode restores nothing (draft is separate).
   const [prevEditing, setPrevEditing] = useState(null);
@@ -193,14 +227,18 @@ export default function Composer() {
       clearTray();
       setText('');
       clearTimeout(draftTimer.current);
-      saveDraft(conversationId, { text: '', replyTo: null });
+      pendingSaveRef.current = null;
+      syncedTextRef.current = '';
+      clearDraftAfterSend(conversationId);
       textInputRef.current?.focus();
       return;
     }
     if (!clean) return;
     setText('');
     clearTimeout(draftTimer.current);
-    saveDraft(conversationId, { text: '', replyTo: null });
+    pendingSaveRef.current = null;
+    syncedTextRef.current = '';
+    clearDraftAfterSend(conversationId);
     textInputRef.current?.focus();
     sendMessage({ type: 'text', text: clean }).then((res) => {
       if (res?.error && res.error !== 'Tarmoq xatoligi') alert(ts(res.error));

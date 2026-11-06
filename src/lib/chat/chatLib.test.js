@@ -138,9 +138,11 @@ describe('album rendering', () => {
 describe('drafts', () => {
   it('set/get/prune', () => {
     let m = setDraft({}, 'c1', { text: 'hello' }, 1000);
-    expect(getDraft(m, 'c1')).toEqual({ text: 'hello', replyTo: null, updatedAt: 1000 });
+    expect(getDraft(m, 'c1')).toEqual({ text: 'hello', replyTo: null, updatedAt: 1000, syncedAt: 0, dirty: true });
+    // WP6: clearing leaves a tombstone (so a stale copy elsewhere cannot resurrect it); no "Draft:" row.
     m = setDraft(m, 'c1', { text: '  ' }, 2000);
-    expect(getDraft(m, 'c1')).toBeNull();
+    expect(getDraft(m, 'c1')).toEqual({ text: '', replyTo: null, updatedAt: 2000, syncedAt: 0, dirty: true });
+    expect(rowPreview({ lastMessagePreview: 'last' }, getDraft(m, 'c1')).kind).not.toBe('draft');
     m = setDraft(m, 'c2', { text: '', replyTo: { id: 'm1' } }, 3000);
     expect(getDraft(m, 'c2').replyTo).toEqual({ id: 'm1' });
     const old = { c3: { text: 'x', updatedAt: 0 }, c4: 'junk', c5: { text: 'y', updatedAt: Date.now() } };

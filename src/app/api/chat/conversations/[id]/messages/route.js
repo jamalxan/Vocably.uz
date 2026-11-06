@@ -6,13 +6,14 @@ import { resolveSendableSticker } from '@/lib/stickerCatalog';
 import { objectExists, readObjectPrefix, copyObject, buildObjectKey } from '@/lib/s3';
 import { cleanAlbumId, cleanFileName, cleanWaveform } from '@/lib/chat/mediaMeta';
 import { isValidImageMagicBytes } from '@/lib/imageMagicBytes';
-import { pushNewMessage } from '@/lib/realtime';
+import { pushNewMessage, emitEvent } from '@/lib/realtime';
 import { sendPushToUser } from '@/lib/webPush';
 import { markConversationRead } from '@/lib/chatRead';
 import { notifyRecipientViaTelegram } from '@/lib/chatNotify';
 import { loadConversationForUser } from '@/lib/chat/conversationAccess';
 import { isConversationMuted, previewForMessage } from '@/lib/chatConstants';
 import { isObjectIdString, materializeCopies, partitionSources, planForwardCopies } from '@/lib/chat/forward';
+import { isTombstone, rawDraftOf, serializeDraft } from '@/lib/chat/draftServer';
 import { after, NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
@@ -248,6 +249,12 @@ export async function POST(req, props) {
         (id) => String(id) !== String(user._id) && String(id) !== String(otherId)
       );
     }
+    // PARITY_PLAN WP6 — yuborilgan xabar yuboruvchining shu suhbatdagi qoralamasini tozalaydi
+    // (tombstone, shu save bilan birga); boshqa qurilmalari `draft:update` bilan darhol biladi.
+    // Qoralama allaqachon bo'sh bo'lsa hech narsa yozilmaydi va hodisa yuborilmaydi.
+    const prevDraft = rawDraftOf(convo, user._id);
+    const clearedDraft = prevDraft && !isTombstone(prevDraft) ? { text: '', replyTo: null, updatedAt: new Date() } : null;
+    if (clearedDraft) convo.set(`drafts.${String(user._id)}`, clearedDraft);
     await convo.save();
 
     // Realtime push, web push va Telegram endi after() ichida — javob ularni KUTMAYDI.
@@ -290,6 +297,9 @@ export async function POST(req, props) {
     const pushUrl = user.username ? `/app/friends/${user.username}` : '/app/friends';
     after(async () => {
       const deliveries = [pushNewMessage(otherId, String(convo._id), realtimePayload, liveMeta)];
+      if (clearedDraft) {
+        deliveries.push(emitEvent([user._id], 'draft:update', { conversationId: String(convo._id), draft: serializeDraft(clearedDraft), deviceId: null }));
+      }
       if (!recipientMuted) {
         deliveries.push(sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }));
       }

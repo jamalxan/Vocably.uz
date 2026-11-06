@@ -153,6 +153,12 @@ hujjatiga embed qilinmagan — cross-user so'rovlar (qidiruv, admin nazorati) ke
   (`callId`, `kind`, `outcome`, `durationSec`, `startedAt`, `acceptedAt`, `endedAt`), `senderId` = qo'ng'iroq
   qilgan, faqat `POST /api/internal/call-event` yaratadi; `call.callId` partial unique indeks
   (docs/chat/CALLS_SPEC.md §7). `Conversation.tgCallNotifiedAt` — qo'ng'iroq Telegram throttle'i.
+  `forwardedFrom` = `{ userId, name, messageId, hidden }` — forward'ning birinchi muallifi; `hidden` —
+  "yuboruvchi nomini yashirish" (yorliq ko'rsatilmaydi; PARITY_PLAN WP5, `POST /api/chat/messages/forward`).
+- **`Conversation.drafts`** — `Map<userId, { text (≤4000), replyTo: ObjectId|null, updatedAt }>`: server
+  qoralamalari, faqat egasiga qaytariladi; bo'sh matn + `replyTo: null` — tombstone (tozalangan qoralama
+  qayta tirilmasligi uchun). Xabar yuborilganda yuboruvchining qoralamasi tombstone bo'ladi (PARITY_PLAN WP6,
+  `GET/PUT/DELETE /api/chat/conversations/[id]/draft`, socket `draft:update`).
 - **`Block`**, **`Report`**, **`AdminAuditLog`** — bloklash, shikoyat va admin audit jurnali.
 - **`RateLimitHit`** — Redis'siz oddiy tezlik cheklash uchun, TTL indeks bilan avtomatik tozalanadi.
 
