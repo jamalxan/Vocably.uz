@@ -2,7 +2,8 @@ import { connectToDatabase } from '@/lib/db';
 import { requireChatUser, checkRateLimit } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Block, User } from '@/lib/models';
-import { NextResponse } from 'next/server';
+import { forceEndCall } from '@/lib/realtime';
+import { after, NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
@@ -27,6 +28,8 @@ export async function POST(req) {
       { $setOnInsert: { blockerId: user._id, blockedId: target._id } },
       { upsert: true }
     );
+    // Shu ikkisi orasida qo'ng'iroq ketayotgan bo'lsa — darhol tugatiladi (javobni kutdirmaydi).
+    after(() => forceEndCall(user._id, 'blocked', target._id));
 
     return NextResponse.json({ success: true });
   } catch (err) {

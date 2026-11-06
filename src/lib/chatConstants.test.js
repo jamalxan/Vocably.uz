@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { isConversationMuted, isMutedNow, isTgMessageNotifyOn, shouldShowLastSeen } from './chatConstants';
+import {
+  isConversationMuted,
+  isMutedNow,
+  isTgMessageNotifyOn,
+  shouldShowLastSeen,
+  CALL_OUTCOMES,
+  PREVIEW_BY_TYPE,
+  REPLY_TYPE_LABEL,
+  formatCallDuration,
+  callPreview,
+  previewForMessage,
+} from './chatConstants';
+import { hasServerTranslation, translateServerText } from './i18n/serverText';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -96,5 +108,53 @@ describe('isTgMessageNotifyOn', () => {
   it('boshqa userning tanlovi ta\'sir qilmaydi', () => {
     expect(isTgMessageNotifyOn({ tgMessageNotifyOn: ['u2'] }, uid, false)).toBe(false);
     expect(isTgMessageNotifyOn({ tgMessageNotifyOff: ['u2'] }, uid, true)).toBe(true);
+  });
+});
+
+describe('call previews', () => {
+  it('formatCallDuration', () => {
+    expect(formatCallDuration(null)).toBe('');
+    expect(formatCallDuration(undefined)).toBe('');
+    expect(formatCallDuration(0)).toBe('0:00');
+    expect(formatCallDuration(59)).toBe('0:59');
+    expect(formatCallDuration(133)).toBe('2:13');
+    expect(formatCallDuration(3661)).toBe('61:01');
+  });
+
+  it('callPreview for every outcome', () => {
+    expect(CALL_OUTCOMES).toHaveLength(6);
+    expect(callPreview({ outcome: 'ended', durationSec: 133 })).toBe("📞 Qo'ng'iroq (2:13)");
+    expect(callPreview({ outcome: 'missed', durationSec: null })).toBe("📞 Javobsiz qo'ng'iroq");
+    expect(callPreview({ outcome: 'busy' })).toBe("📞 Javobsiz qo'ng'iroq");
+    expect(callPreview({ outcome: 'cancelled' })).toBe("📞 Javobsiz qo'ng'iroq");
+    expect(callPreview({ outcome: 'declined' })).toBe("📞 Rad etilgan qo'ng'iroq");
+    expect(callPreview({ outcome: 'failed' })).toBe("📞 Amalga oshmagan qo'ng'iroq");
+    expect(callPreview(null)).toBe(PREVIEW_BY_TYPE.call);
+  });
+
+  it('previewForMessage for text, caption, media and call', () => {
+    expect(previewForMessage({ type: 'text', text: 'x'.repeat(100) })).toBe('x'.repeat(80));
+    expect(previewForMessage({ type: 'image', text: ' hi ' })).toBe('hi');
+    expect(previewForMessage({ type: 'voice', text: '' })).toBe('🎤 Ovozli xabar');
+    expect(previewForMessage({ type: 'call', text: '', call: { outcome: 'ended', durationSec: 5 } })).toBe("📞 Qo'ng'iroq (0:05)");
+    expect(previewForMessage({ type: 'unknown' })).toBe('');
+    expect(REPLY_TYPE_LABEL.call).toBe("📞 Qo'ng'iroq");
+  });
+
+  it('every call preview has an English server translation', () => {
+    const texts = [
+      ...CALL_OUTCOMES.map((outcome) => callPreview({ outcome, durationSec: 133 })),
+      PREVIEW_BY_TYPE.call,
+      "Qo'ng'iroq qilib bo'lmadi",
+      "Noto'g'ri qo'ng'iroq turi",
+      "Juda ko'p qo'ng'iroq. Biroz kuting.",
+      "Juda ko'p so'rov. Biroz kuting.",
+      "Qo'ng'iroqni qadab bo'lmaydi",
+      "Bu xabarni yuborib bo'lmaydi",
+      'Foydalanuvchi band',
+      'Foydalanuvchi oflayn',
+    ];
+    expect(texts.filter((t) => !hasServerTranslation('en', t))).toEqual([]);
+    expect(translateServerText('en', "📞 Qo'ng'iroq (2:13)")).toBe('📞 Call (2:13)');
   });
 });

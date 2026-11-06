@@ -1,7 +1,10 @@
 FROM node:20-alpine
 WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev
-COPY index.js ./
+ENV NODE_ENV=production
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+# Barcha modullar: index.js (bootstrap), server.js, calls.js, persist.js (+ testlar, zararsiz).
+COPY *.js ./
+USER node
 EXPOSE 4001
 CMD ["node", "index.js"]

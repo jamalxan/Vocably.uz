@@ -65,8 +65,9 @@ export async function getUserIdFromRequest(req) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
     // socket-ticket (src/app/api/chat/socket-ticket/route.js) — 60s, faqat
     // realtime-server handshake uchun. Shu yerda rad etiladi, shunda uni
-    // Authorization header sifatida oddiy API'larga yuborish ishlamaydi.
-    if (decoded.scope === 'realtime') return null;
+    // Authorization header sifatida oddiy API'larga yuborish ishlamaydi. Umuman
+    // `scope`li HECH QAYSI token (realtime tiketi, qo'ng'iroq grant'i va h.k.) sessiya emas.
+    if (decoded.scope) return null;
     if (!decoded.userId) return null;
     // `iat` soniyalarda — qat'iy "<" (parol tiklangan soniyada berilgan yangi token o'tadi).
     if (typeof decoded.iat === 'number' && decoded.iat < (await tokensValidAfterSec(String(decoded.userId)))) return null;

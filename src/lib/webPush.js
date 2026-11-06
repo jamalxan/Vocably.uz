@@ -18,13 +18,22 @@ function ensureConfigured() {
  * bo'lsa yoki foydalanuvchida hech qanday obuna bo'lmasa — jimgina hech narsa qilmaydi
  * (ilova ichidagi Notification hujjati baribir yaratiladi, faqat real push bo'lmaydi).
  */
-export async function sendPushToUser(userId, { title, body, url }) {
+//
+// Ixtiyoriy `tag`/`renotify`/`requireInteraction`/`actions` — qo'ng'iroq bildirishnomalari
+// uchun (bitta qo'ng'iroq — bitta bildirishnoma, "Qayta qo'ng'iroq qilish" tugmasi);
+// public/sw.js ularni showNotification'ga uzatadi. Berilmaganlari payload'ga qo'shilmaydi.
+export async function sendPushToUser(userId, { title, body, url, tag, renotify, requireInteraction, actions }) {
   if (!ensureConfigured()) return;
 
   const subs = await PushSubscription.find({ userId }).lean();
   if (subs.length === 0) return;
 
-  const payload = JSON.stringify({ title, body, url: url || '/app' });
+  const extra = {};
+  if (typeof tag === 'string' && tag) extra.tag = tag;
+  if (typeof renotify === 'boolean') extra.renotify = renotify;
+  if (typeof requireInteraction === 'boolean') extra.requireInteraction = requireInteraction;
+  if (Array.isArray(actions) && actions.length) extra.actions = actions.slice(0, 2);
+  const payload = JSON.stringify({ title, body, url: url || '/app', ...extra });
 
   await Promise.all(
     subs.map(async (sub) => {

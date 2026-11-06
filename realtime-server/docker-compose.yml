@@ -1,37 +1,57 @@
-version: '3.8'
-
-# Vocably Do'stlar bo'limi uchun serverga joylashtiriladigan ikkita izolyatsiyalangan
-# xizmat: media saqlash (MinIO, S3-mos) va jonli xabar/onlayn holat (realtime-server).
-# Ikkalasi ham faqat 127.0.0.1'ga bog'lanadi — internetga faqat nginx orqali (TLS bilan)
-# chiqadi, xizmatlarning o'zi to'g'ridan-to'g'ri tashqariga ochilmaydi.
+# Vocably realtime (socket.io: presence, xabarlar, qo'ng'iroq signalingi) + coturn (STUN/TURN).
+# VPS 185.237.97.126 sxemasi (docs/chat/CALLS_SPEC.md §8.3):
+# - `realtime` tashqariga port OCHMAYDI — SocialAuto'ning Caddy'si (socialauto_default tarmog'i)
+#   uni konteyner nomi bilan topadi: `ws.vocably.uz { reverse_proxy vocably-realtime:4001 }`
+#   (Caddyfile.snippet).
+# - `coturn` host tarmog'ida (UDP/TCP 3478 + relay UDP 49160-49360, ufw'da ochiladi) —
+#   NAT ortidagi relay portlarini Docker port-mapping orqali o'tkazish amalda ishlamaydi.
+# Ishga tushirish: `cp .env.example .env && chmod 600 .env` (qiymatlarni to'ldiring),
+# `chmod 644 coturn/turnserver.conf`, keyin `docker compose up -d --build`.
 services:
-  minio:
-    image: minio/minio:latest
-    container_name: vocably-minio
-    restart: unless-stopped
-    command: server /data --address ":9000"
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
-      MINIO_BROWSER: "off"
-    ports:
-      - "127.0.0.1:9000:9000"
-    volumes:
-      - ./minio-data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
   realtime:
     build: .
     container_name: vocably-realtime
     restart: unless-stopped
-    environment:
-      PORT: 4001
-      JWT_SECRET: ${JWT_SECRET}
-      REALTIME_SHARED_SECRET: ${REALTIME_SHARED_SECRET}
-      NEXTJS_INTERNAL_URL: ${NEXTJS_INTERNAL_URL}
-    ports:
-      - "127.0.0.1:4001:4001"
+    env_file: .env
+    expose:
+      - '4001'
+    networks:
+      - socialauto_default
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4001/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+  coturn:
+    image: coturn/coturn:4.18
+    container_name: vocably-coturn
+    restart: unless-stopped
+    network_mode: host
+    # TURN_SECRET shu yerdan (konteyner env'iga) keladi. coturn konfiguratsiya faylida env
+    # o'zgaruvchilarini ochmaydi, shuning uchun sir faylda EMAS — buyruq satrida beriladi.
+    # `$$` — compose interpolatsiyasi emas, konteyner ichidagi sh o'zgaruvchisi.
+    env_file: .env
+    # coturn root EMAS (nobody) bo'lib ishlaydi: fayl o'qiladigan bo'lishi shart (chmod 644),
+    # faqat o'qish uchun ulanadi.
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    entrypoint:
+      - sh
+      - -c
+      - '[ -n "$$TURN_SECRET" ] || { echo "TURN_SECRET sozlanmagan" >&2; exit 1; }; exec turnserver -c /etc/coturn/turnserver.conf --static-auth-secret="$$TURN_SECRET"'
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+networks:
+  socialauto_default:
+    external: true
