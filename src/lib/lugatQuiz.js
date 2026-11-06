@@ -1,5 +1,5 @@
-// Lug'at mashq rejimlari (cloze, kollokatsiya, antonim, jumla, so'z oilasi, tezkor,
-// tinglab yozish) uchun umumiy yordamchilar — 7 ta faylda bir xil klasslar takrorlanmasin.
+// Lug'at mashq rejimlari (kollokatsiya, so'z oilasi, mnemonika) va o'yin savollari uchun umumiy
+// yordamchilar — bir xil klasslar har faylda takrorlanmasin.
 
 // Kategoriya almashganda sahifa holati (idx, navbat) noldan qurilishi uchun React `key`.
 export function categoryKey(activeCatIndex, activeCategory) {
@@ -17,7 +17,7 @@ export function optionStateClass(answered, isCorrectOpt, isSelected) {
     if (isCorrectOpt) return 'border-success/40 bg-success-soft text-success';
     if (isSelected) return 'border-danger/40 bg-danger-soft text-danger';
   }
-  return 'border-border text-ink hover:border-accent/30';
+  return 'border-border bg-surface text-ink hover:border-accent/40 hover:bg-bg-sunken/60';
 }
 
 // Tekshirilgan yozma javob maydoni (input) klassi.
@@ -25,6 +25,6 @@ export function answerStateClass(isCorrect) {
   return isCorrect ? 'border-success/40 bg-success-soft text-success' : 'border-danger/40 bg-danger-soft text-danger';
 }
 
-// Variant tugmasi — mobilda 44px, desktopda avvalgi zichlik.
+// Variant tugmasi — kamida 48px balandlik (mobil va desktop), katta matn, yumaloq burchak.
 export const OPTION_BUTTON_CLASS =
-  'w-full text-left px-4 py-3 md:py-2.5 border rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40';
+  'w-full min-h-12 text-left px-4 py-3 border-2 rounded-2xl text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40';
