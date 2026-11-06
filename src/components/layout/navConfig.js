@@ -60,7 +60,7 @@ export const SIDEBAR_NAV = [
   // "AI" ATAYLAB yo'q — o'ng-pastdagi suzuvchi AI tugmasi (AppShell) yetarli,
   // ikkalasi bir vaqtda bo'lishi ortiqcha edi (2026-09-10 foydalanuvchi so'rovi).
   { key: 'reyting', label: 'Leaderboard', href: '/app/leaderboard', icon: Trophy },
-  { key: 'dostlar', label: 'Friends', href: '/app/friends', icon: Users, matchPrefix: true, requiresChatAccess: true },
+  { key: 'dostlar', label: 'Friends', href: '/app/friends', icon: Users, matchPrefix: true, requiresChatAccess: true, badge: 'chatUnread' },
   // TCH-01/02 — faqat role === 'teacher' bo'lgan foydalanuvchilarga ko'rinadi
   // (AppShell.jsx'dagi `chatRole` filtri). Mobil pastki tab-bar'ga ATAYLAB
   // qo'shilmadi — u qat'iy 5 joy bilan cheklangan (pastdagi BOTTOM_NAV izohi).
@@ -82,7 +82,7 @@ export const BOTTOM_NAV = [
     matchAny: SKILL_SECTIONS.map((s) => s.href),
   },
   { key: 'ai', label: 'AI', href: '/app/ai', icon: Sparkles },
-  { key: 'dostlar', label: 'Friends', href: '/app/friends', icon: Users, matchPrefix: true, requiresChatAccess: true },
+  { key: 'dostlar', label: 'Friends', href: '/app/friends', icon: Users, matchPrefix: true, requiresChatAccess: true, badge: 'chatUnread' },
   { key: 'profil', label: 'Profile', href: '/app/profile', icon: User },
 ];
 

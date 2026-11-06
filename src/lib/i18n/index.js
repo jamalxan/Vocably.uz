@@ -2,6 +2,8 @@
 // Matnlar bosqichma-bosqich o'tkaziladi: `t()` ishlatilmagan joylar o'zbekcha qoladi (aralash til bo'lmasligi uchun sahifa-sahifa).
 import uz from './messages/uz';
 import en from './messages/en';
+// ru — qisman lug'at, ru ishga tushishiga oldindan yoziladi (PARITY_PLAN §1): MESSAGES'da bor, LOCALES'da YO'Q.
+import ru from './messages/ru';
 
 export const LOCALES = ['en', 'uz'];
 export const DEFAULT_LOCALE = 'en';
@@ -30,4 +32,4 @@ export function translate(locale, key, vars) {
   return renderTemplate(l, DICTS[l]?.[key] ?? DICTS.en[key] ?? key, vars);
 }
 
-export const MESSAGES = DICTS;
+export const MESSAGES = { ...DICTS, ru };

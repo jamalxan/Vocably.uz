@@ -6,7 +6,6 @@ import { useT } from '@/context/LocaleContext';
 import { ChatProvider, useChat } from '@/context/ChatContext';
 import ConversationList from './ConversationList';
 import ConversationView from './ConversationView';
-import NewMessageToast from './NewMessageToast';
 
 function DoStlarShell({ onActiveChange }) {
   const {
@@ -14,8 +13,6 @@ function DoStlarShell({ onActiveChange }) {
     selectConversation,
     closeConversation,
     openConversationByUsername,
-    newMessageToast,
-    dismissMessageToast,
   } = useChat();
   const params = useParams();
   const router = useRouter();
@@ -113,18 +110,8 @@ function DoStlarShell({ onActiveChange }) {
         <ConversationView onBack={closeConversation} />
       </div>
 
-      {/* G-2 — "boshqa suhbatda bo'lsa" toast'i: shu darajada (ro'yxat va aktiv
-          suhbat ustida) turadi, chunki qaysi pastki ko'rinishda bo'lishidan
-          qat'iy nazar ko'rinishi kerak (masalan mobil'da ro'yxat ekranida turib
-          boshqa suhbatga xabar kelsa ham). */}
-      <NewMessageToast
-        toast={newMessageToast}
-        onDismiss={dismissMessageToast}
-        onOpen={(t) => {
-          dismissMessageToast();
-          if (t.conversation) selectConversation(t.conversation);
-        }}
-      />
+      {/* G-2 toast endi (main) layout'da — GlobalMessageToast (NewMessageToast.jsx), har qanday
+          /app sahifada ishlaydi (PARITY_PLAN WP1). */}
     </div>
   );
 }

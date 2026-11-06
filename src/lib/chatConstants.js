@@ -14,6 +14,7 @@ export const REPLY_TYPE_LABEL = {
   voice: '🎤 Ovozli xabar',
   file: '📎 Fayl',
   sticker: '😊 Stiker',
+  call: "📞 Qo'ng'iroq", // himoya uchun: qo'ng'iroqqa javob berib bo'lmaydi (server rad etadi)
 };
 
 // "typing" socket hodisasining `kind`i -> ConversationView/ConversationList'da
@@ -35,7 +36,42 @@ export const PREVIEW_BY_TYPE = {
   voice: '🎤 Ovozli xabar',
   file: '📎 Fayl',
   sticker: '😊 Stiker',
+  call: "📞 Qo'ng'iroq",
 };
+
+// Qo'ng'iroq yozuvining natijalari (docs/chat/CALLS_SPEC.md §7). Xabarning o'zi qo'ng'iroq tarixi.
+export const CALL_OUTCOMES = ['ended', 'missed', 'declined', 'busy', 'cancelled', 'failed'];
+
+/** null -> '', 0 -> '0:00', 133 -> '2:13', 3661 -> '61:01' (soat ajratilmaydi — Telegram kabi). */
+export function formatCallDuration(sec) {
+  if (sec === null || sec === undefined || sec === '') return '';
+  const n = Number(sec);
+  if (!Number.isFinite(n) || n < 0) return '';
+  const s = Math.floor(n);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+// Ro'yxatdagi preview ikkala tomon uchun umumiy (lastMessagePreview), shuning uchun "kim kimga"
+// qo'ng'iroq qilganidan qat'i nazar neytral matn (PARITY_PLAN §2.7). Pufakchalar esa ko'ruvchiga xos.
+export function callPreview(call) {
+  const outcome = call?.outcome;
+  if (outcome === 'ended') {
+    const d = formatCallDuration(call?.durationSec);
+    return d ? `📞 Qo'ng'iroq (${d})` : "📞 Qo'ng'iroq";
+  }
+  if (outcome === 'missed' || outcome === 'busy' || outcome === 'cancelled') return "📞 Javobsiz qo'ng'iroq";
+  if (outcome === 'declined') return "📞 Rad etilgan qo'ng'iroq";
+  if (outcome === 'failed') return "📞 Amalga oshmagan qo'ng'iroq";
+  return "📞 Qo'ng'iroq";
+}
+
+/** Bitta manba: matn/izoh -> 80 belgi; qo'ng'iroq -> callPreview; boshqasi -> PREVIEW_BY_TYPE. */
+export function previewForMessage(m) {
+  if (!m) return '';
+  if (m.type === 'call') return callPreview(m.call);
+  if (m.text) return String(m.text).slice(0, 80);
+  return PREVIEW_BY_TYPE[m.type] || '';
+}
 
 // H-1 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H) — "Oxirgi marta ko'rilgan"/onlayn
 // holatini VIEWER'ga (shu holatni ko'rmoqchi bo'lgan foydalanuvchiga) ko'rsatish

@@ -1,9 +1,9 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { connectChatSocket } from '@/lib/socketClient';
+import { useRealtime } from '@/context/RealtimeContext';
 import { mergePolledMessages, applyDeletedForEveryone } from '@/lib/chatMerge';
 import { enqueueOffline, dequeueOffline, mergeQueuedIntoMessages } from '@/lib/offlineQueue';
-import { PREVIEW_BY_TYPE, isMutedNow } from '@/lib/chatConstants';
+import { previewForMessage } from '@/lib/chatConstants';
 import { STICKER_PACKS as STATIC_STICKER_PACKS } from '@/lib/stickers';
 import { createUploadManager } from '@/lib/chat/uploadManager';
 import { xhrPut } from '@/lib/chat/xhrUpload';
@@ -61,25 +61,28 @@ export function ChatProvider({ myUserId, children }) {
   // (foydalanuvchi doim "Hali xabar yo'q" deb o'ylardi, hatto tarmoq xatosi bo'lsa
   // ham). Endi xato holati saqlanadi, ConversationView "Qayta yuklash" ko'rsatadi.
   const [messagesError, setMessagesError] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
+  // PARITY_PLAN WP1 — socket endi (main) layout'dagi RealtimeProvider'da (sahifalar orasida uzilmaydi);
+  // bu yerda faqat unga obuna bo'lamiz. `socketConnected`/`livePresence` qiymatlari o'zgarmagan
+  // nomlar bilan qayta eksport qilinadi (ConversationList/ConversationView/MessageBubble).
+  const {
+    connected: socketConnected,
+    livePresence,
+    queryPresence,
+    emit,
+    on,
+    setActiveConversationId,
+    setUnreadFromConversations,
+  } = useRealtime();
   // Composer'da "tahrirlash rejimi" — xabar matni inputga qaytariladi, yuborish
   // o'rniga saqlash (PATCH) chaqiriladi. Faqat o'z matnli xabarlariga tegishli.
   const [editingMessage, setEditingMessage] = useState(null); // { id, text }
   // Composer'da "javob berish rejimi" — keyingi yuboriladigan xabar (matn yoki
   // media, farqi yo'q) shu xabarga iqtibos sifatida bog'lanadi (server snapshot oladi).
   const [replyingTo, setReplyingTo] = useState(null); // { id, senderId, type, text }
-  // realtime-server'dan kelgan ANIQ onlayn holat: { [userId]: true|false } — mavjud
-  // bo'lsa src/lib/presence.js'dagi lastActiveAt-taxminidan ustuvor (docs/ shu faylning
-  // pastidagi queryPresenceForKnownUsers izohiga qarang).
-  const [livePresence, setLivePresence] = useState({});
   // Qaysi suhbatda hozir "yozmoqda..." holati faol: { [conversationId]: true } —
   // har bir yozuv 3s'dan keyin o'zi tozalanadi (pastdagi socket 'typing' handler'i).
   const [typingByConversation, setTypingByConversation] = useState({});
-  // G-2 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 G) — "boshqa suhbatda" (yoki hali
-  // ro'yxatda bo'lmagan, yangi) suhbatga xabar kelganda ko'rsatiladigan in-app toast:
-  // { conversationId, conversation (bo'lsa — selectConversation uchun), senderLabel,
-  // preview }. DoStlarPanel.jsx (NewMessageToast.jsx) shuni render qiladi.
-  const [newMessageToast, setNewMessageToast] = useState(null);
+  // G-2 in-app toast endi RealtimeProvider'da (har qanday /app sahifada ko'rinadi, PARITY_PLAN WP1).
   // Stiker katalogi (/api/chat/stickers): `packs` — tanlash oynasi uchun, `byId` —
   // xabar pufakchasida stikerni topish uchun (o'chirilganlari ham, eski xabarlar
   // uchun). Server javob bermaguncha statik "Standart" to'plam bilan boshlanadi.
@@ -89,7 +92,6 @@ export function ChatProvider({ myUserId, children }) {
   // Files dropped on the conversation (ConversationView drop zone) → picked up by the Composer tray.
   const [stagedFiles, setStagedFiles] = useState(null);
 
-  const socketRef = useRef(null);
   const pollRef = useRef(null);
   const listReloadRef = useRef(null);
   const messagesRef = useRef([]);
@@ -392,10 +394,20 @@ export function ChatProvider({ myUserId, children }) {
     },
     [reloadListSoon]
   );
-  const previewFor = (payload) => (payload.text ? String(payload.text).slice(0, 80) : PREVIEW_BY_TYPE[payload.type] || '');
-
-  const appendMessage = useCallback((msg) => {
-    setMessages((prev) => (prev.some((m) => String(m.id || m._id) === String(msg.id || msg._id)) ? prev : [...prev, msg]));
+  // Jonli kelgan xabar: id YOKI clientMessageId bo'yicha dublikat tekshiriladi — xabar endi
+  // yuboruvchining o'z boshqa qurilmalariga ham keladi (PARITY_PLAN §2.5), shu qurilmada esa
+  // optimistik pufakcha allaqachon bor: uni server nusxasi bilan almashtiramiz (mahalliy preview saqlanadi).
+  const upsertLiveMessage = useCallback((msg) => {
+    setMessages((prev) => {
+      const id = String(msg.id || msg._id);
+      if (prev.some((m) => String(m.id || m._id) === id)) return prev;
+      const cmid = msg.clientMessageId ? String(msg.clientMessageId) : null;
+      const idx = cmid ? prev.findIndex((m) => String(m.clientMessageId) === cmid) : -1;
+      if (idx === -1) return [...prev, msg];
+      const next = [...prev];
+      next[idx] = { ...msg, clientMessageId: cmid, _status: 'sent', _localUrl: prev[idx]._localUrl || null };
+      return next;
+    });
   }, []);
 
   // Suhbat ochiq turganda jonli (socket) xabar kelganda chaqiriladi — GET /messages
@@ -527,7 +539,7 @@ export function ChatProvider({ myUserId, children }) {
             return next;
           });
         }
-        touchList(conversationId, { preview: previewFor(payload), createdAt: data.message?.createdAt || new Date().toISOString(), incoming: false });
+        touchList(conversationId, { preview: previewForMessage(payload), createdAt: data.message?.createdAt || new Date().toISOString(), incoming: false });
         return { message: data.message };
       } catch {
         setMessages((prev) => prev.map((m) => (String(m.clientMessageId) === String(clientMessageId) ? { ...m, _status: 'failed' } : m)));
@@ -986,7 +998,7 @@ export function ChatProvider({ myUserId, children }) {
         if (!res.ok) return { error: data.error || 'Yuborilmadi' };
         last = data.message;
       }
-      if (last) touchList(targetConversationId, { preview: last.text ? last.text.slice(0, 80) : PREVIEW_BY_TYPE[last.type] || '', createdAt: last.createdAt, incoming: false });
+      if (last) touchList(targetConversationId, { preview: previewForMessage(last), createdAt: last.createdAt, incoming: false });
       if (String(activeIdRef.current) === String(targetConversationId)) loadMessages(targetConversationId, { silent: true });
       return { success: true };
     },
@@ -1220,8 +1232,6 @@ export function ChatProvider({ myUserId, children }) {
   // presence:update hodisasini kutib o'tirmasdan darhol to'g'ri ko'rsatish uchun
   // (masalan sahifa yangi ochilganda yoki yangi suhbat qo'shilganda).
   const queryPresenceForKnownUsers = useCallback(() => {
-    const socket = socketRef.current;
-    if (!socket || !socket.connected) return;
     const ids = new Set();
     conversationsRef.current.forEach((c) => {
       if (c.otherUser?.id) ids.add(String(c.otherUser.id));
@@ -1229,16 +1239,9 @@ export function ChatProvider({ myUserId, children }) {
     const activeOtherId = activeConversationRef.current?.otherUser?.id;
     if (activeOtherId) ids.add(String(activeOtherId));
     if (ids.size === 0) return;
-    socket.emit('presence:query', Array.from(ids), (result) => {
-      if (result && typeof result === 'object') {
-        setLivePresence((prev) => ({ ...prev, ...result }));
-      }
-    });
-  }, []);
-
-  // G-2 — toast'ni yopish (avtomatik 5s'dan keyin yoki "X" bosilganda,
-  // NewMessageToast.jsx) yoki bosilib suhbat ochilgandan keyin.
-  const dismissMessageToast = useCallback(() => setNewMessageToast(null), []);
+    // Socket ulanmagan bo'lsa queryPresence jimgina {} qaytaradi.
+    queryPresence(Array.from(ids));
+  }, [queryPresence]);
 
   useEffect(() => {
     loadConversations();
@@ -1299,70 +1302,67 @@ export function ChatProvider({ myUserId, children }) {
   // emas) — boshqa tomonga "yozmoqda.../ovoz yubormoqda.../video yubormoqda..."
   // signalini yuboradi.
   const sendTyping = useCallback((kind = 'text') => {
-    const socket = socketRef.current;
     const convo = activeConversationRef.current;
-    if (!socket || !socket.connected || !convo?.otherUser?.id) return;
+    if (!socketConnected || !convo?.otherUser?.id) return;
     const key = convo.id;
     const now = Date.now();
     if (lastTypingEmitRef.current[key] && now - lastTypingEmitRef.current[key] < 2000) return;
     lastTypingEmitRef.current[key] = now;
-    socket.emit('typing', { recipientId: convo.otherUser.id, conversationId: convo.id, kind });
-  }, []);
+    emit('typing', { recipientId: convo.otherUser.id, conversationId: convo.id, kind });
+  }, [socketConnected, emit]);
 
   // Realtime: mavjud bo'lsa socket orqali jonli push, aks holda (yoki uzilganda)
-  // ochiq suhbatni har 5s'da qayta so'raymiz — chat hech qachon socket'ga qattiq
-  // bog'liq bo'lmasligi kerak (docs/ chat plani §2).
+  // ochiq suhbatni qayta so'raymiz — chat hech qachon socket'ga qattiq bog'liq
+  // bo'lmasligi kerak (docs/ chat plani §2).
   //
-  // AUTH_MIGRATION_MAP.md — realtime-server/ alohida (cross-origin) xizmat
-  // bo'lgani va Next.js'ning httpOnly cookie'siga ega bo'lmagani uchun socket
-  // ulanishi HAQIQIY tokenga muhtoj. Uni endi har ulanishda cookie orqali
-  // autentifikatsiya qilingan `/api/chat/socket-ticket`dan olamiz — 60
-  // soniyalik umr bilan, hech qachon localStorage'ga yozilmaydi (faqat shu
-  // effekt closure'ida, xotirada).
+  // PARITY_PLAN WP1 — socket va chipta RealtimeProvider'da; bu yerda faqat `on(event, fn)` bilan
+  // obuna bo'lamiz va unmount'da hammasini `off()` qilamiz (socket o'zi uzilmaydi — boshqa
+  // sahifada ham ishlayveradi). Handlerlar har renderda yangilanadigan ref orqali chaqiriladi, shuning
+  // uchun obuna faqat bir marta (mount'da) qilinadi.
+  const liveRef = useRef(null);
   useEffect(() => {
-    let cancelled = false;
-    let socket = null;
-
-    fetch('/api/chat/socket-ticket', { method: 'POST' })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(({ ticket }) => {
-        if (cancelled) return;
-        socket = connectChatSocket(ticket);
-        socketRef.current = socket;
-        if (!socket) return;
-        attachSocketHandlers(socket);
-      })
-      .catch(() => {
-        // Chipta olinmadi (masalan tarmoq xatosi) — chat REST orqali
-        // ishlayveradi (docs/ chat plani §2, "socket butunlay o'chib qolsa ham").
-      });
-
-    // Socket hodisa handlerlari alohida funksiyaga chiqarildi — chipta
-    // so'ralib bo'lingandan keyin, yuqoridagi .then() ichida chaqiriladi.
-    function attachSocketHandlers(socket) {
-      socket.on('connect', () => {
-        setSocketConnected(true);
-        queryPresenceForKnownUsers();
-        // F — reconnect sync ("Reconnect'da o'tkazib yuborilgan xabarlarni sync
-        // qilish"): bu HAR bir 'connect'da ishlaydi (dastlabki ulanishda ham,
-        // keyingi qayta-ulanishlarda ham — socket.io ikkalasida ham xuddi shu
-        // 'connect' hodisasini beradi). To'liq "since=lastEventId" event-log o'rniga
-        // soddalashtirilgan variant: ro'yxatni va (bo'lsa) aktiv suhbatning oxirgi
-        // xabarlarini jimgina qayta so'raymiz — uzilib turgan paytda o'tkazib
-        // yuborilgan xabarlar/o'qilganlik/preview shu bilan tutib olinadi.
-        loadConversations();
-        if (activeIdRef.current) loadMessages(activeIdRef.current, { silent: true });
-        // F — ulanish tiklanishi bilan offline navbatni ham bo'shatamiz (socket
-        // ulanishi tiklangani REST'ning ham ishlashi ehtimoli yuqoriligini bildiradi,
-        // window 'online' hodisasi kechroq yoki umuman kelmasligi mumkin bo'lgan
-        // holatlarda ham — masalan VPN/tunnel qayta ulanishi).
-        flushOfflineQueue();
-      });
-      socket.on('disconnect', () => setSocketConnected(false));
-      socket.on('message:new', ({ conversationId, message }) => {
-        // Eski realtime-server (emit-edited/emit-deleted endpointlarisiz) uchun
-        // fallback: server tahrir/o'chirishni shu kanal orqali `_event` bilan
-        // yuboradi (src/lib/realtime.js, pushMessageEvent).
+    liveRef.current = { loadConversations, loadMessages, flushOfflineQueue, upsertLiveMessage, markRead, touchList };
+  });
+  useEffect(() => {
+    const live = () => liveRef.current;
+    // C-11 — boshqa tomon xabarni tahrirlaganda real-vaqtda yangi matnni ko'rsatamiz.
+    const onMessageEdited = ({ conversationId, message } = {}) => {
+      if (!conversationId || !message) return;
+      if (String(conversationId) === String(activeIdRef.current)) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m.id || m._id) === String(message.id)
+              ? { ...m, text: message.text, edited: true, editedAt: message.editedAt }
+              : m
+          )
+        );
+      }
+      live().loadConversations();
+    };
+    // C-11 — "hamma uchun" o'chirilganda tombstone (yoki `silently` bo'lsa butunlay olib tashlash).
+    const onMessageDeleted = ({ conversationId, messageId, silently } = {}) => {
+      if (!conversationId || !messageId) return;
+      if (String(conversationId) === String(activeIdRef.current)) {
+        setMessages((prev) => applyDeletedForEveryone(prev, messageId, silently));
+      }
+      live().loadConversations();
+    };
+    const typingTimers = typingTimersRef;
+    const offs = [
+      // F — reconnect sync ("Reconnect'da o'tkazib yuborilgan xabarlarni sync qilish"): HAR bir
+      // 'connect'da (dastlabki va qayta ulanishlarda) ro'yxat, ochiq suhbat va offline navbat.
+      // Provider mount bo'lganda socket allaqachon ulangan bo'lsa 'connect' kelmaydi — o'sha holatda
+      // xuddi shu qadamlarni pastdagi mount effektlari (loadConversations + flushOfflineQueue)
+      // bajaradi; ochiq suhbat esa mount paytida hali yo'q (ikki marta so'ramaslik uchun).
+      on('connect', () => {
+        const l = live();
+        l.loadConversations();
+        if (activeIdRef.current) l.loadMessages(activeIdRef.current, { silent: true });
+        l.flushOfflineQueue();
+      }),
+      on('message:new', ({ conversationId, message } = {}) => {
+        // Eski realtime-server (emit-edited/emit-deleted endpointlarisiz) uchun fallback:
+        // tahrir/o'chirish shu kanal orqali `_event` bilan keladi (src/lib/realtime.js).
         if (message?._event === 'deleted') {
           onMessageDeleted({ conversationId, messageId: message.id, silently: message.silently });
           return;
@@ -1371,88 +1371,46 @@ export function ChatProvider({ myUserId, children }) {
           onMessageEdited({ conversationId, message });
           return;
         }
-        if (String(conversationId) === String(activeIdRef.current)) {
-          appendMessage(message);
-          // Suhbat hozir ochiq turibdi — kelgan zahoti "o'qildi" deb belgilaymiz
-          // (Telegram uslubi: chat ochiq bo'lsa yangi xabar darhol o'qilgan hisoblanadi),
-          // LEKIN faqat tab/oyna haqiqatan ham ko'rinib turgan bo'lsa (foydalanuvchi
-          // boshqa tabda yoki oynani kichraytirgan bo'lsa, xabar tab qayta fokusga
-          // qaytmaguncha "o'qilmagan" holida qoladi — pastdagi visibilitychange
-          // effekti o'sha paytda orqada qolganini tutib oladi, avvalgi xato manbai:
-          // yashirin tabda ham xabar darhol "o'qilgan" deb ko'rsatilardi).
-          if (!document.hidden) markRead(conversationId);
-        } else {
-          // G-2 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 G — "Tab ochiq, lekin
-          // boshqa suhbatda bo'lsa — in-app toast") — bu ilova 1:1 bo'lgani uchun
-          // xabar yuboruvchisi HAR DOIM shu suhbatning otherUser'i (conversationsRef
-          // ro'yxatidan topiladi — hali ro'yxatda yo'q, chindan yangi suhbat bo'lsa,
-          // mute holatini bilmaymiz, ehtiyot chorasi sifatida baribir ko'rsatamiz).
-          const conv = conversationsRef.current.find((c) => String(c.id) === String(conversationId));
-          if (!isMutedNow(conv)) {
-            const senderLabel = conv?.otherUser?.nickname || (conv?.otherUser?.username ? `@${conv.otherUser.username}` : 'Yangi xabar');
-            const preview = message.type === 'text' ? (message.text || '').slice(0, 80) : PREVIEW_BY_TYPE[message.type] || 'Xabar';
-            setNewMessageToast({ conversationId, conversation: conv || null, senderLabel, preview });
-          }
-        }
-        const preview = message.text ? String(message.text).slice(0, 80) : PREVIEW_BY_TYPE[message.type] || 'Xabar';
-        touchList(conversationId, { preview, createdAt: message.createdAt, incoming: String(message.senderId) !== String(myIdRef.current) });
-      });
-      // Men yuborgan xabar(lar) boshqa tomonda o'qilganda kelib, bitta ptichkani
-      // ikkitaga aylantiradi — faqat hozir ochiq suhbatga tegishli bo'lsa.
-      socket.on('message:read', ({ conversationId, readAt } = {}) => {
-        if (!conversationId || String(conversationId) !== String(activeIdRef.current)) return;
-        // Faqat MEN yuborgan (hali readAt'siz) xabarlarni belgilaydi — boshqa
-        // tomonning o'zi yuborgan xabarlariga tegmaydi (ular UI'da tick ko'rsatmaydi,
-        // lekin noto'g'ri lokal holat qoldirmaslik uchun aniq cheklaymiz).
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.readAt || String(m.senderId) !== String(myIdRef.current) ? m : { ...m, readAt }
-          )
-        );
-      });
-      socket.on('presence:update', ({ userId, online }) => {
-        setLivePresence((prev) => ({ ...prev, [String(userId)]: online }));
-      });
-      // Boshqa tomon yozayotganini (yoki ovozli/video xabar yozib turganini)
-      // bildiradi — 3s ichida yana kelmasa "yozmoqda..." o'zi tozalanadi (aniq
-      // "to'xtatdi" hodisasi yo'q, bu soddaroq va uzilishlarga chidamli). Uzun
-      // yozuvlarda (voice/video) jo'natuvchi shu 3s oynasidan tez-tez (2s'da bir)
-      // qayta yuboradi, shuning uchun butun yozuv davomida ko'rinib turadi.
-      // C-11 — boshqa tomon xabarni tahrirlaganda (Composer/edit oqimi orqali,
-      // src/app/api/chat/conversations/[id]/messages/[messageId] PATCH'dagi
-      // pushMessageEdited) real-vaqtda yangi matnni ko'rsatamiz — avval bu event
-      // umuman yo'q edi, tahrirlangan matn faqat sahifa qayta yuklanganda ko'rinardi.
-      const onMessageEdited = ({ conversationId, message } = {}) => {
         if (!conversationId || !message) return;
-        if (String(conversationId) === String(activeIdRef.current)) {
-          setMessages((prev) =>
-            prev.map((m) =>
-              String(m.id || m._id) === String(message.id)
-                ? { ...m, text: message.text, edited: true, editedAt: message.editedAt }
-                : m
-            )
-          );
+        const l = live();
+        const mine = String(message.senderId) === String(myIdRef.current);
+        const isActive = String(conversationId) === String(activeIdRef.current);
+        const visible = typeof document !== 'undefined' && !document.hidden;
+        if (isActive) {
+          l.upsertLiveMessage(message);
+          // Telegram uslubi: suhbat ochiq va tab ko'rinib turgan bo'lsa kelgan zahoti "o'qildi";
+          // yashirin tabda — tab qayta ko'ringanda (pastdagi visibilitychange effekti).
+          if (visible && !mine) l.markRead(conversationId);
         }
-        loadConversations();
-      };
-      // C-11 — boshqa tomon xabarni "hamma uchun" o'chirganda (DELETE'dagi
-      // pushMessageDeleted) real-vaqtda darhol tombstone'ga aylantiradi (yoki
-      // `silently` bo'lsa butunlay olib tashlaydi) — avval bu event umuman yo'q
-      // edi, o'chirilgan xabar faqat sahifa qayta yuklanganda yo'qolardi.
-      const onMessageDeleted = ({ conversationId, messageId, silently } = {}) => {
-        if (!conversationId || !messageId) return;
-        if (String(conversationId) === String(activeIdRef.current)) {
-          setMessages((prev) => applyDeletedForEveryone(prev, messageId, silently));
-        }
-        loadConversations();
-      };
-      socket.on('message:edited', onMessageEdited);
-      socket.on('message:deleted', onMessageDeleted);
-      socket.on('typing', ({ conversationId, kind } = {}) => {
+        // Toast endi RealtimeProvider'da (bu yerda emas).
+        l.touchList(conversationId, {
+          preview: previewForMessage(message),
+          createdAt: message.createdAt,
+          incoming: !mine && !message.readAt && !(isActive && visible),
+        });
+      }),
+      // Men yuborgan xabar(lar) boshqa tomonda o'qilganda — bitta ptichka ikkitaga aylanadi.
+      on('message:read', ({ conversationId, readAt } = {}) => {
+        if (!conversationId || String(conversationId) !== String(activeIdRef.current)) return;
+        setMessages((prev) =>
+          prev.map((m) => (m.readAt || String(m.senderId) !== String(myIdRef.current) ? m : { ...m, readAt }))
+        );
+      }),
+      on('message:edited', onMessageEdited),
+      on('message:deleted', onMessageDeleted),
+      // Boshqa qurilmamda suhbat o'qildi (WP3 self-event) — shu qatordagi hisoblagich nolga.
+      on('conversation:read', ({ conversationId } = {}) => {
         if (!conversationId) return;
-        clearTimeout(typingTimersRef.current[conversationId]);
+        setConversations((prev) =>
+          prev.map((c) => (String(c.id) === String(conversationId) && c.unreadCount ? { ...c, unreadCount: 0 } : c))
+        );
+      }),
+      // "yozmoqda..." — 3s ichida yana kelmasa o'zi tozalanadi (aniq "to'xtatdi" hodisasi yo'q).
+      on('typing', ({ conversationId, kind } = {}) => {
+        if (!conversationId) return;
+        clearTimeout(typingTimers.current[conversationId]);
         setTypingByConversation((prev) => ({ ...prev, [conversationId]: kind || 'text' }));
-        typingTimersRef.current[conversationId] = setTimeout(() => {
+        typingTimers.current[conversationId] = setTimeout(() => {
           setTypingByConversation((prev) => {
             if (!prev[conversationId]) return prev;
             const next = { ...prev };
@@ -1460,17 +1418,26 @@ export function ChatProvider({ myUserId, children }) {
             return next;
           });
         }, 3000);
-      });
-    }
-
+      }),
+    ];
     return () => {
-      cancelled = true;
-      socket?.disconnect();
-      Object.values(typingTimersRef.current).forEach(clearTimeout);
-      typingTimersRef.current = {};
+      offs.forEach((off) => off());
+      Object.values(typingTimers.current).forEach(clearTimeout);
+      typingTimers.current = {};
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [on]);
+
+  // RealtimeProvider ochiq suhbatni biladi: unga kelgan xabar toast/badge'ga tushmaydi.
+  useEffect(() => {
+    setActiveConversationId(activeConversation?.id ?? null);
+  }, [activeConversation?.id, setActiveConversationId]);
+  useEffect(() => () => setActiveConversationId(null), [setActiveConversationId]);
+
+  // Ro'yxat yuklangan bo'lsa — nav belgisi va tab sarlavhasi shu (eng aniq) manbadan hisoblanadi.
+  useEffect(() => {
+    if (loadingConversations || conversationsError) return;
+    setUnreadFromConversations(conversations);
+  }, [conversations, loadingConversations, conversationsError, setUnreadFromConversations]);
 
   // Fallback when the realtime socket is down or not configured: poll the open
   // conversation — every 2s while the tab is visible (close to live), every
@@ -1566,8 +1533,6 @@ export function ChatProvider({ myUserId, children }) {
     livePresence,
     typingByConversation,
     sendTyping,
-    newMessageToast,
-    dismissMessageToast,
     stickerPacks: stickerCatalog.packs,
     stickerById: stickerCatalog.byId,
     loadStickers,

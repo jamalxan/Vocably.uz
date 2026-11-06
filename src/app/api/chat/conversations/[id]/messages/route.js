@@ -265,6 +265,17 @@ export async function POST(req, props) {
     // up on the next poll — while Telegram was awaited on its own, delaying
     // every send. Now the slowest of the three bounds the response.
     const deliveries = [];
+    const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
+    // G-3 — endi doimiy (`mutedBy`) VA muddatli (`mutedUntil`, hali tugamagan) mute'ni
+    // ham hisobga oladi (src/lib/chatConstants.js#isConversationMuted).
+    const recipientMuted = isConversationMuted(convo, otherId);
+    // PARITY_PLAN WP1 — qabul qiluvchining ilova ichidagi toast'i uchun: kim yozdi (uning shu
+    // odamga qo'ygan taxallusi yoki @username) va suhbat ovozsizmi (`silent` -> toast yo'q).
+    const recipientNick = convo.nicknames?.get ? convo.nicknames.get(String(otherId)) : convo.nicknames?.[String(otherId)];
+    const liveMeta = {
+      sender: { id: String(user._id), username: user.username || null, label: recipientNick || senderLabel },
+      silent: recipientMuted,
+    };
     deliveries.push(pushNewMessage(otherId, String(convo._id), {
       id: message._id,
       conversationId: convo._id,
@@ -278,7 +289,7 @@ export async function POST(req, props) {
       forwardedFrom: message.forwardedFrom,
       clientMessageId: message.clientMessageId,
       createdAt: message.createdAt,
-    }));
+    }, liveMeta));
 
     // Brauzer push — javobni bloklamaydi, xato bo'lsa faqat log qilinadi (xabarning
     // o'zi allaqachon saqlangan). Qabul qiluvchi shu suhbatni "ovozsiz" qilgan bo'lsa
@@ -287,10 +298,6 @@ export async function POST(req, props) {
     // javobi ikkala holatda ham bir xil. Ilova ichidagi qo'ng'iroq belgisida (Notification
     // hujjati) chat xabarlari uchun ATAYLAB endi bildirishnoma yaratilmaydi — buning
     // o'rniga Telegram orqali xabar boradi (pastga qarang).
-    const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
-    // G-3 — endi doimiy (`mutedBy`) VA muddatli (`mutedUntil`, hali tugamagan) mute'ni
-    // ham hisobga oladi (src/lib/chatConstants.js#isConversationMuted).
-    const recipientMuted = isConversationMuted(convo, otherId);
     if (!recipientMuted) {
       const pushUrl = user.username ? `/app/friends/${user.username}` : '/app/friends';
       deliveries.push(sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }));

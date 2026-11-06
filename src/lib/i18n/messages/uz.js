@@ -512,6 +512,7 @@ const uz = {
   'shell.collapse': "Menyuni yig'ish",
   'shell.expand': 'Menyuni kengaytirish',
   'shell.themePick': 'Mavzuni tanlash',
+  'nav.unreadAria': "{n} ta o'qilmagan xabar",
   'ai.open': 'AI yordamchini ochish (Ctrl+K)',
   'ai.title': 'AI yordamchi (Ctrl+K)',
   'ai.panel': 'AI yordamchi',

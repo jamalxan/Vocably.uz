@@ -183,3 +183,44 @@ describe('chat list', () => {
     expect(rowPreview({ lastMessagePreview: 'last' }, null)).toEqual({ kind: 'message', text: 'last' });
   });
 });
+
+describe('call previews (chatConstants, CALLS_SPEC §7.2)', () => {
+  it('formatCallDuration', async () => {
+    const { formatCallDuration } = await import('@/lib/chatConstants');
+    expect([null, 0, 59, 133, 3661].map(formatCallDuration)).toEqual(['', '0:00', '0:59', '2:13', '61:01']);
+    expect(formatCallDuration(undefined)).toBe('');
+    expect(formatCallDuration(-1)).toBe('');
+  });
+
+  it('callPreview: 6 outcomes, viewer-neutral', async () => {
+    const { callPreview, CALL_OUTCOMES } = await import('@/lib/chatConstants');
+    expect(CALL_OUTCOMES).toEqual(['ended', 'missed', 'declined', 'busy', 'cancelled', 'failed']);
+    expect(callPreview({ outcome: 'ended', durationSec: 133 })).toBe("📞 Qo'ng'iroq (2:13)");
+    expect(callPreview({ outcome: 'missed' })).toBe("📞 Javobsiz qo'ng'iroq");
+    expect(callPreview({ outcome: 'busy' })).toBe("📞 Javobsiz qo'ng'iroq");
+    expect(callPreview({ outcome: 'cancelled' })).toBe("📞 Javobsiz qo'ng'iroq");
+    expect(callPreview({ outcome: 'declined' })).toBe("📞 Rad etilgan qo'ng'iroq");
+    expect(callPreview({ outcome: 'failed' })).toBe("📞 Amalga oshmagan qo'ng'iroq");
+    expect(callPreview(null)).toBe("📞 Qo'ng'iroq");
+  });
+
+  it('previewForMessage: text, caption, media, call', async () => {
+    const { previewForMessage } = await import('@/lib/chatConstants');
+    expect(previewForMessage({ type: 'text', text: 'x'.repeat(100) })).toBe('x'.repeat(80));
+    expect(previewForMessage({ type: 'image', text: 'izoh' })).toBe('izoh');
+    expect(previewForMessage({ type: 'image' })).toBe('📷 Rasm');
+    expect(previewForMessage({ type: 'voice', text: '' })).toBe('🎤 Ovozli xabar');
+    expect(previewForMessage({ type: 'call', text: '', call: { outcome: 'ended', durationSec: 5 } })).toBe("📞 Qo'ng'iroq (0:05)");
+    expect(previewForMessage(null)).toBe('');
+  });
+
+  it('every call preview has an English mapping', async () => {
+    const { callPreview } = await import('@/lib/chatConstants');
+    const { translateServerText } = await import('@/lib/i18n/serverText');
+    expect(translateServerText('en', callPreview({ outcome: 'ended', durationSec: 133 }))).toBe('📞 Call (2:13)');
+    expect(translateServerText('en', callPreview({ outcome: 'missed' }))).toBe('📞 Missed call');
+    expect(translateServerText('en', callPreview({ outcome: 'declined' }))).toBe('📞 Declined call');
+    expect(translateServerText('en', callPreview({ outcome: 'failed' }))).toBe('📞 Failed call');
+    expect(translateServerText('en', "📞 Qo'ng'iroq")).toBe('📞 Call');
+  });
+});

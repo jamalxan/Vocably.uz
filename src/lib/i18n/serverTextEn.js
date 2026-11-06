@@ -78,6 +78,15 @@ const en = {
     "🎤 Ovozli xabar": "🎤 Voice message",
     "📎 Fayl": "📎 File",
     "😊 Stiker": "😊 Sticker",
+    // --- Calls (CALLS_SPEC §7.2: chat-list previews and API errors)
+    "📞 Qo'ng'iroq": "📞 Call",
+    "📞 Javobsiz qo'ng'iroq": "📞 Missed call",
+    "📞 Rad etilgan qo'ng'iroq": "📞 Declined call",
+    "📞 Amalga oshmagan qo'ng'iroq": "📞 Failed call",
+    "Qo'ng'iroq qilib bo'lmadi": "Could not place the call",
+    "Noto'g'ri qo'ng'iroq turi": "Invalid call type",
+    "Juda ko'p qo'ng'iroq. Biroz kuting.": "Too many calls. Please wait a moment.",
+    "Qo'ng'iroqni qadab bo'lmaydi": "A call cannot be pinned",
     "yozmoqda...": "typing...",
     "ovoz yubormoqda...": "recording a voice message...",
     "video yubormoqda...": "sending a video...",
@@ -276,6 +285,7 @@ const en = {
     "So'zlarni og'zaki ishlating": 'Use the words in speech',
   },
   patterns: [
+    { uz: "📞 Qo'ng'iroq ({d})", tr: "📞 Call ({d})" },
     { uz: "{n} daq oldin", tr: "{n} min ago" },
     { uz: "{n} daqiqagacha ovozsiz", tr: "muted for {n} more {n#minute|minutes}" },
     { uz: "{n} soatgacha ovozsiz", tr: "muted for {n} more {n#hour|hours}" },

@@ -512,6 +512,7 @@ const en = {
   'shell.collapse': 'Collapse menu',
   'shell.expand': 'Expand menu',
   'shell.themePick': 'Choose theme',
+  'nav.unreadAria': '{n} unread {n#message|messages}',
   'ai.open': 'Open AI assistant (Ctrl+K)',
   'ai.title': 'AI assistant (Ctrl+K)',
   'ai.panel': 'AI assistant',
