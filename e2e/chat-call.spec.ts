@@ -396,7 +396,7 @@ test('10. reconnect: the callee socket drops mid-call -> reconnecting -> active 
   expect(row.call.durationSec).not.toBeNull();
 });
 
-test('11. reload mid-call: the reloaded tab sees "on another device", grace expiry ends the call as lost', async ({ browser }) => {
+test('11. reload mid-call: the unloading tab hangs up (pagehide); the peer sees the call end with a duration, the reloaded tab is idle again', async ({ browser }) => {
   const since = new Date();
   const { user, friend } = await openPair(browser);
   track(user);
@@ -408,16 +408,18 @@ test('11. reload mid-call: the reloaded tab sees "on another device", grace expi
   await expect(user.page.getByTestId('incoming-call')).toBeVisible({ timeout: 10_000 });
   await user.page.getByTestId('call-accept').click();
   await expectActive(friend.page, user.page);
+  await expect(callStatusEl(friend.page)).toContainText(/0:0[2-9]/, { timeout: 15_000 });
 
-  // Qayta yuklangan sahifa `idle`dan boshlanadi va call:resume yubormaydi (CS §9.6): server unga
-  // call:state {onThisDevice:false} beradi -> ElsewhereBanner; grace (CALL_GRACE_MS) tugagach `ended`.
+  // CallContext `pagehide`da call:end (hangup) yuboradi — qayta yuklash = go'shakni qo'yish (Telegram Web kabi).
+  // Server grace kutmaydi: qo'ng'iroq darhol "ended" + davomiylik bilan yoziladi.
   await user.page.reload();
-  await expect(user.page.getByTestId('call-elsewhere')).toBeVisible({ timeout: 20_000 });
-  await expect(callStatusEl(friend.page)).toContainText(uzRe('Ulanish uzildi'), { timeout: 30_000 });
-  await expectNoOverlay(friend.page);
-  await expect(user.page.getByTestId('call-elsewhere')).toHaveCount(0, { timeout: 10_000 });
+  await expectNoOverlay(friend.page, 15_000);
   const row = await waitCallRow(E2E_CONVERSATION_ID, since, 'ended');
-  expect(row.call.durationSec).not.toBeNull();
+  expect(row.call.durationSec).toBeGreaterThanOrEqual(1);
+  // Qayta yuklangan tab: qo'ng'iroq yo'q (banner ham yo'q), tugmalar yana faol.
+  await waitCallReady(user.page);
+  await expect(user.page.getByTestId('call-elsewhere')).toHaveCount(0);
+  await expect(user.page.getByTestId('call-audio-button')).toBeEnabled();
 });
 
 test('12. deep link ?call=audio shows the call-back sheet; it starts the call', async ({ browser }) => {

@@ -522,6 +522,20 @@ function createCallManager({
     if (side) socket.emit('call:state', statePayload(call, side, false));
   }
 
+  // Client o'z handler'larini ulanishdan KEYIN ro'yxatdan o'tkazsa (sahifa qayta yuklanganda
+  // React effekti socket 'connect'idan kech keladi), onConnect'dagi call:state o'tib ketadi —
+  // shuning uchun client o'zi so'raydi: ack(null) — qo'ng'iroq yo'q, aks holda call:state payload'i
+  // (onThisDevice — shu socket bog'langanmi).
+  function query(socket, reply) {
+    const callId = activeCallByUser.get(socket.userId);
+    const call = callId && calls.get(callId);
+    if (!call) return reply(null);
+    const side = sideOfUser(call, socket.userId);
+    if (!side) return reply(null);
+    const bound = side === 'caller' ? call.callerSocketId : call.calleeSocketId;
+    return reply(statePayload(call, side, bound === socket.id));
+  }
+
   function onDisconnect(socket, { userNowOffline } = {}) {
     const callId = activeCallByUser.get(socket.userId);
     const call = callId && calls.get(callId);
@@ -596,6 +610,7 @@ function createCallManager({
     connected,
     end,
     resume,
+    query,
     onConnect,
     onDisconnect,
     forceEnd,

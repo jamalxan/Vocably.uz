@@ -114,6 +114,12 @@ export function createPeer({
 
   pc.onnegotiationneeded = async () => {
     if (closed) return;
+    // Polite tomon (qabul qiluvchi) birinchi kelishuvni BOSHLAMAYDI: o'z treklarini qo'shgan zahoti
+    // taklif yuborsa, qo'ng'iroq qiluvchining taklifi bilan to'qnashadi ("glare") va Chrome'da
+    // yashirin rollback'dan keyin ICE yig'ish umuman boshlanmay qolishi kuzatildi (E2E'da
+    // callee hech qanday kandidat bermagan). Masofadagi taklif kelganda treklar javobga o'zi kiradi;
+    // keyingi kelishuvlar (kamera yoqish, ICE restart) odatdagidek ikkala tomondan boshlanaveradi.
+    if (polite && !pc.remoteDescription) return;
     try {
       makingOffer = true;
       await pc.setLocalDescription();

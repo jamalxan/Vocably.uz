@@ -125,7 +125,8 @@ test('three photos + caption become one album; the viewer walks through them', a
   await expect(album).toBeVisible();
   await expect(album.locator('img')).toHaveCount(3);
   // The grid must keep its own width inside the shrink-to-fit bubble (it once collapsed to the caption's width).
-  expect((await album.boundingBox())?.width ?? 0).toBeGreaterThanOrEqual(280);
+  // Polled: the optimistic album is swapped for the server copy, so the first element may detach mid-check.
+  await expect.poll(async () => (await page.getByTestId('album').last().boundingBox())?.width ?? 0, { timeout: 10_000 }).toBeGreaterThanOrEqual(280);
   await expect(page.locator('[data-msg-id]').last()).toContainText('Albom izohi');
   await expect
     .poll(

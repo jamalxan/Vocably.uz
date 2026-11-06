@@ -200,6 +200,22 @@ export function CallProvider({ children }) {
     [act, emit, emitMedia]
   );
 
+  // Serverdan "menda qo'ng'iroq bormi?" (call:query, ack). Faqat idle/elsewhere holatda ma'noli:
+  // boshqa qurilmada davom etayotgan qo'ng'iroq uchun ElsewhereBanner, yoki uning tugaganini bilish.
+  const queryServerState = useCallback(() => {
+    const sock = socketRef.current;
+    if (!sock?.connected) return;
+    sock.timeout(INVITE_ACK_MS).emit('call:query', {}, (err, payload) => {
+      if (err) return;
+      const s = stateRef.current;
+      if (!payload) {
+        if (s.status === 'elsewhere') act({ type: 'END', callId: s.elsewhere?.callId, reason: 'not_in_call' });
+        return;
+      }
+      if (payload.onThisDevice === false && (s.status === 'idle' || s.status === 'elsewhere')) act({ type: 'SERVER_STATE', ...payload });
+    });
+  }, [act]);
+
   const makePeer = useCallback(
     ({ polite, startOpen, iceServers }) => {
       const callId = stateRef.current.callId;
@@ -493,7 +509,14 @@ export function CallProvider({ children }) {
     if (typeof window === 'undefined') return;
     const m = /^\/app\/friends\/([^/]+)$/.exec(pathname || '');
     const kind = new URLSearchParams(window.location.search).get('call');
-    if (m && (kind === 'audio' || kind === 'video')) setPendingCallback({ username: decodeURIComponent(m[1]), kind });
+    if (m && (kind === 'audio' || kind === 'video')) {
+      setPendingCallback({ username: decodeURIComponent(m[1]), kind });
+      // Havola bir martalik: parametr darhol manzildan olib tashlanadi (yangilash/orqaga qaytishda
+      // qayta so'ramaydi). Next navigatsiyasiz — faqat tarix yozuvi almashtiriladi.
+      const url = new URL(window.location.href);
+      url.searchParams.delete('call');
+      window.history.replaceState(window.history.state, '', url.pathname + (url.search || '') + url.hash);
+    }
   }, [pathname]);
 
   const consumeCallback = useCallback(() => {
@@ -603,7 +626,10 @@ export function CallProvider({ children }) {
       }),
       on('connect', () => {
         const s = cur();
-        if (!s.callId || !['connecting', 'active', 'reconnecting'].includes(s.status)) return;
+        if (!s.callId || !['connecting', 'active', 'reconnecting'].includes(s.status)) {
+          queryServerState();
+          return;
+        }
         const sock = socketRef.current;
         if (!sock) return;
         sock.timeout(INVITE_ACK_MS).emit('call:resume', { callId: s.callId }, (err, ack) => {
@@ -627,8 +653,11 @@ export function CallProvider({ children }) {
         if (s.status === 'elsewhere') act({ type: 'END', callId: s.elsewhere?.callId, reason: 'disconnected' });
       }),
     ];
+    // Socket effektdan oldin ulangan bo'lishi mumkin (sahifa qayta yuklanganda): 'connect' qayta
+    // kelmaydi — holatni o'zimiz so'raymiz (boshqa qurilmadagi qo'ng'iroq banneri uchun).
+    if (socketRef.current?.connected) queryServerState();
     return () => offs.forEach((off) => off());
-  }, [on, emit, act, fetchIceServers]);
+  }, [on, emit, act, fetchIceServers, queryServerState]);
 
   // Socket butunlay yo'qolsa (provider o'chdi) — 'disconnect' eventisiz ham reconnecting'ga o'tamiz.
   useEffect(() => {

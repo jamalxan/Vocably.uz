@@ -91,8 +91,21 @@ describe('peer.js perfect negotiation', () => {
     expect(sent.map((m) => m.description?.type)).toEqual(['offer']);
   });
 
-  it('polite peer rolls back its own offer and answers', async () => {
+  it('polite peer never starts the first negotiation: it waits for the remote offer and answers it', async () => {
     const { peer, pc, sent } = mk({ polite: true, startOpen: true });
+    await pc.onnegotiationneeded();
+    expect(pc.signalingState).toBe('stable');
+    expect(sent).toEqual([]);
+    await peer.handleSignal({ description: { type: 'offer', sdp: 'their-offer' } });
+    expect(sent.map((m) => m.description?.type)).toEqual(['answer']);
+    expect(pc.signalingState).toBe('stable');
+  });
+
+  it('polite peer rolls back its own (re)negotiation offer and answers', async () => {
+    const { peer, pc, sent } = mk({ polite: true, startOpen: true });
+    // Birinchi kelishuv tugagan (masofadagi taklifga javob berilgan) — endi qayta kelishuv mumkin.
+    await peer.handleSignal({ description: { type: 'offer', sdp: 'first-offer' } });
+    sent.length = 0;
     await pc.onnegotiationneeded();
     expect(pc.signalingState).toBe('have-local-offer');
     await peer.handleSignal({ description: { type: 'offer', sdp: 'their-offer' } });

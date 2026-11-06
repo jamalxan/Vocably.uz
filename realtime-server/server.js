@@ -173,6 +173,7 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
     socket.on('call:connected', safe('call:connected', (p) => calls.connected(socket, p)));
     socket.on('call:end', safe('call:end', (p) => calls.end(socket, p)));
     socket.on('call:resume', safe('call:resume', (p, cb) => calls.resume(socket, p, ackOf(cb))));
+    socket.on('call:query', safe('call:query', (p, cb) => calls.query(socket, ackOf(cb))));
 
     socket.on('disconnect', () => {
       const n = (onlineCounts.get(socket.userId) || 1) - 1;

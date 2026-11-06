@@ -104,9 +104,12 @@ export default function IncomingCallScreen() {
               data-testid="call-accept"
               aria-label={t('call.accept')}
               onClick={() => acceptCall()}
-              className="w-[72px] h-[72px] rounded-full inline-flex items-center justify-center bg-success text-on-success hover:bg-success/90 motion-safe:animate-bounce focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="w-[72px] h-[72px] rounded-full inline-flex items-center justify-center bg-success text-on-success hover:bg-success/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              <Phone size={28} aria-hidden="true" />
+              {/* Tugmaning o'zi qimirlamaydi (bosish nishoni barqaror), faqat ichidagi belgi "sakraydi". */}
+              <span aria-hidden="true" className="inline-flex motion-safe:animate-bounce">
+                <Phone size={28} aria-hidden="true" />
+              </span>
             </button>
             <span aria-hidden="true" className="text-xs text-white/80">
               {t('call.accept')}
