@@ -79,6 +79,9 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  // PARITY_PLAN WP8.6 — Android Chrome'da klaviatura ochilganda layout viewport kichrayadi (h-dvh
+  // bilan Composer klaviatura ustida qoladi, oxirgi xabar ko'rinadi). iOS Safari buni e'tiborsiz qoldiradi.
+  interactiveWidget: 'resizes-content',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#F3EDE6' },
     { media: '(prefers-color-scheme: dark)', color: '#14090D' }, // = --color-bg (dark)

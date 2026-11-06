@@ -80,6 +80,16 @@ const ru = {
   'mb.reactions': 'Реакции',
   'mb.reactionAria': 'Реакция {emoji}: {n}',
   'mb.reactFailed': 'Не удалось поставить реакцию',
+  // --- Chat UX polish (PARITY_PLAN WP8)
+  'cv.unread': 'Непрочитанные сообщения',
+  'cv.loadingOlder': 'Загрузка предыдущих сообщений',
+  'ch.yesterday': 'Вчера',
+  'ch.toastClose': 'Закрыть',
+  'ch.connecting': 'Соединение…',
+  'ch.searchClear': 'Очистить поиск',
+  'ch.prevMedia': 'Предыдущее',
+  'ch.nextMedia': 'Следующее',
+  'ch.voiceRecording': 'Идёт запись',
 };
 
 export default ru;

@@ -1457,6 +1457,16 @@ const uz = {
   'world.bannerBadge': '3D sarguzasht',
   'world.bannerBody': "Orol bo'ylab yuring va portallar orqali Xotira kartalari, Tezlik sinovi, Vocabulary Boss va boshqa o'yinlarga kiring!",
   'world.bannerCta': 'Dunyoga kirish',
+  // --- Chat UX polish (PARITY_PLAN WP8)
+  'cv.unread': "O'qilmagan xabarlar",
+  'cv.loadingOlder': 'Oldingi xabarlar yuklanmoqda',
+  'ch.yesterday': 'Kecha',
+  'ch.toastClose': 'Yopish',
+  'ch.connecting': 'Ulanmoqda…',
+  'ch.searchClear': 'Qidiruvni tozalash',
+  'ch.prevMedia': 'Oldingi',
+  'ch.nextMedia': 'Keyingi',
+  'ch.voiceRecording': 'Ovoz yozilmoqda',
 };
 
 export default uz;

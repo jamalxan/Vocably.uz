@@ -99,14 +99,15 @@ export function ChatProvider({ myUserId, children }) {
   const mergeRemoteDraftsRef = useRef(null); // loadConversations (yuqorida) shu orqali chaqiradi
   // Files dropped on the conversation (ConversationView drop zone) → picked up by the Composer tray.
   const [stagedFiles, setStagedFiles] = useState(null);
-  // Qisqa holat xabari (masalan "3 ta chatga yuborildi", PARITY_PLAN WP5) — ConversationView pastda ko'rsatadi.
-  const [chatNotice, setChatNotice] = useState(null); // { id, text } | null
+  // Qisqa holat xabari (masalan "3 ta chatga yuborildi", PARITY_PLAN WP5) — ChatToast (WP8.14) ko'rsatadi.
+  // `tone`: 'info' | 'error' — chat kodidagi barcha xato alert oynalari shu yerga ko'chirildi.
+  const [chatNotice, setChatNotice] = useState(null); // { id, text, tone } | null
   const chatNoticeTimer = useRef(null);
-  const showChatNotice = useCallback((text) => {
+  const showChatNotice = useCallback((text, tone = 'info') => {
     clearTimeout(chatNoticeTimer.current);
     if (!text) return setChatNotice(null);
-    setChatNotice({ id: Date.now(), text });
-    chatNoticeTimer.current = setTimeout(() => setChatNotice(null), 3500);
+    setChatNotice({ id: Date.now(), text, tone });
+    chatNoticeTimer.current = setTimeout(() => setChatNotice(null), tone === 'error' ? 4500 : 3500);
   }, []);
   useEffect(() => () => clearTimeout(chatNoticeTimer.current), []);
 
@@ -1629,6 +1630,7 @@ export function ChatProvider({ myUserId, children }) {
     forwardMessages,
     chatNotice,
     showChatNotice,
+    notify: showChatNotice, // PARITY_PLAN WP8.14 nomi
     sendAttachments,
     cancelUpload,
     ensureMessageLoaded,

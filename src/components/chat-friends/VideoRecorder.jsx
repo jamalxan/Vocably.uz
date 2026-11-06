@@ -9,7 +9,7 @@ import { useChat } from '@/context/ChatContext';
 const MAX_SECONDS = 60; // Telegram uslubidagi qisqa "video xabar" — 1 daqiqagacha
 
 function VideoRecorderPanel({ onRecorded, onCancel }) {
-  const { sendTyping } = useChat();
+  const { sendTyping, showChatNotice } = useChat();
   const { t, locale } = useT();
   const [seconds, setSeconds] = useState(0);
   const [facing, setFacing] = useState('user');
@@ -125,7 +125,7 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
           })
           .catch(() => {});
       } catch (err) {
-        alert(mediaErrorMessage(err, 'Kamera/mikrofon', locale));
+        showChatNotice(mediaErrorMessage(err, 'Kamera/mikrofon', locale), 'error');
         onCancel();
       }
     })();
@@ -213,7 +213,7 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
         // qoladi, lekin foydalanuvchi hech bo'lmasa asosiy xatoni ko'radi
         // va "Bekor qilish" bilan chiqa oladi.
       }
-      alert(mediaErrorMessage(err, 'Kamera', locale));
+      showChatNotice(mediaErrorMessage(err, 'Kamera', locale), 'error');
     } finally {
       flippingRef.current = false;
       setFlipping(false);

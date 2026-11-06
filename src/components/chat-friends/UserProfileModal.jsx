@@ -252,7 +252,7 @@ const TABS = [
 // (1) shu foydalanuvchiga faqat o'zimga ko'rinadigan taxallus qo'yish, (2) suhbatdagi
 // rasm/video/ovozli xabarlarni har birini alohida ko'rish.
 export default function UserProfileModal({ open, onClose }) {
-  const { activeConversation, setNickname } = useChat();
+  const { activeConversation, setNickname, showChatNotice } = useChat();
   const { t, ts } = useT();
   const { canCall, unavailableKey, startCall } = useCall();
   const [viewerPhotos, setViewerPhotos] = useState(null);
@@ -317,7 +317,7 @@ export default function UserProfileModal({ open, onClose }) {
     setSaving(true);
     const res = await setNickname(activeConversation.id, nicknameInput.trim());
     setSaving(false);
-    if (res.error) alert(ts(res.error));
+    if (res.error) showChatNotice(ts(res.error), 'error');
   };
 
   return (
