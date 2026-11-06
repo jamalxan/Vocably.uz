@@ -3,7 +3,7 @@ import { requireChatUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, Message } from '@/lib/models';
 import { pushMessageEdited, pushMessageDeleted } from '@/lib/realtime';
-import { PREVIEW_BY_TYPE } from '@/lib/chatConstants';
+import { previewForMessage } from '@/lib/chatConstants';
 import { NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
@@ -31,8 +31,8 @@ async function recomputeLastMessageIfNeeded(convo, changedMessageId) {
     convo.lastMessagePreview = '';
   } else {
     convo.lastMessageAt = newLatest.createdAt;
-    convo.lastMessagePreview =
-      newLatest.type === 'text' ? (newLatest.text || '').slice(0, 80) : PREVIEW_BY_TYPE[newLatest.type] || '';
+    // Yagona preview manbai (qo'ng'iroq yozuvlari ham — src/lib/chatConstants.js#previewForMessage).
+    convo.lastMessagePreview = previewForMessage(newLatest);
   }
   await convo.save();
 }

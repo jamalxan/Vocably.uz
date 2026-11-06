@@ -5,7 +5,8 @@ import { User } from '@/lib/models';
 import { SUBSCRIPTION_TIERS } from '@/lib/entitlements';
 import { activationUpdate, subscriptionState } from '@/lib/subscription';
 import { notifySubscriptionActivated } from '@/lib/subscriptionNotify';
-import { NextResponse } from 'next/server';
+import { forceEndCall } from '@/lib/realtime';
+import { after, NextResponse } from 'next/server';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
@@ -90,6 +91,14 @@ export async function PATCH(req, props) {
 
     await target.save();
     await writeAuditLog(req, admin._id, 'chat.user.update', 'User', target._id, diff);
+    // Endigina bloklangan (chatBanned) yoki Do'stlar ruxsati olingan foydalanuvchining
+    // davom etayotgan qo'ng'iroqi tugatiladi (javobni kutdirmaydi).
+    const banned = diff.chatBanned && !diff.chatBanned.from && diff.chatBanned.to;
+    const accessRevoked = diff.chatAccess && diff.chatAccess.from && !diff.chatAccess.to;
+    if (banned || accessRevoked) {
+      const targetId = target._id;
+      after(() => forceEndCall(targetId, banned ? 'banned' : 'admin'));
+    }
     if (gift) await notifySubscriptionActivated(target, { kind: 'gift', ...gift });
 
     return NextResponse.json({
