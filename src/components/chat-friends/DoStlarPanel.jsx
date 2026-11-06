@@ -6,7 +6,7 @@ import { useT } from '@/context/LocaleContext';
 import { ChatProvider, useChat } from '@/context/ChatContext';
 import ConversationList from './ConversationList';
 import ConversationView from './ConversationView';
-import NewMessageToast from './NewMessageToast';
+import ChatToast from './ChatToast';
 
 function DoStlarShell({ onActiveChange }) {
   const {
@@ -14,8 +14,7 @@ function DoStlarShell({ onActiveChange }) {
     selectConversation,
     closeConversation,
     openConversationByUsername,
-    newMessageToast,
-    dismissMessageToast,
+    showChatNotice,
   } = useChat();
   const params = useParams();
   const router = useRouter();
@@ -48,7 +47,7 @@ function DoStlarShell({ onActiveChange }) {
     let cancelled = false;
     openConversationByUsername(routeUsername).then((res) => {
       if (!cancelled && res?.error) {
-        alert(ts(res.error));
+        showChatNotice(ts(res.error), 'error');
         router.replace('/app/friends');
       }
     });
@@ -113,18 +112,11 @@ function DoStlarShell({ onActiveChange }) {
         <ConversationView onBack={closeConversation} />
       </div>
 
-      {/* G-2 — "boshqa suhbatda bo'lsa" toast'i: shu darajada (ro'yxat va aktiv
-          suhbat ustida) turadi, chunki qaysi pastki ko'rinishda bo'lishidan
-          qat'iy nazar ko'rinishi kerak (masalan mobil'da ro'yxat ekranida turib
-          boshqa suhbatga xabar kelsa ham). */}
-      <NewMessageToast
-        toast={newMessageToast}
-        onDismiss={dismissMessageToast}
-        onOpen={(t) => {
-          dismissMessageToast();
-          if (t.conversation) selectConversation(t.conversation);
-        }}
-      />
+      {/* PARITY_PLAN WP8.14 — chat ichidagi xabarnoma (alert o'rniga). */}
+      <ChatToast />
+
+      {/* G-2 toast endi (main) layout'da — GlobalMessageToast (NewMessageToast.jsx), har qanday
+          /app sahifada ishlaydi (PARITY_PLAN WP1). */}
     </div>
   );
 }

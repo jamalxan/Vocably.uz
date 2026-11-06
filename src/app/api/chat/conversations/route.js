@@ -1,7 +1,9 @@
 import { connectToDatabase } from '@/lib/db';
 import { requireChatUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
-import { Conversation, User, Block, Message } from '@/lib/models';
+import { Conversation, User, Block } from '@/lib/models';
+import { unreadByConversation } from '@/lib/chat/unread';
+import { draftsForConversations } from '@/lib/chat/draftServer';
 import { isConversationMuted, isTgMessageNotifyOn, shouldShowLastSeen } from '@/lib/chatConstants';
 import { currentPhotoId } from '@/lib/avatars';
 import { NextResponse } from 'next/server';
@@ -62,26 +64,11 @@ export async function GET(req) {
       blocks.map((b) => (String(b.blockerId) === String(user._id) ? String(b.blockedId) : String(b.blockerId)))
     );
 
-    // "Do'stlar" ro'yxatida kimdan o'qilmagan xabar borligini ko'rsatish uchun —
-    // bitta aggregatsiya bilan HAMMA suhbat uchun birdek hisoblanadi (har biri uchun
-    // alohida so'rov o'rniga). Faqat BOSHQA tomon yuborgan va hali `readAt`siz
-        // xabarlar hisoblanadi (o'zim yozganlarim "o'qilmagan" emas).
-    const convoIds = conversations.map((c) => c._id);
-    const unreadAgg = convoIds.length
-      ? await Message.aggregate([
-          {
-            $match: {
-              conversationId: { $in: convoIds },
-              senderId: { $ne: user._id },
-              readAt: null,
-              deletedFor: { $ne: user._id },
-              deletedForEveryoneSilently: { $ne: true },
-            },
-          },
-          { $group: { _id: '$conversationId', count: { $sum: 1 } } },
-        ])
-      : [];
-    const unreadById = new Map(unreadAgg.map((u) => [String(u._id), u.count]));
+    // "Do'stlar" ro'yxatida kimdan o'qilmagan xabar borligini ko'rsatish uchun — bitta aggregatsiya
+    // bilan HAMMA suhbat uchun (src/lib/chat/unread.js, GET /api/chat/unread bilan umumiy).
+    const unreadById = await unreadByConversation(user._id, conversations);
+    // PARITY_PLAN WP6 — shu userning server qoralamalari (ro'yxatdagi "Qoralama:" boshqa qurilmada ham).
+    const draftById = await draftsForConversations(conversations, user._id);
 
     const result = conversations.map((c) => {
       const otherId = c.participantIds.find((id) => String(id) !== String(user._id));
@@ -126,6 +113,7 @@ export async function GET(req) {
         pinnedMessageIds: (c.pinnedMessageIds || []).map(String),
         archived: (c.archivedBy || []).some((id) => String(id) === String(user._id)),
         pinned: (c.pinnedBy || []).some((id) => String(id) === String(user._id)),
+        draft: draftById.get(String(c._id)) || null,
       };
     });
 
@@ -216,6 +204,7 @@ export async function POST(req) {
         notifyOnline: (convo.onlineNotifyBy || []).some((id) => String(id) === String(user._id)),
         tgMessageNotify: isTgMessageNotifyOn(convo, user._id, user.tgMessageNotify),
         pinnedMessageIds: (convo.pinnedMessageIds || []).map(String),
+        draft: (await draftsForConversations([convo], user._id)).get(String(convo._id)) || null,
       },
     });
   } catch (err) {

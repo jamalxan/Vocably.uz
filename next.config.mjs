@@ -32,7 +32,9 @@ function buildConnectSrc() {
       // uchun jim o'tkazib yuboriladi — build muvaffaqiyatsiz bo'lmasligi kerak.
     }
   }
-  return ["'self'", ...new Set(extra)].join(' ');
+  // blob: — brauzerda siqilgan rasm/yozilgan ovoz object URL'lari (createObjectURL) fetch orqali
+  // o'qiladi; ularsiz CSP konsolda xato beradi (ma'lumot chiqib ketmaydi — blob: shu sahifaniki).
+  return ["'self'", 'blob:', ...new Set(extra)].join(' ');
 }
 
 function buildMediaImgSrc() {

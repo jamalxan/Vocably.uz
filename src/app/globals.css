@@ -118,6 +118,9 @@
     --color-on-success: 20 9 13;
     --color-on-warning: 20 9 13;
     --color-on-info: 20 9 13;
+    /* PARITY_PLAN WP8.4 — och accent (#E05A6D) ustida oq matn 3.6:1 edi; to'q matn AA (4.5:1+) beradi
+       (yuborish tugmasi, o'z pufakchalarimiz). */
+    --color-on-accent: 20 9 13;
     --shadow-rgb: 0 0 0;
     /* BUG-003 tuzatilishi (TZ-vocably-v2.md §B2): sirt darajalari orasidagi ΔL juda
        kichik edi (bg/bg-sunken/surface deyarli bir xil qora bo'lib ko'rinardi) —
@@ -162,6 +165,7 @@
   --color-on-success: 20 9 13;
   --color-on-warning: 20 9 13;
   --color-on-info: 20 9 13;
+  --color-on-accent: 20 9 13;
   --shadow-rgb: 0 0 0;
   --color-bg: 20 9 13;
   --color-bg-sunken: 13 5 8;
@@ -402,6 +406,60 @@ h1, h2, h3 {
   animation: chat-highlight-fade 1.2s ease-out;
   border-radius: 0.75rem;
 }
+
+/* PARITY_PLAN WP8 — chat harakatlari: pastdan chiquvchi varaq, popover, yangi pufakcha, toast,
+   "yozmoqda" nuqtalari. Hammasi reduced-motion'da o'chadi (pastdagi blok + global qoida). */
+@keyframes chat-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes chat-pop-in {
+  from { opacity: 0; transform: scale(.96) translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes chat-bubble-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes chat-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes chat-typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: .35; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+.chat-sheet-in { animation: chat-sheet-in 220ms cubic-bezier(.2, .8, .2, 1); }
+.chat-pop-in { animation: chat-pop-in 140ms cubic-bezier(.2, .8, .2, 1); transform-origin: top right; }
+.chat-bubble-in { animation: chat-bubble-in 200ms cubic-bezier(.2, .8, .2, 1); }
+.chat-fade-in { animation: chat-fade-in 160ms ease-out; }
+.chat-typing-dot { animation: chat-typing-dot 1.2s ease-in-out infinite; }
+.chat-typing-dot:nth-child(2) { animation-delay: .15s; }
+.chat-typing-dot:nth-child(3) { animation-delay: .3s; }
+@media (prefers-reduced-motion: reduce) {
+  .chat-sheet-in, .chat-pop-in, .chat-bubble-in, .chat-fade-in, .chat-typing-dot { animation: none !important; }
+  .chat-typing-dot { opacity: .7; }
+}
+
+/* PARITY_PLAN WP8.1 — pufakcha ichidagi vaqt/belgilar uchun joy: oxirgi qator oxirida ko'rinmas
+   "ajratgich" (meta matni `data-meta` dan, ::after orqali — DOM matniga qo'shilmaydi, ekran
+   o'quvchi va E2E matn qidiruvi uni ko'rmaydi). Haqiqiy meta pastki o'ng burchakda absolute. */
+.chat-meta-spacer {
+  display: inline-block;
+  margin-left: .5rem;
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  visibility: hidden;
+  pointer-events: none;
+}
+.chat-meta-spacer::after { content: attr(data-meta); }
+
+/* PARITY_PLAN WP8.4 — qorong'ida kiruvchi pufakcha (surface-2) fon bilan qo'shilib ketmasin: ichki ingichka chegara. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .chat-incoming { box-shadow: inset 0 0 0 1px rgb(var(--color-border)); }
+}
+:root[data-theme="dark"] .chat-incoming { box-shadow: inset 0 0 0 1px rgb(var(--color-border)); }
 
 /* AI panelning o'ngdan sirg'alib kirishi — src/components/layout/AiPanel.jsx
    (VOCABLY-TZ.md §12.1). prefers-reduced-motion'da pastda o'chiriladi. */

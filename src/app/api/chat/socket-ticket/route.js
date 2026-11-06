@@ -20,14 +20,19 @@ export async function POST(req) {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });
 
-    if (!(await checkRateLimit(user._id, 'socket-ticket', 30))) {
+    // Har ulanish urinishi yangi chipta oladi (CALLS_SPEC §3.3) — limit 30 -> 60.
+    if (!(await checkRateLimit(user._id, 'socket-ticket', 60))) {
       return NextResponse.json({ error: "Juda ko'p so'rov" }, { status: 429 });
     }
-    if (!process.env.JWT_SECRET) {
+    // Tiket realtime-server bilan umumiy sir (REALTIME_SHARED_SECRET) bilan imzolanadi — realtime
+    // xizmatiga sessiya JWT sirini berish shart emas (sirlar ajratilgan: biri tashqi xizmatga oqsa,
+    // ikkinchisi xavf ostida qolmaydi).
+    const secret = process.env.REALTIME_SHARED_SECRET;
+    if (!secret) {
       return NextResponse.json({ error: "Server sozlanmagan" }, { status: 500 });
     }
 
-    const ticket = jwt.sign({ userId: String(user._id), scope: 'realtime' }, process.env.JWT_SECRET, { expiresIn: '60s' });
+    const ticket = jwt.sign({ userId: String(user._id), scope: 'realtime' }, secret, { expiresIn: '60s' });
     return NextResponse.json({ ticket });
   } catch (err) {
     return serverError(err, 'chat/socket-ticket');

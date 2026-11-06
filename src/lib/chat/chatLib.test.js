@@ -138,9 +138,11 @@ describe('album rendering', () => {
 describe('drafts', () => {
   it('set/get/prune', () => {
     let m = setDraft({}, 'c1', { text: 'hello' }, 1000);
-    expect(getDraft(m, 'c1')).toEqual({ text: 'hello', replyTo: null, updatedAt: 1000 });
+    expect(getDraft(m, 'c1')).toEqual({ text: 'hello', replyTo: null, updatedAt: 1000, syncedAt: 0, dirty: true });
+    // WP6: clearing leaves a tombstone (so a stale copy elsewhere cannot resurrect it); no "Draft:" row.
     m = setDraft(m, 'c1', { text: '  ' }, 2000);
-    expect(getDraft(m, 'c1')).toBeNull();
+    expect(getDraft(m, 'c1')).toEqual({ text: '', replyTo: null, updatedAt: 2000, syncedAt: 0, dirty: true });
+    expect(rowPreview({ lastMessagePreview: 'last' }, getDraft(m, 'c1')).kind).not.toBe('draft');
     m = setDraft(m, 'c2', { text: '', replyTo: { id: 'm1' } }, 3000);
     expect(getDraft(m, 'c2').replyTo).toEqual({ id: 'm1' });
     const old = { c3: { text: 'x', updatedAt: 0 }, c4: 'junk', c5: { text: 'y', updatedAt: Date.now() } };
@@ -181,5 +183,46 @@ describe('chat list', () => {
     expect(applyBulkAction(list, ['a'], 'read').find((c) => c.id === 'a').unreadCount).toBe(0);
     expect(rowPreview({ lastMessagePreview: 'last' }, { text: ' typing ' })).toEqual({ kind: 'draft', text: 'typing' });
     expect(rowPreview({ lastMessagePreview: 'last' }, null)).toEqual({ kind: 'message', text: 'last' });
+  });
+});
+
+describe('call previews (chatConstants, CALLS_SPEC §7.2)', () => {
+  it('formatCallDuration', async () => {
+    const { formatCallDuration } = await import('@/lib/chatConstants');
+    expect([null, 0, 59, 133, 3661].map(formatCallDuration)).toEqual(['', '0:00', '0:59', '2:13', '61:01']);
+    expect(formatCallDuration(undefined)).toBe('');
+    expect(formatCallDuration(-1)).toBe('');
+  });
+
+  it('callPreview: 6 outcomes, viewer-neutral', async () => {
+    const { callPreview, CALL_OUTCOMES } = await import('@/lib/chatConstants');
+    expect(CALL_OUTCOMES).toEqual(['ended', 'missed', 'declined', 'busy', 'cancelled', 'failed']);
+    expect(callPreview({ outcome: 'ended', durationSec: 133 })).toBe("📞 Qo'ng'iroq (2:13)");
+    expect(callPreview({ outcome: 'missed' })).toBe("📞 Javobsiz qo'ng'iroq");
+    expect(callPreview({ outcome: 'busy' })).toBe("📞 Javobsiz qo'ng'iroq");
+    expect(callPreview({ outcome: 'cancelled' })).toBe("📞 Javobsiz qo'ng'iroq");
+    expect(callPreview({ outcome: 'declined' })).toBe("📞 Rad etilgan qo'ng'iroq");
+    expect(callPreview({ outcome: 'failed' })).toBe("📞 Amalga oshmagan qo'ng'iroq");
+    expect(callPreview(null)).toBe("📞 Qo'ng'iroq");
+  });
+
+  it('previewForMessage: text, caption, media, call', async () => {
+    const { previewForMessage } = await import('@/lib/chatConstants');
+    expect(previewForMessage({ type: 'text', text: 'x'.repeat(100) })).toBe('x'.repeat(80));
+    expect(previewForMessage({ type: 'image', text: 'izoh' })).toBe('izoh');
+    expect(previewForMessage({ type: 'image' })).toBe('📷 Rasm');
+    expect(previewForMessage({ type: 'voice', text: '' })).toBe('🎤 Ovozli xabar');
+    expect(previewForMessage({ type: 'call', text: '', call: { outcome: 'ended', durationSec: 5 } })).toBe("📞 Qo'ng'iroq (0:05)");
+    expect(previewForMessage(null)).toBe('');
+  });
+
+  it('every call preview has an English mapping', async () => {
+    const { callPreview } = await import('@/lib/chatConstants');
+    const { translateServerText } = await import('@/lib/i18n/serverText');
+    expect(translateServerText('en', callPreview({ outcome: 'ended', durationSec: 133 }))).toBe('📞 Call (2:13)');
+    expect(translateServerText('en', callPreview({ outcome: 'missed' }))).toBe('📞 Missed call');
+    expect(translateServerText('en', callPreview({ outcome: 'declined' }))).toBe('📞 Declined call');
+    expect(translateServerText('en', callPreview({ outcome: 'failed' }))).toBe('📞 Failed call');
+    expect(translateServerText('en', "📞 Qo'ng'iroq")).toBe('📞 Call');
   });
 });

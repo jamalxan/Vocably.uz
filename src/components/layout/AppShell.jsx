@@ -11,6 +11,8 @@ import IconButton from '@/components/ui/IconButton';
 import NotificationBell from '@/components/NotificationBell';
 import Avatar from '@/components/avatar/Avatar';
 import AiPanel from './AiPanel';
+import NavBadge from './NavBadge';
+import { useRealtime } from '@/context/RealtimeContext';
 import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
 import { decideTabNavigation, readBase, writeBase } from '@/lib/tabHistory';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
@@ -32,6 +34,9 @@ export default function AppShell({ children }) {
   const router = useRouter();
   const { displayName, username, logout, chatAccess, chatRole, chatUserId, myPhotoId } = useApp();
   const { t } = useT();
+  // PARITY_PLAN WP1 — "Friends" elementidagi o'qilmaganlar belgisi (RealtimeProvider, har qanday sahifada).
+  const { unread } = useRealtime();
+  const badgeFor = (item) => (item.badge === 'chatUnread' ? { count: unread.total, mutedOnly: unread.total === 0 && unread.mutedTotal > 0 } : null);
 
   // TCH-01/02 — "O'qituvchi paneli" yorlig'i xuddi "Do'stlar" (requiresChatAccess)
   // kabi, faqat mos rolga ega foydalanuvchilarga ko'rinadi. `chatRole` —
@@ -138,6 +143,7 @@ export default function AppShell({ children }) {
                   >
                     <item.icon size={16} />
                     <span className="flex-1 text-left">{item.label}</span>
+                    {badgeFor(item) && <NavBadge {...badgeFor(item)} />}
                     {item.key === 'lugat' && (
                       <ChevronRight size={14} className={`transition-transform ${onLugat && lugatOpen ? 'rotate-90' : ''}`} />
                     )}
@@ -205,7 +211,10 @@ export default function AppShell({ children }) {
                   aria-current={active ? 'page' : undefined}
                   onClick={() => setRailOpen(false)}
                 >
-                  <item.icon size={16} className="flex-shrink-0" />
+                  <span className="relative flex-shrink-0">
+                    <item.icon size={16} />
+                    {badgeFor(item) && <NavBadge {...badgeFor(item)} className="absolute -top-2 -right-2.5" />}
+                  </span>
                   <span className={railLabelClass}>{item.label}</span>
                 </Link>
               );
@@ -227,8 +236,11 @@ export default function AppShell({ children }) {
       </aside>
 
       {/* ============ MOBIL — pastki tab bar (<768px) ============ */}
+      {/* PARITY_PLAN WP8.3 — ochiq chatda tab bar yashiriladi (Telegram): Composer ekranning pastiga,
+          safe-area ustiga tushadi; pastdagi 4rem joy ham olib tashlanadi (pastdagi kontent div). */}
       <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-primary text-on-primary flex items-stretch border-t border-on-primary/10"
+        data-testid="bottom-nav"
+        className={`${chatOpen ? 'hidden' : 'md:hidden'} fixed bottom-0 inset-x-0 z-30 bg-primary text-on-primary flex items-stretch border-t border-on-primary/10`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {visibleBottomNav.map((item) => {
@@ -243,7 +255,10 @@ export default function AppShell({ children }) {
                 active ? 'text-accent font-semibold' : 'text-on-primary/55'
               }`}
             >
-              <item.icon size={20} />
+              <span className="relative">
+                <item.icon size={20} />
+                {badgeFor(item) && <NavBadge {...badgeFor(item)} className="absolute -top-1 -right-1 translate-x-1/2" />}
+              </span>
               {item.label}
             </Link>
           );
@@ -253,7 +268,7 @@ export default function AppShell({ children }) {
       {/* ============ Kontent ============ */}
       {/* Header `fixed`: ota konteyner aniq h-dvh bo'lgani uchun `sticky` birinchi
           ekrandan keyin sahifa bilan birga chiqib ketardi. Joyi pt-16 bilan saqlanadi. */}
-      <div className={`md:pl-[72px] xl:pl-64 ${chatOpen ? 'md:pt-16' : 'pt-16'} pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 ${chatOpen ? 'h-dvh' : 'min-h-dvh md:h-dvh'} flex flex-col`}>
+      <div className={`md:pl-[72px] xl:pl-64 ${chatOpen ? 'md:pt-16 pb-0' : 'pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))]'} md:pb-0 ${chatOpen ? 'h-dvh' : 'min-h-dvh md:h-dvh'} flex flex-col`}>
         <header className={`${chatOpen ? 'hidden md:flex' : 'flex'} fixed top-0 right-0 left-0 md:left-[72px] xl:left-64 h-16 z-20 items-center justify-between md:justify-end gap-2 px-4 sm:px-6 bg-bg/90 backdrop-blur-md border-b border-border`}>
           <Link
             href="/app"

@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Square, X } from 'lucide-react';
+import { Mic, Send, Trash2 } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
 import { useChat } from '@/context/ChatContext';
 import { useT } from '@/context/LocaleContext';
+import { useCall } from '@/context/CallContext';
 import { buildWaveform } from '@/lib/chat/mediaMeta';
 
 // Ovozli xabar uchun yuqori chegara — cheksiz yozuv yuklashda xato bilan yo'qolmasin.
@@ -12,7 +13,7 @@ const MAX_SECONDS = 300;
 // MediaRecorder API'ga tayanadi — Safari/iOS'da ba'zi formatlarda cheklov bo'lishi
 // mumkin, haqiqiy qurilmada sinash tavsiya etiladi (docs/ chat plani, "Frontend" bo'limi).
 export default function VoiceRecorder({ onRecorded, onCancel }) {
-  const { sendTyping } = useChat();
+  const { sendTyping, showChatNotice } = useChat();
   const { t, locale } = useT();
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -88,7 +89,7 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
       }, 1000);
     } catch (err) {
       if (gen !== genRef.current) return;
-      alert(mediaErrorMessage(err, 'Mikrofon', locale));
+      showChatNotice(mediaErrorMessage(err, 'Mikrofon', locale), 'error');
       onCancel();
     }
   };
@@ -136,29 +137,32 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
 
+  // PARITY_PLAN WP8 — yozuv paneli kiritish "pill"ining O'RNIDA (Composer formasi ustida, Telegram):
+  // qizil nuqta + taymer + izoh, chapda bekor qilish, o'ngda yuborish. Taymer matni `00:03` (E2E shunga qaraydi).
   return (
-    <div className="absolute bottom-full mb-2 right-0 flex items-center gap-2 md:gap-3 bg-surface border border-border rounded-xl shadow-lg pl-4 pr-2 md:px-4 py-1.5 md:py-2.5 z-20">
-      <span className="w-2 h-2 rounded-full bg-danger motion-safe:animate-pulse" />
-      <span className="text-sm text-muted tabular-nums">
-        {mm}:{ss}
-      </span>
+    <div className="absolute inset-x-2 sm:inset-x-3 inset-y-2 sm:inset-y-2.5 z-20 flex items-center gap-1.5 md:gap-2 bg-bg rounded-2xl pl-1 pr-1 chat-fade-in" data-testid="voice-recording">
       <button
         type="button"
         onClick={cancel}
         aria-label={t('ch.voiceCancelAria')}
         title={t('ch.cancel')}
-        className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-1.5 rounded-full text-muted hover:text-accent transition-colors"
+        className="inline-flex items-center justify-center w-11 h-11 md:w-9 md:h-9 rounded-full text-muted hover:text-danger transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <X size={16} />
+        <Trash2 size={17} />
       </button>
+      <span className="w-2.5 h-2.5 rounded-full bg-danger motion-safe:animate-pulse flex-shrink-0" aria-hidden="true" />
+      <span className="text-sm font-medium text-ink tabular-nums flex-shrink-0">
+        {mm}:{ss}
+      </span>
+      <span className="flex-1 min-w-0 truncate text-sm text-muted">{t('ch.voiceRecording')}</span>
       <button
         type="button"
         onClick={stop}
         aria-label={t('ch.finishSendAria')}
-        title={t('ch.forward')}
-        className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-full transition-colors"
+        title={t('ch.finishSendAria')}
+        className="inline-flex items-center justify-center w-11 h-11 md:w-9 md:h-9 bg-accent hover:bg-accent-hover text-on-accent rounded-full transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
       >
-        <Square size={14} />
+        <Send size={16} />
       </button>
     </div>
   );
@@ -166,19 +170,24 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
 
 export function VoiceRecorderButton({ onRecorded, onActiveChange }) {
   const { t } = useT();
+  // iOS bir vaqtda bitta yozib olishga ruxsat beradi — qo'ng'iroq paytida yozib bo'lmaydi.
+  const callStatus = useCall().call.status;
+  const inCall = callStatus !== 'idle' && callStatus !== 'elsewhere';
   const [active, setActiveState] = useState(false);
   const setActive = (v) => {
     setActiveState(v);
     onActiveChange?.(v);
   };
+  // Wrapper ATAYLAB `relative` emas: yozuv paneli Composer formasiga nisbatan joylashadi (pill o'rnida).
   return (
-    <div className="relative">
+    <div>
       <button
         type="button"
         onClick={() => setActive(true)}
-        title={t('ch.voiceMsg')}
+        disabled={inCall}
+        title={inCall ? t('call.busyToast') : t('ch.voiceMsg')}
         aria-label={t('ch.voiceRecordAria')}
-        className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
+        className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors disabled:opacity-40 disabled:hover:text-muted"
       >
         <Mic size={18} />
       </button>

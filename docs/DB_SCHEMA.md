@@ -148,8 +148,20 @@ hujjatiga embed qilinmagan — cross-user so'rovlar (qidiruv, admin nazorati) ke
 - **`Conversation`** — ikki foydalanuvchi orasidagi doimiy 1:1 suhbat. `participantIds` saralangan
   juftlik, unique compound indeks (bir juftlik = bitta hujjat).
 - **`Message`** — `conversationId` + `createdAt` bo'yicha indekslangan. `type`:
-  text/image/video/voice/file/sticker. Media S3/MinIO obyekt kaliti sifatida saqlanadi (`media.key`),
-  hech qachon to'g'ridan-to'g'ri URL emas.
+  text/image/video/voice/file/sticker/call. Media S3/MinIO obyekt kaliti sifatida saqlanadi (`media.key`),
+  hech qachon to'g'ridan-to'g'ri URL emas. `type: 'call'` — qo'ng'iroq yozuvi: `call` subhujjati
+  (`callId`, `kind`, `outcome`, `durationSec`, `startedAt`, `acceptedAt`, `endedAt`), `senderId` = qo'ng'iroq
+  qilgan, faqat `POST /api/internal/call-event` yaratadi; `call.callId` partial unique indeks
+  (docs/chat/CALLS_SPEC.md §7). `Conversation.tgCallNotifiedAt` — qo'ng'iroq Telegram throttle'i.
+  `forwardedFrom` = `{ userId, name, messageId, hidden }` — forward'ning birinchi muallifi; `hidden` —
+  "yuboruvchi nomini yashirish" (yorliq ko'rsatilmaydi; PARITY_PLAN WP5, `POST /api/chat/messages/forward`).
+- **`Conversation.drafts`** — `Map<userId, { text (≤4000), replyTo: ObjectId|null, updatedAt }>`: server
+  qoralamalari, faqat egasiga qaytariladi; bo'sh matn + `replyTo: null` — tombstone (tozalangan qoralama
+  qayta tirilmasligi uchun). Xabar yuborilganda yuboruvchining qoralamasi tombstone bo'ladi (PARITY_PLAN WP6,
+  `GET/PUT/DELETE /api/chat/conversations/[id]/draft`, socket `draft:update`).
+  `reactions: [{ emoji, userId, at }]` (`_id: false`, default `[]`) — bir foydalanuvchiga bitta reaksiya,
+  `POST/DELETE /api/chat/conversations/[id]/messages/[messageId]/reactions` atomik pipeline update bilan
+  yozadi; preview/o'qilmaganlarga ta'sir qilmaydi (docs/chat/PARITY_PLAN.md WP7).
 - **`Block`**, **`Report`**, **`AdminAuditLog`** — bloklash, shikoyat va admin audit jurnali.
 - **`RateLimitHit`** — Redis'siz oddiy tezlik cheklash uchun, TTL indeks bilan avtomatik tozalanadi.
 

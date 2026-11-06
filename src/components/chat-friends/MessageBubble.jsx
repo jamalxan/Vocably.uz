@@ -28,18 +28,26 @@ import { findSticker } from '@/lib/stickers';
 import { useChat } from '@/context/ChatContext';
 import { isOnline } from '@/lib/presence';
 import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
+import { PAUSE_MEDIA_EVENT, pauseOtherMedia } from '@/lib/chat/mediaControl';
 import { parseMessageFormatting } from '@/lib/chatFormatting';
 import { albumRows } from '@/lib/chat/albums';
 import { formatBytes, fileExtension } from '@/lib/chat/mediaMeta';
 import DeleteMessageModal from './DeleteMessageModal';
 import ForwardMessageModal from './ForwardMessageModal';
 import ReportReasonModal from './ReportReasonModal';
+import CallBubble from './CallBubble';
+import ActionSheet from './ActionSheet';
+import ReplyThumb from './ReplyThumb';
+import ReactionBar from './ReactionBar';
+import ReactionChips from './ReactionChips';
+import EmojiPicker from './EmojiPicker';
+import { myReaction, nextReactionFor } from '@/lib/chat/reactions';
 
 // Message bubbles (Telegram parity): albums, local previews with upload progress, file cards with
 // name/size, voice with waveform + speed, forwarded label, reply quote with thumbnail, swipe-to-reply,
-// multi-select. Context menu: "..." / right-click / long-press.
+// multi-select. Context menu: "..." (lg) / right-click / long-press — ActionSheet (popover yoki varaq, WP8.9).
+// PARITY_PLAN WP8: vaqt/belgilar pufakcha ichida, guruhlash, chetigacha media, swipe prujinasi.
 const LONG_PRESS_MS = 500;
-const SWIPE_REPLY_PX = 56;
 const SPEEDS = [1, 1.5, 2];
 
 const idOf = (m) => String(m.id || m._id);
@@ -98,7 +106,7 @@ function UploadOverlay({ message }) {
   const pct = Math.round((message._upload?.progress || 0) * 100);
   const C = 2 * Math.PI * 20;
   return (
-    <div className="absolute inset-0 grid place-items-center bg-black/35 rounded-lg" data-testid="upload-overlay">
+    <div className="absolute inset-0 grid place-items-center bg-black/35 rounded-[14px]" data-testid="upload-overlay">
       {status === 'uploading' ? (
         <button
           type="button"
@@ -151,7 +159,7 @@ function ImageBubble({ message, onOpen }) {
         type="button"
         onClick={() => url && onOpen?.()}
         aria-label={t('ch.zoom')}
-        className="block max-w-full rounded-lg overflow-hidden bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="block max-w-full rounded-[14px] overflow-hidden bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         style={box}
       >
         {url ? (
@@ -173,7 +181,7 @@ function VideoBubble({ message, onOpen }) {
   const box = aspectStyle(message.media, 300, 320);
   return (
     <div className="relative" style={{ maxWidth: '100%' }}>
-      <div ref={viewRef} className="rounded-lg overflow-hidden bg-black" style={box}>
+      <div ref={viewRef} className="rounded-[14px] overflow-hidden bg-black" style={box}>
         {url ? (
           <video src={url} controls playsInline preload="metadata" data-chat-media="" className="w-full h-full object-contain" onDoubleClick={onOpen} />
         ) : (
@@ -224,13 +232,13 @@ export function AlbumGrid({ messages, onOpen }) {
     start += rows[r];
   }
   return (
-    <div className="flex flex-col gap-0.5 w-[300px] max-w-full" data-testid="album">
+    <div className="flex flex-col gap-0.5 w-[300px] max-w-full rounded-[14px] overflow-hidden" data-testid="album">
       {slices.map((slice, r) => {
         const count = slice.length;
         return (
           <div key={r} className="flex gap-0.5" style={{ height: count === 1 ? 200 : 128 }}>
             {slice.map((m) => (
-              <div key={m.clientMessageId || idOf(m)} className="flex-1 min-w-0 rounded-md overflow-hidden">
+              <div key={m.clientMessageId || idOf(m)} className="flex-1 min-w-0 rounded-[3px] overflow-hidden">
                 <AlbumTile message={m} onOpen={() => onOpen?.(m)} />
               </div>
             ))}
@@ -290,12 +298,6 @@ function RoundVideo({ url, viewRef }) {
       )}
     </button>
   );
-}
-
-function pauseOtherMedia(current) {
-  document.querySelectorAll('[data-chat-media]').forEach((el) => {
-    if (el !== current && !el.paused) el.pause();
-  });
 }
 
 function fmtTime(sec) {
@@ -455,13 +457,6 @@ function FileBubble({ message, isMine }) {
 }
 
 // ---------------------------------------------------------------- reply quote (with thumbnail)
-function ReplyThumb({ mediaKey }) {
-  const { url } = useAuthedMediaUrl(mediaKey);
-  if (!url) return <span className="w-8 h-8 rounded bg-black/10 flex-shrink-0" />;
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />;
-}
-
 function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
   const { t, ts } = useT();
   const senderLabel = String(replyTo.senderId) === String(myId) ? t('ch.youRaw') : otherUsername ? `@${otherUsername}` : t('ch.user');
@@ -470,7 +465,7 @@ function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 w-full text-left mb-1.5 pl-2 pr-1 py-0.5 border-l-2 rounded-sm ${isMine ? 'border-on-accent/50 hover:bg-on-accent/10' : 'border-accent hover:bg-primary-soft/40'} transition-colors`}
+      className={`flex items-center gap-2 w-full text-left mb-1 pl-2 pr-1 py-0.5 border-l-2 rounded-sm ${isMine ? 'border-on-accent/50 hover:bg-on-accent/10' : 'border-accent hover:bg-primary-soft/40'} transition-colors`}
     >
       {replyTo.mediaKey && !replyTo.deleted && <ReplyThumb mediaKey={replyTo.mediaKey} />}
       <span className="min-w-0">
@@ -481,34 +476,6 @@ function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
   );
 }
 
-// ---------------------------------------------------------------- context menu
-function MessageContextMenu({ actions, onClose }) {
-  const { t } = useT();
-  const firstRef = useRef(null);
-  useDialogFocus(firstRef, onClose);
-  return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-end justify-center bg-primary/40 backdrop-blur-sm">
-      <div role="dialog" aria-modal="true" aria-label={t('mb.actions')} onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-surface border-t border-border rounded-t-2xl shadow-card p-2" style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
-        {actions.map(({ key, label, Icon, onClick, danger }, i) => (
-          <button
-            key={key}
-            ref={i === 0 ? firstRef : undefined}
-            type="button"
-            onClick={() => {
-              onClose();
-              onClick();
-            }}
-            className={`w-full min-h-12 flex items-center gap-3 px-4 rounded-xl text-sm font-medium text-left transition-colors hover:bg-bg-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${danger ? 'text-danger' : 'text-ink'}`}
-          >
-            <Icon size={18} className="flex-shrink-0" />
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------- text helpers
 const ZWJ = '‍';
 const VARIATION_SELECTOR = '️';
@@ -516,6 +483,18 @@ const EMOJI_ONLY_RE = new RegExp(`^[\\p{Extended_Pictographic}${ZWJ}${VARIATION_
 function isEmojiOnly(text) {
   if (!text || text.length > 30) return false;
   return EMOJI_ONLY_RE.test(text);
+}
+// Faqat-emoji xabar o'lchami (PARITY_PLAN WP8, Telegram): 1 ta — eng katta, 2–3 ta — kattaroq, ko'p — kichikroq.
+function emojiOnlyClass(text) {
+  let n = 3;
+  try {
+    n = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(String(text).replace(/\s+/g, ''))].length;
+  } catch {
+    // Intl.Segmenter yo'q (eski brauzer) — o'rtacha o'lcham
+  }
+  if (n <= 1) return 'text-6xl leading-none';
+  if (n <= 3) return 'text-5xl leading-none';
+  return 'text-4xl leading-tight';
 }
 const URL_RE = /((?:https?:\/\/|www\.)\S+)/gi;
 const TRAILING_PUNCT_RE = /[.,:;!?'")\]]+$/;
@@ -545,13 +524,25 @@ function renderFormattedText(text) {
     return <Fragment key={i}>{linkifyText(tok.value)}</Fragment>;
   });
 }
+// Qo'ng'iroq boshlanganda (CallProvider PAUSE_MEDIA_EVENT yuboradi) barcha chat mediasi to'xtaydi.
+// Bitta global tinglovchi — har bir pufakcha uchun alohida emas.
+let pauseListenerInstalled = false;
+function installPauseListener() {
+  if (pauseListenerInstalled || typeof window === 'undefined') return;
+  pauseListenerInstalled = true;
+  window.addEventListener(PAUSE_MEDIA_EVENT, () => pauseOtherMedia(null));
+}
+
 function formatMessageTime(dateStr) {
   const d = new Date(dateStr);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/** Status ticks (own messages): clock → ✓ → ✓✓ → ✓✓ coloured; failed → retry. */
-function Ticks({ message, otherOnline, t, retryMessage }) {
+/**
+ * Status ticks (own messages): clock → ✓ → ✓✓ → ✓✓ ajratilgan; failed → retry.
+ * Rang ota elementdan (meta) keladi; `readClass` — o'qilgan ✓✓ uchun ajratuvchi rang.
+ */
+function Ticks({ message, otherOnline, t, retryMessage, readClass = 'text-accent' }) {
   if (message._status === 'uploading') return <span title={t('ch.uploading')} role="img" aria-label={t('ch.uploading')} className="inline-flex"><Clock size={12} /></span>;
   if (message._status === 'sending') return <span title={t('mb.sending')} role="img" aria-label={t('mb.sending')} className="inline-flex"><Clock size={12} /></span>;
   if (message._status === 'failed') {
@@ -561,29 +552,48 @@ function Ticks({ message, otherOnline, t, retryMessage }) {
       </button>
     );
   }
-  if (message.readAt) return <span title={t('mb.read')} role="img" aria-label={t('mb.read')} className="inline-flex"><CheckCheck size={13} className="text-accent" /></span>;
-  if (otherOnline) return <span title={t('mb.delivered')} role="img" aria-label={t('mb.delivered')} className="inline-flex"><CheckCheck size={13} /></span>;
-  return <span title={t('mb.sentOk')} role="img" aria-label={t('mb.sentOk')} className="inline-flex"><Check size={13} /></span>;
+  if (message.readAt) return <span title={t('mb.read')} role="img" aria-label={t('mb.read')} className="inline-flex"><CheckCheck size={14} className={readClass} /></span>;
+  if (otherOnline) return <span title={t('mb.delivered')} role="img" aria-label={t('mb.delivered')} className="inline-flex"><CheckCheck size={14} /></span>;
+  return <span title={t('mb.sentOk')} role="img" aria-label={t('mb.sentOk')} className="inline-flex"><Check size={14} /></span>;
 }
+
+// Swipe-to-reply (PARITY_PLAN WP8.13): 64 px chegara, undan keyin "rezina" (sekinlashib cho'ziladi),
+// chegarani kesib o'tganda qisqa tebranish; qo'yib yuborilganda pufakcha prujina kabi qaytadi
+// (motion-safe transition — reduced-motion'da darhol).
+const SWIPE_REPLY_PX = 64;
+const SWIPE_MAX_PX = 100;
+const rubberBand = (d) => (d <= SWIPE_REPLY_PX ? d : Math.min(SWIPE_MAX_PX, SWIPE_REPLY_PX + (d - SWIPE_REPLY_PX) * 0.35));
+// Yangi kelgan (yoki hozirgina yuborilgan) xabar pufakchasi kirish animatsiyasi bilan chiqadi;
+// tarix (eski sahifalar, birinchi ochilish) — animatsiyasiz.
+const FRESH_MS = 8000;
 
 /**
  * One message, or an album (`album` = its messages; `message` is then the first one).
  * Selection mode: a tap toggles the checkbox instead of opening anything.
+ * `groupFirst` / `groupLast` (PARITY_PLAN WP8.2) — ketma-ket guruhdagi o'rni: "dum" faqat oxirgisida.
  */
-export default function MessageBubble({ message, album = null, isMine, myId, onJumpToReply, onOpenMedia, selectionMode = false, selected = false, onToggleSelect, onEnterSelection }) {
+export default function MessageBubble({ message, album = null, isMine, myId, onJumpToReply, onOpenMedia, selectionMode = false, selected = false, onToggleSelect, onEnterSelection, groupFirst = true, groupLast = true }) {
   const { t, ts } = useT();
-  const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage, retryMessage, livePresence, pinMessage, unpinMessage, stickerById } = useChat();
+  const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage, reactToMessage, retryMessage, livePresence, pinMessage, unpinMessage, stickerById, showChatNotice } = useChat();
   const otherOnline = isOnline(activeConversation?.otherUser?.lastActiveAt, livePresence[String(activeConversation?.otherUser?.id)]);
   const [reported, setReported] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menu, setMenu] = useState(null); // null | { anchored?: true, point?: { x, y } }
   const [forwardOpen, setForwardOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [swipe, setSwipe] = useState(0);
+  const [reactPickerOpen, setReactPickerOpen] = useState(false);
+  const [fresh] = useState(() => !!message.createdAt && Math.abs(Date.now() - new Date(message.createdAt).getTime()) < FRESH_MS);
+  const lastTap = useRef(null);
   const pressTimer = useRef(null);
   const longPressFired = useRef(false);
   const swipeStart = useRef(null);
+  const swipeCrossed = useRef(false);
+  const moreBtnRef = useRef(null);
+  useEffect(() => {
+    installPauseListener();
+  }, []);
 
   const sticker = message.type === 'sticker' ? stickerById?.get(String(message.stickerId)) || findSticker(message.stickerId) : null;
   const deleted = !!message.deletedForEveryone;
@@ -591,11 +601,25 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
   const messages = album || [message];
   const messageIdStr = idOf(message);
   const isPending = messages.some((m) => m._status === 'sending' || m._status === 'failed' || m._status === 'uploading');
-  const isPlain = !deleted && (message.type === 'sticker' || emojiOnly || (message.type === 'video' && message.media?.round && !message.text));
+  const isRound = message.type === 'video' && !!message.media?.round;
+  const isPlain = !deleted && (message.type === 'sticker' || emojiOnly || (isRound && !message.text));
   const canEdit = isMine && message.type === 'text' && !deleted && !isPending;
   const canReport = !isMine && !reported && !isPending;
   const isPinned = !isPending && (activeConversation?.pinnedMessageIds || []).some((id) => String(id) === messageIdStr);
   const caption = album ? messages.find((m) => m.text)?.text || '' : message.text;
+  // Qo'ng'iroq yozuvi (CALLS_SPEC §10.8): javob/nusxa/uzatish/qadash/tahrir/shikoyat yo'q, swipe va ticks yo'q.
+  const isCall = message.type === 'call' && !deleted;
+  // Rasm/video/albom — pufakcha chetigacha (PARITY_PLAN WP8.5): ichki joy p-0.5, rasm burchagi 14 px.
+  const isMedia = !deleted && !isPlain && (!!album || message.type === 'image' || (message.type === 'video' && !isRound));
+  // Reaksiya (PARITY_PLAN WP7): o'chirilgan, qo'ng'iroq va hali yuborilmagan xabarlarga yo'q.
+  // Albomda reaksiya birinchi xabarga (`message`) bog'lanadi — albom bitta pufakcha.
+  const reactions = deleted ? [] : message.reactions || [];
+  const canReact = !deleted && !isCall && !isPending;
+  const react = async (emoji) => {
+    if (!canReact) return;
+    const res = await reactToMessage(messageIdStr, nextReactionFor(reactions, myId, emoji));
+    if (res?.error) showChatNotice(t('mb.reactFailed'), 'error');
+  };
 
   const submitReport = async (category, note) => {
     setReportOpen(false);
@@ -610,7 +634,7 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
       if (res.error) break;
     }
     setDeleting(false);
-    if (res?.error) alert(ts(res.error));
+    if (res?.error) showChatNotice(ts(res.error), 'error');
     else setDeleteOpen(false);
   };
   const handleCopyText = async () => {
@@ -622,38 +646,49 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
   };
   const handleTogglePin = async () => {
     const res = isPinned ? await unpinMessage(messageIdStr) : await pinMessage(messageIdStr);
-    if (res?.error) alert(ts(res.error));
+    if (res?.error) showChatNotice(ts(res.error), 'error');
   };
   const replyTarget = () => startReply({ ...message, mediaKey: ['image', 'video'].includes(message.type) && !message.media?.round ? message.media?.key : null });
 
-  const actions = [
-    { key: 'reply', label: t('mb.reply'), Icon: Reply, onClick: replyTarget },
-    ...(caption ? [{ key: 'copy', label: t('mb.copy'), Icon: Copy, onClick: handleCopyText }] : []),
-    { key: 'forward', label: t('mb.forward'), Icon: Forward, onClick: () => setForwardOpen(true) },
-    { key: 'select', label: t('ch.select'), Icon: CheckSquare, onClick: () => onEnterSelection?.(messages) },
-    { key: 'pin', label: isPinned ? t('cv.unpin') : t('mb.pin'), Icon: isPinned ? PinOff : Pin, onClick: handleTogglePin },
-    ...(canEdit ? [{ key: 'edit', label: t('mb.edit'), Icon: Pencil, onClick: () => startEditMessage(message) }] : []),
-    { key: 'delete', label: t('ch.delete'), Icon: Trash2, onClick: () => setDeleteOpen(true), danger: true },
-    ...(canReport ? [{ key: 'report', label: t('mb.report'), Icon: Flag, onClick: () => setReportOpen(true) }] : []),
-  ];
+  const actions = isCall
+    ? [
+        { key: 'select', label: t('ch.select'), icon: CheckSquare, onSelect: () => onEnterSelection?.(messages) },
+        { key: 'delete', label: t('ch.delete'), icon: Trash2, onSelect: () => setDeleteOpen(true), danger: true },
+      ]
+    : [
+        { key: 'reply', label: t('mb.reply'), icon: Reply, onSelect: replyTarget },
+        ...(caption ? [{ key: 'copy', label: t('mb.copy'), icon: Copy, onSelect: handleCopyText }] : []),
+        { key: 'forward', label: t('mb.forward'), icon: Forward, onSelect: () => setForwardOpen(true) },
+        { key: 'select', label: t('ch.select'), icon: CheckSquare, onSelect: () => onEnterSelection?.(messages) },
+        { key: 'pin', label: isPinned ? t('cv.unpin') : t('mb.pin'), icon: isPinned ? PinOff : Pin, onSelect: handleTogglePin },
+        ...(canEdit ? [{ key: 'edit', label: t('mb.edit'), icon: Pencil, onSelect: () => startEditMessage(message) }] : []),
+        { key: 'delete', label: t('ch.delete'), icon: Trash2, onSelect: () => setDeleteOpen(true), danger: true },
+        ...(canReport ? [{ key: 'report', label: t('mb.report'), icon: Flag, onSelect: () => setReportOpen(true) }] : []),
+      ];
 
-  // Right-click / long-press → menu; horizontal swipe on touch → reply (Telegram gesture, with the
-  // visible "..." button as the always-available alternative).
+  // Right-click / long-press → menu; horizontal swipe on touch → reply (Telegram gesture). "…" tugmasi
+  // faqat `lg` va undan kattada (PARITY_PLAN WP8.7) — sensorli ekranda uzoq bosish yetarli.
   const interactive = !deleted && !isPending && !selectionMode;
   const onPointerDown = (e) => {
     if (!interactive) return;
     if (e.pointerType !== 'mouse') {
       swipeStart.current = { x: e.clientX, y: e.clientY };
+      swipeCrossed.current = false;
       longPressFired.current = false;
       clearTimeout(pressTimer.current);
       pressTimer.current = setTimeout(() => {
         longPressFired.current = true;
-        setMenuOpen(true);
+        setMenu({});
       }, LONG_PRESS_MS);
     }
   };
   const onPointerMove = (e) => {
     if (!swipeStart.current || e.pointerType === 'mouse') return;
+    if (isCall) {
+      // swipe-to-reply yo'q; faqat siljish uzoq bosishni bekor qiladi
+      if (Math.hypot(e.clientX - swipeStart.current.x, e.clientY - swipeStart.current.y) > 8) clearTimeout(pressTimer.current);
+      return;
+    }
     const dx = e.clientX - swipeStart.current.x;
     const dy = Math.abs(e.clientY - swipeStart.current.y);
     if (dy > 24) {
@@ -665,24 +700,112 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
     const dir = isMine ? -1 : 1; // own messages swipe left, others right
     const d = Math.max(0, dx * dir);
     if (d > 8) clearTimeout(pressTimer.current);
-    setSwipe(Math.min(SWIPE_REPLY_PX + 16, d));
+    const crossed = d >= SWIPE_REPLY_PX;
+    if (crossed && !swipeCrossed.current) {
+      try {
+        navigator.vibrate?.(10);
+      } catch {
+        // vibratsiya qo'llab-quvvatlanmaydi — jim o'tamiz
+      }
+    }
+    swipeCrossed.current = crossed;
+    setSwipe(rubberBand(d));
   };
   const endSwipe = () => {
     clearTimeout(pressTimer.current);
     if (swipe >= SWIPE_REPLY_PX) replyTarget();
     setSwipe(0);
     swipeStart.current = null;
+    swipeCrossed.current = false;
+  };
+  // Ikki marta bosish (sichqoncha) / ikki marta tegish (sensor) — matn va stikerda ❤️ toggle
+  // (Telegram). Havola, iqtibos va chiplar ustida emas.
+  const heartable = canReact && (message.type === 'text' || message.type === 'sticker') && !album;
+  const onBubbleTap = (e) => {
+    if (!heartable || e.target.closest?.('a, button')) return false;
+    react('❤️');
+    return true;
+  };
+  const onPointerUp = (e) => {
+    const start = swipeStart.current;
+    const moved = start ? Math.hypot(e.clientX - start.x, e.clientY - start.y) : 0;
+    endSwipe();
+    if (e.pointerType === 'mouse' || longPressFired.current || moved > 10 || !heartable) return;
+    const now = Date.now();
+    if (lastTap.current && now - lastTap.current < 300) {
+      lastTap.current = null;
+      onBubbleTap(e);
+    } else lastTap.current = now;
   };
   const triggerProps = interactive
-    ? { onContextMenu: (e) => { e.preventDefault(); setMenuOpen(true); }, onPointerDown, onPointerMove, onPointerUp: endSwipe, onPointerLeave: endSwipe, onPointerCancel: endSwipe }
+    ? {
+        onContextMenu: (e) => {
+          e.preventDefault();
+          // Sichqoncha bilan o'ng tugma — bosilgan nuqtada popover; sensorda (uzoq bosish) — varaq.
+          setMenu(e.nativeEvent?.pointerType === 'touch' ? {} : { point: { x: e.clientX, y: e.clientY } });
+        },
+        onPointerDown,
+        onPointerMove,
+        onPointerUp,
+        onPointerLeave: endSwipe,
+        onPointerCancel: endSwipe,
+        onDoubleClick: (e) => {
+          // Sensorli qurilmada ikki marta tegishni onPointerUp hal qiladi (dblclick ham kelishi mumkin).
+          if (e.nativeEvent?.pointerType && e.nativeEvent.pointerType !== 'mouse') return;
+          if (onBubbleTap(e)) window.getSelection?.()?.removeAllRanges?.();
+        },
+      }
     : {};
 
+  // ---------------------------------------------------------------- meta (PARITY_PLAN WP8.1)
+  // Vaqt + belgilar + "tahrirlangan" pufakcha ICHIDA, pastki o'ng burchakda. Rejimlar:
+  //  inline  — matn/izoh: oxirgi qator oxirida ko'rinmas joy (spacer), meta absolute; qisqa xabar bir qator;
+  //  overlay — izohsiz rasm/video/albom: media ustida shaffof "pill";
+  //  row     — ovoz/fayl/qo'ng'iroq/stiker/emoji, reaksiya chiplari bor bo'lsa yoki xato holati: alohida qator
+  //            (chiplar chapda, meta o'ngda — WP7 chiplari vaqtdan oldin).
+  const tickMessage = messages.find((m) => m._status) || message;
+  const showTicks = isMine && !deleted && !isCall;
+  const failed = tickMessage._status === 'failed';
+  const hasChips = !isCall && reactions.length > 0;
+  const hasCaption = !!caption && message.type !== 'text';
+  const showMeta = !isCall || message.call?.outcome === 'ended';
+  let metaMode = 'row';
+  if (!failed && !hasChips) {
+    if (isMedia && !hasCaption) metaMode = 'overlay';
+    else if (!isPlain && (message.type === 'text' || deleted || hasCaption)) metaMode = 'inline';
+  }
+  const editedLabel = message.edited && !deleted ? t('mb.edited') : '';
+  const timeLabel = formatMessageTime(message.createdAt);
+  const onBubbleColor = isMine && !isPlain && !deleted;
+  const metaTone =
+    metaMode === 'overlay'
+      ? 'bg-black/45 text-white rounded-full px-1.5 h-5'
+      : isPlain
+        ? 'bg-surface-2/90 text-muted rounded-full px-1.5 h-5'
+        : onBubbleColor
+          ? 'text-on-accent/75'
+          : 'text-muted';
+  const readClass = metaMode === 'overlay' ? 'text-white' : onBubbleColor ? 'text-on-accent' : 'text-accent';
+  const meta = showMeta ? (
+    <span className={`inline-flex items-center gap-1 text-[11px] leading-none tabular-nums whitespace-nowrap select-none ${metaTone}`}>
+      {editedLabel && <span className="italic">{editedLabel}</span>}
+      <time dateTime={message.createdAt ? new Date(message.createdAt).toISOString() : undefined}>{timeLabel}</time>
+      {showTicks && <Ticks message={tickMessage} otherOnline={otherOnline} t={t} retryMessage={retryMessage} readClass={readClass} />}
+    </span>
+  ) : null;
+  const metaSpacer =
+    metaMode === 'inline' && showMeta ? (
+      <span aria-hidden="true" className="chat-meta-spacer" data-meta={`${editedLabel ? `${editedLabel} ` : ''}${timeLabel}`} style={{ paddingRight: showTicks ? 18 : 2 }} />
+    ) : null;
+  const chips = hasChips ? (
+    <ReactionChips reactions={reactions} myId={myId} onToggle={react} tone={onBubbleColor ? 'outgoing' : 'incoming'} interactive={canReact && !selectionMode} />
+  ) : null;
+
   const openMedia = (m) => onOpenMedia?.(idOf(m || message));
-  const body = deleted ? (
-    <p className="flex items-center gap-1.5"><Trash2 size={13} /> {t('mb.deleted')}</p>
-  ) : (
+  const header = (
     <>
-      {message.forwardedFrom && (
+      {/* "Yuboruvchi nomini yashirish" bilan yuborilgan nusxada yorliq yo'q (PARITY_PLAN WP5). */}
+      {message.forwardedFrom && !message.forwardedFrom.hidden && (
         <p className={`text-xs font-semibold mb-1 flex items-center gap-1 ${isMine ? 'text-on-accent/85' : 'text-accent'}`} data-testid="forwarded-label">
           <Forward size={12} /> {t('ch.forwardedFrom', { name: message.forwardedFrom.name || t('ch.user') })}
         </p>
@@ -690,17 +813,32 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
       {message.replyTo && (
         <ReplyQuote replyTo={message.replyTo} isMine={isMine} myId={myId} otherUsername={activeConversation?.otherUser?.username} onClick={() => onJumpToReply?.(String(message.replyTo.messageId))} />
       )}
+    </>
+  );
+  const hasHeader = !deleted && ((message.forwardedFrom && !message.forwardedFrom.hidden) || !!message.replyTo);
+
+  const body = deleted ? (
+    <p className="flex flex-wrap items-center gap-x-1.5">
+      <Trash2 size={13} aria-hidden="true" /> {t('mb.deleted')}
+      {metaSpacer}
+    </p>
+  ) : (
+    <>
+      {hasHeader && (isMedia ? <div className="px-2 pt-1">{header}</div> : header)}
       {album ? (
         <AlbumGrid messages={messages} onOpen={openMedia} />
       ) : (
         <>
           {message.type === 'text' && (
-            <p className={`whitespace-pre-wrap [overflow-wrap:anywhere] font-chat ${emojiOnly ? 'text-4xl leading-tight' : ''}`}>{emojiOnly ? message.text : renderFormattedText(message.text)}</p>
+            <p className={`whitespace-pre-wrap [overflow-wrap:anywhere] font-chat ${emojiOnly ? emojiOnlyClass(message.text) : ''}`}>
+              {emojiOnly ? message.text : renderFormattedText(message.text)}
+              {metaSpacer}
+            </p>
           )}
           {message.type === 'sticker' &&
             (sticker ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={sticker.file} alt={sticker.label} draggable={false} className="w-32 h-32 md:w-36 md:h-36" />
+              <img src={sticker.file} alt={sticker.label} draggable={false} className="w-36 h-36 md:w-40 md:h-40" />
             ) : (
               <p className="text-sm text-muted">{t('mb.sticker')}</p>
             ))}
@@ -708,17 +846,36 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
           {message.type === 'video' && <VideoBubble message={message} onOpen={() => openMedia(message)} />}
           {message.type === 'voice' && <VoiceBubble message={message} isMine={isMine} />}
           {message.type === 'file' && <FileBubble message={message} isMine={isMine} />}
+          {message.type === 'call' && (
+            <CallBubble message={message} isMine={isMine} peer={activeConversation?.otherUser || null} timeLabel={timeLabel} selectionMode={selectionMode} />
+          )}
         </>
       )}
-      {caption && message.type !== 'text' && <p className="whitespace-pre-wrap [overflow-wrap:anywhere] font-chat mt-1.5">{renderFormattedText(caption)}</p>}
-      {message.edited && <span className={`block text-[11px] mt-0.5 ${isMine ? 'text-on-accent/60' : 'text-muted'}`}>{t('mb.edited')}</span>}
+      {hasCaption && (
+        <p className={`whitespace-pre-wrap [overflow-wrap:anywhere] font-chat ${isMedia ? 'px-2.5 pt-1.5 pb-1' : 'mt-1.5'}`}>
+          {renderFormattedText(caption)}
+          {metaSpacer}
+        </p>
+      )}
     </>
   );
+
+  // Pufakcha shakli: guruh ichida yopishgan burchaklar kichik, "dum" (eng o'tkir burchak) — faqat oxirgisida.
+  const corners = isMine
+    ? `${groupFirst ? '' : 'rounded-tr-md'} ${groupLast ? 'rounded-br-[4px]' : 'rounded-br-md'}`
+    : `${groupFirst ? '' : 'rounded-tl-md'} ${groupLast ? 'rounded-bl-[4px]' : 'rounded-bl-md'}`;
+  const bubbleClass = isPlain
+    ? 'min-w-0 relative flex flex-col items-end'
+    : `min-w-0 relative rounded-2xl ${corners} text-sm ${isMedia ? 'p-0.5' : 'px-3 py-1.5'} ${
+        deleted ? 'bg-transparent border border-dashed border-border text-muted italic' : isMine ? 'bg-accent text-on-accent' : 'bg-surface-2 text-ink chat-incoming'
+      }`;
+  // Sensorli ekranda uzoq bosish iOS "callout"/matn tanlashni emas, bizning varaqni ochadi (WP8.7).
+  const touchClass = '[-webkit-touch-callout:none] [@media(hover:none)]:select-none';
 
   return (
     <div
       data-msg-id={messageIdStr}
-      className={`flex items-center gap-2 ${isMine ? 'justify-end' : 'justify-start'} group ${selectionMode ? 'cursor-pointer' : ''} ${selected ? 'bg-accent-soft/60 -mx-4 px-4 rounded-lg' : ''}`}
+      className={`flex items-center gap-2 ${isMine ? 'justify-end' : 'justify-start'} group ${selectionMode ? 'cursor-pointer' : ''} ${selected ? 'bg-accent-soft/60 -mx-4 px-4 rounded-lg' : ''} `}
       onClick={selectionMode ? () => onToggleSelect?.(messages) : undefined}
     >
       {selectionMode && !isMine && (
@@ -726,39 +883,42 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
           {selected && <Check size={12} />}
         </span>
       )}
-      <div className={`flex flex-col max-w-[85%] ${isMine ? 'items-end' : 'items-start'}`} style={swipe ? { transform: `translateX(${isMine ? -swipe : swipe}px)`, transition: 'none' } : undefined}>
-        <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : ''}`}>
-          <div
-            className={
-              isPlain
-                ? 'min-w-0 relative'
-                : `min-w-0 relative rounded-2xl px-3.5 py-2.5 text-sm ${deleted ? 'bg-transparent border border-dashed border-border text-muted italic' : isMine ? 'bg-accent text-on-accent rounded-br-md' : 'bg-surface-2 text-ink rounded-bl-md'}`
-            }
-            {...triggerProps}
-          >
+      <div
+        className={`flex flex-col max-w-[85%] md:max-w-[75%] ${isMine ? 'items-end' : 'items-start'} motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out`}
+        style={swipe ? { transform: `translateX(${isMine ? -swipe : swipe}px)`, transition: 'none' } : undefined}
+      >
+        {/* Kirish animatsiyasi ichki qatorda: tashqi qatorga `chat-highlight` (iqtibosdan o'tish) animatsiyasi qo'shiladi. */}
+        <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : ''} ${fresh ? 'chat-bubble-in' : ''}`}>
+          <div className={`${bubbleClass} ${touchClass}`} {...triggerProps}>
             {swipe > 0 && (
-              <span className={`absolute top-1/2 -translate-y-1/2 ${isMine ? '-right-10' : '-left-10'} w-8 h-8 rounded-full bg-surface-2 text-accent grid place-items-center shadow-card transition-opacity ${swipe >= SWIPE_REPLY_PX ? 'opacity-100' : 'opacity-50'}`} aria-hidden="true">
+              <span className={`absolute top-1/2 -translate-y-1/2 ${isMine ? '-right-10' : '-left-10'} w-8 h-8 rounded-full bg-surface-2 text-accent grid place-items-center shadow-card transition-[opacity,transform] ${swipe >= SWIPE_REPLY_PX ? 'opacity-100 scale-100' : 'opacity-50 scale-90'}`} aria-hidden="true">
                 <Reply size={14} />
               </span>
             )}
             {body}
+            {metaMode === 'inline' && meta && <span className={`absolute ${isMedia ? 'bottom-1.5 right-2.5' : 'bottom-1.5 right-3'}`}>{meta}</span>}
+            {metaMode === 'overlay' && meta && <span className={`absolute right-1.5 pointer-events-none ${message.type === 'video' && !album ? 'top-1.5' : 'bottom-1.5'}`}>{meta}</span>}
+            {metaMode === 'row' && (chips || meta) && (
+              <div className={`flex flex-wrap items-end justify-end gap-x-2 gap-y-1 ${isMedia ? 'px-2 pb-1' : ''} ${isPlain ? 'mt-1' : 'mt-0.5'}`}>
+                {chips && <div className="mr-auto min-w-0">{chips}</div>}
+                {meta}
+              </div>
+            )}
           </div>
           {!deleted && !isPending && !selectionMode && (
             <button
+              ref={moreBtnRef}
               type="button"
-              onClick={() => setMenuOpen(true)}
+              onClick={() => setMenu({ anchored: true })}
               aria-label={t('mb.actions')}
               aria-haspopup="dialog"
-              className="flex-shrink-0 w-11 min-h-11 lg:w-8 lg:min-h-8 -mx-1.5 -my-2 lg:mx-0 lg:my-0 inline-flex items-center justify-center text-muted hover:text-accent transition-colors touch-manipulation rounded-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-expanded={!!menu}
+              className="hidden lg:inline-flex flex-shrink-0 w-8 min-h-8 items-center justify-center text-muted hover:text-accent transition-colors rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <MoreHorizontal size={16} />
             </button>
           )}
         </div>
-        <span className="flex items-center gap-1 text-[11px] text-muted mt-0.5 px-1 select-none">
-          {formatMessageTime(message.createdAt)}
-          {isMine && !deleted && <Ticks message={messages.find((m) => m._status) || message} otherOnline={otherOnline} t={t} retryMessage={retryMessage} />}
-        </span>
       </div>
       {selectionMode && isMine && (
         <span className={`w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 ${selected ? 'bg-accent border-accent text-on-accent' : 'border-border'}`} aria-hidden="true">
@@ -766,7 +926,32 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
         </span>
       )}
 
-      {menuOpen && <MessageContextMenu actions={actions} onClose={() => setMenuOpen(false)} />}
+      <ActionSheet
+        open={!!menu}
+        title={t('mb.actions')}
+        showTitle={false}
+        items={actions}
+        onClose={() => setMenu(null)}
+        anchorRef={menu?.anchored ? moreBtnRef : undefined}
+        anchorPoint={menu?.point || null}
+        testid="message-menu"
+        widthClass="w-80"
+      >
+        {canReact && (
+          <ReactionBar
+            mine={myReaction(reactions, myId)}
+            onPick={(emoji) => {
+              setMenu(null);
+              react(emoji);
+            }}
+            onMore={() => {
+              setMenu(null);
+              setReactPickerOpen(true);
+            }}
+          />
+        )}
+      </ActionSheet>
+      {reactPickerOpen && <EmojiPicker mode="reaction" onPick={react} onClose={() => setReactPickerOpen(false)} />}
       <DeleteMessageModal open={deleteOpen} canDeleteForEveryone={isMine} otherUsername={activeConversation?.otherUser?.username} onConfirm={deleting ? undefined : handleDelete} onCancel={() => setDeleteOpen(false)} />
       <ForwardMessageModal open={forwardOpen} messages={messages} onClose={() => setForwardOpen(false)} />
       <ReportReasonModal open={reportOpen} onSubmit={submitReport} onCancel={() => setReportOpen(false)} />

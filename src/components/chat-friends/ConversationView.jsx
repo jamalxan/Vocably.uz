@@ -1,14 +1,18 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X, Send, Forward, Trash2, Copy, Upload } from 'lucide-react';
+import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X, Send, Forward, Trash2, Copy, Upload, Phone, Video, EllipsisVertical, User, Loader2 } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { useT } from '@/context/LocaleContext';
+import { useCall } from '@/context/CallContext';
 import { formatDateLocale } from '@/lib/uzDate';
 import { formatLastSeen, formatMuteUntil, isOnline, useLiveClock } from '@/lib/presence';
 import { TYPING_LABEL, REPLY_TYPE_LABEL } from '@/lib/chatConstants';
 import { groupAlbums } from '@/lib/chat/albums';
 import { filesFromDataTransfer } from '@/lib/chat/attachments';
+import { groupMessages } from '@/lib/chat/grouping';
+import { useDelayedFlag } from '@/lib/hooks/useDelayedFlag';
+import TypingDots, { stripDots } from './TypingDots';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 import UserProfileModal from './UserProfileModal';
@@ -18,6 +22,8 @@ import MediaViewer from './MediaViewer';
 import Avatar from '@/components/avatar/Avatar';
 import MuteDurationModal from './MuteDurationModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import ActionSheet from './ActionSheet';
+import CallbackSheet from './CallbackSheet';
 
 const HEADER_BTN =
   'inline-flex items-center justify-center w-11 h-11 -my-1.5 md:w-auto md:h-auto md:my-0 md:p-1.5 rounded-lg transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
@@ -37,13 +43,32 @@ function formatDaySeparator(dateStr, t, locale) {
   return d.getFullYear() === now.getFullYear() ? label : `${label} ${d.getFullYear()}`;
 }
 
+// Kun yorlig'i (PARITY_PLAN WP8.12): har kun o'z <section>ida, yorliq `sticky` — o'sha kun xabarlari
+// ko'rinib turganda tepada qoladi (Telegram'dagi suzuvchi sana).
 function DaySeparator({ label }) {
   return (
-    <div className="flex items-center justify-center py-1.5 select-none">
-      <span className="px-2.5 py-1 rounded-full bg-surface-2 text-muted text-[11px] font-medium">{label}</span>
+    <div className="sticky top-1 z-[5] flex items-center justify-center py-1.5 select-none pointer-events-none">
+      <span className="px-2.5 py-1 rounded-full bg-surface-2/90 backdrop-blur-sm text-muted text-[11px] font-medium shadow-sm">{label}</span>
     </div>
   );
 }
+
+// O'qilmagan xabarlar chizig'i (WP8.12) — suhbat ochilgandagi birinchi o'qilmagan xabar oldida;
+// suhbatdan chiqib qayta kirilganda qayta hisoblanadi (o'qilganlar uchun yo'qoladi).
+function UnreadDivider({ label }) {
+  return (
+    <div className="flex items-center gap-3 my-2 -mx-4 px-4 py-1 bg-accent-soft/50 select-none" data-testid="unread-divider" role="separator" aria-label={label}>
+      <span className="flex-1 h-px bg-accent/30" />
+      <span className="text-[11px] font-semibold text-accent">{label}</span>
+      <span className="flex-1 h-px bg-accent/30" />
+    </div>
+  );
+}
+
+const dayKeyOf = (d) => {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+};
 
 function PinnedBanner({ pinnedIds, messages, onJump, onUnpin }) {
   const { t, ts } = useT();
@@ -85,8 +110,13 @@ export default function ConversationView({ onBack }) {
     typingByConversation,
     stageExternalFiles,
     deleteMessage,
+    socketConnected,
+    showChatNotice,
   } = useChat();
   const { chatUserId: myId } = useApp();
+  const { canCall, unavailableKey, startCall, pendingCallback, consumeCallback } = useCall();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef(null);
   const listRef = useRef(null);
   const bottomRef = useRef(null);
   const prevLenRef = useRef(0);
@@ -106,6 +136,10 @@ export default function ConversationView({ onBack }) {
   const [forwardSel, setForwardSel] = useState(false);
   const [deleteSel, setDeleteSel] = useState(false);
   const [deletingSel, setDeletingSel] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  // Suhbat ochilgandagi birinchi o'qilmagan xabar (WP8.12) — { convId, id }; keyin o'qilsa ham joyida qoladi.
+  const [unreadAnchor, setUnreadAnchor] = useState({ convId: null, id: null });
+  const connecting = useDelayedFlag(!socketConnected, 1500);
   useLiveClock();
 
   const scrollToBottom = (behavior = 'smooth') => {
@@ -123,6 +157,12 @@ export default function ConversationView({ onBack }) {
     setNewMessageCount(0);
     setSelection(null);
     setViewer(null);
+  }
+  // Birinchi yuklangan xabarlar shu suhbatniki bo'lganda o'qilmaganlar chizig'i joyini bir marta eslab qolamiz.
+  const lastMsg = messages[messages.length - 1];
+  if (convId && unreadAnchor.convId !== convId && !loadingMessages && lastMsg && (!lastMsg.conversationId || String(lastMsg.conversationId) === String(convId))) {
+    const firstUnread = messages.find((m) => String(m.senderId) !== String(myId) && !m.readAt && !m.deletedForEveryone);
+    setUnreadAnchor({ convId, id: firstUnread ? idOf(firstUnread) : null });
   }
   useEffect(() => {
     prevLenRef.current = 0;
@@ -169,6 +209,18 @@ export default function ConversationView({ onBack }) {
 
   // Render items (albums grouped) and the media strip for the viewer.
   const items = useMemo(() => groupAlbums(messages), [messages]);
+  // WP8.2 guruhlash (bir yuboruvchi, 5 daqiqa, bir kun) va WP8.12 kun bo'limlari (sticky sana).
+  const groupFlags = useMemo(() => groupMessages(items.map((it) => (it.kind === 'album' ? it.messages[0] : it.message))), [items]);
+  const sections = useMemo(() => {
+    const out = [];
+    items.forEach((it, i) => {
+      const m = it.kind === 'album' ? it.messages[0] : it.message;
+      const key = dayKeyOf(m.createdAt);
+      if (!out.length || out[out.length - 1].key !== key) out.push({ key, createdAt: m.createdAt, entries: [] });
+      out[out.length - 1].entries.push({ it, i });
+    });
+    return out;
+  }, [items]);
   const mediaItems = useMemo(() => {
     const otherName = activeConversation?.otherUser?.nickname || (activeConversation?.otherUser?.username ? `@${activeConversation.otherUser.username}` : '');
     return messages
@@ -196,9 +248,11 @@ export default function ConversationView({ onBack }) {
     if (nearBottom) setNewMessageCount(0);
     if (el.scrollTop < 40 && !loadingOlderRef.current) {
       loadingOlderRef.current = true;
+      setLoadingOlder(true);
       const prevHeight = el.scrollHeight;
       const prevTop = el.scrollTop;
       loadOlderMessages().finally(() => {
+        setLoadingOlder(false);
         requestAnimationFrame(() => {
           if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight - prevHeight + prevTop;
           loadingOlderRef.current = false;
@@ -219,14 +273,14 @@ export default function ConversationView({ onBack }) {
   const jumpToMessage = async (messageId) => {
     if (highlight(messageId)) return;
     const found = await ensureMessageLoaded(messageId);
-    if (!found) return alert(t('ch.notLoaded'));
+    if (!found) return showChatNotice(t('ch.notLoaded'));
     requestAnimationFrame(() => highlight(messageId));
   };
 
   const handleBlock = async () => {
     setBlockOpen(false);
     const res = await blockUser(activeConversation.otherUser.id);
-    if (res?.error) alert(ts(res.error));
+    if (res?.error) showChatNotice(ts(res.error), 'error');
   };
   const handleToggleMute = () => (activeConversation.muted ? toggleMuteConversation(activeConversation.id, false) : setMuteModalOpen(true));
   const handleSelectMuteDuration = (durationMs) => {
@@ -235,7 +289,7 @@ export default function ConversationView({ onBack }) {
   };
   const handleUnpin = async (messageId) => {
     const res = await unpinMessage(messageId);
-    if (res?.error) alert(ts(res.error));
+    if (res?.error) showChatNotice(ts(res.error), 'error');
   };
 
   // Drag & drop anywhere over the conversation → composer tray.
@@ -281,7 +335,7 @@ export default function ConversationView({ onBack }) {
     for (const m of selectedMessages) {
       const res = await deleteMessage(idOf(m), forEveryone && String(m.senderId) === String(myId));
       if (res?.error) {
-        alert(ts(res.error));
+        showChatNotice(ts(res.error), 'error');
         break;
       }
     }
@@ -289,6 +343,39 @@ export default function ConversationView({ onBack }) {
     setDeleteSel(false);
     setSelection(null);
   };
+  // ⋮ menyusi: sarlavhadagi to'rtta almashtirgich + profil (CALLS_SPEC §10.9), yorliqlari avvalgidek.
+  const moreItems = [
+    {
+      key: 'notify-online',
+      label: activeConversation.notifyOnline ? t('cv.notifyOnOff') : t('cv.notifyOnOn'),
+      icon: UserCheck,
+      pressed: !!activeConversation.notifyOnline,
+      onSelect: () => toggleNotifyOnline(activeConversation.id, !activeConversation.notifyOnline),
+    },
+    {
+      key: 'tg-notify',
+      label: activeConversation.tgMessageNotify ? t('cv.tgOff') : t('cv.tgOn'),
+      icon: Send,
+      pressed: !!activeConversation.tgMessageNotify,
+      onSelect: async () => {
+        const res = await toggleTgMessageNotify(activeConversation.id, !activeConversation.tgMessageNotify);
+        if (res?.error) showChatNotice(ts(res.error), 'error');
+      },
+    },
+    {
+      key: 'mute',
+      label: activeConversation.muted ? (muteUntilText ? `${t('cv.unmute')} · ${muteUntilText}` : t('cv.unmute')) : t('cv.mute'),
+      icon: activeConversation.muted ? BellOff : Bell,
+      pressed: !!activeConversation.muted,
+      onSelect: handleToggleMute,
+    },
+    { key: 'profile', label: t('cv.profileAria'), icon: User, onSelect: () => setProfileOpen(true) },
+    { key: 'block', label: t('cv.blockAria'), icon: ShieldOff, danger: true, onSelect: () => setBlockOpen(true) },
+  ];
+  // Bildirishnomadagi "qayta qo'ng'iroq" havolasi (?call=) aynan shu suhbat uchun bo'lsa.
+  const callbackOpen =
+    !!pendingCallback && !!activeConversation.otherUser?.username && pendingCallback.username.toLowerCase() === String(activeConversation.otherUser.username).toLowerCase();
+
   const openMedia = (messageId) => {
     const index = mediaItems.findIndex((it) => it.id === String(messageId));
     if (index >= 0) setViewer({ index });
@@ -305,7 +392,7 @@ export default function ConversationView({ onBack }) {
           <button type="button" onClick={copySelected} disabled={!selectedMessages.some((m) => m.text)} aria-label={t('mb.copy')} title={t('mb.copy')} className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40`}>
             <Copy size={17} />
           </button>
-          <button type="button" onClick={() => setForwardSel(true)} disabled={!selectedIds.size} aria-label={t('mb.forward')} title={t('mb.forward')} className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40`}>
+          <button type="button" onClick={() => setForwardSel(true)} disabled={!selectedIds.size || selectedMessages.some((m) => m.type === 'call')} aria-label={t('mb.forward')} title={t('mb.forward')} className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40`}>
             <Forward size={17} />
           </button>
           <button type="button" onClick={() => setDeleteSel(true)} disabled={!selectedIds.size} aria-label={t('ch.delete')} title={t('ch.delete')} className={`${HEADER_BTN} text-muted hover:text-danger disabled:opacity-40`}>
@@ -313,37 +400,64 @@ export default function ConversationView({ onBack }) {
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-1 md:gap-2.5 px-4 py-3 border-b border-border flex-shrink-0">
+        <div className="flex items-center gap-1 md:gap-2.5 px-4 py-2.5 border-b border-border flex-shrink-0">
           <button onClick={onBack} aria-label={t('cv.backAria')} className={`lg:hidden -ml-2.5 md:ml-0 text-muted hover:text-ink ${HEADER_BTN}`}>
             <ArrowLeft size={18} />
           </button>
           <button type="button" onClick={() => setProfileOpen(true)} aria-label={t('cv.profileAria')} className="flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-            <Avatar userId={activeConversation.otherUser?.id} photoId={activeConversation.otherUser?.photoId} name={activeConversation.otherUser?.nickname || activeConversation.otherUser?.name} username={activeConversation.otherUser?.username} size={38} online={online} ringClass="border-surface" />
+            <Avatar userId={activeConversation.otherUser?.id} photoId={activeConversation.otherUser?.photoId} name={activeConversation.otherUser?.nickname || activeConversation.otherUser?.name} username={activeConversation.otherUser?.username} size={40} online={online} onlineLabel={t('ch.online')} ringClass="border-surface" />
           </button>
           <button onClick={() => setProfileOpen(true)} className="min-w-0 flex-1 text-left ml-1.5 md:ml-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" title={t('cv.profileTitle')}>
-            <p className="text-sm font-semibold text-ink truncate hover:underline">{activeConversation.otherUser?.nickname || `@${activeConversation.otherUser?.username}`}</p>
-            {typingKind ? <p className="text-[11px] text-accent italic truncate">{ts(TYPING_LABEL[typingKind] || TYPING_LABEL.text)}</p> : lastSeenText && <p className="text-[11px] text-muted truncate">{lastSeenText}</p>}
-          </button>
-          <button onClick={() => toggleNotifyOnline(activeConversation.id, !activeConversation.notifyOnline)} title={activeConversation.notifyOnline ? t('cv.notifyOnOff') : t('cv.notifyOnOn')} aria-label={activeConversation.notifyOnline ? t('cv.notifyOnOff') : t('cv.notifyOnOn')} className={`${HEADER_BTN} ${activeConversation.notifyOnline ? 'text-accent' : 'text-muted hover:text-accent'}`}>
-            <UserCheck size={16} />
+            <p className="text-[15px] leading-5 font-semibold text-ink truncate hover:underline">{activeConversation.otherUser?.nickname || `@${activeConversation.otherUser?.username}`}</p>
+            {/* WP8.15: holat qatori doim bir xil balandlikda (layout siljimaydi); "yozmoqda" — animatsiyali nuqtalar,
+                socket uzilgan bo'lsa — "Ulanmoqda…" (doimiy Wifi belgisi o'rniga). */}
+            <p className="h-4 text-xs leading-4 truncate" aria-live="polite" data-testid="chat-status">
+              {connecting ? (
+                <span className="text-muted">{t('ch.connecting')}</span>
+              ) : typingKind ? (
+                <span className="inline-flex items-center gap-1 text-accent">
+                  {stripDots(ts(TYPING_LABEL[typingKind] || TYPING_LABEL.text))}
+                  <TypingDots />
+                </span>
+              ) : (
+                lastSeenText && <span className={online ? 'text-accent' : 'text-muted'}>{lastSeenText}</span>
+              )}
+            </p>
           </button>
           <button
-            onClick={async () => {
-              const res = await toggleTgMessageNotify(activeConversation.id, !activeConversation.tgMessageNotify);
-              if (res?.error) alert(ts(res.error));
-            }}
-            title={activeConversation.tgMessageNotify ? t('cv.tgOff') : t('cv.tgOn')}
-            aria-label={activeConversation.tgMessageNotify ? t('cv.tgOff') : t('cv.tgOn')}
-            aria-pressed={!!activeConversation.tgMessageNotify}
-            className={`${HEADER_BTN} ${activeConversation.tgMessageNotify ? 'text-accent' : 'text-muted hover:text-accent'}`}
+            type="button"
+            onClick={() => startCall({ conversationId: String(activeConversation.id), kind: 'audio', peer: activeConversation.otherUser })}
+            disabled={!canCall}
+            aria-label={t('cv.callVoice')}
+            title={canCall ? t('cv.callVoice') : t(unavailableKey || 'cv.callUnavailable')}
+            data-testid="call-audio-button"
+            className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40 disabled:hover:text-muted`}
           >
-            <Send size={16} />
+            <Phone size={17} />
           </button>
-          <button onClick={handleToggleMute} title={activeConversation.muted ? muteUntilText || t('cv.unmute') : t('cv.mute')} aria-label={activeConversation.muted ? t('cv.unmute') : t('cv.mute')} className={`${HEADER_BTN} text-muted hover:text-accent`}>
-            {activeConversation.muted ? <BellOff size={16} /> : <Bell size={16} />}
+          <button
+            type="button"
+            onClick={() => startCall({ conversationId: String(activeConversation.id), kind: 'video', peer: activeConversation.otherUser })}
+            disabled={!canCall}
+            aria-label={t('cv.callVideo')}
+            title={canCall ? t('cv.callVideo') : t(unavailableKey || 'cv.callUnavailable')}
+            data-testid="call-video-button"
+            className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40 disabled:hover:text-muted`}
+          >
+            <Video size={17} />
           </button>
-          <button onClick={() => setBlockOpen(true)} title={t('cv.block')} aria-label={t('cv.blockAria')} className={`${HEADER_BTN} text-muted hover:text-danger`}>
-            <ShieldOff size={16} />
+          <button
+            ref={moreRef}
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-label={t('cv.moreAria')}
+            title={t('cv.moreAria')}
+            aria-haspopup="dialog"
+            aria-expanded={moreOpen}
+            data-testid="chat-more-button"
+            className={`${HEADER_BTN} text-muted hover:text-accent`}
+          >
+            <EllipsisVertical size={17} />
           </button>
         </div>
       )}
@@ -353,33 +467,47 @@ export default function ConversationView({ onBack }) {
       )}
 
       <div className="relative flex-1 min-h-0 bg-bg-sunken">
-        <div ref={listRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 pt-3 pb-16 space-y-2.5">
-          {items.map((it, i) => {
-            const m = it.kind === 'album' ? it.messages[0] : it.message;
-            const prevItem = items[i - 1];
-            const prevMsg = prevItem ? (prevItem.kind === 'album' ? prevItem.messages[0] : prevItem.message) : null;
-            const showDaySeparator = !prevMsg || new Date(prevMsg.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
-            const group = it.kind === 'album' ? it.messages : [m];
-            return (
-              <div key={it.kind === 'album' ? it.id : m.clientMessageId || idOf(m)}>
-                {showDaySeparator && <DaySeparator label={formatDaySeparator(m.createdAt, t, locale)} />}
-                <MessageBubble
-                  message={m}
-                  album={it.kind === 'album' ? it.messages : null}
-                  isMine={String(m.senderId) === String(myId)}
-                  myId={myId}
-                  onJumpToReply={jumpToMessage}
-                  onOpenMedia={openMedia}
-                  selectionMode={!!selection}
-                  selected={group.some((x) => selectedIds.has(idOf(x)))}
-                  onToggleSelect={toggleSelect}
-                  onEnterSelection={(msgs) => setSelection(new Set(msgs.map(idOf)))}
-                />
-              </div>
-            );
-          })}
+        {/* Oraliqlar (WP8.2): guruh ichida mt-0.5 (2 px), guruhlar orasida mt-2.5; oxirgi pufakcha ostida pb-3. */}
+        <div ref={listRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 pt-1 pb-3">
+          {sections.map((sec) => (
+            <section key={sec.key}>
+              <DaySeparator label={formatDaySeparator(sec.createdAt, t, locale)} />
+              {sec.entries.map(({ it, i }, k) => {
+                const m = it.kind === 'album' ? it.messages[0] : it.message;
+                const group = it.kind === 'album' ? it.messages : [m];
+                const flags = groupFlags[i] || { first: true, last: true };
+                const unreadHere = unreadAnchor.convId === convId && !!unreadAnchor.id && group.some((x) => idOf(x) === unreadAnchor.id);
+                return (
+                  <div key={it.kind === 'album' ? it.id : m.clientMessageId || idOf(m)} className={k === 0 || unreadHere ? '' : flags.first ? 'mt-2.5' : 'mt-0.5'}>
+                    {unreadHere && <UnreadDivider label={t('cv.unread')} />}
+                    <MessageBubble
+                      message={m}
+                      album={it.kind === 'album' ? it.messages : null}
+                      isMine={String(m.senderId) === String(myId)}
+                      myId={myId}
+                      onJumpToReply={jumpToMessage}
+                      onOpenMedia={openMedia}
+                      selectionMode={!!selection}
+                      selected={group.some((x) => selectedIds.has(idOf(x)))}
+                      onToggleSelect={toggleSelect}
+                      onEnterSelection={(msgs) => setSelection(new Set(msgs.map(idOf)))}
+                      groupFirst={flags.first || unreadHere}
+                      groupLast={flags.last}
+                    />
+                  </div>
+                );
+              })}
+            </section>
+          ))}
           <div ref={bottomRef} />
         </div>
+
+        {/* Eski sahifa yuklanmoqda (WP8.12) — ro'yxat ustida suzadi, kontentni siljitmaydi (scroll anchoring buzilmaydi). */}
+        {loadingOlder && (
+          <div role="status" aria-label={t('cv.loadingOlder')} className="absolute top-2 left-1/2 -translate-x-1/2 z-10 w-8 h-8 rounded-full bg-surface shadow-card grid place-items-center text-muted pointer-events-none">
+            <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+          </div>
+        )}
 
         {(loadingMessages || messagesError || messages.length === 0) && (
           <div className="absolute inset-0 flex items-center justify-center px-6 pointer-events-none">
@@ -420,6 +548,18 @@ export default function ConversationView({ onBack }) {
       <Composer key={activeConversation.id} />
 
       <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <ActionSheet open={moreOpen} title={t('cv.moreAria')} items={moreItems} onClose={() => setMoreOpen(false)} anchorRef={moreRef} testid="chat-more-menu" />
+      <CallbackSheet
+        open={callbackOpen}
+        kind={pendingCallback?.kind}
+        disabled={!canCall}
+        disabledTitle={!canCall && unavailableKey ? t(unavailableKey) : ''}
+        onPick={(kind) => {
+          consumeCallback();
+          startCall({ conversationId: String(activeConversation.id), kind, peer: activeConversation.otherUser });
+        }}
+        onClose={consumeCallback}
+      />
       <MuteDurationModal open={muteModalOpen} onSelect={handleSelectMuteDuration} onCancel={() => setMuteModalOpen(false)} />
       <ConfirmModal open={blockOpen} title={t('cv.blockTitle')} message={t('cv.blockMsg', { u: activeConversation.otherUser?.username || t('ch.user') })} confirmLabel={t('cv.blockConfirm')} onConfirm={handleBlock} onCancel={() => setBlockOpen(false)} />
       <ForwardMessageModal

@@ -6,26 +6,18 @@ import { resolveSendableSticker } from '@/lib/stickerCatalog';
 import { objectExists, readObjectPrefix, copyObject, buildObjectKey } from '@/lib/s3';
 import { cleanAlbumId, cleanFileName, cleanWaveform } from '@/lib/chat/mediaMeta';
 import { isValidImageMagicBytes } from '@/lib/imageMagicBytes';
-import { pushNewMessage } from '@/lib/realtime';
+import { pushNewMessage, emitEvent } from '@/lib/realtime';
 import { sendPushToUser } from '@/lib/webPush';
 import { markConversationRead } from '@/lib/chatRead';
-import { sendMessage as sendTelegramMessage } from '@/lib/telegram';
-import {
-  PREVIEW_BY_TYPE,
-  isConversationMuted,
-  isTgMessageNotifyOn,
-  TG_MESSAGE_NOTIFY_THROTTLE_MS,
-} from '@/lib/chatConstants';
-import { NextResponse } from 'next/server';
+import { notifyRecipientViaTelegram } from '@/lib/chatNotify';
+import { loadConversationForUser } from '@/lib/chat/conversationAccess';
+import { serializeReactions } from '@/lib/chat/reactions';
+import { isConversationMuted, previewForMessage } from '@/lib/chatConstants';
+import { isObjectIdString, materializeCopies, partitionSources, planForwardCopies, publicForwardedFrom } from '@/lib/chat/forward';
+import { isTombstone, rawDraftOf, serializeDraft } from '@/lib/chat/draftServer';
+import { after, NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
-
-async function loadConversationForUser(conversationId, userId) {
-  const convo = await Conversation.findById(conversationId);
-  if (!convo) return null;
-  if (!convo.participantIds.some((id) => String(id) === String(userId))) return null;
-  return convo;
-}
 
 export async function GET(req, props) {
   const params = await props.params;
@@ -99,10 +91,13 @@ export async function GET(req, props) {
     // Ikkala tomondan o'chirilgan xabar hujjati saqlanib qoladi (admin audit uchun),
     // lekin oddiy foydalanuvchiga haqiqiy matn/media o'rniga faqat belgisi ko'rsatiladi —
     // xabarning joylashuvi (vaqt tartibi) suhbatda saqlanib qoladi, Telegram'dagidek.
+    // `call` — faqat `type: 'call'` qatorlarda (realtime-server/call-event yaratadi);
+    // boshqa turlarda har doim null, o'chirilgan qo'ng'iroq yozuvida ham tafsilot ko'rsatilmaydi.
+    // `reactions` (PARITY_PLAN WP7) — har doim massiv, `userId` satr; o'chirilgan xabarda bo'sh.
     const sanitized = messages.map((m) =>
       m.deletedForEveryone
-        ? { ...m, text: '', media: null, stickerId: null, originalText: undefined }
-        : { ...m, originalText: undefined }
+        ? { ...m, text: '', media: null, stickerId: null, call: null, reactions: [], forwardedFrom: publicForwardedFrom(m.forwardedFrom), originalText: undefined }
+        : { ...m, call: m.type === 'call' ? m.call || null : null, reactions: serializeReactions(m.reactions), forwardedFrom: publicForwardedFrom(m.forwardedFrom), originalText: undefined }
     );
 
     return NextResponse.json({ messages: sanitized, nextCursor });
@@ -137,6 +132,9 @@ export async function POST(req, props) {
 
     const body = await req.json();
     const { type } = body;
+    // Qo'ng'iroq yozuvini faqat realtime-server (POST /api/internal/call-event) yaratadi —
+    // client "qo'ng'iroq bo'ldi" deb soxta qator qo'sha olmasin.
+    if (type === 'call') return NextResponse.json({ error: "Noto'g'ri xabar turi" }, { status: 400 });
 
     // C-16 — klient (Composer/ChatContext) har yuborishda o'zi UUID generatsiya qiladi.
     // Tarmoq uzilib javob kelmasa-yu, xabar aslida saqlangan bo'lsa, client qayta
@@ -149,7 +147,6 @@ export async function POST(req, props) {
     }
 
     let doc = { conversationId: convo._id, senderId: user._id, type, clientMessageId };
-    let preview;
 
     // Forward (Telegram parity): { conversationId, messageId } of a message I can see. The server
     // copies text/sticker/media itself (S3 copy inside the bucket) and labels the sender.
@@ -157,18 +154,15 @@ export async function POST(req, props) {
       const fwd = await resolveForward(body.forwardOf, user._id, convo._id);
       if (fwd.error) return NextResponse.json({ error: fwd.error }, { status: 400 });
       doc = { ...doc, ...fwd.doc };
-      preview = fwd.preview;
     } else if (type === 'text') {
       const text = (body.text || '').trim();
       if (!text) return NextResponse.json({ error: "Bo'sh xabar yuborib bo'lmaydi" }, { status: 400 });
       if (text.length > MAX_TEXT_LEN) return NextResponse.json({ error: 'Xabar juda uzun' }, { status: 400 });
       doc.text = text;
-      preview = text.slice(0, 80);
     } else if (type === 'sticker') {
       const sticker = await resolveSendableSticker(body.stickerId);
       if (!sticker) return NextResponse.json({ error: "Noto'g'ri stiker" }, { status: 400 });
       doc.stickerId = sticker.id;
-      preview = PREVIEW_BY_TYPE.sticker;
     } else if (['image', 'video', 'voice', 'file'].includes(type)) {
       const media = body.media;
       if (!media?.key || !media?.mimeType || !media?.size) {
@@ -220,7 +214,6 @@ export async function POST(req, props) {
         if (caption.length > MAX_TEXT_LEN) return NextResponse.json({ error: 'Xabar juda uzun' }, { status: 400 });
         doc.text = caption;
       }
-      preview = caption ? caption.slice(0, 80) : PREVIEW_BY_TYPE[type];
     } else {
       return NextResponse.json({ error: "Noto'g'ri xabar turi" }, { status: 400 });
     }
@@ -230,7 +223,8 @@ export async function POST(req, props) {
     // Snapshot shu yerda olinadi — keyin original o'chirilsa ham iqtibos saqlanib qoladi.
     if (body.replyTo) {
       const original = await Message.findOne({ _id: body.replyTo, conversationId: convo._id }).lean();
-      if (original) {
+      // Qo'ng'iroq yozuviga javob berib bo'lmaydi — iqtibos jimgina tashlab yuboriladi.
+      if (original && original.type !== 'call') {
         doc.replyTo = {
           messageId: original._id,
           senderId: original.senderId,
@@ -242,6 +236,7 @@ export async function POST(req, props) {
     }
 
     const message = await Message.create(doc);
+    const preview = previewForMessage(message);
 
     convo.lastMessageAt = message.createdAt;
     convo.lastMessagePreview = preview;
@@ -256,16 +251,33 @@ export async function POST(req, props) {
         (id) => String(id) !== String(user._id) && String(id) !== String(otherId)
       );
     }
+    // PARITY_PLAN WP6 — yuborilgan xabar yuboruvchining shu suhbatdagi qoralamasini tozalaydi
+    // (tombstone, shu save bilan birga); boshqa qurilmalari `draft:update` bilan darhol biladi.
+    // Qoralama allaqachon bo'sh bo'lsa hech narsa yozilmaydi va hodisa yuborilmaydi.
+    const prevDraft = rawDraftOf(convo, user._id);
+    const clearedDraft = prevDraft && !isTombstone(prevDraft) ? { text: '', replyTo: null, updatedAt: new Date() } : null;
+    if (clearedDraft) convo.set(`drafts.${String(user._id)}`, clearedDraft);
     await convo.save();
 
-    // Realtime, web push and Telegram go out IN PARALLEL and are awaited
-    // together (2026-09-29 fix): before, the realtime push was fire-and-forget
-    // — on Vercel the function can be frozen right after the response, so the
-    // recipient's live update was sometimes lost and the message only showed
-    // up on the next poll — while Telegram was awaited on its own, delaying
-    // every send. Now the slowest of the three bounds the response.
-    const deliveries = [];
-    deliveries.push(pushNewMessage(otherId, String(convo._id), {
+    // Realtime push, web push va Telegram endi after() ichida — javob ularni KUTMAYDI.
+    // Sabab: avval (2026-09-29) uchalasi parallel, lekin javobdan OLDIN kutilardi, shuning
+    // uchun eng sekini (realtime xost javob bermasa 3 s timeout, Telegram API) har bir
+    // yuborishni sekinlashtirardi. after() Vercel'da waitUntil orqali funksiyani javobdan
+    // keyin ham tirik saqlaydi — 2026-09-29 dagi "fire-and-forget push yo'qolardi" muammosi
+    // qaytmaydi. Xatti-harakat o'zgarmagan: o'sha uch yetkazish, o'sha shartlar, xatolar
+    // faqat log qilinadi (xabar allaqachon saqlangan).
+    const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
+    // G-3 — doimiy (`mutedBy`) VA muddatli (`mutedUntil`, hali tugamagan) mute'ni ham hisobga oladi
+    // (src/lib/chatConstants.js#isConversationMuted).
+    const recipientMuted = isConversationMuted(convo, otherId);
+    // PARITY_PLAN WP1 — qabul qiluvchining ilova ichidagi toast'i uchun: kim yozdi (uning shu
+    // odamga qo'ygan taxallusi yoki @username) va suhbat ovozsizmi (`silent` -> toast yo'q).
+    const recipientNick = convo.nicknames?.get ? convo.nicknames.get(String(otherId)) : convo.nicknames?.[String(otherId)];
+    const liveMeta = {
+      sender: { id: String(user._id), username: user.username || null, label: recipientNick || senderLabel },
+      silent: recipientMuted,
+    };
+    const realtimePayload = {
       id: message._id,
       conversationId: convo._id,
       senderId: user._id,
@@ -275,36 +287,35 @@ export async function POST(req, props) {
       stickerId: message.stickerId,
       replyTo: message.replyTo,
       albumId: message.albumId,
-      forwardedFrom: message.forwardedFrom,
+      forwardedFrom: publicForwardedFrom(message.forwardedFrom),
       clientMessageId: message.clientMessageId,
+      reactions: [],
       createdAt: message.createdAt,
-    }));
-
-    // Brauzer push — javobni bloklamaydi, xato bo'lsa faqat log qilinadi (xabarning
-    // o'zi allaqachon saqlangan). Qabul qiluvchi shu suhbatni "ovozsiz" qilgan bo'lsa
-    // (mutedBy) — hech qanday push yubormaymiz, lekin xabarning o'zi (realtime/poll
-    // orqali) odatdagidek yetib boradi; yuboruvchi bu haqda hech narsa bilmaydi — API
-    // javobi ikkala holatda ham bir xil. Ilova ichidagi qo'ng'iroq belgisida (Notification
-    // hujjati) chat xabarlari uchun ATAYLAB endi bildirishnoma yaratilmaydi — buning
-    // o'rniga Telegram orqali xabar boradi (pastga qarang).
-    const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
-    // G-3 — endi doimiy (`mutedBy`) VA muddatli (`mutedUntil`, hali tugamagan) mute'ni
-    // ham hisobga oladi (src/lib/chatConstants.js#isConversationMuted).
-    const recipientMuted = isConversationMuted(convo, otherId);
-    if (!recipientMuted) {
-      const pushUrl = user.username ? `/app/friends/${user.username}` : '/app/friends';
-      deliveries.push(sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }));
-    }
-
-    // Telegram bildirishnomalari. Xato bo'lsa faqat log qilinadi (xabar allaqachon
-    // saqlangan). `await` ataylab — Vercel serverless'da javob qaytgach "osilib" qolgan
-    // promise o'ldirilishi mumkin, bildirishnoma esa yo'qolib ketardi.
-    deliveries.push(
-      notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipientMuted, senderUsername: user.username }).catch((err) =>
-        console.error('[telegram] chat xabari bildirishnomasi yuborilmadi', err)
-      )
-    );
-    await Promise.allSettled(deliveries);
+    };
+    // Brauzer push — qabul qiluvchi shu suhbatni "ovozsiz" qilgan bo'lsa (doimiy `mutedBy`
+    // yoki hali tugamagan `mutedUntil`, src/lib/chatConstants.js#isConversationMuted)
+    // yuborilmaydi; xabarning o'zi (realtime/poll orqali) odatdagidek yetib boradi.
+    // Ilova ichidagi qo'ng'iroq belgisida (Notification hujjati) chat xabarlari uchun
+    // ATAYLAB bildirishnoma yaratilmaydi — buning o'rniga Telegram orqali xabar boradi.
+    const pushUrl = user.username ? `/app/friends/${user.username}` : '/app/friends';
+    after(async () => {
+      const deliveries = [pushNewMessage(otherId, String(convo._id), realtimePayload, liveMeta)];
+      if (clearedDraft) {
+        deliveries.push(emitEvent([user._id], 'draft:update', { conversationId: String(convo._id), draft: serializeDraft(clearedDraft), deviceId: null }));
+      }
+      if (!recipientMuted) {
+        deliveries.push(sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }));
+      }
+      deliveries.push(
+        notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipientMuted, senderUsername: user.username }).catch((err) =>
+          console.error('[telegram] chat xabari bildirishnomasi yuborilmadi', err)
+        )
+      );
+      const results = await Promise.allSettled(deliveries);
+      results
+        .filter((r) => r.status === 'rejected')
+        .forEach((r) => console.error('[chat] yetkazishda xatolik', r.reason));
+    });
 
     return NextResponse.json({ message });
   } catch (err) {
@@ -312,95 +323,27 @@ export async function POST(req, props) {
   }
 }
 
-// Qabul qiluvchiga Telegram bot orqali "yangi xabar" signali. Ikki manba:
-//
-// 1. Qabul qiluvchi o'zi uchun (yoki admin unga) yoqib qo'ygan bo'lsa — uning o'z
-//    telegramChatId'siga. Shu suhbatdagi shaxsiy tanlovi (tgMessageNotifyOn/Off)
-//    ustun, tanlov bo'lmasa admin bergan umumiy sozlama (User.tgMessageNotify) —
-//    src/lib/chatConstants.js#isTgMessageNotifyOn. Umumiy (admin) sozlama bo'yicha
-//    yuborilganda suhbat "ovozsiz" (mute) bo'lsa yuborilmaydi; user AYNAN shu suhbat
-//    uchun aniq yoqib qo'ygan bo'lsa — mute'dan qat'iy nazar yuboriladi. Xabar
-//    mazmuni hech qachon ko'rsatilmaydi — faqat kim yozgani.
-// 2. Eski xatti-harakat saqlangan: xabar aynan adminga (role 'admin') yozilsa —
-//    TELEGRAM_ADMIN_CHAT_ID'ga umumiy "Sizga xabar keldi" (kim yozgani ko'rsatilmaydi).
-//    Shu chat 1-banddagi bilan bir xil bo'lsa ikki marta yuborilmaydi.
-//
-// Ketma-ket yozilgan xabarlar spam bo'lmasligi uchun bir suhbatdan bir userga
-// TG_MESSAGE_NOTIFY_THROTTLE_MS'da ko'pi bilan bitta bildirishnoma (atomik
-// updateOne — parallel so'rovlarda ham faqat bittasi "yutadi").
-async function notifyRecipientViaTelegram({ convo, otherId, senderLabel, recipientMuted, senderUsername }) {
-  const recipient = await User.findById(otherId).select('role telegramChatId tgMessageNotify').lean();
-  if (!recipient) return;
-
-  const targets = new Map(); // chatId -> matn
-  const explicitOn = (convo.tgMessageNotifyOn || []).some((id) => String(id) === String(otherId));
-  const wantsNotify = isTgMessageNotifyOn(convo, otherId, recipient.tgMessageNotify);
-  if (recipient.telegramChatId && wantsNotify && (explicitOn || !recipientMuted)) {
-    targets.set(String(recipient.telegramChatId), `💬 ${escapeHtml(senderLabel)} sizga yangi xabar yozdi.`);
-  }
-  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-  if (adminChatId && recipient.role === 'admin' && !targets.has(String(adminChatId))) {
-    targets.set(String(adminChatId), '💬 Sizga xabar keldi.');
-  }
-  if (!targets.size) return;
-
-  const key = `tgMessageNotifiedAt.${String(otherId)}`;
-  const now = new Date();
-  const claimed = await Conversation.updateOne(
-    {
-      _id: convo._id,
-      $or: [{ [key]: { $exists: false } }, { [key]: { $lt: new Date(now.getTime() - TG_MESSAGE_NOTIFY_THROTTLE_MS) } }],
-    },
-    { $set: { [key]: now } }
-  );
-  if (!claimed.modifiedCount) return;
-
-  const appUrl = process.env.APP_URL?.replace(/\/$/, '');
-  const extra =
-    appUrl && senderUsername
-      ? { reply_markup: { inline_keyboard: [[{ text: 'Suhbatni ochish', url: `${appUrl}/app/friends/${senderUsername}` }]] } }
-      : {};
-
-  const results = await Promise.allSettled(
-    [...targets].map(([chatId, text]) => sendTelegramMessage(chatId, text, extra))
-  );
-  const failed = results.filter((r) => r.status === 'rejected' || r.value?.ok === false);
-  failed.forEach((r) => console.error('[telegram] chat xabari bildirishnomasi yuborilmadi', r.reason || r.value));
-  // Nothing got through (Telegram hiccup, timeout): release the throttle slot
-  // so the NEXT message notifies instead of being silently swallowed.
-  if (failed.length === results.length) {
-    await Conversation.updateOne({ _id: convo._id, [key]: now }, { $unset: { [key]: '' } });
-  }
-}
-
-function escapeHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 // A forwarded message: the source must be visible to the forwarder (member of that conversation,
 // not deleted for them); media is copied inside the bucket into the target conversation's folder.
+// Qoidalar (asl muallif, albom, media nusxasi) ko'p chatga yuborish bilan umumiy — src/lib/chat/forward.js.
 async function resolveForward(forwardOf, userId, targetConvoId) {
   const srcConvoId = String(forwardOf?.conversationId || '');
   const srcMsgId = String(forwardOf?.messageId || '');
-  if (!/^[a-f0-9]{24}$/.test(srcConvoId) || !/^[a-f0-9]{24}$/.test(srcMsgId)) return { error: "Noto'g'ri xabar" };
+  if (!isObjectIdString(srcConvoId) || !isObjectIdString(srcMsgId)) return { error: "Noto'g'ri xabar" };
   const src = await Conversation.findById(srcConvoId).select('participantIds').lean();
   if (!src || !src.participantIds.some((id) => String(id) === String(userId))) return { error: 'Xabar topilmadi' };
-  const original = await Message.findOne({ _id: srcMsgId, conversationId: src._id, deletedFor: { $ne: userId }, deletedForEveryone: { $ne: true }, deletedForEveryoneSilently: { $ne: true } }).lean();
-  if (!original) return { error: 'Xabar topilmadi' };
-  const sender = await User.findById(original.forwardedFrom?.userId || original.senderId).select('name username').lean();
-  const forwardedFrom = { userId: sender?._id || original.senderId, name: (original.forwardedFrom?.name || sender?.name || (sender?.username ? `@${sender.username}` : '') || '').slice(0, 80) };
-  const doc = { type: original.type, text: original.text || '', forwardedFrom };
-  if (original.type === 'sticker') doc.stickerId = original.stickerId;
-  if (['image', 'video', 'voice', 'file'].includes(original.type) && original.media?.key) {
-    const dstKey = buildObjectKey(targetConvoId, original.type, original.media.mimeType || 'application/octet-stream');
-    try {
-      await copyObject(original.media.key, dstKey);
-    } catch (err) {
-      console.error('[chat] forward copy failed', err?.message);
-      return { error: "Faylni yuborib bo'lmadi" };
-    }
-    doc.media = { ...original.media, key: dstKey };
-  }
-  const preview = original.type === 'text' ? original.text.slice(0, 80) : original.text ? original.text.slice(0, 80) : PREVIEW_BY_TYPE[original.type] || 'Xabar';
-  return { doc, preview };
+  const found = await Message.find({ _id: srcMsgId, conversationId: src._id }).lean();
+  const { usable, skipped } = partitionSources([srcMsgId], found, userId);
+  // Qo'ng'iroq yozuvi xabar emas — uni boshqa suhbatga yuborib bo'lmaydi.
+  if (skipped[0]?.reason === 'call') return { error: "Bu xabarni yuborib bo'lmaydi" };
+  if (!usable.length) return { error: 'Xabar topilmadi' };
+  const original = usable[0];
+  const author = await User.findById(original.forwardedFrom?.userId || original.senderId).select('name username').lean();
+  const authorsById = new Map(author ? [[String(author._id), author]] : []);
+  const [planned] = planForwardCopies({ sources: [original], targetConversationId: targetConvoId, senderId: userId, authorsById });
+  const { docs, error } = await materializeCopies([planned], { copy: copyObject, keyFor: buildObjectKey });
+  if (error) return { error };
+  // Bitta forward'da albom/clientMessageId/createdAt chaqiruvchi (POST) tomonidan beriladi.
+  const { type, text, forwardedFrom, stickerId, media } = docs[0];
+  return { doc: { type, text, forwardedFrom, ...(stickerId ? { stickerId } : {}), ...(media ? { media } : {}) } };
 }

@@ -1,0 +1,5 @@
+# /home/socialauto/Caddyfile oxiriga qo'shing, keyin:
+#   docker exec socialauto-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+ws.vocably.uz {
+	reverse_proxy vocably-realtime:4001
+}

@@ -114,7 +114,14 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
-      data: { url: data.url || '/app' },
+      // Qo'ng'iroq bildirishnomalari: bitta qo'ng'iroq = bitta `tag` (ustma-ust tushmaydi), tugma(lar).
+      ...(typeof data.tag === 'string' && data.tag ? { tag: data.tag } : {}),
+      ...(typeof data.renotify === 'boolean' ? { renotify: data.renotify } : {}),
+      ...(typeof data.requireInteraction === 'boolean' ? { requireInteraction: data.requireInteraction } : {}),
+      ...(Array.isArray(data.actions) && data.actions.length
+        ? { actions: data.actions.slice(0, 2).map((a) => ({ action: String(a.action || ''), title: String(a.title || '') })) }
+        : {}),
+      data: { url: data.url || '/app', actions: Array.isArray(data.actions) ? data.actions.slice(0, 2) : [] },
     })
   );
 });
@@ -124,7 +131,9 @@ self.addEventListener('notificationclick', (event) => {
   // Faqat shu origin ichidagi yo'l (open redirect himoyasi).
   let url = '/app';
   try {
-    const target = new URL(event.notification.data?.url || '/app', self.location.origin);
+    // Tugma bosilgan bo'lsa — o'sha tugmaning manzili (masalan ?call=audio), aks holda asosiy manzil.
+    const action = event.action ? (event.notification.data?.actions || []).find((a) => a && a.action === event.action) : null;
+    const target = new URL((action && action.url) || event.notification.data?.url || '/app', self.location.origin);
     if (target.origin === self.location.origin) url = target.pathname + target.search + target.hash;
   } catch {
     // noto'g'ri URL — /app

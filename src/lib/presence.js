@@ -91,3 +91,7 @@ export function formatMuteUntil(mutedUntilIso) {
   if (diff < DAY_MS) return `${Math.round(diff / HOUR_MS)} soatgacha ovozsiz`;
   return `${Math.round(diff / DAY_MS)} kungacha ovozsiz`;
 }
+
+// PARITY_PLAN WP8.10 — ro'yxat vaqti (bugun HH:mm / kecha / hafta kuni / sana). Sof funksiya
+// src/lib/chat/formatListTime.js'da (server ham import qila olishi uchun), bu yerda qayta eksport.
+export { formatListTime } from './chat/formatListTime';

@@ -33,6 +33,10 @@ export async function POST(req, props) {
     if (!message || message.deletedForEveryone) {
       return NextResponse.json({ error: 'Xabar topilmadi' }, { status: 404 });
     }
+    // Qo'ng'iroq yozuvi xabar emas — qadab bo'lmaydi (docs/chat/CALLS_SPEC.md §6.5).
+    if (message.type === 'call') {
+      return NextResponse.json({ error: "Qo'ng'iroqni qadab bo'lmaydi" }, { status: 400 });
+    }
 
     const already = (convo.pinnedMessageIds || []).some((id) => String(id) === String(params.messageId));
     if (!already) {

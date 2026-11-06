@@ -5,7 +5,8 @@ import { avatarGradient, avatarInitials, avatarUrl } from '@/lib/avatarShared';
 // Telegram uslubidagi yagona avatar komponenti — butun ilovada (suhbatlar ro'yxati,
 // sarlavha, qidiruv, sidebar, profil) shu ishlatiladi. Rasm bo'lsa — dumaloq rasm,
 // bo'lmasa (yoki yuklanmasa) — userId'dan barqaror tanlangan gradient fonda bosh
-// harflar. `online` — pastki o'ng burchakda yashil nuqta.
+// harflar. `online` — pastki o'ng burchakda yashil nuqta; `onlineLabel` — uning tarjima qilingan
+// nomi (PARITY_PLAN WP8, a11y: ekran o'quvchi "Onlayn"ni joriy tilda eshitadi).
 export default function Avatar({
   userId,
   photoId,
@@ -13,6 +14,7 @@ export default function Avatar({
   username,
   size = 40,
   online = false,
+  onlineLabel = 'Onlayn',
   ringClass = 'border-bg',
   className = '',
   alt,
@@ -62,7 +64,9 @@ export default function Avatar({
       )}
       {online && (
         <span
-          title="Onlayn"
+          role="img"
+          aria-label={onlineLabel}
+          title={onlineLabel}
           className={`absolute bottom-0 right-0 rounded-full bg-success border-2 ${ringClass}`}
           style={{ width: dot, height: dot }}
         />

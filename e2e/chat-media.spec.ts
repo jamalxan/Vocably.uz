@@ -125,7 +125,8 @@ test('three photos + caption become one album; the viewer walks through them', a
   await expect(album).toBeVisible();
   await expect(album.locator('img')).toHaveCount(3);
   // The grid must keep its own width inside the shrink-to-fit bubble (it once collapsed to the caption's width).
-  expect((await album.boundingBox())?.width ?? 0).toBeGreaterThanOrEqual(280);
+  // Polled: the optimistic album is swapped for the server copy, so the first element may detach mid-check.
+  await expect.poll(async () => (await page.getByTestId('album').last().boundingBox())?.width ?? 0, { timeout: 10_000 }).toBeGreaterThanOrEqual(280);
   await expect(page.locator('[data-msg-id]').last()).toContainText('Albom izohi');
   await expect
     .poll(
@@ -228,7 +229,9 @@ test('forward copies the photo inside the bucket; a reply to it shows a thumbnai
   await expect(bubble.locator('img')).toBeVisible({ timeout: 15_000 });
   await bubble.getByRole('button', { name: /Xabar amallari/ }).click();
   await page.getByRole('button', { name: /^Yuborish$/ }).first().click();
-  await page.getByTestId('forward-modal').getByRole('button').filter({ hasText: E2E_FRIEND_USERNAME }).first().click();
+  // PARITY_PLAN WP5: ko'p tanlovli oyna — chatni belgilash, keyin "Yuborish (1)".
+  await page.getByTestId('forward-modal').getByTestId('forward-target').filter({ hasText: E2E_FRIEND_USERNAME }).first().click();
+  await page.getByTestId('forward-modal').getByTestId('forward-send').click();
   await expect(page.getByTestId('forwarded-label').last()).toBeVisible({ timeout: 20_000 });
   const copy: any = await expect
     .poll(

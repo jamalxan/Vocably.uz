@@ -25,6 +25,13 @@ export const E2E_CONVERSATION_ID = '64e2e0000000000000000002';
 export const E2E_CLASSROOM_ID = '64e2e0000000000000000003';
 export const E2E_USERNAME = 'e2euser';
 export const E2E_FRIEND_USERNAME = 'e2efriend';
+/** Uchinchi chat foydalanuvchi (PARITY_PLAN WP9): qo'ng'iroqdagi e2efriend'ga qo'ng'iroq qilib "band"ni sinaydi, forward'da ikkinchi nishon. */
+export const E2E_THIRD_PHONE = '+998901234571';
+export const E2E_THIRD_USERNAME = 'e2ethird';
+/** e2ethird <-> e2efriend suhbati ("band" holati shu suhbatga yoziladi). */
+export const E2E_THIRD_FRIEND_CONVERSATION_ID = '64e2e0000000000000000004';
+/** e2euser <-> e2ethird suhbati (ko'p chatga forward nishoni). */
+export const E2E_USER_THIRD_CONVERSATION_ID = '64e2e0000000000000000005';
 
 /** Test foydalanuvchilarni (so'zlar bilan) E2E bazasiga yozadi. Har safar yangidan yaratiladi. */
 export default async function globalSetup() {
@@ -59,10 +66,12 @@ export default async function globalSetup() {
       [E2E_FREE_PHONE, 'free', 'user'],
       [E2E_ADMIN_PHONE, 'premium', 'admin'],
       [E2E_TEACHER_PHONE, 'premium', 'teacher'],
+      [E2E_THIRD_PHONE, 'free', 'user'],
     ]) {
       const cats = categories();
       // Chat (do'stlar, admin suhbat ko'ruvchi) uchun username + chatAccess; /app/vocabulary/word/:id uchun belgilangan so'z ID.
-      const chat = phone === E2E_PHONE ? { username: E2E_USERNAME, chatAccess: true } : phone === E2E_FREE_PHONE ? { username: E2E_FRIEND_USERNAME, chatAccess: true } : {};
+      const chatUsernames: Record<string, string> = { [E2E_PHONE]: E2E_USERNAME, [E2E_FREE_PHONE]: E2E_FRIEND_USERNAME, [E2E_THIRD_PHONE]: E2E_THIRD_USERNAME };
+      const chat = chatUsernames[phone] ? { username: chatUsernames[phone], chatAccess: true } : {};
       if (phone === E2E_PHONE) cats[0].words[0]._id = new mongoose.Types.ObjectId(E2E_WORD_ID);
       await users.deleteOne({ phone });
       await users.insertOne({ phone, name: 'E2E', password, subscriptionTier, role, timezone: 'Asia/Tashkent', createdAt: now, updatedAt: now, categories: cats, ...chat });
@@ -81,6 +90,18 @@ export default async function globalSetup() {
       lastMessagePreview: '',
       createdAt: now,
     });
+    // Uchinchi foydalanuvchining suhbatlari: belgilangan ID'lar bilan, har safar toza (xabarlari ham o'chiriladi).
+    const thirdDoc = await users.findOne({ phone: E2E_THIRD_PHONE });
+    for (const [id, a, b] of [
+      [E2E_THIRD_FRIEND_CONVERSATION_ID, thirdDoc!._id, friendDoc!._id],
+      [E2E_USER_THIRD_CONVERSATION_ID, userDoc!._id, thirdDoc!._id],
+    ] as const) {
+      const ids = [a, b].sort((x, y) => String(x).localeCompare(String(y)));
+      const pairKey = ids.map(String).join('_');
+      await conversations.deleteMany({ $or: [{ _id: new mongoose.Types.ObjectId(id) }, { pairKey }] });
+      await mongoose.connection.collection('messages').deleteMany({ conversationId: new mongoose.Types.ObjectId(id) });
+      await conversations.insertOne({ _id: new mongoose.Types.ObjectId(id), participantIds: ids, pairKey, lastMessageAt: now, lastMessagePreview: '', createdAt: now });
+    }
     const classrooms = mongoose.connection.collection('classrooms');
     await classrooms.deleteOne({ _id: new mongoose.Types.ObjectId(E2E_CLASSROOM_ID) });
     await classrooms.insertOne({

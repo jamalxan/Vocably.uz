@@ -124,12 +124,12 @@ export default function MediaViewer({ items, index, onClose, onIndexChange, form
       <div className="relative flex-1 min-h-0 flex items-center justify-center px-2 overflow-hidden" onClick={(e) => e.target === e.currentTarget && onClose()}>
         <Slide key={item.id} item={item} active zoomed={zoomed} onToggleZoom={() => setZoomed((z) => !z)} />
         {i > 0 && (
-          <button type="button" onClick={() => go(-1)} aria-label="←" className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 grid place-items-center">
+          <button type="button" onClick={() => go(-1)} aria-label={t('ch.prevMedia')} title={t('ch.prevMedia')} className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 grid place-items-center">
             <ChevronLeft size={22} />
           </button>
         )}
         {i < items.length - 1 && (
-          <button type="button" onClick={() => go(1)} aria-label="→" className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 grid place-items-center">
+          <button type="button" onClick={() => go(1)} aria-label={t('ch.nextMedia')} title={t('ch.nextMedia')} className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 grid place-items-center">
             <ChevronRight size={22} />
           </button>
         )}

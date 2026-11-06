@@ -1,7 +1,7 @@
 'use client';
 import { useT } from '@/context/LocaleContext';
 import { useEffect, useRef, useState } from 'react';
-import { Send, Paperclip, Loader2, X, Pencil, Reply, FileText, Plus } from 'lucide-react';
+import { Send, Paperclip, Loader2, X, Pencil, Reply, FileText, Plus, Smile } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
@@ -11,6 +11,7 @@ import { getDraft } from '@/lib/chat/drafts';
 import { VoiceRecorderButton } from './VoiceRecorder';
 import VideoRecorderButton from './VideoRecorder';
 import EmojiPicker from './EmojiPicker';
+import ReplyThumb from './ReplyThumb';
 
 // Composer (Telegram parity): many attachments in one tray with previews, one caption for an album,
 // "send as file", drag & drop / paste of several files, a draft (text + reply) that survives leaving
@@ -63,8 +64,10 @@ export default function Composer() {
     sendTyping,
     drafts,
     saveDraft,
+    clearDraftAfterSend,
     stagedFiles,
     stageExternalFiles,
+    showChatNotice,
   } = useChat();
   const { chatUserId: myId } = useApp();
   const conversationId = activeConversation?.id;
@@ -92,16 +95,32 @@ export default function Composer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Draft save: debounced on text change, immediately on reply change; cleared on send/unmount flush.
+  // Draft save: debounced on text change, immediately on reply change; cleared on send; a pending
+  // save is flushed on unmount (leaving the chat right after typing keeps the last characters).
+  // `syncedTextRef` — the text this composer last saved or received from the draft store: when the
+  // textarea still equals it, nothing local is unsaved and a newer remote draft may replace it (WP6).
+  const syncedTextRef = useRef(text);
+  const pendingSaveRef = useRef(null); // () => void while a debounced save is waiting
   const persistDraft = (nextText, nextReply) => {
     if (!conversationId) return;
+    pendingSaveRef.current = null;
+    syncedTextRef.current = nextText;
     saveDraft(conversationId, { text: nextText, replyTo: nextReply ? { id: nextReply.id, senderId: nextReply.senderId, type: nextReply.type, text: nextReply.text, mediaKey: nextReply.mediaKey || null } : null });
   };
   const scheduleDraft = (nextText) => {
     clearTimeout(draftTimer.current);
-    draftTimer.current = setTimeout(() => persistDraft(nextText, replyingTo), DRAFT_DEBOUNCE_MS);
+    const save = () => persistDraft(nextText, replyingTo);
+    pendingSaveRef.current = save;
+    draftTimer.current = setTimeout(save, DRAFT_DEBOUNCE_MS);
   };
+  // Saves only when the reply target really changed: on mount (and its StrictMode re-run) the target is
+  // restored right after this effect, so saving then would write a transient "no reply" draft and
+  // bounce a needless PUT to the server.
+  const lastReplyIdRef = useRef(replyingTo?.id ?? null);
   useEffect(() => {
+    const replyId = replyingTo?.id ?? null;
+    if (replyId === lastReplyIdRef.current) return;
+    lastReplyIdRef.current = replyId;
     if (editingMessage) return;
     clearTimeout(draftTimer.current);
     persistDraft(textRef.current, replyingTo);
@@ -110,9 +129,26 @@ export default function Composer() {
   useEffect(
     () => () => {
       clearTimeout(draftTimer.current);
+      pendingSaveRef.current?.();
     },
     []
   );
+
+  // WP6: a newer draft from another tab/device (server) replaces the text only when this composer has
+  // nothing unsaved and the user is not typing here (textarea not focused); otherwise local text wins.
+  const appliedSyncRef = useRef(draft?.syncedAt || 0);
+  const remoteSyncedAt = draft?.syncedAt || 0;
+  const remoteDirty = !!draft?.dirty;
+  const remoteText = draft?.text ?? '';
+  useEffect(() => {
+    if (remoteDirty || remoteSyncedAt <= appliedSyncRef.current) return;
+    appliedSyncRef.current = remoteSyncedAt;
+    if (editingMessage || pendingSaveRef.current) return;
+    if (textInputRef.current && document.activeElement === textInputRef.current) return;
+    if (textRef.current !== syncedTextRef.current || textRef.current === remoteText) return;
+    syncedTextRef.current = remoteText;
+    setText(remoteText);
+  }, [remoteSyncedAt, remoteDirty, remoteText, editingMessage]);
 
   // Edit mode: the message text replaces the input; leaving edit mode restores nothing (draft is separate).
   const [prevEditing, setPrevEditing] = useState(null);
@@ -180,7 +216,7 @@ export default function Composer() {
       if (!clean || sending) return;
       setSending(true);
       const res = await editMessage(editingMessage.id, clean);
-      if (res.error) alert(ts(res.error));
+      if (res.error) showChatNotice(ts(res.error), 'error');
       else setText('');
       setSending(false);
       return;
@@ -189,21 +225,25 @@ export default function Composer() {
       // Attachments: bubbles appear at once, uploads run in the background — the tray is free again.
       const items = tray.map((a) => ({ ...a, type: asFile ? 'file' : a.type }));
       const res = sendAttachments(items, { caption: clean, replyTo: replyingTo, asFile });
-      if (res?.error) return alert(ts(res.error));
+      if (res?.error) return showChatNotice(ts(res.error), 'error');
       clearTray();
       setText('');
       clearTimeout(draftTimer.current);
-      saveDraft(conversationId, { text: '', replyTo: null });
+      pendingSaveRef.current = null;
+      syncedTextRef.current = '';
+      clearDraftAfterSend(conversationId);
       textInputRef.current?.focus();
       return;
     }
     if (!clean) return;
     setText('');
     clearTimeout(draftTimer.current);
-    saveDraft(conversationId, { text: '', replyTo: null });
+    pendingSaveRef.current = null;
+    syncedTextRef.current = '';
+    clearDraftAfterSend(conversationId);
     textInputRef.current?.focus();
     sendMessage({ type: 'text', text: clean }).then((res) => {
-      if (res?.error && res.error !== 'Tarmoq xatoligi') alert(ts(res.error));
+      if (res?.error && res.error !== 'Tarmoq xatoligi') showChatNotice(ts(res.error), 'error');
     });
   };
 
@@ -267,7 +307,7 @@ export default function Composer() {
     setEmojiOpen(false);
     if (editingMessage) return;
     const res = await sendMessage({ type: 'sticker', stickerId });
-    if (res?.error) alert(ts(res.error));
+    if (res?.error) showChatNotice(ts(res.error), 'error');
   };
 
   const replySenderLabel = replyingTo
@@ -286,24 +326,32 @@ export default function Composer() {
 
   return (
     <div className="border-t border-border bg-surface" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} data-testid="composer">
+      {/* PARITY_PLAN WP8.11 — javob/tahrir bannerlari Telegram iqtibosi kabi: chapda accent chiziq,
+          nom (accent) va bir qatorli matn, media bo'lsa kichik rasm (ReplyThumb). */}
       {editingMessage && (
-        <div className="flex items-center gap-2 px-3.5 pt-2 text-xs text-accent">
-          <Pencil size={12} className="flex-shrink-0" />
-          <span className="flex-1 min-w-0 truncate">{t('ch.editing')}</span>
+        <div className="flex items-center gap-2.5 px-3.5 pt-2 text-xs" data-testid="edit-banner">
+          <Pencil size={16} className="flex-shrink-0 text-accent" aria-hidden="true" />
+          <div className="flex-1 min-w-0 border-l-2 border-accent pl-2">
+            <p className="font-semibold text-accent truncate">{t('ch.editing')}</p>
+            <p className="text-muted truncate">{editingMessage.text || '…'}</p>
+          </div>
           <button onClick={handleCancelEdit} aria-label={t('ch.cancelEditAria')} type="button" className={bannerCloseClass}>
-            <X size={14} />
+            <X size={16} />
           </button>
         </div>
       )}
       {!editingMessage && replyingTo && (
-        <div className="flex items-center gap-2 px-3.5 pt-2 text-xs" data-testid="reply-banner">
-          <Reply size={12} className="flex-shrink-0 text-accent" />
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-accent truncate">{t('ch.replyTo', { who: replySenderLabel })}</p>
-            <p className="text-muted truncate">{replyPreview || '…'}</p>
+        <div className="flex items-center gap-2.5 px-3.5 pt-2 text-xs" data-testid="reply-banner">
+          <Reply size={16} className="flex-shrink-0 text-accent" aria-hidden="true" />
+          <div className="flex-1 min-w-0 flex items-center gap-2 border-l-2 border-accent pl-2">
+            {replyingTo.mediaKey && <ReplyThumb mediaKey={replyingTo.mediaKey} size={32} />}
+            <div className="min-w-0">
+              <p className="font-semibold text-accent truncate">{t('ch.replyTo', { who: replySenderLabel })}</p>
+              <p className="text-muted truncate">{replyPreview || '…'}</p>
+            </div>
           </div>
           <button onClick={cancelReply} aria-label={t('ch.cancelReplyAria')} type="button" className={bannerCloseClass}>
-            <X size={14} />
+            <X size={16} />
           </button>
         </div>
       )}
@@ -347,9 +395,10 @@ export default function Composer() {
               onClick={() => setEmojiOpen((v) => !v)}
               title={t('ch.emoji')}
               aria-label={t('ch.emojiPick')}
-              className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors emoji font-chat"
+              aria-expanded={emojiOpen}
+              className="w-11 h-11 md:w-8 md:h-8 flex items-center justify-center text-muted hover:text-accent hover:bg-primary-soft rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              🙂
+              <Smile size={19} aria-hidden="true" />
             </button>
             {emojiOpen && (
               <EmojiPicker triggerRef={emojiButtonRef} onPick={handleEmojiPick} onPickSticker={handleStickerPick} onClose={() => setEmojiOpen(false)} />
