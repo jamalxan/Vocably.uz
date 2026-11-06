@@ -2,16 +2,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Heart, Pause, Play, RotateCcw, Volume2, VolumeX, Smartphone, ArrowRight, Loader2, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, Pause, Play, RotateCcw, Volume2, VolumeX, Smartphone, ArrowRight, Loader2, Zap, ChevronLeft, ChevronRight, Box } from 'lucide-react';
 import useCopy from '@/components/landing/useCopy';
 import { RUN, initialRun, resolveGate, moveLane, summary, guestQuestions, travelMsFor, speedFor } from '@/lib/flagship/run';
 import { RUN_BANK, bankEntry } from '@/lib/flagship/runBank';
 import { saveGuestMissed, claimGuestMissed, readFx, writeFx, beep } from '@/lib/flagship/client';
+import { createFpsWatchdog, stepDown, writeRenderPref, readRenderPref, detectRenderTier } from '@/lib/flagship/gpu';
 import { startGame, completeGame } from '@/components/games/api';
 import { createAnswerQueue } from '@/components/games/answerQueue';
+import SceneBoundary from './SceneBoundary';
 import ShareCard from './ShareCard';
 
-const RunScene3D = dynamic(() => import('./RunScene3D'), { ssr: false, loading: () => null });
+const loadScene = () => import('./RunScene3D');
+const RunScene3D = dynamic(loadScene, { ssr: false, loading: () => null });
 
 // Vocably Run (TZ 2.0 §7). One controller for both audiences:
 //  - signed in: questions come from the user's own words via the regular game session
@@ -19,7 +22,10 @@ const RunScene3D = dynamic(() => import('./RunScene3D'), { ssr: false, loading: 
 //    SRS by response time; the round completes like any game (XP, plan "game" task).
 //  - guest: 30 gates from the public bank, graded on the device; missed words are kept in
 //    localStorage and saved to a deck after sign-up (claimGuestMissed on the dashboard).
-// The game loop lives in refs; React state only carries the HUD.
+// The game loop lives in refs; React state only carries the HUD. The 3D scene (RunScene3D) is picked
+// by render tier like the typing games (gpu.js): 2D track from the start on weak or software GPUs
+// and with reduced motion; the controller's own rAF loop runs the FPS watchdog (3D → lighter 3D →
+// 2D) and handles a lost WebGL context. The stage, and its Canvas, stay mounted once a round started.
 
 const COPY = {
   uz: {
@@ -64,6 +70,9 @@ const COPY = {
     practiceFallback: "Lug'atingizda so'z kam — umumiy so'zlar bilan o'ynayapsiz (natija saqlanmaydi).",
     errorStart: "O'yinni boshlab bo'lmadi",
     claimed: (n) => `Vocably Run'dagi ${n} ta xato so'z takrorlashga qo'shildi.`,
+    lite: "Qurilma sekinlashdi — yengil (2D) rejimga o'tdik.",
+    liteLost: "3D grafika to'xtadi — 2D rejimda davom etamiz.",
+    try3d: '3D rejimni qayta sinash',
   },
   en: {
     title: 'Vocably Run',
@@ -107,19 +116,13 @@ const COPY = {
     practiceFallback: 'You have few words yet — playing with common words (not saved).',
     errorStart: 'Could not start the game',
     claimed: (n) => `${n} missed words from Vocably Run were added to your reviews.`,
+    lite: 'Your device slowed down — switched to light (2D) mode.',
+    liteLost: '3D graphics stopped — continuing in 2D.',
+    try3d: 'Try 3D mode again',
   },
 };
 
-function webglOk() {
-  try {
-    const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-  } catch {
-    return false;
-  }
-}
-
-/** Fallback when 3D is off (no WebGL or reduced motion): the gate slides down a 2D track. */
+/** Fallback when 3D is off (render tier 'none', see gpu.js): the gate slides down a 2D track. */
 function Track2D({ sceneRef, running }) {
   const bar = useRef(null);
   useEffect(() => {
@@ -152,7 +155,10 @@ export default function VocablyRun() {
   const [audience, setAudience] = useState(null); // null (checking) | 'guest' | 'user'
   const [phase, setPhase] = useState('intro'); // intro | loading | playing | finishing | result
   const [paused, setPaused] = useState(false);
-  const [use3d, setUse3d] = useState(true);
+  const [tier, setTier] = useState('high'); // render tier (gpu.js): 'high' | 'low' | 'none' (the 2D track)
+  const [pref2d, setPref2d] = useState(false); // this device fell back to 2D before (or lost its WebGL context)
+  const [lite, setLite] = useState(''); // '' | 'slow' (the watchdog's last step) | 'lost' (WebGL context lost)
+  const [everStarted, setEverStarted] = useState(false); // the stage, and its Canvas, stay mounted from the first round on
   const [fx, setFx] = useState({ sound: true, vibrate: true });
   const [hud, setHud] = useState({ lives: RUN.lives, score: 0, combo: 0, timeLeft: RUN.roundMs / 1000, prompt: '', promptKind: 'meaning', options: [], lane: 1, locked: false, feedback: null });
   const [result, setResult] = useState(null);
@@ -160,18 +166,25 @@ export default function VocablyRun() {
   const [error, setError] = useState('');
   const [announce, setAnnounce] = useState('');
 
-  const sceneRef = useRef({ lane: 1, progress: 0, options: [], feedback: null, speed: 1, running: false, locked: false });
+  const sceneRef = useRef({ lane: 1, progress: 0, options: [], feedback: null, speed: 1, level: 0, running: false, locked: false, contextLost: false });
   const g = useRef({ active: false });
   const fxRef = useRef(fx);
+  const tierRef = useRef(tier);
   useEffect(() => {
     fxRef.current = fx;
   }, [fx]);
+  useEffect(() => {
+    tierRef.current = tier;
+  }, [tier]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read browser capabilities once
     setFx(readFx());
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    setUse3d(webglOk() && !reduce);
+    // WebGL2, software renderer, reduced motion, the remembered 2D preference and ?render= (QA).
+    const detected = detectRenderTier();
+    tierRef.current = detected;
+    setTier(detected);
+    setPref2d(readRenderPref() === '2d');
     let cancelled = false;
     let authed = false;
     try {
@@ -206,6 +219,45 @@ export default function VocablyRun() {
     writeFx(next);
   };
 
+  // ---------- renderer fallbacks (all from the controller, never from inside a frame) ----------
+  const to2d = useCallback(() => {
+    tierRef.current = 'none';
+    setTier('none');
+  }, []);
+
+  const onLowFps = useCallback(() => {
+    const next = stepDown(tierRef.current);
+    tierRef.current = next;
+    setTier(next);
+    if (next === 'none') {
+      writeRenderPref('2d');
+      setPref2d(true);
+      setLite('slow');
+    }
+    g.current.watchdog?.reset(performance.now());
+  }, []);
+
+  // A lost WebGL context counts like the watchdog's last step: 2D from here on, a notice, and "try 3D
+  // again" on the intro and result screens. The stored preference is left alone: a context loss can
+  // be transient (a GPU reset), unlike a device that is too slow.
+  const onContextLost = useCallback(() => {
+    to2d();
+    setPref2d(true);
+    setLite('lost');
+  }, [to2d]);
+
+  const try3d = () => {
+    writeRenderPref('auto');
+    setPref2d(false);
+    const next = detectRenderTier({ ignorePref: true });
+    tierRef.current = next;
+    setTier(next);
+  };
+
+  const prefetchScene = () => {
+    if (tierRef.current !== 'none') loadScene().catch(() => {});
+  };
+
   // ---------- game loop ----------
   const showGate = useCallback((s, now) => {
     const q = s.qs[s.idx];
@@ -215,7 +267,8 @@ export default function VocablyRun() {
     s.gateStart = now;
     s.lastMove = 0;
     s.travel = travelMsFor(s.run.correct);
-    Object.assign(sceneRef.current, { options: q.options, feedback: null, locked: false, progress: 0, speed: speedFor(s.run.correct) });
+    // level: the scene's colour theme, one step every RUN.speedStepEvery correct answers (with the speed)
+    Object.assign(sceneRef.current, { options: q.options, feedback: null, locked: false, progress: 0, speed: speedFor(s.run.correct), level: Math.floor(s.run.correct / RUN.speedStepEvery) });
     setHud((h) => ({ ...h, prompt: q.prompt, promptKind: q.promptKind, options: q.options, locked: false, feedback: null }));
     setAnnounce(`${q.promptKind === 'definition' ? c.definition : c.meaning}: ${q.prompt}`);
   }, [c]);
@@ -269,6 +322,10 @@ export default function VocablyRun() {
     const s = g.current;
     if (!s.active) return;
     const now = performance.now();
+    if (sceneRef.current.contextLost) {
+      sceneRef.current.contextLost = false;
+      onContextLost();
+    }
     if (!s.pausedAt) {
       const t = now - s.gateStart;
       sceneRef.current.progress = t / s.travel;
@@ -312,9 +369,11 @@ export default function VocablyRun() {
         const left = Math.max(0, Math.ceil((RUN.roundMs - (now - s.roundStart - s.pausedTotal)) / 1000));
         setHud((h) => (h.timeLeft === left ? h : { ...h, timeLeft: left }));
       }
+      // Frame-rate watchdog, fed from this loop (never from an R3F frame): 3D → lighter 3D → 2D.
+      if (tierRef.current !== 'none' && document.visibilityState === 'visible') s.watchdog.sample(now);
     }
     s.raf = requestAnimationFrame(() => tickRef.current());
-  }, [c, finish, grade, showGate]);
+  }, [c, finish, grade, onContextLost, showGate]);
   useEffect(() => {
     tickRef.current = tick;
   }, [tick]);
@@ -323,6 +382,8 @@ export default function VocablyRun() {
     setError('');
     setNotice('');
     setResult(null);
+    setLite('');
+    prefetchScene();
     let qs;
     let session = null;
     let saveGuest = audience !== 'user';
@@ -358,10 +419,17 @@ export default function VocablyRun() {
       pausedTotal: 0,
       pausedAt: 0,
       lastHud: 0,
+      watchdog: createFpsWatchdog({ onLow: onLowFps }),
     };
-    Object.assign(sceneRef.current, { lane: 1, running: true });
+    Object.assign(sceneRef.current, { lane: 1, running: true, level: 0 });
+    // A context lost between rounds (and not given back) is only noticed here: play this round in 2D.
+    if (sceneRef.current.contextLost) {
+      sceneRef.current.contextLost = false;
+      if (tierRef.current !== 'none') onContextLost();
+    }
     setHud({ lives: RUN.lives, score: 0, combo: 0, timeLeft: RUN.roundMs / 1000, prompt: '', promptKind: 'meaning', options: [], lane: 1, locked: false, feedback: null });
     setPaused(false);
+    setEverStarted(true);
     setPhase('playing');
     showGate(g.current, now);
     g.current.raf = requestAnimationFrame(() => tickRef.current());
@@ -387,12 +455,14 @@ export default function VocablyRun() {
   const resume = useCallback(() => {
     const s = g.current;
     if (!s.active || !s.pausedAt) return;
-    const d = performance.now() - s.pausedAt;
+    const now = performance.now();
+    const d = now - s.pausedAt;
     s.pausedAt = 0;
     s.pausedTotal += d;
     s.gateStart += d;
     if (s.gapUntil) s.gapUntil += d;
     if (s.lastMove) s.lastMove += d;
+    s.watchdog.reset(now); // fresh warm-up: the first frames after a pause are not a slow device
     sceneRef.current.running = true;
     setPaused(false);
   }, []);
@@ -436,6 +506,7 @@ export default function VocablyRun() {
 
   const playing = phase === 'playing';
   const showStage = playing || phase === 'finishing';
+  const use3d = tier !== 'none';
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -457,13 +528,21 @@ export default function VocablyRun() {
           {audience && <p className="mt-4 rounded-xl bg-bg border border-border px-3.5 py-2.5 text-xs text-muted">{audience === 'user' ? c.userNote : c.guestNote}</p>}
           {notice && <p role="status" className="mt-3 rounded-xl bg-success-soft px-3.5 py-2.5 text-xs text-ink">{notice}</p>}
           {error && <p role="alert" className="mt-3 rounded-xl bg-danger-soft px-3.5 py-2.5 text-sm text-danger">{error}</p>}
-          <div className="mt-5 flex gap-2">
+          <div className="mt-5 flex flex-wrap gap-2">
             <FxToggle on={fx.sound} label={c.sound} Icon={fx.sound ? Volume2 : VolumeX} onClick={() => toggleFx('sound')} />
             <FxToggle on={fx.vibrate} label={c.vibrate} Icon={Smartphone} onClick={() => toggleFx('vibrate')} />
+            {pref2d && tier === 'none' && (
+              <button type="button" onClick={try3d} className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border border-border text-xs font-semibold text-muted hover:text-ink">
+                <Box size={14} aria-hidden="true" /> {c.try3d}
+              </button>
+            )}
           </div>
           <button
             type="button"
             onClick={start}
+            onPointerEnter={prefetchScene}
+            onFocus={prefetchScene}
+            onTouchStart={prefetchScene}
             disabled={!audience || phase === 'loading'}
             className="mt-6 w-full min-h-14 rounded-2xl bg-accent text-on-accent text-lg font-bold hover:bg-accent-hover disabled:opacity-50 inline-flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
@@ -473,8 +552,10 @@ export default function VocablyRun() {
         </section>
       ) : null}
 
-      {showStage && (
-        <section aria-label={c.title} className="relative rounded-3xl overflow-hidden border border-border shadow-card bg-[#0b1020] select-none touch-none" onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
+      {/* The stage stays mounted (hidden) between rounds once a round started, so the 3D Canvas is
+          created once and only paused (frameloop "never"), never unmounted from a frame. */}
+      {everStarted && (
+        <section aria-label={c.title} className={`relative rounded-3xl overflow-hidden border border-border shadow-card bg-[#0b1020] select-none touch-none ${showStage ? '' : 'hidden'}`} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
           {/* HUD */}
           <div className="relative z-10 flex items-center justify-between gap-2 px-4 pt-3 text-white">
             <div className="flex items-center gap-1" aria-label={`${c.lives}: ${hud.lives}`} role="img">
@@ -499,10 +580,17 @@ export default function VocablyRun() {
             <p className="text-[10px] font-bold uppercase tracking-wider text-accent">{hud.promptKind === 'definition' ? c.definition : c.meaning}</p>
             <p className="text-lg sm:text-xl font-bold leading-snug break-words">{hud.prompt}</p>
           </div>
+          {lite && <p className="relative z-10 mx-4 mt-1 text-center text-[11px] text-white/60">{lite === 'lost' ? c.liteLost : c.lite}</p>}
 
           {/* scene */}
           <div className="relative h-[46vh] min-h-72 max-h-[440px] -mt-14">
-            {use3d ? <RunScene3D sceneRef={sceneRef} running={playing && !paused} /> : <Track2D sceneRef={sceneRef} running={playing && !paused} />}
+            {use3d ? (
+              <SceneBoundary onError={to2d}>
+                <RunScene3D sceneRef={sceneRef} running={playing && !paused} visible={showStage} tier={tier} />
+              </SceneBoundary>
+            ) : (
+              <Track2D sceneRef={sceneRef} running={playing && !paused} />
+            )}
             {hud.feedback && (
               <p className={`absolute left-1/2 -translate-x-1/2 bottom-4 rounded-full px-4 py-1.5 text-sm font-bold shadow-lg ${hud.feedback.ok ? 'bg-emerald-500 text-white' : hud.feedback.ok === false ? 'bg-rose-500 text-white' : 'bg-white/90 text-[#0b1020]'}`}>
                 {hud.feedback.ok ? c.right : hud.feedback.ok === false ? `${c.wrong} ${hud.feedback.word}` : c.offline}
@@ -552,7 +640,7 @@ export default function VocablyRun() {
         </section>
       )}
 
-      {phase === 'result' && result && <RunResult c={c} result={result} onAgain={start} />}
+      {phase === 'result' && result && <RunResult c={c} result={result} onAgain={start} canTry3d={pref2d && tier === 'none'} onTry3d={try3d} />}
     </div>
   );
 }
@@ -570,7 +658,7 @@ function FxToggle({ on, label, Icon, onClick }) {
   );
 }
 
-function RunResult({ c, result, onAgain }) {
+function RunResult({ c, result, onAgain, canTry3d, onTry3d }) {
   const stats = [
     [c.correct, result.correct],
     [c.accuracy, `${result.accuracy}%`],
@@ -624,6 +712,11 @@ function RunResult({ c, result, onAgain }) {
         <button type="button" onClick={onAgain} className="w-full min-h-12 rounded-2xl border border-border bg-bg text-ink font-semibold inline-flex items-center justify-center gap-2 hover:border-accent/40">
           <RotateCcw size={16} aria-hidden="true" /> {c.again}
         </button>
+        {canTry3d && (
+          <button type="button" onClick={onTry3d} className="w-full min-h-10 rounded-2xl text-xs font-semibold text-muted inline-flex items-center justify-center gap-1.5 hover:text-ink">
+            <Box size={14} aria-hidden="true" /> {c.try3d}
+          </button>
+        )}
       </div>
     </section>
   );

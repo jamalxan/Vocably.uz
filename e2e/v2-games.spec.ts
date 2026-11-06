@@ -97,6 +97,45 @@ test.describe('Vocably Run', () => {
     expect(r.mistakes.length).toBeLessThanOrEqual(wrong);
   });
 
+  // Headless Chromium renders WebGL with SwiftShader, so the tests above get the 2D track (render tier
+  // 'none'). `?render=low` forces the synthwave 3D scene to prove it boots under the production CSP.
+  test.describe('3D', () => {
+    // SwiftShader composites on the CPU: render at 1× (the low tier draws the canvas at DPR 1 anyway).
+    test.use({ deviceScaleFactor: 1 });
+
+    test('guest, 3D: the scene boots under the CSP, a gate is graded, a lost WebGL context continues in 2D', async ({ page }) => {
+      test.setTimeout(90_000);
+      const errors: string[] = [];
+      page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+      page.on('console', (m) => {
+        if (m.type() === 'error' || /Refused to|Content Security Policy/i.test(m.text())) errors.push(`${m.type()}: ${m.text()}`);
+      });
+      await page.goto('/games/run?render=low');
+      await expect(page.getByRole('heading', { name: 'Vocably Run' })).toBeVisible({ timeout: 30_000 });
+      await page.getByRole('button', { name: 'Boshlash' }).click();
+
+      const stage = page.getByRole('region', { name: 'Vocably Run' });
+      const canvas = stage.locator('canvas');
+      await expect(canvas).toHaveCount(1, { timeout: 20_000 });
+      expect(await canvas.evaluate((c: HTMLCanvasElement) => !!c.getContext('webgl2'))).toBe(true); // R3F's own context
+      await lanes(page).nth(2).click();
+      await expect(lanes(page).nth(2)).toHaveAttribute('aria-pressed', 'true');
+      // The first gate arrives after ~4.2 s. A guest gate is graded on the device, so it either scores
+      // or costs a life (both stay on the HUD, unlike the 650 ms verdict pill).
+      await expect(stage.getByRole('img', { name: /^Jon: [0-2]$/ }).or(stage.getByText(/^[1-9]\d{2,}$/))).toBeVisible({ timeout: 10_000 });
+      await expect(canvas).toHaveCount(1);
+
+      // A lost context moves the round to the 2D track with its own notice. The stored render
+      // preference is left alone: a context loss can be transient, unlike a device that is too slow.
+      await canvas.evaluate((c: HTMLCanvasElement) => c.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext());
+      await expect(stage.getByText("3D grafika to'xtadi — 2D rejimda davom etamiz.")).toBeVisible({ timeout: 5_000 });
+      await expect(canvas).toHaveCount(0);
+      await expect(lanes(page)).toHaveCount(3); // the round goes on
+      expect(await page.evaluate(() => localStorage.getItem('vocably.flagship.render.v1'))).toBeNull();
+      expect(errors).toEqual([]);
+    });
+  });
+
   test('missed words from a guest round are saved to a deck after login (bank words only)', async ({ page }) => {
     await loginAs(page, E2E_FREE_PHONE);
     const bad = await page.request.post('/api/flagship/run/claim', { data: { words: ['<script>', 'notaword'] } });
