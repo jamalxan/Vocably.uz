@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
-import { X, Image as ImageIcon, Video, Mic, Loader2, FileText, Link2, Download } from 'lucide-react';
+import { X, Image as ImageIcon, Video, Mic, Loader2, FileText, Link2, Download, Phone } from 'lucide-react';
 import { formatBytes, fileExtension } from '@/lib/chat/mediaMeta';
 import { useChat } from '@/context/ChatContext';
 import { useAuthedMediaUrl } from '@/lib/useAuthedMedia';
@@ -9,6 +9,7 @@ import Avatar from '@/components/avatar/Avatar';
 import PhotoViewer from '@/components/avatar/PhotoViewer';
 import { fetchUserPhotos } from '@/lib/profilePhotosClient';
 import { useT } from '@/context/LocaleContext';
+import { useCall } from '@/context/CallContext';
 
 // C-09 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 E) — 80x80 grid
 // thumbnail, useAuthedMediaUrl orqali (MessageBubble.jsx'dagi ImageBubble bilan
@@ -253,6 +254,7 @@ const TABS = [
 export default function UserProfileModal({ open, onClose }) {
   const { activeConversation, setNickname } = useChat();
   const { t, ts } = useT();
+  const { canCall, unavailableKey, startCall } = useCall();
   const [viewerPhotos, setViewerPhotos] = useState(null);
   const [photosLoading, setPhotosLoading] = useState(false);
   const [tab, setTab] = useState('image');
@@ -359,6 +361,29 @@ export default function UserProfileModal({ open, onClose }) {
           {other.username && displayTitle !== `@${other.username}` && (
             <p className="text-xs text-muted truncate max-w-full">@{other.username}</p>
           )}
+          {/* Qo'ng'iroq tugmalari (CALLS_SPEC §10.9): modal yopiladi, keyin qo'ng'iroq boshlanadi. */}
+          <div className="mt-3 flex items-center gap-2">
+            {[
+              { kind: 'audio', Icon: Phone, label: t('cv.callVoice'), testid: 'profile-call-audio' },
+              { kind: 'video', Icon: Video, label: t('cv.callVideo'), testid: 'profile-call-video' },
+            ].map(({ kind, Icon, label, testid }) => (
+              <button
+                key={kind}
+                type="button"
+                data-testid={testid}
+                disabled={!canCall}
+                title={canCall ? label : t(unavailableKey || 'cv.callUnavailable')}
+                onClick={() => {
+                  onClose?.();
+                  startCall({ conversationId: String(activeConversation.id), kind, peer: other });
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-accent-soft text-accent min-h-11 px-4 text-sm font-semibold transition-colors hover:bg-accent-soft/70 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <Icon size={16} aria-hidden="true" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <form onSubmit={handleSave} className="flex items-center gap-2 px-5 pb-3.5 flex-shrink-0">

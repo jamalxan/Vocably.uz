@@ -1,7 +1,9 @@
 'use client';
 import AppShell from '@/components/layout/AppShell';
 import { RealtimeProvider } from '@/context/RealtimeContext';
+import { CallProvider } from '@/context/CallContext';
 import { GlobalMessageToast } from '@/components/chat-friends/NewMessageToast';
+import CallOverlay from '@/components/call/CallOverlay';
 
 // Oddiy ilova sahifalari (/app, /app/vocabulary/*, /app/ai, /app/friends/*,
 // /app/profile, /app/leaderboard, /app/practice) — sidebar, AI FAB, bildirishnomalar
@@ -13,8 +15,11 @@ import { GlobalMessageToast } from '@/components/chat-friends/NewMessageToast';
 export default function MainLayout({ children }) {
   return (
     <RealtimeProvider>
-      <AppShell>{children}</AppShell>
-      <GlobalMessageToast />
+      <CallProvider>
+        <AppShell>{children}</AppShell>
+        <CallOverlay />
+        <GlobalMessageToast />
+      </CallProvider>
     </RealtimeProvider>
   );
 }

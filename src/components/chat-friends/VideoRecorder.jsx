@@ -1,5 +1,6 @@
 'use client';
 import { useT } from '@/context/LocaleContext';
+import { useCall } from '@/context/CallContext';
 import { useEffect, useRef, useState } from 'react';
 import { Video, Square, X, SwitchCamera } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
@@ -295,15 +296,19 @@ function VideoRecorderPanel({ onRecorded, onCancel }) {
 
 export default function VideoRecorderButton({ onRecorded }) {
   const { t } = useT();
+  // iOS bir vaqtda bitta yozib olishga ruxsat beradi — qo'ng'iroq paytida yozib bo'lmaydi.
+  const callStatus = useCall().call.status;
+  const inCall = callStatus !== 'idle' && callStatus !== 'elsewhere';
   const [active, setActive] = useState(false);
   return (
     <>
       <button
         type="button"
         onClick={() => setActive(true)}
-        title={t('ch.videoMsg')}
+        disabled={inCall}
+        title={inCall ? t('call.busyToast') : t('ch.videoMsg')}
         aria-label={t('ch.videoRecordAria')}
-        className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
+        className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors disabled:opacity-40 disabled:hover:text-muted"
       >
         <Video size={18} />
       </button>
