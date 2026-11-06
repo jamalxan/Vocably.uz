@@ -64,6 +64,14 @@ const ru = {
   'mb.callVideoKind': 'Видео',
   'mb.callBack': 'Перезвонить',
   'mb.callAria': '{label}, {detail}',
+  // --- Reaksiyalar (PARITY_PLAN WP7)
+  'mb.react': 'Реакция',
+  'mb.reactMore': 'Другие реакции',
+  'mb.reactRemove': 'Убрать реакцию',
+  'mb.reactWith': 'Реакция {emoji}',
+  'mb.reactions': 'Реакции',
+  'mb.reactionAria': 'Реакция {emoji}: {n}',
+  'mb.reactFailed': 'Не удалось поставить реакцию',
 };
 
 export default ru;

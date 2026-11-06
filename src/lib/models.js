@@ -568,6 +568,18 @@ const CallInfoSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Reaksiya (PARITY_PLAN WP7): bir foydalanuvchi — bitta reaksiya (Telegram premium'siz), 1:1
+// suhbatda xabarda ko'pi bilan ikkita yozuv. `emoji` — src/lib/chat/reactions.js#normalizeEmoji
+// tekshirgan bitta emoji grafemasi (MAX_EMOJI_BYTES). Route atomik pipeline update bilan yozadi.
+const ReactionSchema = new mongoose.Schema(
+  {
+    emoji: { type: String, required: true, maxlength: 40 },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    at: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const MessageSchema = new mongoose.Schema({
   conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
   senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -585,6 +597,8 @@ const MessageSchema = new mongoose.Schema({
   },
   // Faqat `type: 'call'` xabarlarda (qolganlarida null).
   call: { type: CallInfoSchema, default: null },
+  // Reaksiyalar — lastMessagePreview va o'qilmaganlar soniga ta'sir qilmaydi.
+  reactions: { type: [ReactionSchema], default: [] },
   readAt: { type: Date, default: null },
   // Telegram uslubidagi ikki xil o'chirish: `deletedFor` — faqat shu ro'yxatdagi
   // foydalanuvchi(lar) o'z tarafidan ko'rmaydi (boshqa tomon xabarni odatdagidek

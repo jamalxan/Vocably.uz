@@ -36,6 +36,10 @@ import DeleteMessageModal from './DeleteMessageModal';
 import ForwardMessageModal from './ForwardMessageModal';
 import ReportReasonModal from './ReportReasonModal';
 import CallBubble from './CallBubble';
+import ReactionBar from './ReactionBar';
+import ReactionChips from './ReactionChips';
+import EmojiPicker from './EmojiPicker';
+import { myReaction, nextReactionFor } from '@/lib/chat/reactions';
 
 // Message bubbles (Telegram parity): albums, local previews with upload progress, file cards with
 // name/size, voice with waveform + speed, forwarded label, reply quote with thumbnail, swipe-to-reply,
@@ -478,17 +482,33 @@ function ReplyQuote({ replyTo, isMine, myId, otherUsername, onClick }) {
 }
 
 // ---------------------------------------------------------------- context menu
-function MessageContextMenu({ actions, onClose }) {
+// `reactions` (PARITY_PLAN WP7) — berilsa tepada tezkor reaksiyalar qatori: `{ mine, onPick, onMore }`.
+// Uzoq bosish ham, "…" tugmasi ham shu oynani ochadi.
+function MessageContextMenu({ actions, reactions = null, onClose }) {
   const { t } = useT();
   const firstRef = useRef(null);
   useDialogFocus(firstRef, onClose);
   return (
     <div onClick={onClose} className="fixed inset-0 z-50 flex items-end justify-center bg-primary/40 backdrop-blur-sm">
       <div role="dialog" aria-modal="true" aria-label={t('mb.actions')} onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-surface border-t border-border rounded-t-2xl shadow-card p-2" style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
+        {reactions && (
+          <ReactionBar
+            ref={firstRef}
+            mine={reactions.mine}
+            onPick={(emoji) => {
+              onClose();
+              reactions.onPick(emoji);
+            }}
+            onMore={() => {
+              onClose();
+              reactions.onMore();
+            }}
+          />
+        )}
         {actions.map(({ key, label, Icon, onClick, danger }, i) => (
           <button
             key={key}
-            ref={i === 0 ? firstRef : undefined}
+            ref={i === 0 && !reactions ? firstRef : undefined}
             type="button"
             onClick={() => {
               onClose();
@@ -577,7 +597,7 @@ function Ticks({ message, otherOnline, t, retryMessage }) {
  */
 export default function MessageBubble({ message, album = null, isMine, myId, onJumpToReply, onOpenMedia, selectionMode = false, selected = false, onToggleSelect, onEnterSelection }) {
   const { t, ts } = useT();
-  const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage, retryMessage, livePresence, pinMessage, unpinMessage, stickerById } = useChat();
+  const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage, reactToMessage, retryMessage, livePresence, pinMessage, unpinMessage, stickerById } = useChat();
   const otherOnline = isOnline(activeConversation?.otherUser?.lastActiveAt, livePresence[String(activeConversation?.otherUser?.id)]);
   const [reported, setReported] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -586,12 +606,20 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
   const [forwardOpen, setForwardOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [swipe, setSwipe] = useState(0);
+  const [reactPickerOpen, setReactPickerOpen] = useState(false);
+  const [reactFailed, setReactFailed] = useState(false);
+  const lastTap = useRef(null);
   const pressTimer = useRef(null);
   const longPressFired = useRef(false);
   const swipeStart = useRef(null);
   useEffect(() => {
     installPauseListener();
   }, []);
+  useEffect(() => {
+    if (!reactFailed) return undefined;
+    const id = setTimeout(() => setReactFailed(false), 3000);
+    return () => clearTimeout(id);
+  }, [reactFailed]);
 
   const sticker = message.type === 'sticker' ? stickerById?.get(String(message.stickerId)) || findSticker(message.stickerId) : null;
   const deleted = !!message.deletedForEveryone;
@@ -606,6 +634,15 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
   const caption = album ? messages.find((m) => m.text)?.text || '' : message.text;
   // Qo'ng'iroq yozuvi (CALLS_SPEC §10.8): javob/nusxa/uzatish/qadash/tahrir/shikoyat yo'q, swipe va ticks yo'q.
   const isCall = message.type === 'call' && !deleted;
+  // Reaksiya (PARITY_PLAN WP7): o'chirilgan, qo'ng'iroq va hali yuborilmagan xabarlarga yo'q.
+  // Albomda reaksiya birinchi xabarga (`message`) bog'lanadi — albom bitta pufakcha.
+  const reactions = deleted ? [] : message.reactions || [];
+  const canReact = !deleted && !isCall && !isPending;
+  const react = async (emoji) => {
+    if (!canReact) return;
+    const res = await reactToMessage(messageIdStr, nextReactionFor(reactions, myId, emoji));
+    if (res?.error) setReactFailed(true);
+  };
 
   const submitReport = async (category, note) => {
     setReportOpen(false);
@@ -693,8 +730,39 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
     setSwipe(0);
     swipeStart.current = null;
   };
+  // Ikki marta bosish (sichqoncha) / ikki marta tegish (sensor) — matn va stikerda ❤️ toggle
+  // (Telegram). Havola, iqtibos va chiplar ustida emas.
+  const heartable = canReact && (message.type === 'text' || message.type === 'sticker') && !album;
+  const onBubbleTap = (e) => {
+    if (!heartable || e.target.closest?.('a, button')) return false;
+    react('❤️');
+    return true;
+  };
+  const onPointerUp = (e) => {
+    const start = swipeStart.current;
+    const moved = start ? Math.hypot(e.clientX - start.x, e.clientY - start.y) : 0;
+    endSwipe();
+    if (e.pointerType === 'mouse' || longPressFired.current || moved > 10 || !heartable) return;
+    const now = Date.now();
+    if (lastTap.current && now - lastTap.current < 300) {
+      lastTap.current = null;
+      onBubbleTap(e);
+    } else lastTap.current = now;
+  };
   const triggerProps = interactive
-    ? { onContextMenu: (e) => { e.preventDefault(); setMenuOpen(true); }, onPointerDown, onPointerMove, onPointerUp: endSwipe, onPointerLeave: endSwipe, onPointerCancel: endSwipe }
+    ? {
+        onContextMenu: (e) => { e.preventDefault(); setMenuOpen(true); },
+        onPointerDown,
+        onPointerMove,
+        onPointerUp,
+        onPointerLeave: endSwipe,
+        onPointerCancel: endSwipe,
+        onDoubleClick: (e) => {
+          // Sensorli qurilmada ikki marta tegishni onPointerUp hal qiladi (dblclick ham kelishi mumkin).
+          if (e.nativeEvent?.pointerType && e.nativeEvent.pointerType !== 'mouse') return;
+          if (onBubbleTap(e)) window.getSelection?.()?.removeAllRanges?.();
+        },
+      }
     : {};
 
   const openMedia = (m) => onOpenMedia?.(idOf(m || message));
@@ -735,6 +803,9 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
       )}
       {caption && message.type !== 'text' && <p className="whitespace-pre-wrap [overflow-wrap:anywhere] font-chat mt-1.5">{renderFormattedText(caption)}</p>}
       {message.edited && <span className={`block text-[11px] mt-0.5 ${isMine ? 'text-on-accent/60' : 'text-muted'}`}>{t('mb.edited')}</span>}
+      {!isCall && reactions.length > 0 && (
+        <ReactionChips reactions={reactions} myId={myId} onToggle={react} tone={isMine && !isPlain ? 'outgoing' : 'incoming'} interactive={canReact && !selectionMode} />
+      )}
     </>
   );
 
@@ -782,6 +853,9 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
           {formatMessageTime(message.createdAt)}
           {isMine && !deleted && !isCall && <Ticks message={messages.find((m) => m._status) || message} otherOnline={otherOnline} t={t} retryMessage={retryMessage} />}
         </span>
+        {reactFailed && (
+          <span role="status" className="text-[11px] text-danger px-1">{t('mb.reactFailed')}</span>
+        )}
       </div>
       {selectionMode && isMine && (
         <span className={`w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 ${selected ? 'bg-accent border-accent text-on-accent' : 'border-border'}`} aria-hidden="true">
@@ -789,7 +863,14 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
         </span>
       )}
 
-      {menuOpen && <MessageContextMenu actions={actions} onClose={() => setMenuOpen(false)} />}
+      {menuOpen && (
+        <MessageContextMenu
+          actions={actions}
+          reactions={canReact ? { mine: myReaction(reactions, myId), onPick: react, onMore: () => setReactPickerOpen(true) } : null}
+          onClose={() => setMenuOpen(false)}
+        />
+      )}
+      {reactPickerOpen && <EmojiPicker mode="reaction" onPick={react} onClose={() => setReactPickerOpen(false)} />}
       <DeleteMessageModal open={deleteOpen} canDeleteForEveryone={isMine} otherUsername={activeConversation?.otherUser?.username} onConfirm={deleting ? undefined : handleDelete} onCancel={() => setDeleteOpen(false)} />
       <ForwardMessageModal open={forwardOpen} messages={messages} onClose={() => setForwardOpen(false)} />
       <ReportReasonModal open={reportOpen} onSubmit={submitReport} onCancel={() => setReportOpen(false)} />

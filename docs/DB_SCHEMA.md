@@ -153,6 +153,9 @@ hujjatiga embed qilinmagan — cross-user so'rovlar (qidiruv, admin nazorati) ke
   (`callId`, `kind`, `outcome`, `durationSec`, `startedAt`, `acceptedAt`, `endedAt`), `senderId` = qo'ng'iroq
   qilgan, faqat `POST /api/internal/call-event` yaratadi; `call.callId` partial unique indeks
   (docs/chat/CALLS_SPEC.md §7). `Conversation.tgCallNotifiedAt` — qo'ng'iroq Telegram throttle'i.
+  `reactions: [{ emoji, userId, at }]` (`_id: false`, default `[]`) — bir foydalanuvchiga bitta reaksiya,
+  `POST/DELETE /api/chat/conversations/[id]/messages/[messageId]/reactions` atomik pipeline update bilan
+  yozadi; preview/o'qilmaganlarga ta'sir qilmaydi (docs/chat/PARITY_PLAN.md WP7).
 - **`Block`**, **`Report`**, **`AdminAuditLog`** — bloklash, shikoyat va admin audit jurnali.
 - **`RateLimitHit`** — Redis'siz oddiy tezlik cheklash uchun, TTL indeks bilan avtomatik tozalanadi.
 
