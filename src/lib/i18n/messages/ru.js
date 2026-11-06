@@ -2,6 +2,14 @@
 // MESSAGES'ga import qilingan, lekin LOCALES'ga QO'SHILMAGAN: normalizeLocale('ru') hozircha 'en' qaytaradi.
 // Har bir kalit en.js'da xuddi shu {o'rinbosarlar} bilan bo'lishi shart (i18n.test.ts tekshiradi).
 const ru = {
+  // --- Forward (PARITY_PLAN WP5)
+  'ch.forwardSend': 'Отправить ({n})',
+  'ch.forwardHideAuthor': 'Скрыть имя отправителя',
+  'ch.forwardLimit': 'Не более 10 чатов',
+  'ch.forwardDone': 'Отправлено в чатов: {n}',
+  'ch.forwardPartial': 'Отправлено: {ok} из {total}',
+  'ch.forwardSkippedCalls': 'Звонки нельзя переслать',
+  'ch.forwardComment': 'Добавить комментарий (необязательно)',
   // --- Navigatsiya (PARITY_PLAN WP1)
   'nav.unreadAria': '{n} непрочитанных',
   // --- Suhbat sarlavhasi (CALLS_SPEC §11)

@@ -702,7 +702,8 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
     <p className="flex items-center gap-1.5"><Trash2 size={13} /> {t('mb.deleted')}</p>
   ) : (
     <>
-      {message.forwardedFrom && (
+      {/* "Yuboruvchi nomini yashirish" bilan yuborilgan nusxada yorliq yo'q (PARITY_PLAN WP5). */}
+      {message.forwardedFrom && !message.forwardedFrom.hidden && (
         <p className={`text-xs font-semibold mb-1 flex items-center gap-1 ${isMine ? 'text-on-accent/85' : 'text-accent'}`} data-testid="forwarded-label">
           <Forward size={12} /> {t('ch.forwardedFrom', { name: message.forwardedFrom.name || t('ch.user') })}
         </p>

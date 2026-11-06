@@ -12,6 +12,7 @@ import { markConversationRead } from '@/lib/chatRead';
 import { notifyRecipientViaTelegram } from '@/lib/chatNotify';
 import { loadConversationForUser } from '@/lib/chat/conversationAccess';
 import { isConversationMuted, previewForMessage } from '@/lib/chatConstants';
+import { isObjectIdString, materializeCopies, partitionSources, planForwardCopies } from '@/lib/chat/forward';
 import { after, NextResponse } from 'next/server';
 
 const MAX_TEXT_LEN = 4000;
@@ -311,29 +312,25 @@ export async function POST(req, props) {
 
 // A forwarded message: the source must be visible to the forwarder (member of that conversation,
 // not deleted for them); media is copied inside the bucket into the target conversation's folder.
+// Qoidalar (asl muallif, albom, media nusxasi) ko'p chatga yuborish bilan umumiy — src/lib/chat/forward.js.
 async function resolveForward(forwardOf, userId, targetConvoId) {
   const srcConvoId = String(forwardOf?.conversationId || '');
   const srcMsgId = String(forwardOf?.messageId || '');
-  if (!/^[a-f0-9]{24}$/.test(srcConvoId) || !/^[a-f0-9]{24}$/.test(srcMsgId)) return { error: "Noto'g'ri xabar" };
+  if (!isObjectIdString(srcConvoId) || !isObjectIdString(srcMsgId)) return { error: "Noto'g'ri xabar" };
   const src = await Conversation.findById(srcConvoId).select('participantIds').lean();
   if (!src || !src.participantIds.some((id) => String(id) === String(userId))) return { error: 'Xabar topilmadi' };
-  const original = await Message.findOne({ _id: srcMsgId, conversationId: src._id, deletedFor: { $ne: userId }, deletedForEveryone: { $ne: true }, deletedForEveryoneSilently: { $ne: true } }).lean();
-  if (!original) return { error: 'Xabar topilmadi' };
+  const found = await Message.find({ _id: srcMsgId, conversationId: src._id }).lean();
+  const { usable, skipped } = partitionSources([srcMsgId], found, userId);
   // Qo'ng'iroq yozuvi xabar emas — uni boshqa suhbatga yuborib bo'lmaydi.
-  if (original.type === 'call') return { error: "Bu xabarni yuborib bo'lmaydi" };
-  const sender = await User.findById(original.forwardedFrom?.userId || original.senderId).select('name username').lean();
-  const forwardedFrom = { userId: sender?._id || original.senderId, name: (original.forwardedFrom?.name || sender?.name || (sender?.username ? `@${sender.username}` : '') || '').slice(0, 80) };
-  const doc = { type: original.type, text: original.text || '', forwardedFrom };
-  if (original.type === 'sticker') doc.stickerId = original.stickerId;
-  if (['image', 'video', 'voice', 'file'].includes(original.type) && original.media?.key) {
-    const dstKey = buildObjectKey(targetConvoId, original.type, original.media.mimeType || 'application/octet-stream');
-    try {
-      await copyObject(original.media.key, dstKey);
-    } catch (err) {
-      console.error('[chat] forward copy failed', err?.message);
-      return { error: "Faylni yuborib bo'lmadi" };
-    }
-    doc.media = { ...original.media, key: dstKey };
-  }
-  return { doc };
+  if (skipped[0]?.reason === 'call') return { error: "Bu xabarni yuborib bo'lmaydi" };
+  if (!usable.length) return { error: 'Xabar topilmadi' };
+  const original = usable[0];
+  const author = await User.findById(original.forwardedFrom?.userId || original.senderId).select('name username').lean();
+  const authorsById = new Map(author ? [[String(author._id), author]] : []);
+  const [planned] = planForwardCopies({ sources: [original], targetConversationId: targetConvoId, senderId: userId, authorsById });
+  const { docs, error } = await materializeCopies([planned], { copy: copyObject, keyFor: buildObjectKey });
+  if (error) return { error };
+  // Bitta forward'da albom/clientMessageId/createdAt chaqiruvchi (POST) tomonidan beriladi.
+  const { type, text, forwardedFrom, stickerId, media } = docs[0];
+  return { doc: { type, text, forwardedFrom, ...(stickerId ? { stickerId } : {}), ...(media ? { media } : {}) } };
 }

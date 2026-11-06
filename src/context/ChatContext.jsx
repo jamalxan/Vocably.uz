@@ -91,6 +91,16 @@ export function ChatProvider({ myUserId, children }) {
   const [drafts, setDrafts] = useState(() => readDrafts(myUserId));
   // Files dropped on the conversation (ConversationView drop zone) → picked up by the Composer tray.
   const [stagedFiles, setStagedFiles] = useState(null);
+  // Qisqa holat xabari (masalan "3 ta chatga yuborildi", PARITY_PLAN WP5) — ConversationView pastda ko'rsatadi.
+  const [chatNotice, setChatNotice] = useState(null); // { id, text } | null
+  const chatNoticeTimer = useRef(null);
+  const showChatNotice = useCallback((text) => {
+    clearTimeout(chatNoticeTimer.current);
+    if (!text) return setChatNotice(null);
+    setChatNotice({ id: Date.now(), text });
+    chatNoticeTimer.current = setTimeout(() => setChatNotice(null), 3500);
+  }, []);
+  useEffect(() => () => clearTimeout(chatNoticeTimer.current), []);
 
   const pollRef = useRef(null);
   const listReloadRef = useRef(null);
@@ -974,109 +984,52 @@ export function ChatProvider({ myUserId, children }) {
     [activeConversation, authHeaders]
   );
 
-  // C-10 — "Yuborish" (forward): tanlangan xabarni BOSHQA suhbatga (target,
-  // hozir ochiq bo'lishi shart emas) yuboradi. Matn/stiker uchun to'g'ridan-to'g'ri
-  // POST; media uchun (rasm/video/ovoz/fayl) asl faylning imzolangan URL'i orqali
-  // olib (useAuthedMediaUrl'dagi bilan bir xil endpoint), qayta uploadAndSend
-  // bosqichlarini (presign -> PUT -> POST) takrorlab, TARGET suhbat papkasiga qayta
-  // yuklaydi — chunki server har bir media kalitini "shu suhbatga tegishlimi"
-  // deb tekshiradi (messages POST route), asl kalitni boshqa suhbatga bevosita
-  // bog'lab bo'lmaydi.
-  // Telegram parity: forward one or many messages; the server copies media inside the bucket, so
-  // nothing is downloaded and re-uploaded by the browser.
+  // Forward (Telegram parity, PARITY_PLAN WP5): bir yoki bir nechta xabarni 10 tagacha chatga BITTA
+  // so'rov bilan (POST /api/chat/messages/forward). Media server tomonda bucket ichida nusxalanadi.
+  // Natija nishonma-nishon: { results, okCount, total, failed: [{ conversationId, error, code }], skipped }.
+  // Muvaffaqiyatli nishonlar ro'yxatda darhol yuqoriga chiqadi; ochiq suhbat nishon bo'lsa nusxalar
+  // shu zahoti qo'shiladi (jonli echo kelganda id bo'yicha dublikat bo'lmaydi).
   const forwardMessages = useCallback(
-    async (list, targetConversationId) => {
-      let last = null;
-      for (const message of list) {
-        const res = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
+    async (list, targets, { hideAuthor = false, comment = '' } = {}) => {
+      const targetConversationIds = (Array.isArray(targets) ? targets : [targets]).filter(Boolean).map(String);
+      const items = (list || []).filter((m) => m && m.type !== 'call' && (m.id || m._id) && !m._status);
+      if (!items.length || !targetConversationIds.length) return { error: 'Xabar topilmadi' };
+      const sourceConversationId = String(items[0].conversationId || activeIdRef.current);
+      let res;
+      try {
+        res = await fetch('/api/chat/messages/forward', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ type: message.type, forwardOf: { conversationId: message.conversationId || activeIdRef.current, messageId: message.id || message._id }, clientMessageId: genClientMessageId() }),
-        }).catch(() => null);
-        if (!res) return { error: 'Tarmoq xatoligi' };
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) return { error: data.error || 'Yuborilmadi' };
-        last = data.message;
-      }
-      if (last) touchList(targetConversationId, { preview: previewForMessage(last), createdAt: last.createdAt, incoming: false });
-      if (String(activeIdRef.current) === String(targetConversationId)) loadMessages(targetConversationId, { silent: true });
-      return { success: true };
-    },
-    [authHeaders, touchList, loadMessages]
-  );
-
-  const forwardMessage = useCallback(
-    async (message, targetConversationId) => {
-      if (message.type !== 'legacy-path') return forwardMessages([message], targetConversationId);
-      try {
-        const type = message.type;
-        if (type === 'text') {
-          const res = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ type: 'text', text: message.text, clientMessageId: genClientMessageId() }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) return { error: data.error || "Yuborilmadi" };
-        } else if (type === 'sticker') {
-          const res = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ type: 'sticker', stickerId: message.stickerId, clientMessageId: genClientMessageId() }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) return { error: data.error || "Yuborilmadi" };
-        } else if (['image', 'video', 'voice', 'file'].includes(type) && message.media?.key) {
-          const getRes = await fetch(`/api/chat/media/${message.media.key}`, { headers: authHeaders() });
-          if (!getRes.ok) return { error: 'Media topilmadi' };
-          const { url: sourceUrl } = await getRes.json();
-          const blobRes = await fetch(sourceUrl);
-          if (!blobRes.ok) return { error: 'Media yuklanmadi' };
-          const blob = await blobRes.blob();
-          const mimeType = message.media.mimeType || blob.type || 'application/octet-stream';
-          const file = new File([blob], 'forwarded', { type: mimeType });
-
-          const presignRes = await fetch('/api/chat/upload/presign', {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ conversationId: targetConversationId, type, mimeType, size: file.size }),
-          });
-          const presignData = await presignRes.json();
-          if (!presignRes.ok) return { error: presignData.error || "Yuklab bo'lmadi" };
-
-          const putRes = await fetch(presignData.uploadUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': mimeType },
-            body: file,
-          });
-          if (!putRes.ok) return { error: 'Faylni yuklashda xatolik' };
-
-          const sendRes = await fetch(`/api/chat/conversations/${targetConversationId}/messages`, {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({
-              type,
-              media: { key: presignData.key, mimeType, size: file.size },
-              ...(message.text ? { text: message.text } : {}),
-              clientMessageId: genClientMessageId(),
-            }),
-          });
-          const sendData = await sendRes.json().catch(() => ({}));
-          if (!sendRes.ok) return { error: sendData.error || "Yuborilmadi" };
-        } else {
-          return { error: "Bu xabarni yuborib bo'lmaydi" };
-        }
-
-        loadConversations();
-        if (String(activeIdRef.current) === String(targetConversationId)) {
-          loadMessages(targetConversationId, { silent: true });
-        }
-        return { success: true };
+          body: JSON.stringify({
+            sourceConversationId,
+            messageIds: items.map((m) => String(m.id || m._id)),
+            targetConversationIds,
+            hideAuthor: !!hideAuthor,
+            ...(comment && comment.trim() ? { comment: comment.trim() } : {}),
+            clientBatchId: genClientMessageId(),
+          }),
+        });
       } catch {
         return { error: 'Tarmoq xatoligi' };
       }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: data.error || 'Yuborilmadi', code: data.code, skipped: data.skipped || [] };
+      const results = Array.isArray(data.results) ? data.results : [];
+      for (const r of results) {
+        if (!r.ok || !r.messages?.length) continue;
+        const last = r.messages[r.messages.length - 1];
+        touchList(r.conversationId, { preview: previewForMessage(last), createdAt: last.createdAt, incoming: false });
+        if (String(activeIdRef.current) === String(r.conversationId)) r.messages.forEach((m) => upsertLiveMessage(m));
+      }
+      const failed = results.filter((r) => !r.ok).map((r) => ({ conversationId: r.conversationId, error: r.error, code: r.code }));
+      return { success: failed.length === 0, results, okCount: results.length - failed.length, total: results.length, failed, skipped: data.skipped || [] };
     },
-    [authHeaders, loadConversations, loadMessages, forwardMessages]
+    [authHeaders, touchList, upsertLiveMessage]
+  );
+
+  const forwardMessage = useCallback(
+    (message, targetConversationId, options) => forwardMessages([message], [targetConversationId], options),
+    [forwardMessages]
   );
 
   // Per-user chat flags (archive / pin) — PATCH /state; the list updates in place.
@@ -1521,6 +1474,8 @@ export function ChatProvider({ myUserId, children }) {
     unpinMessage,
     forwardMessage,
     forwardMessages,
+    chatNotice,
+    showChatNotice,
     sendAttachments,
     cancelUpload,
     ensureMessageLoaded,

@@ -73,7 +73,11 @@ test('send, reply with a quote that jumps to the original, forward to the same c
   // Forward (server-side copy) → "Forwarded from" label.
   await original.getByRole('button', { name: /Xabar amallari|Message actions/ }).click();
   await page.getByRole('button', { name: /^Yuborish$|^Forward$/ }).first().click();
-  await page.getByTestId('forward-modal').getByRole('button').filter({ hasText: E2E_FRIEND_USERNAME }).first().click();
+  // PARITY_PLAN WP5: ko'p tanlovli oyna — chatni belgilash, keyin "Yuborish (1)".
+  const forwardModal = page.getByTestId('forward-modal');
+  await forwardModal.getByTestId('forward-target').filter({ hasText: E2E_FRIEND_USERNAME }).first().click();
+  await forwardModal.getByTestId('forward-send').click();
+  await expect(forwardModal).toHaveCount(0, { timeout: 15_000 });
   await expect(page.getByTestId('forwarded-label').last()).toBeVisible({ timeout: 15_000 });
 });
 

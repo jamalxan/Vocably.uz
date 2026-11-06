@@ -578,9 +578,19 @@ const MessageSchema = new mongoose.Schema({
   replyTo: { type: ReplyToSchema, default: null },
   // Birga yuborilgan 2–10 rasm/video bitta albom (grid) bo'lib ko'rinadi — klient yaratgan id.
   albumId: { type: String, default: null },
-  // Forward qilingan xabar: asl yuboruvchi (Telegram "… dan yuborilgan").
+  // Forward qilingan xabar: asl yuboruvchi (Telegram "… dan yuborilgan"). `messageId` — birinchi
+  // asl xabar; `hidden` — "yuboruvchi nomini yashirish" (PARITY_PLAN WP5): yorliq ko'rsatilmaydi,
+  // lekin admin audit uchun asl muallif saqlanadi.
   forwardedFrom: {
-    type: new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, name: { type: String, default: '' } }, { _id: false }),
+    type: new mongoose.Schema(
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        name: { type: String, default: '' },
+        messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+        hidden: { type: Boolean, default: false },
+      },
+      { _id: false }
+    ),
     default: null,
   },
   // Faqat `type: 'call'` xabarlarda (qolganlarida null).

@@ -88,6 +88,7 @@ export default function ConversationView({ onBack }) {
     typingByConversation,
     stageExternalFiles,
     deleteMessage,
+    chatNotice,
   } = useChat();
   const { chatUserId: myId } = useApp();
   const { canCall, unavailableKey, startCall, pendingCallback, consumeCallback } = useCall();
@@ -460,6 +461,12 @@ export default function ConversationView({ onBack }) {
               <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-on-accent text-[11px] font-bold flex items-center justify-center">{newMessageCount > 99 ? '99+' : newMessageCount}</span>
             )}
           </button>
+        )}
+
+        {chatNotice && (
+          <div key={chatNotice.id} role="status" data-testid="chat-notice" className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 max-w-[calc(100%-2rem)] px-3.5 py-2 rounded-xl bg-surface-2 border border-border text-ink text-xs font-medium shadow-card pointer-events-none">
+            {chatNotice.text}
+          </div>
         )}
 
         {dragging && (
