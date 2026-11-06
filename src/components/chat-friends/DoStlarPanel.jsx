@@ -6,6 +6,7 @@ import { useT } from '@/context/LocaleContext';
 import { ChatProvider, useChat } from '@/context/ChatContext';
 import ConversationList from './ConversationList';
 import ConversationView from './ConversationView';
+import ChatToast from './ChatToast';
 
 function DoStlarShell({ onActiveChange }) {
   const {
@@ -13,6 +14,7 @@ function DoStlarShell({ onActiveChange }) {
     selectConversation,
     closeConversation,
     openConversationByUsername,
+    showChatNotice,
   } = useChat();
   const params = useParams();
   const router = useRouter();
@@ -45,7 +47,7 @@ function DoStlarShell({ onActiveChange }) {
     let cancelled = false;
     openConversationByUsername(routeUsername).then((res) => {
       if (!cancelled && res?.error) {
-        alert(ts(res.error));
+        showChatNotice(ts(res.error), 'error');
         router.replace('/app/friends');
       }
     });
@@ -109,6 +111,9 @@ function DoStlarShell({ onActiveChange }) {
       <div className={`${activeConversation ? 'flex' : 'hidden lg:flex'} flex-1 min-w-0 min-h-0`}>
         <ConversationView onBack={closeConversation} />
       </div>
+
+      {/* PARITY_PLAN WP8.14 — chat ichidagi xabarnoma (alert o'rniga). */}
+      <ChatToast />
 
       {/* G-2 toast endi (main) layout'da — GlobalMessageToast (NewMessageToast.jsx), har qanday
           /app sahifada ishlaydi (PARITY_PLAN WP1). */}

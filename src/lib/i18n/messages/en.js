@@ -1457,6 +1457,16 @@ const en = {
   'world.bannerBadge': '3D adventure',
   'world.bannerBody': 'Walk around the island and use the portals to enter Memory cards, Speed challenge, Vocabulary Boss and other games!',
   'world.bannerCta': 'Enter the world',
+  // --- Chat UX polish (PARITY_PLAN WP8)
+  'cv.unread': 'Unread messages',
+  'cv.loadingOlder': 'Loading earlier messages',
+  'ch.yesterday': 'Yesterday',
+  'ch.toastClose': 'Dismiss',
+  'ch.connecting': 'Connecting…',
+  'ch.searchClear': 'Clear search',
+  'ch.prevMedia': 'Previous',
+  'ch.nextMedia': 'Next',
+  'ch.voiceRecording': 'Recording',
 };
 
 export default en;
