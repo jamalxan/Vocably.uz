@@ -20,7 +20,7 @@ export async function POST(req) {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });
 
-    if (!(await checkRateLimit(user._id, 'socket-ticket', 30))) {
+    if (!(await checkRateLimit(user._id, 'socket-ticket', 60))) {
       return NextResponse.json({ error: "Juda ko'p so'rov" }, { status: 429 });
     }
     // Tiket realtime-server bilan umumiy sir (REALTIME_SHARED_SECRET) bilan imzolanadi — realtime

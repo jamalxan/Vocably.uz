@@ -148,8 +148,11 @@ hujjatiga embed qilinmagan — cross-user so'rovlar (qidiruv, admin nazorati) ke
 - **`Conversation`** — ikki foydalanuvchi orasidagi doimiy 1:1 suhbat. `participantIds` saralangan
   juftlik, unique compound indeks (bir juftlik = bitta hujjat).
 - **`Message`** — `conversationId` + `createdAt` bo'yicha indekslangan. `type`:
-  text/image/video/voice/file/sticker. Media S3/MinIO obyekt kaliti sifatida saqlanadi (`media.key`),
-  hech qachon to'g'ridan-to'g'ri URL emas.
+  text/image/video/voice/file/sticker/call. Media S3/MinIO obyekt kaliti sifatida saqlanadi (`media.key`),
+  hech qachon to'g'ridan-to'g'ri URL emas. `type: 'call'` — qo'ng'iroq yozuvi: `call` subhujjati
+  (`callId`, `kind`, `outcome`, `durationSec`, `startedAt`, `acceptedAt`, `endedAt`), `senderId` = qo'ng'iroq
+  qilgan, faqat `POST /api/internal/call-event` yaratadi; `call.callId` partial unique indeks
+  (docs/chat/CALLS_SPEC.md §7). `Conversation.tgCallNotifiedAt` — qo'ng'iroq Telegram throttle'i.
 - **`Block`**, **`Report`**, **`AdminAuditLog`** — bloklash, shikoyat va admin audit jurnali.
 - **`RateLimitHit`** — Redis'siz oddiy tezlik cheklash uchun, TTL indeks bilan avtomatik tozalanadi.
 

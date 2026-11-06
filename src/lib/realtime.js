@@ -120,6 +120,49 @@ export async function pushMessageDeleted(recipientId, conversationId, messageId,
   }
 }
 
+// Bir nechta foydalanuvchiga (o'ziga ham — boshqa tab/qurilmalari uchun) ruxsat etilgan
+// hodisani yuboradi (realtime-server POST /internal/emit-event, event allowlist'i o'sha
+// yerda: message:new, message:reacted, draft:update, conversation:read). Ixtiyoriy —
+// xizmat o'chiq bo'lsa jimgina o'tkazib yuboriladi. Status kodini (yoki null) qaytaradi.
+export async function emitEvent(userIds, event, payload) {
+  try {
+    return await postInternal('/internal/emit-event', { userIds: [...new Set((userIds || []).map(String))], event, payload });
+  } catch (err) {
+    console.error('[realtime] emit-event yuborilmadi', err?.message || err);
+    return null;
+  }
+}
+
+// Bloklash yoki admin ban'idan keyin davom etayotgan qo'ng'iroqni majburan tugatadi
+// (docs/chat/CALLS_SPEC.md §6.4). `peerId` berilsa — faqat shu ikkisi orasidagi qo'ng'iroq.
+// Env sozlanmagan bo'lsa yoki xizmat javob bermasa — jimgina hech narsa (qo'ng'iroqlar
+// baribir faqat shu xizmat orqali ishlaydi). `true` — haqiqatan tugatildi.
+export async function forceEndCall(userId, reason, peerId) {
+  const url = process.env.REALTIME_INTERNAL_URL;
+  const secret = process.env.REALTIME_SHARED_SECRET;
+  if (!url || !secret) return false;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
+  try {
+    const res = await fetch(`${url.replace(/\/$/, '')}/internal/calls/force-end`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': secret },
+      body: JSON.stringify({ userId: String(userId), peerId: peerId ? String(peerId) : undefined, reason }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return false;
+    const data = await res.json().catch(() => ({}));
+    return !!data.ended;
+  } catch (err) {
+    console.error("[realtime] qo'ng'iroqni tugatib bo'lmadi", err?.message || err);
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Foydalanuvchining kamida bitta ochiq socket'i bormi (qo'ng'iroq grant'i oldidan tekshiruv).
+// `null` — noma'lum (xizmat sozlanmagan/javob bermadi).
 export async function isUserOnline(userId) {
   const url = process.env.REALTIME_INTERNAL_URL;
   const secret = process.env.REALTIME_SHARED_SECRET;
@@ -138,5 +181,29 @@ export async function isUserOnline(userId) {
     return !!data.online;
   } catch {
     return null;
+  }
+}
+
+// Foydalanuvchi hozir qo'ng'iroqdami (realtime-server GET /internal/calls/:userId).
+// `null` — noma'lum (xizmat sozlanmagan/javob bermadi) — chaqiruvchi bloklamasligi kerak.
+export async function getUserCallState(userId) {
+  const url = process.env.REALTIME_INTERNAL_URL;
+  const secret = process.env.REALTIME_SHARED_SECRET;
+  if (!url || !secret) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2000);
+  try {
+    const res = await fetch(`${url.replace(/\/$/, '')}/internal/calls/${encodeURIComponent(String(userId))}`, {
+      headers: { 'X-Internal-Secret': secret },
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return { inCall: !!data.inCall, callId: data.callId || null, state: data.state || null };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }

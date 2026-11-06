@@ -91,6 +91,17 @@ const en = {
     "Boshqa": "Other",
     "hozir": "now",
     "Onlayn": "Online",
+    // --- Calls (src/lib/chatConstants.js callPreview, /api/chat/.../calls, pin route)
+    "📞 Qo'ng'iroq": "📞 Call",
+    "📞 Javobsiz qo'ng'iroq": "📞 Missed call",
+    "📞 Rad etilgan qo'ng'iroq": "📞 Declined call",
+    "📞 Amalga oshmagan qo'ng'iroq": "📞 Failed call",
+    "Qo'ng'iroq qilib bo'lmadi": "Could not place the call",
+    "Noto'g'ri qo'ng'iroq turi": "Invalid call type",
+    "Juda ko'p qo'ng'iroq. Biroz kuting.": "Too many calls. Please wait a moment.",
+    "Qo'ng'iroqni qadab bo'lmaydi": "A call cannot be pinned",
+    "Foydalanuvchi band": "The user is busy",
+    "Foydalanuvchi oflayn": "The user is offline",
     // --- Question types (src/lib/exam/analytics.ts)
     "Ko'p tanlovli (bitta)": "Multiple choice (one answer)",
     "Ko'p tanlovli (bir nechta)": "Multiple choice (several answers)",
@@ -277,6 +288,7 @@ const en = {
   },
   patterns: [
     { uz: "{n} daq oldin", tr: "{n} min ago" },
+    { uz: "📞 Qo'ng'iroq ({d})", tr: "📞 Call ({d})" },
     { uz: "{n} daqiqagacha ovozsiz", tr: "muted for {n} more {n#minute|minutes}" },
     { uz: "{n} soatgacha ovozsiz", tr: "muted for {n} more {n#hour|hours}" },
     { uz: "{n} kungacha ovozsiz", tr: "muted for {n} more {n#day|days}" },

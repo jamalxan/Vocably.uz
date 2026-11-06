@@ -14,6 +14,8 @@ export const REPLY_TYPE_LABEL = {
   voice: '🎤 Ovozli xabar',
   file: '📎 Fayl',
   sticker: '😊 Stiker',
+  // Himoya uchun — qo'ng'iroqqa javob (reply) server tomonida rad etiladi.
+  call: "📞 Qo'ng'iroq",
 };
 
 // "typing" socket hodisasining `kind`i -> ConversationView/ConversationList'da
@@ -35,7 +37,46 @@ export const PREVIEW_BY_TYPE = {
   voice: '🎤 Ovozli xabar',
   file: '📎 Fayl',
   sticker: '😊 Stiker',
+  call: "📞 Qo'ng'iroq",
 };
+
+// Qo'ng'iroq natijalari (Message.call.outcome, src/lib/models.js CallInfoSchema bilan bir xil).
+export const CALL_OUTCOMES = ['ended', 'missed', 'declined', 'busy', 'cancelled', 'failed'];
+
+// Qo'ng'iroq davomiyligi "m:ss" ko'rinishida (soatlar daqiqaga qo'shiladi: 3661 -> "61:01").
+// null/yaroqsiz -> '' (javobsiz qo'ng'iroqlarda davomiylik yo'q).
+export function formatCallDuration(sec) {
+  if (sec === null || sec === undefined || !Number.isFinite(Number(sec)) || Number(sec) < 0) return '';
+  const total = Math.floor(Number(sec));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// Suhbatlar ro'yxatidagi (lastMessagePreview) qo'ng'iroq yorlig'i. Yo'nalishsiz —
+// preview ikkala tomon uchun umumiy, "kiruvchi/chiquvchi"ni client o'zi hisoblaydi.
+export function callPreview(call) {
+  const outcome = call?.outcome;
+  if (outcome === 'ended') {
+    const d = formatCallDuration(call?.durationSec);
+    return d ? `📞 Qo'ng'iroq (${d})` : PREVIEW_BY_TYPE.call;
+  }
+  if (outcome === 'missed' || outcome === 'busy' || outcome === 'cancelled') return "📞 Javobsiz qo'ng'iroq";
+  if (outcome === 'declined') return "📞 Rad etilgan qo'ng'iroq";
+  if (outcome === 'failed') return "📞 Amalga oshmagan qo'ng'iroq";
+  return PREVIEW_BY_TYPE.call;
+}
+
+// Har qanday xabar uchun yagona preview manbai (messages POST, o'chirilgandan keyin
+// qayta hisoblash, call-event, ChatContext): matn/izoh bo'lsa — uning boshi, qo'ng'iroq
+// bo'lsa — callPreview, aks holda turga qarab qisqa yorliq.
+export function previewForMessage(m) {
+  if (!m) return '';
+  if (m.type === 'call') return callPreview(m.call);
+  const text = typeof m.text === 'string' ? m.text.trim() : '';
+  if (text) return text.slice(0, 80);
+  return PREVIEW_BY_TYPE[m.type] || '';
+}
 
 // H-1 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.3 H) — "Oxirgi marta ko'rilgan"/onlayn
 // holatini VIEWER'ga (shu holatni ko'rmoqchi bo'lgan foydalanuvchiga) ko'rsatish

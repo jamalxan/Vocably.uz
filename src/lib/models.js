@@ -467,6 +467,11 @@ const ConversationSchema = new mongoose.Schema({
   // Oxirgi Telegram "yangi xabar" bildirishnomasi vaqti (kalit — qabul qiluvchi userId) —
   // ketma-ket yozilgan har bir xabar uchun botdan spam kelmasligi uchun throttle.
   tgMessageNotifiedAt: { type: Map, of: Date, default: {} },
+  // Oxirgi Telegram "javobsiz/rad etilgan qo'ng'iroq" bildirishnomasi vaqti (kalit —
+  // qabul qiluvchi userId). Xabarlar throttle'idan ALOHIDA — matndan keyin darhol
+  // kelgan javobsiz qo'ng'iroq 20s'lik xabar throttle'iga yutilib ketmasligi uchun
+  // (src/lib/chatNotify.js#notifyCallViaTelegram, 60s).
+  tgCallNotifiedAt: { type: Map, of: Date, default: {} },
   // Kim "Do'stlar" ro'yxatidan shu suhbatni o'chirgan (hujjat o'zi o'chmaydi —
   // faqat shu userning ro'yxatida yashiriladi). Bitta tomon o'chirsa — faqat shu
   // ro'yxatdan yashiriladi (deletedFor xabarlarga qo'shiladi, ikkinchi tomon
@@ -547,10 +552,26 @@ const ReplyToSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Qo'ng'iroq yozuvi — xabarning o'zi qo'ng'iroq tarixi (alohida Call kolleksiyasi yo'q).
+// Faqat realtime-server -> POST /api/internal/call-event yaratadi (client hech qachon
+// `type: 'call'` xabar yubora olmaydi — messages POST buni rad etadi).
+const CallInfoSchema = new mongoose.Schema(
+  {
+    callId: { type: String, required: true }, // UUID, /calls route'i yaratadi
+    kind: { type: String, enum: ['audio', 'video'], required: true },
+    outcome: { type: String, enum: ['ended', 'missed', 'declined', 'busy', 'cancelled', 'failed'], required: true },
+    durationSec: { type: Number, default: null }, // faqat outcome === 'ended'
+    startedAt: { type: Date, required: true }, // invite vaqti
+    acceptedAt: { type: Date, default: null }, // media ulangan vaqt (birinchi call:connected)
+    endedAt: { type: Date, required: true },
+  },
+  { _id: false }
+);
+
 const MessageSchema = new mongoose.Schema({
   conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
   senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['text', 'image', 'video', 'voice', 'file', 'sticker'], required: true },
+  type: { type: String, enum: ['text', 'image', 'video', 'voice', 'file', 'sticker', 'call'], required: true },
   text: { type: String, trim: true, default: '' },
   media: { type: MessageMediaSchema, default: null },
   stickerId: { type: String, default: null }, // src/lib/stickers.js manifest'idagi statik id
@@ -562,6 +583,8 @@ const MessageSchema = new mongoose.Schema({
     type: new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, name: { type: String, default: '' } }, { _id: false }),
     default: null,
   },
+  // Faqat `type: 'call'` xabarlarda (qolganlarida null).
+  call: { type: CallInfoSchema, default: null },
   readAt: { type: Date, default: null },
   // Telegram uslubidagi ikki xil o'chirish: `deletedFor` — faqat shu ro'yxatdagi
   // foydalanuvchi(lar) o'z tarafidan ko'rmaydi (boshqa tomon xabarni odatdagidek
@@ -597,6 +620,10 @@ MessageSchema.index({ conversationId: 1, clientMessageId: 1 }, { sparse: true })
 // admin/stats'dagi Message.aggregate($group by type) — indeks bo'lmasa har safar butun
 // kolleksiyani skanerlaydi; bu indeks bilan faqat indeksning o'zidan hisoblanadi (covered).
 MessageSchema.index({ type: 1 });
+// call-event idempotentligi (bitta callId — bitta yozuv, parallel so'rovlarda ham).
+// `sparse` EMAS, partial: `call: null` bo'lgan oddiy xabarlar umuman indekslanmaydi
+// (sparse null qiymatli maydonni baribir indekslaydi va unique to'qnashuv beradi).
+MessageSchema.index({ 'call.callId': 1 }, { unique: true, partialFilterExpression: { 'call.callId': { $type: 'string' } } });
 
 export const Message = mongoose.models.Message || mongoose.model('Message', MessageSchema);
 
