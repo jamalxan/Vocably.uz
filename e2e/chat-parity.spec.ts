@@ -258,7 +258,8 @@ test.describe('mobile (WP4 header, WP8)', () => {
     const menu = page.getByTestId('chat-more-menu');
     await expect(menu).toBeVisible();
     // notify-online, Telegram, mute — aria-pressed toggle'lar (CS §10.9); block + Profile ham shu menyuda.
-    expect(await menu.locator('[aria-pressed]').count()).toBeGreaterThanOrEqual(3);
+    // Menyu elementlari `menuitemcheckbox` (aria-checked); eski toggle'lar aria-pressed bo'lishi ham mumkin.
+    expect(await menu.locator('[aria-pressed], [aria-checked]').count()).toBeGreaterThanOrEqual(3);
   });
 
   // Reja (WP8.3) pastki tab bar uchun testid bermagan.
