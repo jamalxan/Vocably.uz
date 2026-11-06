@@ -226,6 +226,10 @@ const en = {
     'Vocabulary Boss': 'Vocabulary Boss',
     'Vocably Run': 'Vocably Run',
     "3 yo'lakli yugurish: to'g'ri so'z turgan yo'lakka o'ting": 'Three-lane run: switch to the lane with the right word',
+    "So'z tunneli": 'Word Tunnel',
+    "Ma'nosini ko'ring, inglizchasini yozing — har bir harf 3D tunnelga aylanadi": 'See the meaning, type the English word — every letter becomes a 3D tunnel',
+    'Word Defense': 'Word Defense',
+    "Ma'no ko'targan dushmanlar bazaga yaqinlashadi — inglizchasini yozib, ularni urib tushiring": 'Enemies carry meanings toward your base — type the English word to shoot them down',
     'Haftalik Vocabulary Boss sinovini tugating': 'Complete the weekly Vocabulary Boss challenge',
 
     // --- Achievements (src/lib/vocab/achievements.ts)

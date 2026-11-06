@@ -6,28 +6,61 @@ export const CARD_W = 1080;
 export const CARD_H = 1920;
 export const CARD_URL = 'vocably.uz';
 
+const GAMES = ['run', 'speak', 'tunnel', 'defense'];
+
 const T = {
   uz: {
     run: { title: 'Vocably Run', unit: 'ball', stats: ["To'g'ri", 'Aniqlik', 'Kombo', 'Soniya'], cta: "Sen ham sinab ko'r" },
     speak: { title: 'Gapir yoki yiqil', unit: 'soniya chidadim', stats: ['Pauzalar', 'Eng uzun pauza', 'Filler', "So'z/daq"], cta: "Sen nechchi soniya chidaysan?" },
+    tunnel: { title: "So'z tunneli", unit: 'ball', stats: ["To'g'ri", 'Aniqlik', 'Kombo', 'Harf/daq'], cta: "Sen ham sinab ko'r" },
+    defense: { title: 'Word Defense', unit: 'ball', stats: ["Yo'q qilindi", 'Aniqlik', 'Kombo', 'Qolgan jon'], cta: 'Bazangni himoya qila olasanmi?' },
     win: 'G‘alaba!',
     fell: 'Yiqildim',
     stopped: "To'xtatdim",
+    baseFell: 'Baza quladi',
+    baseHeld: 'Baza saqlandi',
   },
   en: {
     run: { title: 'Vocably Run', unit: 'points', stats: ['Correct', 'Accuracy', 'Combo', 'Seconds'], cta: 'Can you beat it?' },
     speak: { title: 'Speak or Fall', unit: 'seconds survived', stats: ['Pauses', 'Longest pause', 'Fillers', 'Words/min'], cta: 'How long can you last?' },
+    tunnel: { title: 'Word Tunnel', unit: 'points', stats: ['Correct', 'Accuracy', 'Combo', 'Chars/min'], cta: 'Can you beat it?' },
+    defense: { title: 'Word Defense', unit: 'points', stats: ['Destroyed', 'Accuracy', 'Combo', 'HP left'], cta: 'Can you hold the base?' },
     win: 'Made it!',
     fell: 'I fell',
     stopped: 'Stopped',
+    baseFell: 'Base fell',
+    baseHeld: 'Base held',
   },
 };
 
-/** Card content from a game result. `game`: 'run' | 'speak'. */
+/** Card content from a game result. `game`: 'run' | 'speak' | 'tunnel' | 'defense'. */
 export function cardModel(game, result, locale = 'uz') {
   const t = T[locale] || T.uz;
-  const g = t[game];
+  const g = GAMES.includes(game) ? t[game] : null;
   if (!g) throw new Error(`unknown game: ${game}`);
+  if (game === 'tunnel' || game === 'defense') {
+    const tunnel = game === 'tunnel';
+    // A round the player ended (or whose session expired) neither held nor lost the base.
+    const early = result.why === 'stopped' || result.why === 'expired';
+    return {
+      game,
+      title: g.title,
+      big: String(result.score ?? 0),
+      unit: g.unit,
+      badge: tunnel ? null : early ? t.stopped : (result.hp ?? 0) > 0 ? t.baseHeld : t.baseFell,
+      badgeGood: !tunnel && !early && (result.hp ?? 0) > 0,
+      stats: [
+        [g.stats[0], String((tunnel ? result.correct : result.kills) ?? 0)],
+        [g.stats[1], `${result.accuracy ?? 0}%`],
+        [g.stats[2], `×${result.maxCombo ?? 0}`],
+        [g.stats[3], String((tunnel ? result.cpm : result.hp) ?? 0)],
+      ],
+      pauses: null,
+      cta: g.cta,
+      url: `${CARD_URL}/games/${game}`,
+      fileName: `vocably-${game}-${result.score ?? 0}.png`,
+    };
+  }
   if (game === 'run') {
     return {
       game,
@@ -35,6 +68,7 @@ export function cardModel(game, result, locale = 'uz') {
       big: String(result.score ?? 0),
       unit: g.unit,
       badge: null,
+      badgeGood: false,
       stats: [
         [g.stats[0], String(result.correct ?? 0)],
         [g.stats[1], `${result.accuracy ?? 0}%`],
@@ -53,6 +87,7 @@ export function cardModel(game, result, locale = 'uz') {
     big: `${result.seconds ?? 0}`,
     unit: `/ 60 · ${g.unit}`,
     badge: result.survived ? t.win : result.stopped ? t.stopped : t.fell,
+    badgeGood: Boolean(result.survived),
     stats: [
       [g.stats[0], String(result.pauses ?? 0)],
       [g.stats[1], `${result.longestPauseSec ?? 0}s`],
@@ -110,6 +145,22 @@ export function drawCard(ctx, model, { logo = null, family = 'system-ui, -apple-
       ctx.lineTo(W / 2 + dx * 560, H);
       ctx.stroke();
     }
+  } else if (model.game === 'tunnel') {
+    // nested frames receding to a vanishing point
+    for (let i = 0; i < 5; i++) {
+      const s = 760 - i * 150;
+      roundRect(ctx, W / 2 - s / 2, 1600 - s / 4, s, s / 2, 40);
+      ctx.stroke();
+    }
+  } else if (model.game === 'defense') {
+    // a reticle over the horizon
+    ctx.beginPath();
+    ctx.moveTo(0, 1640);
+    ctx.lineTo(W, 1640);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(W * 0.78, 1640, 120, 0, Math.PI * 2);
+    ctx.stroke();
   } else {
     ctx.beginPath();
     ctx.moveTo(0, H * 0.86);
@@ -136,7 +187,7 @@ export function drawCard(ctx, model, { logo = null, family = 'system-ui, -apple-
     ctx.font = `800 40px ${family}`;
     const bw = ctx.measureText(model.badge).width + 64;
     roundRect(ctx, pad, 470, bw, 80, 40);
-    ctx.fillStyle = model.badge === T.uz.win || model.badge === T.en.win ? '#22c55e' : 'rgba(255,255,255,.14)';
+    ctx.fillStyle = model.badgeGood ? '#22c55e' : 'rgba(255,255,255,.14)';
     ctx.fill();
     ctx.fillStyle = '#ffffff';
     ctx.fillText(model.badge, pad + 32, 524);

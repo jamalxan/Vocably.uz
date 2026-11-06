@@ -167,6 +167,8 @@ export const GAME_SKILL: Record<string, keyof SkillProfile> = {
   listen_choose: 'listening',
   listen_type: 'spelling',
   word_drop: 'spelling',
+  word_tunnel: 'spelling',
+  word_defense: 'spelling',
   fill_gap: 'context',
   sentence_builder: 'context',
   image_to_word: 'recall',

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Circle,
   CloudRain,
+  Crosshair,
   Crown,
   Footprints,
   Mic,
@@ -18,6 +19,7 @@ import {
   Headphones,
   GalleryHorizontal,
   Image as ImageIcon,
+  Keyboard,
   Link2,
   ListChecks,
   Lock,
@@ -43,7 +45,7 @@ import StoryCard from './StoryCard';
 import { useT } from '@/context/LocaleContext';
 import { getGames, getGamificationProfile, savePlanMinutes } from './api';
 
-const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown, Footprints, Image: ImageIcon, Images: GalleryHorizontal };
+const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown, Footprints, Keyboard, Crosshair, Image: ImageIcon, Images: GalleryHorizontal };
 const PLAN_ICON = { review: ListChecks, weak: Target, new: Sparkles, game: Gamepad2, listening: Ear, writing: PenSquare, speaking: Headphones };
 const MINUTE_OPTIONS = [5, 10, 20, 30, 45];
 const STATUS_KEYS = ['new', 'learning', 'familiar', 'strong', 'advanced', 'mastered'];

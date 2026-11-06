@@ -180,6 +180,7 @@ const uz = {
   'game.kind.spell_drop': 'Inglizchasini yozing',
   'game.kind.image_word': "Rasmga mos so'zni toping",
   'game.kind.word_image': "So'zga mos rasmni tanlang",
+  'game.kind.type_definition': "Ta'rifga mos so'zni yozing",
   'game.notFound': "Bunday o'yin topilmadi.",
   'game.startError': "O'yinni boshlab bo'lmadi",
   'game.resultError': 'Natijani olishda xatolik',

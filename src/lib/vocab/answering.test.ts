@@ -41,6 +41,17 @@ describe('validateAnswer (server-side tekshiruv)', () => {
     if (q.word.length >= 5) expect(v.near).toBe(true);
   });
 
+  it('typed: an oversized answer is wrong at once, without megabytes of Levenshtein work', () => {
+    const q = firstOf('listen_type');
+    const huge = 'x'.repeat(3_000_000);
+    const t0 = performance.now();
+    expect(validateAnswer(q, huge)).toEqual({ isCorrect: false });
+    expect(validateAnswer(q, `${q.word}${' '.repeat(250)}`).isCorrect).toBe(false);
+    // just under the cap: still graded, and "near" is only computed when lengths are within one
+    expect(validateAnswer(q, 'y'.repeat(190)).near).toBe(false);
+    expect(performance.now() - t0).toBeLessThan(200);
+  });
+
   it("typed fill: gapdagi tuslangan shakl ham, asosiy so'z ham qabul qilinadi", () => {
     const q = buildGameSession({ gameKey: 'fill_gap', difficulty: 'hard', words: SAMPLE_WORDS, rand: seededRandom('t') }).questions[0];
     for (const a of q.accepted!) expect(validateAnswer(q, a).isCorrect).toBe(true);

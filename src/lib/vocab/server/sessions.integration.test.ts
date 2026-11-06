@@ -8,6 +8,8 @@ import { SAMPLE_WORDS } from '../fixtures';
 import { awardXpOnce } from './ledger';
 import { abandonSession, completeSession, getActiveSession, startGameSession, submitAnswers, ServiceError } from './sessionService';
 import { getQuestViews } from './questService';
+import { breachResponseMs } from '@/lib/flagship/defense';
+import { scheduleCounted } from '@/lib/flagship/typing';
 
 // models.js — oddiy JS: Mongoose generik turlari TS'da mos kelmaydi (boshqa testlardagidek `any`).
 const GameSession: any = Models.GameSession;
@@ -453,5 +455,122 @@ describeDb('Streak va freeze (o\'yin orqali)', () => {
     // a second game the same day doesn't count twice
     const d7b = await play(new Date(T0.getTime() + 6 * 24 * 3600 * 1000 + 3600_000));
     expect(d7b.streak).toMatchObject({ streak: 1, extended: false });
+  });
+});
+
+// Flagship typing games: the client must never see the answer before its first attempt, every word
+// appears once (a verdict reveals it), and the timings the real controllers report pass anti-cheat.
+describeDb('Flagship yozish o\'yinlari (word_tunnel / word_defense)', () => {
+  const SERVER_ONLY = ['answer', 'accepted', 'answerTokens', 'answerMap', 'correctDisplay', 'word', 'wordId', 'categoryId', 'explanation'];
+
+  function expectNoLeak(view: any) {
+    for (const q of view.questions) {
+      expect(q.inputType).toBe('typed');
+      for (const k of SERVER_ONLY) expect(q[k], `${q.qid}.${k}`).toBeUndefined();
+    }
+    expect(JSON.stringify(view)).not.toMatch(/"accepted"|"correctDisplay"|"wordId"/);
+  }
+
+  it("So'z tunneli: javob klientga bormaydi, so'z boshiga bitta savol, ketma-ket yozish XP oladi", async () => {
+    const u = await createUser();
+    const v: any = await startGameSession({ user: u.toObject(), gameKey: 'word_tunnel', difficulty: 'medium', now: T0 });
+    expect(v.questions.length).toBe(12);
+    expectNoLeak(v);
+    // medium: length hint only, no first letter
+    expect(v.questions.every((q: any) => q.answerLength > 0 && !q.hint)).toBe(true);
+    const s: any = await GameSession.findById(v.sessionId).lean();
+    expect(new Set(s.questions.map((q: any) => String(q.wordId))).size).toBe(s.questions.length);
+
+    let t = 0;
+    const answers = s.questions.map((q: any, i: number) => {
+      const responseMs = 2600 + ((i * 613) % 2400);
+      t += responseMs;
+      return { qid: q.qid, answer: q.accepted[0], responseMs };
+    });
+    const r = await submitAnswers({ userId: u._id, sessionId: v.sessionId, answers, now: new Date(T0.getTime() + t) });
+    expect(r.results.every((x: any) => x.isCorrect && x.counted)).toBe(true);
+    const done = await completeSession({ userId: u._id, sessionId: v.sessionId, now: new Date(T0.getTime() + t + 4000) });
+    expect(done.notice).toBeNull();
+    expect(done.suspicious ?? false).toBe(false);
+    expect(done.accuracy).toBe(100);
+    expect(done.xp.earned).toBeGreaterThan(0);
+  });
+
+  it("So'z tunneli: tez yozuvchi belgilanmaydi — tez javob server chegarasigacha ushlab turiladi", async () => {
+    // The client's own timing (WordTunnel.sendWord): the next prompt appears the moment a word is
+    // sent, and every third word is typed faster than the server's floor for its prompt.
+    const play = async (scheduled: boolean) => {
+      const u = await createUser();
+      const v: any = await startGameSession({ user: u.toObject(), gameKey: 'word_tunnel', difficulty: 'medium', now: T0 });
+      const s: any = await GameSession.findById(v.sessionId).lean();
+      let shownAt = 2100; // after the 3-2-1 countdown
+      let lastCountedAt = 0;
+      const answers = s.questions.map((q: any, i: number) => {
+        const now = shownAt + (i % 3 === 0 ? 500 + ((i * 131) % 350) : 1800 + ((i * 577) % 1800));
+        const timing = scheduled ? scheduleCounted({ now, spawnedAt: shownAt, lastCountedAt, prompt: q.prompt }) : { sendAt: now, responseMs: now - shownAt };
+        lastCountedAt = timing.sendAt;
+        shownAt = now;
+        return { qid: q.qid, answer: q.accepted[0], responseMs: timing.responseMs };
+      });
+      const r = await submitAnswers({ userId: u._id, sessionId: v.sessionId, answers, now: new Date(T0.getTime() + lastCountedAt) });
+      expect(r.results.every((x: any) => x.isCorrect)).toBe(true);
+      return completeSession({ userId: u._id, sessionId: v.sessionId, now: new Date(T0.getTime() + lastCountedAt + 1500) });
+    };
+    const asTyped: any = await play(false); // what the tunnel used to send
+    expect(asTyped.notice).toBeTruthy();
+    expect(asTyped.xp.earned).toBe(0);
+    const held: any = await play(true);
+    expect(held.notice).toBeNull();
+    expect(held.suspicious ?? false).toBe(false);
+    expect(held.xp.earned).toBeGreaterThan(0);
+  });
+
+  it("Word Defense: bo'sh javob (buzilish) xato va so'zni ochadi; tuzatish (2-urinish) sanalmaydi", async () => {
+    const u = await createUser();
+    const v: any = await startGameSession({ user: u.toObject(), gameKey: 'word_defense', difficulty: 'medium', now: T0 });
+    expect(v.questions.length).toBe(12); // all 12 sample words (medium asks for 20)
+    expectNoLeak(v);
+    const s: any = await GameSession.findById(v.sessionId).lean();
+    const q1 = s.questions[0];
+    const r1 = await submitAnswers({ userId: u._id, sessionId: v.sessionId, answers: [{ qid: q1.qid, answer: '', responseMs: breachResponseMs(q1.prompt) }], now: new Date(T0.getTime() + 18_000) });
+    expect(r1.results[0]).toMatchObject({ qid: q1.qid, attempt: 1, isCorrect: false, counted: true, correctDisplay: q1.correctDisplay });
+    const r2 = await submitAnswers({ userId: u._id, sessionId: v.sessionId, answers: [{ qid: q1.qid, attempt: 2, answer: q1.accepted[0], responseMs: 3000 }], now: new Date(T0.getTime() + 21_000) });
+    expect(r2.results[0]).toMatchObject({ qid: q1.qid, attempt: 2, isCorrect: true, counted: false });
+    const done = await completeSession({ userId: u._id, sessionId: v.sessionId, now: new Date(T0.getTime() + 25_000) });
+    expect(done.correct).toBe(0);
+    expect(done.mistakes.map((m: any) => m.qid)).toContain(q1.qid);
+    expect(done.xp.earned).toBe(0);
+  });
+
+  it("Word Defense: haqiqiy vaqt jadvali (bir vaqtda bir nechta dushman, buzilishlar) shubhali emas", async () => {
+    const u = await createUser();
+    const v: any = await startGameSession({ user: u.toObject(), gameKey: 'word_defense', difficulty: 'medium', now: T0 });
+    const s: any = await GameSession.findById(v.sessionId).lean();
+    // Enemies spawn every 3.4 s and take 4.3–5.8 s to answer, so they overlap; every 5th one breaches
+    // (18 s travel). Counted answers use the controller's own scheduler; breaches don't move the partition.
+    let lastCountedAt = 0;
+    let end = 0;
+    const answers = s.questions.map((q: any, i: number) => {
+      const spawnedAt = i * 3400;
+      if (i % 5 === 4) {
+        end = Math.max(end, spawnedAt + 18_000);
+        return { qid: q.qid, answer: '', responseMs: breachResponseMs(q.prompt) };
+      }
+      const { sendAt, responseMs } = scheduleCounted({ now: spawnedAt + 4300 + ((i * 377) % 1500), spawnedAt, lastCountedAt, prompt: q.prompt });
+      lastCountedAt = sendAt;
+      end = Math.max(end, sendAt);
+      return { qid: q.qid, answer: q.accepted[0], responseMs };
+    });
+    const r = await submitAnswers({ userId: u._id, sessionId: v.sessionId, answers, now: new Date(T0.getTime() + end) });
+    expect(r.results.filter((x: any) => x.isCorrect).length).toBe(answers.length - 2);
+    const done = await completeSession({ userId: u._id, sessionId: v.sessionId, now: new Date(T0.getTime() + end + 1500) });
+    expect(done.notice).toBeNull();
+    expect(done.suspicious ?? false).toBe(false);
+    expect(done.completed).toBe(true);
+    expect(done.xp.earned).toBeGreaterThan(0);
+    const stored: any = await GameSession.findById(v.sessionId).lean();
+    expect(stored.suspicious).toBe(false);
+    expect(stored.flags || []).not.toContain('impossible_response_time');
+    expect(stored.flags || []).not.toContain('response_time_exceeds_elapsed');
   });
 });
