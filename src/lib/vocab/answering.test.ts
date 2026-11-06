@@ -8,6 +8,32 @@ function firstOf(gameKey: GameKey, difficulty: 'easy' | 'medium' | 'hard' | 'exp
   return buildGameSession({ gameKey, difficulty, words: SAMPLE_WORDS, rand: seededRandom(`a-${gameKey}`) }).questions[0];
 }
 
+/** A match question as the retired pair games stored it: old sessions are still graded by this code. */
+const MATCH_Q = {
+  qid: 'q1',
+  kind: 'match_pairs',
+  inputType: 'match',
+  skill: 'recall',
+  wordId: 'w1',
+  categoryId: 'c1',
+  word: 'improve',
+  prompt: 'Juftliklarni toping',
+  lefts: [
+    { id: 'l1', text: 'improve', wordId: 'w1' },
+    { id: 'l2', text: 'reliable', wordId: 'w2' },
+    { id: 'l3', text: 'decrease', wordId: 'w3' },
+    { id: 'l4', text: 'achieve', wordId: 'w4' },
+  ],
+  rights: [
+    { id: 'r1', text: 'yaxshilamoq' },
+    { id: 'r2', text: 'ishonchli' },
+    { id: 'r3', text: 'kamaymoq' },
+    { id: 'r4', text: 'erishmoq' },
+  ],
+  answerMap: { l1: 'r1', l2: 'r2', l3: 'r3', l4: 'r4' },
+  explanation: '',
+} as unknown as GameQuestion;
+
 describe('validateAnswer (server-side tekshiruv)', () => {
   it("choice: faqat to'g'ri option id to'g'ri", () => {
     const q = firstOf('multiple_choice');
@@ -66,7 +92,7 @@ describe('validateAnswer (server-side tekshiruv)', () => {
   });
 
   it("match: hamma juftlik to'g'ri; qisman to'g'ri hisoblanadi", () => {
-    const q = firstOf('word_match');
+    const q = MATCH_Q;
     const full = validateAnswer(q, q.answerMap);
     expect(full.isCorrect).toBe(true);
     expect(full.correctParts).toBe(full.totalParts);
@@ -84,7 +110,7 @@ describe('validateAnswer (server-side tekshiruv)', () => {
   });
 
   it("questionUnits: juftlik savoli har juftlik uchun alohida", () => {
-    const q = firstOf('word_match');
+    const q = MATCH_Q;
     expect(questionUnits(q)).toBe(Object.keys(q.answerMap!).length);
     expect(questionUnits(firstOf('multiple_choice'))).toBe(1);
   });

@@ -39,10 +39,10 @@ test.describe('Vocabulary World', () => {
     test.skip(isMobile, "portallar ro'yxati — md+ ekranda");
     await page.goto('/app/vocabulary-world');
     await expect(page.locator('canvas')).toBeVisible({ timeout: 90_000 });
-    await page.getByRole('button', { name: /Xotira kartalari/i }).click();
+    await page.getByRole('button', { name: /Ko'p variantli test/i }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: /O'yinga kirish|Batafsil/ }).click();
-    await expect(page).toHaveURL(/\/app\/games\/memory$/, { timeout: 90_000 });
+    await expect(page).toHaveURL(/\/app\/games\/multiple_choice$/, { timeout: 90_000 });
   });
 });

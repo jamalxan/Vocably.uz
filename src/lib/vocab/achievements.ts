@@ -25,6 +25,8 @@ export interface AchievementDef {
   description: string;
   icon: string;
   check: (s: AchievementStats) => boolean;
+  /** Can no longer be earned (its game was removed): listed only for users who already have it. */
+  retired?: boolean;
 }
 
 const n = (v: number | undefined) => v || 0;
@@ -38,7 +40,7 @@ export const NEW_ACHIEVEMENT_DEFS: AchievementDef[] = [
   { key: 'listening_master', label: 'Listening Master', description: "200 ta to'g'ri eshitib-tanish javobi", icon: '👂', check: (s) => n(s.listeningCorrect) >= 200 },
   { key: 'spelling_master', label: 'Spelling Master', description: "200 ta to'g'ri imlo javobi", icon: '✍️', check: (s) => n(s.spellingCorrect) >= 200 },
   { key: 'ielts_vocab_expert', label: 'IELTS Vocabulary Expert', description: "150 ta B2+ darajali so'z", icon: '🎓', check: (s) => n(s.ieltsWords) >= 150 },
-  { key: 'boss_slayer', label: 'Boss Slayer', description: 'Vocabulary Boss sinovini tugatdingiz', icon: '👑', check: (s) => n(s.bossCompleted) >= 1 },
+  { key: 'boss_slayer', label: 'Boss Slayer', description: 'Vocabulary Boss sinovini tugatdingiz', icon: '👑', check: (s) => n(s.bossCompleted) >= 1, retired: true },
 ];
 
 /** Hali olinmagan yutuqlardan statistika talabini bajarganlarini qaytaradi (sof funksiya). */

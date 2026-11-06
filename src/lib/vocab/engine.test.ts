@@ -243,13 +243,13 @@ describe('access: feature flag va tarif (TZ §48, §61)', () => {
     expect(vocabEngineFlag('u1', 'user', {}).enabled).toBe(true); // standart: 100%
   });
   it("tarif: premium o'yin free da yopiq; kunlik limit", () => {
-    expect(checkGameAccess('free', 'vocabulary_boss', 0)).toMatchObject({ allowed: false, code: 'tier' });
     expect(checkGameAccess('free', 'listen_type', 0)).toMatchObject({ allowed: false, code: 'tier' });
-    expect(checkGameAccess('free', 'word_match', 0).allowed).toBe(true);
-    expect(checkGameAccess('free', 'word_match', 6)).toMatchObject({ allowed: false, code: 'daily_limit' });
+    expect(checkGameAccess('free', 'multiple_choice', 0).allowed).toBe(true);
+    expect(checkGameAccess('free', 'multiple_choice', 6)).toMatchObject({ allowed: false, code: 'daily_limit' });
     expect(checkGameAccess('standard', 'listen_type', 6).allowed).toBe(true);
-    expect(checkGameAccess('premium', 'vocabulary_boss', 500).allowed).toBe(true);
+    expect(checkGameAccess('premium', 'listen_type', 500).allowed).toBe(true);
     expect(checkGameAccess('premium', 'nope', 0).code).toBe('unknown_game');
+    expect(checkGameAccess('premium', 'vocabulary_boss', 0).code).toBe('unknown_game'); // olib tashlangan
   });
 });
 

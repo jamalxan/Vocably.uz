@@ -12,8 +12,7 @@ export type QuestMetric =
   | 'games'
   | 'context_uses'
   | 'mastered_words'
-  | 'weekly_accuracy'
-  | 'boss_completed';
+  | 'weekly_accuracy';
 
 export interface QuestDef {
   key: string;
@@ -35,7 +34,6 @@ export const QUEST_DEFS: QuestDef[] = [
   { key: 'weekly_master_50', period: 'weekly', title: "50 ta so'zni o'zlashtiring", description: "Bu hafta 50 ta so'z 'o'zlashtirilgan' holatiga yetsin", metric: 'mastered_words', target: 50, rewardXp: QUEST_REWARD_XP.weekly },
   { key: 'weekly_accuracy_90', period: 'weekly', title: "O'rtacha 90% aniqlik", description: "Kamida 5 ta o'yinda o'rtacha 90% aniqlikka erishing", metric: 'weekly_accuracy', target: 90, rewardXp: QUEST_REWARD_XP.weekly, derived: true },
   { key: 'weekly_games_10', period: 'weekly', title: '10 ta o\'yin tugating', description: "Bu hafta 10 ta o'yinni tugating", metric: 'games', target: 10, rewardXp: QUEST_REWARD_XP.weekly },
-  { key: 'weekly_boss', period: 'weekly', title: 'Vocabulary Boss', description: 'Haftalik Vocabulary Boss sinovini tugating', metric: 'boss_completed', target: 1, rewardXp: QUEST_REWARD_XP.weekly },
 ];
 
 export const MIN_GAMES_FOR_ACCURACY_QUEST = 5;

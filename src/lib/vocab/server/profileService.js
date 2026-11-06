@@ -88,7 +88,7 @@ export async function buildGamificationProfile(user, { now = new Date() } = {}) 
   const tz = user.timezone || 'Asia/Tashkent';
   const xp = user.xp || 0;
   const earned = new Map((user.badges || []).map((b) => [b.key, b.earnedAt]));
-  const badges = BADGE_DEFS.map((d) => ({
+  const badges = BADGE_DEFS.filter((d) => !d.retired || earned.has(d.key)).map((d) => ({
     key: d.key,
     label: d.label,
     icon: d.icon,

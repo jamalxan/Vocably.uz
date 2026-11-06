@@ -37,8 +37,13 @@ describe('katalog (TZ §9)', () => {
     }
   });
   it('P0 o\'yinlar mavjud', () => {
-    for (const k of ['word_match', 'multiple_choice', 'fill_gap', 'listen_choose', 'listen_type']) {
+    for (const k of ['multiple_choice', 'fill_gap', 'listen_choose', 'listen_type', 'vocably_run', 'word_tunnel', 'word_defense']) {
       expect(getGame(k)?.priority).toBe('P0');
+    }
+  });
+  it("olib tashlangan eski o'yinlar katalogda yo'q", () => {
+    for (const k of ['word_match', 'memory', 'word_drop', 'speed_challenge', 'image_to_word', 'word_to_image', 'vocabulary_boss']) {
+      expect(getGame(k)).toBeUndefined();
     }
   });
   it('tierAllows tartibi', () => {
@@ -130,37 +135,6 @@ describe('savol generatsiyasi', () => {
     }
   });
 
-  it("image_to_word: savolda rasm bor, variantlar so'z, to'g'ri variant so'zning o'zi", () => {
-    const s = build('image_to_word');
-    expect(s.questions.length).toBeGreaterThan(0);
-    for (const q of s.questions) {
-      const w = SAMPLE_WORDS.find((x) => x.wordId === q.wordId)!;
-      expect(q.kind).toBe('image_word');
-      expect(q.imageUrl).toBe(w.imageUrl);
-      expect(q.options!.find((o) => o.id === q.answer)!.text).toBe(w.word);
-    }
-  });
-
-  it("word_to_image: variantlar rasm, to'g'ri variant so'zning rasmi, rasmlar noyob", () => {
-    const s = build('word_to_image');
-    expect(s.questions.length).toBeGreaterThan(0);
-    for (const q of s.questions) {
-      const w = SAMPLE_WORDS.find((x) => x.wordId === q.wordId)!;
-      expect(q.kind).toBe('word_image');
-      const urls = q.options!.map((o) => o.imageUrl);
-      expect(new Set(urls).size).toBe(urls.length);
-      expect(q.options!.find((o) => o.id === q.answer)!.imageUrl).toBe(w.imageUrl);
-      expect(q.options!.find((o) => o.id === q.answer)!.text).toBe(q.correctDisplay);
-    }
-  });
-
-  it("rasm o'yinlari: kamida 4 ta rasmli so'z talab qilinadi", () => {
-    expect(availabilityFor(getGame('image_to_word')!, SAMPLE_WORDS).available).toBe(true);
-    expect(availabilityFor(getGame('word_to_image')!, BARE_WORDS).available).toBe(false);
-    const three = SAMPLE_WORDS.map((w, i) => (i < 3 ? w : { ...w, imageUrl: '' }));
-    expect(availabilityFor(getGame('image_to_word')!, three).available).toBe(false);
-  });
-
   it("mc_meaning: to'g'ri javob so'zning o'z tarjimalaridan, distraktorlar boshqa so'zlarniki", () => {
     const s = build('multiple_choice', 'hard');
     for (const q of s.questions.filter((x) => x.kind === 'mc_meaning')) {
@@ -199,37 +173,6 @@ describe('savol generatsiyasi', () => {
     }
   });
 
-  it("word_match: har raundda juftliklar, o'ng id lar chap id lardan farqli", () => {
-    const s = build('word_match', 'medium');
-    expect(s.questions.length).toBe(3);
-    for (const q of s.questions) {
-      expect(q.inputType).toBe('match');
-      expect(q.lefts!.length).toBe(q.rights!.length);
-      expect(Object.keys(q.answerMap!).length).toBe(q.lefts!.length);
-      for (const l of q.lefts!) expect(q.rights!.some((r) => r.id === l.id)).toBe(false);
-    }
-  });
-
-  it('memory o\'yini memory_pairs turini ishlatadi', () => {
-    expect(build('memory').questions.every((q) => q.kind === 'memory_pairs')).toBe(true);
-    const q = build('memory').questions[0];
-    expect(toClientQuestion(q).memoryMap).toEqual(q.answerMap); // faqat memory uchun mijozga beriladi
-    expect((toClientQuestion(build('word_match').questions[0]) as Record<string, unknown>).memoryMap).toBeUndefined();
-  });
-
-  it("vocabulary_boss: 5 bo'lim, har qiyinlikda 10 tadan (50 ta)", () => {
-    const s = build('vocabulary_boss', 'medium');
-    expect(s.questions.length).toBe(50);
-    const kinds = new Set(s.questions.map((q) => q.kind));
-    expect(kinds.has('listen_choose')).toBe(true);
-    expect(kinds.has('syn_ant') || kinds.has('definition')).toBe(true);
-  });
-
-  it("word_drop: yozma, vaqt chegarali", () => {
-    const s = build('word_drop', 'hard');
-    expect(s.questions.every((q) => q.inputType === 'typed' && q.timeLimitSec === 8)).toBe(true);
-  });
-
   it("kam so'z bilan ham sessiya tuziladi (so'zlar aylanadi), lekin ketma-ket takrorlanmaydi", () => {
     const words = SAMPLE_WORDS.slice(0, 5);
     const s = buildGameSession({ gameKey: 'multiple_choice', difficulty: 'medium', words, rand: seededRandom('x') });
@@ -255,7 +198,7 @@ describe('availabilityFor', () => {
     }
   });
   it("kam so'z — mavjud emas va sabab ko'rsatiladi", () => {
-    const r = availabilityFor(getGame('word_match')!, SAMPLE_WORDS.slice(0, 2));
+    const r = availabilityFor(getGame('multiple_choice')!, SAMPLE_WORDS.slice(0, 2));
     expect(r.available).toBe(false);
     expect(r.reason).toContain('Kamida');
   });
@@ -265,7 +208,7 @@ describe('availabilityFor', () => {
     expect(availabilityFor(getGame('sentence_builder')!, BARE_WORDS).available).toBe(false);
     expect(availabilityFor(getGame('fill_gap')!, BARE_WORDS).available).toBe(false);
     expect(availabilityFor(getGame('listen_choose')!, BARE_WORDS).available).toBe(true);
-    expect(availabilityFor(getGame('word_match')!, BARE_WORDS).available).toBe(true);
+    expect(availabilityFor(getGame('multiple_choice')!, BARE_WORDS).available).toBe(true);
   });
 });
 

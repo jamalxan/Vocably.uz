@@ -12,7 +12,7 @@ const price = (n) => `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm/oy
 export const FAQS = [
   {
     q: 'Vocably nima?',
-    a: "Vocably — o'zbek tilida so'zlashuvchilar uchun ingliz tili va IELTS tayyorgarlik platformasi. Unda SRS (intervalli takrorlash) lug'at daftari, 16 ta lug'at mashq rejimi va 14 ta o'yin, haqiqiy IELTS formatidagi Reading, Listening, Writing va Speaking mashqlari, taymerli mock imtihon hamda Writing/Speaking uchun AI baho bor. Interfeys o'zbekcha, o'quv materiallari inglizcha.",
+    a: "Vocably — o'zbek tilida so'zlashuvchilar uchun ingliz tili va IELTS tayyorgarlik platformasi. Unda SRS (intervalli takrorlash) lug'at daftari, 16 ta lug'at mashq rejimi va 10 ta o'yin (shu jumladan 3D o'yinlar), haqiqiy IELTS formatidagi Reading, Listening, Writing va Speaking mashqlari, taymerli mock imtihon hamda Writing/Speaking uchun AI baho bor. Interfeys o'zbekcha, o'quv materiallari inglizcha.",
   },
   {
     q: 'Vocably bepulmi?',
@@ -43,7 +43,7 @@ const priceEn = (n) => `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm/
 const FAQS_EN = [
   {
     q: 'What is Vocably?',
-    a: 'Vocably is an English and IELTS preparation platform built for Uzbek speakers. It brings together an SRS (spaced repetition) vocabulary notebook, 16 vocabulary practice modes and 14 games, Reading, Listening, Writing and Speaking practice in the real IELTS format, a timed mock exam and AI scoring for Writing and Speaking. The interface speaks Uzbek or English; the study materials are in English.',
+    a: 'Vocably is an English and IELTS preparation platform built for Uzbek speakers. It brings together an SRS (spaced repetition) vocabulary notebook, 16 vocabulary practice modes and 10 games (including 3D games), Reading, Listening, Writing and Speaking practice in the real IELTS format, a timed mock exam and AI scoring for Writing and Speaking. The interface speaks Uzbek or English; the study materials are in English.',
   },
   {
     q: 'Is Vocably free?',

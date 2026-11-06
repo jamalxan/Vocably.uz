@@ -8,7 +8,7 @@ export async function GET(req) {
     const { user, error } = await requireVocabUser(req, { select: 'role badges' });
     if (error) return error;
     const earned = new Map((user.badges || []).map((b) => [b.key, b.earnedAt]));
-    const achievements = BADGE_DEFS.map((d) => ({
+    const achievements = BADGE_DEFS.filter((d) => !d.retired || earned.has(d.key)).map((d) => ({
       key: d.key,
       label: d.label,
       icon: d.icon,

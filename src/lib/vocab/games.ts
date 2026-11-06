@@ -26,7 +26,7 @@ export interface GameWord {
   collocations?: string[];
   pos?: string;
   cefr?: string;
-  /** Kutubxonadagi rasm (faqat image_to_word / word_to_image uchun). */
+  /** Kutubxonadagi rasm (hozir hech bir o'yin ishlatmaydi; eski sessiyalar uchun). */
   imageUrl?: string;
 }
 
@@ -34,20 +34,13 @@ export interface GameWord {
 // Katalog
 // ---------------------------------------------------------------------------
 export type GameKey =
-  | 'word_match'
-  | 'memory'
   | 'multiple_choice'
   | 'listen_choose'
   | 'listen_type'
-  | 'word_drop'
   | 'fill_gap'
   | 'sentence_builder'
   | 'definition_challenge'
   | 'synonym_antonym'
-  | 'speed_challenge'
-  | 'image_to_word'
-  | 'word_to_image'
-  | 'vocabulary_boss'
   | 'vocably_run'
   | 'word_tunnel'
   | 'word_defense';
@@ -88,21 +81,6 @@ const tm = (e: number | null, m: number | null, h: number | null, x: number | nu
 });
 
 export const GAME_CATALOG: GameDefinition[] = [
-  {
-    key: 'word_match',
-    title: "So'z juftligi",
-    description: "So'z ↔ tarjima juftliklarini toping",
-    priority: 'P0',
-    minTier: 'free',
-    icon: 'Link2',
-    skill: 'recall',
-    minWords: 4,
-    questionCount: cnt(2, 3, 3, 4),
-    timePerQuestionSec: tm(null, null, 60, 45),
-    lives: null,
-    instantFeedback: true,
-    needsAudio: false,
-  },
   {
     key: 'multiple_choice',
     title: 'Ko\'p variantli test',
@@ -164,36 +142,6 @@ export const GAME_CATALOG: GameDefinition[] = [
     needsAudio: true,
   },
   {
-    key: 'word_drop',
-    title: "So'z yomg'iri",
-    description: "Tushayotgan tarjimaga mos so'zni vaqtida yozing",
-    priority: 'P1',
-    minTier: 'standard',
-    icon: 'CloudRain',
-    skill: 'spelling',
-    minWords: 3,
-    questionCount: cnt(10, 12, 15, 18),
-    timePerQuestionSec: tm(14, 11, 8, 6),
-    lives: 3,
-    instantFeedback: false,
-    needsAudio: false,
-  },
-  {
-    key: 'memory',
-    title: 'Xotira kartalari',
-    description: "Yopiq kartalarni oching, juftliklarni toping",
-    priority: 'P1',
-    minTier: 'free',
-    icon: 'Grid',
-    skill: 'recall',
-    minWords: 4,
-    questionCount: cnt(2, 3, 3, 4),
-    timePerQuestionSec: tm(null, null, 90, 60),
-    lives: null,
-    instantFeedback: true,
-    needsAudio: false,
-  },
-  {
     key: 'sentence_builder',
     title: 'Jumla quruvchi',
     description: "Aralashgan so'zlardan to'g'ri jumla tuzing",
@@ -206,21 +154,6 @@ export const GAME_CATALOG: GameDefinition[] = [
     timePerQuestionSec: tm(null, null, 60, 45),
     lives: null,
     instantFeedback: true,
-    needsAudio: false,
-  },
-  {
-    key: 'speed_challenge',
-    title: 'Tezlik sinovi',
-    description: 'Vaqtga qarshi savollar',
-    priority: 'P1',
-    minTier: 'standard',
-    icon: 'Zap',
-    skill: 'recall',
-    minWords: 4,
-    questionCount: cnt(15, 20, 25, 30),
-    timePerQuestionSec: tm(8, 6, 5, 4),
-    lives: null,
-    instantFeedback: false,
     needsAudio: false,
   },
   {
@@ -252,51 +185,6 @@ export const GAME_CATALOG: GameDefinition[] = [
     lives: null,
     instantFeedback: true,
     needsAudio: false,
-  },
-  {
-    key: 'image_to_word',
-    title: "Rasm → so'z",
-    description: "Rasmga mos inglizcha so'zni toping",
-    priority: 'P2',
-    minTier: 'standard',
-    icon: 'Image',
-    skill: 'recall',
-    minWords: 4,
-    questionCount: cnt(6, 8, 10, 12),
-    timePerQuestionSec: tm(null, null, 20, 12),
-    lives: null,
-    instantFeedback: true,
-    needsAudio: false,
-  },
-  {
-    key: 'word_to_image',
-    title: "So'z → rasm",
-    description: "So'zga mos rasmni tanlang",
-    priority: 'P2',
-    minTier: 'standard',
-    icon: 'Images',
-    skill: 'recall',
-    minWords: 4,
-    questionCount: cnt(6, 8, 10, 12),
-    timePerQuestionSec: tm(null, null, 20, 12),
-    lives: null,
-    instantFeedback: true,
-    needsAudio: false,
-  },
-  {
-    key: 'vocabulary_boss',
-    title: 'Vocabulary Boss',
-    description: "Haftalik keng qamrovli sinov: ma'no, tinglash, imlo, kontekst, sinonim",
-    priority: 'P2',
-    minTier: 'premium',
-    icon: 'Crown',
-    skill: 'recall',
-    minWords: 8,
-    questionCount: cnt(25, 50, 50, 50),
-    timePerQuestionSec: tm(null, null, 30, 20),
-    lives: null,
-    instantFeedback: true,
-    needsAudio: true,
   },
   {
     // Flagship (TZ 2.0 §7): 3 lanes, a prompt overhead, one right word per gate. The round ends on
@@ -418,11 +306,6 @@ export interface GameQuestion {
   rights?: Array<{ id: string; text: string }>;
   timeLimitSec?: number | null;
   explanation: string;
-  /**
-   * Faqat 'memory_pairs': kartalarni ochganda juftlik mosligini mijozda darhol ko'rsatish uchun.
-   * (Bu foydalanuvchining o'z so'zlari — sir emas; yakuniy natija baribir SERVERda tekshiriladi.)
-   */
-  memoryMap?: Record<string, string>;
   /**
    * Typed flagship games (word_tunnel / word_defense): number of characters in the answer, shown as
    * empty slots. Only on easy/medium — never on hard/expert. It is not the answer, only its length.
@@ -619,48 +502,7 @@ function genMcWord(ctx: Ctx): GameQuestion | null {
   };
 }
 
-/** Rasm -> so'z: rasm ko'rsatiladi, to'g'ri inglizcha so'zni tanlash kerak. */
-function genImageToWord(ctx: Ctx): GameQuestion | null {
-  const { word, pool, rand, difficulty } = ctx;
-  const img = (word.imageUrl || '').trim();
-  if (!img) return null;
-  const others = pool.filter((p) => p.wordId !== word.wordId).map((p) => p.word);
-  const dis = pickDistractors([word.word], others, optionCountFor(difficulty) - 1, rand, difficulty === 'hard' || difficulty === 'expert', word.word);
-  if (dis.length < 2) return null;
-  const { options, answerId } = optionsFrom(word.word, dis, rand);
-  return {
-    ...base(ctx, 'image_word', 'choice', 'recall'),
-    prompt: "Bu rasm qaysi so'zni bildiradi?",
-    imageUrl: img,
-    options,
-    answer: answerId,
-    correctDisplay: word.word,
-  };
-}
 
-/** So'z -> rasm: variantlar rasm. Variant matni ("Rasm N") ekran o'qish dasturlari uchun va to'g'ri javobni ko'rsatish uchun. */
-function genWordToImage(ctx: Ctx): GameQuestion | null {
-  const { word, pool, rand, difficulty } = ctx;
-  const img = (word.imageUrl || '').trim();
-  if (!img) return null;
-  const cands = uniqueBy(
-    pool.filter((p) => p.wordId !== word.wordId && (p.imageUrl || '').trim() && (p.imageUrl || '').trim() !== img),
-    (p) => (p.imageUrl || '').trim()
-  );
-  if (cands.length < 2) return null;
-  const dis = sample(cands, Math.min(optionCountFor(difficulty) - 1, cands.length), rand);
-  const all = shuffle([{ url: img, ok: true }, ...dis.map((d) => ({ url: (d.imageUrl || '').trim(), ok: false }))], rand);
-  const options = all.map((o, i) => ({ id: `o${i + 1}`, text: `Rasm ${i + 1}`, imageUrl: o.url }));
-  const correct = options[all.findIndex((o) => o.ok)];
-  return {
-    ...base(ctx, 'word_image', 'choice', 'recall'),
-    prompt: word.word,
-    audioText: word.word,
-    options,
-    answer: correct.id,
-    correctDisplay: correct.text,
-  };
-}
 
 function genDefinition(ctx: Ctx): GameQuestion | null {
   const { word, pool, rand, difficulty } = ctx;
@@ -763,6 +605,8 @@ function genListenType(ctx: Ctx): GameQuestion | null {
   };
 }
 
+
+/** Uzbek meaning → type the English word (spell_drop); the typing games add their hints on top. */
 function genSpellDrop(ctx: Ctx): GameQuestion | null {
   const { word, difficulty } = ctx;
   const tr = word.translations.filter(Boolean);
@@ -798,37 +642,6 @@ function genSentenceBuild(ctx: Ctx): GameQuestion | null {
   };
 }
 
-/** `count` ta so'zdan juftlik savoli (match/memory). */
-function genPairs(ctxBase: Omit<Ctx, 'word'>, words: GameWord[], kind: 'match_pairs' | 'memory_pairs'): GameQuestion | null {
-  const { rand, difficulty, index, timeLimit } = ctxBase;
-  const usable = words.filter((w) => w.translations.some(Boolean));
-  if (usable.length < 3) return null;
-  const lefts = usable.map((w, i) => ({ id: `l${i + 1}`, text: w.word, wordId: w.wordId }));
-  const rightRaw = usable.map((w, i) => ({ id: `r${i + 1}`, text: pick(w.translations.filter(Boolean), rand)!, leftId: `l${i + 1}` }));
-  // bir xil tarjimali ikki so'z bo'lsa noaniqlik — rad etamiz
-  if (new Set(rightRaw.map((r) => norm(r.text))).size !== rightRaw.length) return null;
-  const answerMap: Record<string, string> = {};
-  rightRaw.forEach((r) => (answerMap[r.leftId] = r.id));
-  const first = usable[0];
-  return {
-    qid: `q${index + 1}`,
-    kind,
-    inputType: 'match',
-    skill: 'recall',
-    wordId: first.wordId,
-    categoryId: first.categoryId,
-    word: usable.map((w) => w.word).join(', '),
-    prompt: kind === 'memory_pairs' ? 'Kartalarni oching va juftliklarni toping' : "So'zlarni tarjimalari bilan juftlang",
-    lefts: shuffle(lefts, rand),
-    rights: shuffle(rightRaw.map((r) => ({ id: r.id, text: r.text })), rand),
-    timeLimitSec: timeLimit,
-    explanation: usable.map((w) => `${w.word} — ${w.translations[0]}`).join('; '),
-    answerMap,
-    ...(kind === 'memory_pairs' ? { memoryMap: answerMap } : {}),
-    correctDisplay: usable.map((w) => `${w.word} = ${rightRaw.find((r) => r.leftId === lefts.find((l) => l.wordId === w.wordId)!.id)!.text}`).join('; '),
-    difficulty,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Sessiya qurish
@@ -851,21 +664,16 @@ export interface BuiltSession {
   shortfall?: string;
 }
 
-const PAIR_SIZE: Record<Difficulty, number> = { easy: 4, medium: 5, hard: 6, expert: 6 };
 
 type Generator = (ctx: Ctx) => GameQuestion | null;
 
 const SIMPLE_GENERATORS: Record<string, Generator[]> = {
   multiple_choice: [genMcWord, genMcMeaning],
-  speed_challenge: [genMcMeaning, genMcWord],
   definition_challenge: [genDefinition],
   synonym_antonym: [genSynAnt],
   listen_choose: [genListenChoose],
   listen_type: [genListenType],
-  word_drop: [genSpellDrop],
   sentence_builder: [genSentenceBuild],
-  image_to_word: [genImageToWord],
-  word_to_image: [genWordToImage],
 };
 
 /** multiple_choice: easy → "so'zni tanlang" (mc_word), keyin ma'noni tanlash (TZ §8). */
@@ -966,7 +774,7 @@ export function maskWordIn(text: string, word: string): string {
   return out;
 }
 
-/** Uzbek meaning → type the English word (the Word Rain question, with the typed-game hints). */
+/** Uzbek meaning → type the English word, with the typed-game hints. */
 function genTypedMeaning(ctx: Ctx): GameQuestion | null {
   if (!typeableWord(ctx.word)) return null;
   const q = genSpellDrop(ctx);
@@ -1054,31 +862,6 @@ export function buildGameSession(opts: BuildOptions): BuiltSession {
   const timeLimit = def.timePerQuestionSec[difficulty];
   const count = def.questionCount[difficulty];
 
-  // Juftlik o'yinlari: har raundda PAIR_SIZE ta so'z.
-  if (opts.gameKey === 'word_match' || opts.gameKey === 'memory') {
-    const kind = opts.gameKey === 'memory' ? 'memory_pairs' : 'match_pairs';
-    const size = Math.min(PAIR_SIZE[difficulty], words.length);
-    if (words.length < 3) return { gameKey: opts.gameKey, difficulty, questions: [], shortfall: "Juftlik o'yini uchun kamida 3 ta tarjimali so'z kerak" };
-    const questions: GameQuestion[] = [];
-    let cursor = 0;
-    const order = shuffle(words, rand);
-    for (let r = 0; r < count; r++) {
-      let chunk: GameWord[] = [];
-      for (let i = 0; i < size; i++) chunk.push(order[(cursor + i) % order.length]);
-      cursor += size;
-      chunk = dedupeWords(chunk);
-      if (chunk.length < 3) chunk = order.slice(0, size);
-      const q = genPairs({ pool, difficulty, rand, index: questions.length, timeLimit }, chunk, kind);
-      if (q) questions.push(q);
-    }
-    return { gameKey: opts.gameKey, difficulty, questions };
-  }
-
-  // Boss: bo'limlar bo'yicha kompozitsiya.
-  if (opts.gameKey === 'vocabulary_boss') {
-    return buildBoss(def, difficulty, words, pool, rand, timeLimit);
-  }
-
   const gens = generatorsFor(opts.gameKey, difficulty, rand);
   const questions: GameQuestion[] = [];
   if (!words.length || !gens.length) return { gameKey: opts.gameKey, difficulty, questions };
@@ -1128,38 +911,6 @@ export function buildGameSession(opts: BuildOptions): BuiltSession {
   return { gameKey: opts.gameKey, difficulty, questions: final, shortfall };
 }
 
-function buildBoss(def: GameDefinition, difficulty: Difficulty, words: GameWord[], pool: GameWord[], rand: Rand, timeLimit: number | null): BuiltSession {
-  const total = def.questionCount[difficulty];
-  const perSection = Math.max(1, Math.floor(total / 5));
-  const sections: Array<{ name: string; gens: Generator[] }> = [
-    { name: 'meaning', gens: [genMcMeaning, genMcWord] },
-    { name: 'listening', gens: [genListenChoose] },
-    { name: 'spelling', gens: [genListenType, genSpellDrop] },
-    { name: 'context', gens: [(c) => genFill(c, difficulty === 'hard' || difficulty === 'expert'), (c) => genFill(c, false), genSentenceBuild] },
-    { name: 'synonym', gens: [genSynAnt, genDefinition, genMcMeaning] },
-  ];
-  const questions: GameQuestion[] = [];
-  if (!words.length) return { gameKey: 'vocabulary_boss', difficulty, questions };
-  let cursor = 0;
-  for (const section of sections) {
-    let got = 0;
-    let guard = 0;
-    while (got < perSection && guard++ < perSection * Math.max(4, words.length) * 2) {
-      const w = words[cursor % words.length];
-      cursor += 1;
-      for (const gen of section.gens) {
-        const q = gen({ word: w, pool, difficulty, rand, index: questions.length, timeLimit });
-        if (q) {
-          questions.push(q);
-          got += 1;
-          break;
-        }
-      }
-    }
-  }
-  const shortfall = questions.length < perSection * 5 ? `Boss uchun ${questions.length}/${perSection * 5} ta savol tuzildi` : undefined;
-  return { gameKey: 'vocabulary_boss', difficulty, questions, shortfall };
-}
 
 // ---------------------------------------------------------------------------
 // Mavjudlik: foydalanuvchi so'zlari bu o'yin uchun yetarlimi.
@@ -1180,17 +931,13 @@ export function availabilityFor(def: GameDefinition, words: GameWord[]): Availab
   if (def.key === 'synonym_antonym' && words.filter((w) => (w.synonymsEn?.length || 0) + (w.antonyms?.length || 0) > 0).length < 4) {
     return { available: false, reason: "Kamida 4 ta so'zda sinonim/antonim bo'lishi kerak (AI bilan boyiting)" };
   }
-  if (def.key === 'image_to_word' || def.key === 'word_to_image') {
-    const distinct = new Set(words.filter((w) => (w.imageUrl || '').trim()).map((w) => (w.imageUrl || '').trim()));
-    if (distinct.size < 4) return { available: false, reason: "Kamida 4 ta so'zda rasm bo'lishi kerak (kutubxonadagi rasmli so'zlarni qo'shing)" };
-  }
   if (def.key === 'sentence_builder' && words.filter((w) => (w.examples || []).some((e) => tokenizeSentence(e.en || '').length >= 4)).length < 3) {
     return { available: false, reason: "Kamida 3 ta so'zda misol gap bo'lishi kerak" };
   }
   if (def.key === 'fill_gap' && words.filter((w) => (w.examples || []).some((e) => findWordInSentence(e.en || '', w.word))).length < 4) {
     return { available: false, reason: "Kamida 4 ta so'zda misol gap bo'lishi kerak (AI bilan boyiting)" };
   }
-  const needsTranslations = ['word_drop', 'word_match', 'memory', 'speed_challenge', 'word_tunnel', 'word_defense'].includes(def.key);
+  const needsTranslations = ['word_tunnel', 'word_defense'].includes(def.key);
   if (needsTranslations && words.filter((w) => w.translations.some(Boolean)).length < def.minWords) {
     return { available: false, reason: "Tarjimali so'zlar yetarli emas" };
   }
