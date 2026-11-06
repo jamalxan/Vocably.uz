@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X, Send, Forward, Trash2, Copy, Upload } from 'lucide-react';
+import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X, Send, Forward, Trash2, Copy, Upload, Phone, Video, EllipsisVertical, User } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { useT } from '@/context/LocaleContext';
+import { useCall } from '@/context/CallContext';
 import { formatDateLocale } from '@/lib/uzDate';
 import { formatLastSeen, formatMuteUntil, isOnline, useLiveClock } from '@/lib/presence';
 import { TYPING_LABEL, REPLY_TYPE_LABEL } from '@/lib/chatConstants';
@@ -18,6 +19,8 @@ import MediaViewer from './MediaViewer';
 import Avatar from '@/components/avatar/Avatar';
 import MuteDurationModal from './MuteDurationModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import ActionSheet from './ActionSheet';
+import CallbackSheet from './CallbackSheet';
 
 const HEADER_BTN =
   'inline-flex items-center justify-center w-11 h-11 -my-1.5 md:w-auto md:h-auto md:my-0 md:p-1.5 rounded-lg transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
@@ -87,6 +90,9 @@ export default function ConversationView({ onBack }) {
     deleteMessage,
   } = useChat();
   const { chatUserId: myId } = useApp();
+  const { canCall, unavailableKey, startCall, pendingCallback, consumeCallback } = useCall();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef(null);
   const listRef = useRef(null);
   const bottomRef = useRef(null);
   const prevLenRef = useRef(0);
@@ -289,6 +295,39 @@ export default function ConversationView({ onBack }) {
     setDeleteSel(false);
     setSelection(null);
   };
+  // ⋮ menyusi: sarlavhadagi to'rtta almashtirgich + profil (CALLS_SPEC §10.9), yorliqlari avvalgidek.
+  const moreItems = [
+    {
+      key: 'notify-online',
+      label: activeConversation.notifyOnline ? t('cv.notifyOnOff') : t('cv.notifyOnOn'),
+      icon: UserCheck,
+      pressed: !!activeConversation.notifyOnline,
+      onSelect: () => toggleNotifyOnline(activeConversation.id, !activeConversation.notifyOnline),
+    },
+    {
+      key: 'tg-notify',
+      label: activeConversation.tgMessageNotify ? t('cv.tgOff') : t('cv.tgOn'),
+      icon: Send,
+      pressed: !!activeConversation.tgMessageNotify,
+      onSelect: async () => {
+        const res = await toggleTgMessageNotify(activeConversation.id, !activeConversation.tgMessageNotify);
+        if (res?.error) alert(ts(res.error));
+      },
+    },
+    {
+      key: 'mute',
+      label: activeConversation.muted ? (muteUntilText ? `${t('cv.unmute')} · ${muteUntilText}` : t('cv.unmute')) : t('cv.mute'),
+      icon: activeConversation.muted ? BellOff : Bell,
+      pressed: !!activeConversation.muted,
+      onSelect: handleToggleMute,
+    },
+    { key: 'profile', label: t('cv.profileAria'), icon: User, onSelect: () => setProfileOpen(true) },
+    { key: 'block', label: t('cv.blockAria'), icon: ShieldOff, danger: true, onSelect: () => setBlockOpen(true) },
+  ];
+  // Bildirishnomadagi "qayta qo'ng'iroq" havolasi (?call=) aynan shu suhbat uchun bo'lsa.
+  const callbackOpen =
+    !!pendingCallback && !!activeConversation.otherUser?.username && pendingCallback.username.toLowerCase() === String(activeConversation.otherUser.username).toLowerCase();
+
   const openMedia = (messageId) => {
     const index = mediaItems.findIndex((it) => it.id === String(messageId));
     if (index >= 0) setViewer({ index });
@@ -305,7 +344,7 @@ export default function ConversationView({ onBack }) {
           <button type="button" onClick={copySelected} disabled={!selectedMessages.some((m) => m.text)} aria-label={t('mb.copy')} title={t('mb.copy')} className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40`}>
             <Copy size={17} />
           </button>
-          <button type="button" onClick={() => setForwardSel(true)} disabled={!selectedIds.size} aria-label={t('mb.forward')} title={t('mb.forward')} className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40`}>
+          <button type="button" onClick={() => setForwardSel(true)} disabled={!selectedIds.size || selectedMessages.some((m) => m.type === 'call')} aria-label={t('mb.forward')} title={t('mb.forward')} className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40`}>
             <Forward size={17} />
           </button>
           <button type="button" onClick={() => setDeleteSel(true)} disabled={!selectedIds.size} aria-label={t('ch.delete')} title={t('ch.delete')} className={`${HEADER_BTN} text-muted hover:text-danger disabled:opacity-40`}>
@@ -321,29 +360,43 @@ export default function ConversationView({ onBack }) {
             <Avatar userId={activeConversation.otherUser?.id} photoId={activeConversation.otherUser?.photoId} name={activeConversation.otherUser?.nickname || activeConversation.otherUser?.name} username={activeConversation.otherUser?.username} size={38} online={online} ringClass="border-surface" />
           </button>
           <button onClick={() => setProfileOpen(true)} className="min-w-0 flex-1 text-left ml-1.5 md:ml-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" title={t('cv.profileTitle')}>
-            <p className="text-sm font-semibold text-ink truncate hover:underline">{activeConversation.otherUser?.nickname || `@${activeConversation.otherUser?.username}`}</p>
-            {typingKind ? <p className="text-[11px] text-accent italic truncate">{ts(TYPING_LABEL[typingKind] || TYPING_LABEL.text)}</p> : lastSeenText && <p className="text-[11px] text-muted truncate">{lastSeenText}</p>}
-          </button>
-          <button onClick={() => toggleNotifyOnline(activeConversation.id, !activeConversation.notifyOnline)} title={activeConversation.notifyOnline ? t('cv.notifyOnOff') : t('cv.notifyOnOn')} aria-label={activeConversation.notifyOnline ? t('cv.notifyOnOff') : t('cv.notifyOnOn')} className={`${HEADER_BTN} ${activeConversation.notifyOnline ? 'text-accent' : 'text-muted hover:text-accent'}`}>
-            <UserCheck size={16} />
+            <p className="text-[15px] font-semibold text-ink truncate hover:underline">{activeConversation.otherUser?.nickname || `@${activeConversation.otherUser?.username}`}</p>
+            {typingKind ? <p className="text-xs text-accent italic truncate">{ts(TYPING_LABEL[typingKind] || TYPING_LABEL.text)}</p> : lastSeenText && <p className="text-xs text-muted truncate">{lastSeenText}</p>}
           </button>
           <button
-            onClick={async () => {
-              const res = await toggleTgMessageNotify(activeConversation.id, !activeConversation.tgMessageNotify);
-              if (res?.error) alert(ts(res.error));
-            }}
-            title={activeConversation.tgMessageNotify ? t('cv.tgOff') : t('cv.tgOn')}
-            aria-label={activeConversation.tgMessageNotify ? t('cv.tgOff') : t('cv.tgOn')}
-            aria-pressed={!!activeConversation.tgMessageNotify}
-            className={`${HEADER_BTN} ${activeConversation.tgMessageNotify ? 'text-accent' : 'text-muted hover:text-accent'}`}
+            type="button"
+            onClick={() => startCall({ conversationId: String(activeConversation.id), kind: 'audio', peer: activeConversation.otherUser })}
+            disabled={!canCall}
+            aria-label={t('cv.callVoice')}
+            title={canCall ? t('cv.callVoice') : t(unavailableKey || 'cv.callUnavailable')}
+            data-testid="call-audio-button"
+            className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40 disabled:hover:text-muted`}
           >
-            <Send size={16} />
+            <Phone size={17} />
           </button>
-          <button onClick={handleToggleMute} title={activeConversation.muted ? muteUntilText || t('cv.unmute') : t('cv.mute')} aria-label={activeConversation.muted ? t('cv.unmute') : t('cv.mute')} className={`${HEADER_BTN} text-muted hover:text-accent`}>
-            {activeConversation.muted ? <BellOff size={16} /> : <Bell size={16} />}
+          <button
+            type="button"
+            onClick={() => startCall({ conversationId: String(activeConversation.id), kind: 'video', peer: activeConversation.otherUser })}
+            disabled={!canCall}
+            aria-label={t('cv.callVideo')}
+            title={canCall ? t('cv.callVideo') : t(unavailableKey || 'cv.callUnavailable')}
+            data-testid="call-video-button"
+            className={`${HEADER_BTN} text-muted hover:text-accent disabled:opacity-40 disabled:hover:text-muted`}
+          >
+            <Video size={17} />
           </button>
-          <button onClick={() => setBlockOpen(true)} title={t('cv.block')} aria-label={t('cv.blockAria')} className={`${HEADER_BTN} text-muted hover:text-danger`}>
-            <ShieldOff size={16} />
+          <button
+            ref={moreRef}
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-label={t('cv.moreAria')}
+            title={t('cv.moreAria')}
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+            data-testid="chat-more-button"
+            className={`${HEADER_BTN} text-muted hover:text-accent`}
+          >
+            <EllipsisVertical size={17} />
           </button>
         </div>
       )}
@@ -420,6 +473,18 @@ export default function ConversationView({ onBack }) {
       <Composer key={activeConversation.id} />
 
       <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <ActionSheet open={moreOpen} title={t('cv.moreAria')} items={moreItems} onClose={() => setMoreOpen(false)} anchorRef={moreRef} testid="chat-more-menu" />
+      <CallbackSheet
+        open={callbackOpen}
+        kind={pendingCallback?.kind}
+        disabled={!canCall}
+        disabledTitle={!canCall && unavailableKey ? t(unavailableKey) : ''}
+        onPick={(kind) => {
+          consumeCallback();
+          startCall({ conversationId: String(activeConversation.id), kind, peer: activeConversation.otherUser });
+        }}
+        onClose={consumeCallback}
+      />
       <MuteDurationModal open={muteModalOpen} onSelect={handleSelectMuteDuration} onCancel={() => setMuteModalOpen(false)} />
       <ConfirmModal open={blockOpen} title={t('cv.blockTitle')} message={t('cv.blockMsg', { u: activeConversation.otherUser?.username || t('ch.user') })} confirmLabel={t('cv.blockConfirm')} onConfirm={handleBlock} onCancel={() => setBlockOpen(false)} />
       <ForwardMessageModal

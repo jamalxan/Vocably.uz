@@ -28,12 +28,14 @@ import { findSticker } from '@/lib/stickers';
 import { useChat } from '@/context/ChatContext';
 import { isOnline } from '@/lib/presence';
 import { REPLY_TYPE_LABEL } from '@/lib/chatConstants';
+import { PAUSE_MEDIA_EVENT, pauseOtherMedia } from '@/lib/chat/mediaControl';
 import { parseMessageFormatting } from '@/lib/chatFormatting';
 import { albumRows } from '@/lib/chat/albums';
 import { formatBytes, fileExtension } from '@/lib/chat/mediaMeta';
 import DeleteMessageModal from './DeleteMessageModal';
 import ForwardMessageModal from './ForwardMessageModal';
 import ReportReasonModal from './ReportReasonModal';
+import CallBubble from './CallBubble';
 
 // Message bubbles (Telegram parity): albums, local previews with upload progress, file cards with
 // name/size, voice with waveform + speed, forwarded label, reply quote with thumbnail, swipe-to-reply,
@@ -292,12 +294,6 @@ function RoundVideo({ url, viewRef }) {
   );
 }
 
-function pauseOtherMedia(current) {
-  document.querySelectorAll('[data-chat-media]').forEach((el) => {
-    if (el !== current && !el.paused) el.pause();
-  });
-}
-
 function fmtTime(sec) {
   if (!Number.isFinite(sec) || sec < 0) return '0:00';
   const s = Math.floor(sec);
@@ -545,6 +541,15 @@ function renderFormattedText(text) {
     return <Fragment key={i}>{linkifyText(tok.value)}</Fragment>;
   });
 }
+// Qo'ng'iroq boshlanganda (CallProvider PAUSE_MEDIA_EVENT yuboradi) barcha chat mediasi to'xtaydi.
+// Bitta global tinglovchi — har bir pufakcha uchun alohida emas.
+let pauseListenerInstalled = false;
+function installPauseListener() {
+  if (pauseListenerInstalled || typeof window === 'undefined') return;
+  pauseListenerInstalled = true;
+  window.addEventListener(PAUSE_MEDIA_EVENT, () => pauseOtherMedia(null));
+}
+
 function formatMessageTime(dateStr) {
   const d = new Date(dateStr);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -584,6 +589,9 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
   const pressTimer = useRef(null);
   const longPressFired = useRef(false);
   const swipeStart = useRef(null);
+  useEffect(() => {
+    installPauseListener();
+  }, []);
 
   const sticker = message.type === 'sticker' ? stickerById?.get(String(message.stickerId)) || findSticker(message.stickerId) : null;
   const deleted = !!message.deletedForEveryone;
@@ -596,6 +604,8 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
   const canReport = !isMine && !reported && !isPending;
   const isPinned = !isPending && (activeConversation?.pinnedMessageIds || []).some((id) => String(id) === messageIdStr);
   const caption = album ? messages.find((m) => m.text)?.text || '' : message.text;
+  // Qo'ng'iroq yozuvi (CALLS_SPEC §10.8): javob/nusxa/uzatish/qadash/tahrir/shikoyat yo'q, swipe va ticks yo'q.
+  const isCall = message.type === 'call' && !deleted;
 
   const submitReport = async (category, note) => {
     setReportOpen(false);
@@ -626,7 +636,12 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
   };
   const replyTarget = () => startReply({ ...message, mediaKey: ['image', 'video'].includes(message.type) && !message.media?.round ? message.media?.key : null });
 
-  const actions = [
+  const actions = isCall
+    ? [
+        { key: 'select', label: t('ch.select'), Icon: CheckSquare, onClick: () => onEnterSelection?.(messages) },
+        { key: 'delete', label: t('ch.delete'), Icon: Trash2, onClick: () => setDeleteOpen(true), danger: true },
+      ]
+    : [
     { key: 'reply', label: t('mb.reply'), Icon: Reply, onClick: replyTarget },
     ...(caption ? [{ key: 'copy', label: t('mb.copy'), Icon: Copy, onClick: handleCopyText }] : []),
     { key: 'forward', label: t('mb.forward'), Icon: Forward, onClick: () => setForwardOpen(true) },
@@ -635,7 +650,7 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
     ...(canEdit ? [{ key: 'edit', label: t('mb.edit'), Icon: Pencil, onClick: () => startEditMessage(message) }] : []),
     { key: 'delete', label: t('ch.delete'), Icon: Trash2, onClick: () => setDeleteOpen(true), danger: true },
     ...(canReport ? [{ key: 'report', label: t('mb.report'), Icon: Flag, onClick: () => setReportOpen(true) }] : []),
-  ];
+      ];
 
   // Right-click / long-press → menu; horizontal swipe on touch → reply (Telegram gesture, with the
   // visible "..." button as the always-available alternative).
@@ -654,6 +669,11 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
   };
   const onPointerMove = (e) => {
     if (!swipeStart.current || e.pointerType === 'mouse') return;
+    if (isCall) {
+      // swipe-to-reply yo'q; faqat siljish uzoq bosishni bekor qiladi
+      if (Math.hypot(e.clientX - swipeStart.current.x, e.clientY - swipeStart.current.y) > 8) clearTimeout(pressTimer.current);
+      return;
+    }
     const dx = e.clientX - swipeStart.current.x;
     const dy = Math.abs(e.clientY - swipeStart.current.y);
     if (dy > 24) {
@@ -708,6 +728,9 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
           {message.type === 'video' && <VideoBubble message={message} onOpen={() => openMedia(message)} />}
           {message.type === 'voice' && <VoiceBubble message={message} isMine={isMine} />}
           {message.type === 'file' && <FileBubble message={message} isMine={isMine} />}
+          {message.type === 'call' && (
+            <CallBubble message={message} isMine={isMine} peer={activeConversation?.otherUser || null} timeLabel={formatMessageTime(message.createdAt)} selectionMode={selectionMode} />
+          )}
         </>
       )}
       {caption && message.type !== 'text' && <p className="whitespace-pre-wrap [overflow-wrap:anywhere] font-chat mt-1.5">{renderFormattedText(caption)}</p>}
@@ -757,7 +780,7 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
         </div>
         <span className="flex items-center gap-1 text-[11px] text-muted mt-0.5 px-1 select-none">
           {formatMessageTime(message.createdAt)}
-          {isMine && !deleted && <Ticks message={messages.find((m) => m._status) || message} otherOnline={otherOnline} t={t} retryMessage={retryMessage} />}
+          {isMine && !deleted && !isCall && <Ticks message={messages.find((m) => m._status) || message} otherOnline={otherOnline} t={t} retryMessage={retryMessage} />}
         </span>
       </div>
       {selectionMode && isMine && (

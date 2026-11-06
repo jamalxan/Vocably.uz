@@ -256,6 +256,17 @@ export async function POST(req, props) {
     // keyin ham tirik saqlaydi — 2026-09-29 dagi "fire-and-forget push yo'qolardi" muammosi
     // qaytmaydi. Xatti-harakat o'zgarmagan: o'sha uch yetkazish, o'sha shartlar, xatolar
     // faqat log qilinadi (xabar allaqachon saqlangan).
+    const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
+    // G-3 — doimiy (`mutedBy`) VA muddatli (`mutedUntil`, hali tugamagan) mute'ni ham hisobga oladi
+    // (src/lib/chatConstants.js#isConversationMuted).
+    const recipientMuted = isConversationMuted(convo, otherId);
+    // PARITY_PLAN WP1 — qabul qiluvchining ilova ichidagi toast'i uchun: kim yozdi (uning shu
+    // odamga qo'ygan taxallusi yoki @username) va suhbat ovozsizmi (`silent` -> toast yo'q).
+    const recipientNick = convo.nicknames?.get ? convo.nicknames.get(String(otherId)) : convo.nicknames?.[String(otherId)];
+    const liveMeta = {
+      sender: { id: String(user._id), username: user.username || null, label: recipientNick || senderLabel },
+      silent: recipientMuted,
+    };
     const realtimePayload = {
       id: message._id,
       conversationId: convo._id,
@@ -275,11 +286,9 @@ export async function POST(req, props) {
     // yuborilmaydi; xabarning o'zi (realtime/poll orqali) odatdagidek yetib boradi.
     // Ilova ichidagi qo'ng'iroq belgisida (Notification hujjati) chat xabarlari uchun
     // ATAYLAB bildirishnoma yaratilmaydi — buning o'rniga Telegram orqali xabar boradi.
-    const senderLabel = user.username ? `@${user.username}` : user.name || 'Foydalanuvchi';
-    const recipientMuted = isConversationMuted(convo, otherId);
     const pushUrl = user.username ? `/app/friends/${user.username}` : '/app/friends';
     after(async () => {
-      const deliveries = [pushNewMessage(otherId, String(convo._id), realtimePayload)];
+      const deliveries = [pushNewMessage(otherId, String(convo._id), realtimePayload, liveMeta)];
       if (!recipientMuted) {
         deliveries.push(sendPushToUser(otherId, { title: senderLabel, body: preview, url: pushUrl }));
       }

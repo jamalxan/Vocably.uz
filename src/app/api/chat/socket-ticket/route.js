@@ -20,6 +20,7 @@ export async function POST(req) {
     const { error, status, user } = await requireChatUser(req);
     if (error) return NextResponse.json({ error }, { status });
 
+    // Har ulanish urinishi yangi chipta oladi (CALLS_SPEC §3.3) — limit 30 -> 60.
     if (!(await checkRateLimit(user._id, 'socket-ticket', 60))) {
       return NextResponse.json({ error: "Juda ko'p so'rov" }, { status: 429 });
     }

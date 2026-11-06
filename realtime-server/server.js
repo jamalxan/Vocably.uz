@@ -198,11 +198,18 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
 
   // Next.js API xabarni Mongo'ga yozgandan keyin shu yerga chaqiradi.
   app.post('/internal/emit', requireInternalSecret, (req, res) => {
-    const { recipientId, conversationId, message } = req.body || {};
+    const { recipientId, conversationId, message, sender, silent } = req.body || {};
     if (!recipientId || !conversationId || !message) {
       return res.status(400).json({ error: 'recipientId, conversationId, message kerak' });
     }
-    io.to(`user:${recipientId}`).emit('message:new', { conversationId, message });
+    // `sender` (kim yozdi: id/username/taxallus) va `silent` (suhbat ovozsiz) — ilova ichidagi
+    // toast uchun (PARITY_PLAN WP1); berilmasa client eski usulda ro'yxatdan topadi.
+    io.to(`user:${recipientId}`).emit('message:new', {
+      conversationId,
+      message,
+      ...(sender && typeof sender === 'object' ? { sender } : {}),
+      ...(typeof silent === 'boolean' ? { silent } : {}),
+    });
     return res.json({ ok: true });
   });
 

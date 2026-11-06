@@ -6,7 +6,10 @@
 // `recipientId` — xabarni ko'rishi kerak bo'lgan foydalanuvchi. realtime-server
 // bu userId asosidagi shaxsiy socket "xona"siga (`user:{id}`) push qiladi — shu
 // tufayli server suhbat a'zoligini bilishi shart emas, faqat kimga yuborishni biladi.
-export async function pushNewMessage(recipientId, conversationId, message) {
+// `extra` (ixtiyoriy) — `{ sender: { id, username, label }, silent }` (PARITY_PLAN WP1: qabul
+// qiluvchining ilova ichidagi toast'i). realtime-server uni `message:new` payload'iga qo'shib yuboradi;
+// eski server bu maydonlarni tashlab yuborsa ham klient suhbat ro'yxatidan o'zi topadi.
+export async function pushNewMessage(recipientId, conversationId, message, extra = null) {
   const url = process.env.REALTIME_INTERNAL_URL;
   const secret = process.env.REALTIME_SHARED_SECRET;
   if (!url || !secret) return;
@@ -17,7 +20,7 @@ export async function pushNewMessage(recipientId, conversationId, message) {
     await fetch(`${url.replace(/\/$/, '')}/internal/emit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': secret },
-      body: JSON.stringify({ recipientId: String(recipientId), conversationId, message }),
+      body: JSON.stringify({ recipientId: String(recipientId), conversationId, message, ...(extra || {}) }),
       signal: controller.signal,
     });
     clearTimeout(timeout);

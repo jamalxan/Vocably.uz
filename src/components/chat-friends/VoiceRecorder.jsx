@@ -4,6 +4,7 @@ import { Mic, Square, X } from 'lucide-react';
 import { mediaErrorMessage } from '@/lib/mediaError';
 import { useChat } from '@/context/ChatContext';
 import { useT } from '@/context/LocaleContext';
+import { useCall } from '@/context/CallContext';
 import { buildWaveform } from '@/lib/chat/mediaMeta';
 
 // Ovozli xabar uchun yuqori chegara — cheksiz yozuv yuklashda xato bilan yo'qolmasin.
@@ -166,6 +167,9 @@ export default function VoiceRecorder({ onRecorded, onCancel }) {
 
 export function VoiceRecorderButton({ onRecorded, onActiveChange }) {
   const { t } = useT();
+  // iOS bir vaqtda bitta yozib olishga ruxsat beradi — qo'ng'iroq paytida yozib bo'lmaydi.
+  const callStatus = useCall().call.status;
+  const inCall = callStatus !== 'idle' && callStatus !== 'elsewhere';
   const [active, setActiveState] = useState(false);
   const setActive = (v) => {
     setActiveState(v);
@@ -176,9 +180,10 @@ export function VoiceRecorderButton({ onRecorded, onActiveChange }) {
       <button
         type="button"
         onClick={() => setActive(true)}
-        title={t('ch.voiceMsg')}
+        disabled={inCall}
+        title={inCall ? t('call.busyToast') : t('ch.voiceMsg')}
         aria-label={t('ch.voiceRecordAria')}
-        className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors"
+        className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-muted hover:text-accent hover:bg-bg rounded-lg transition-colors disabled:opacity-40 disabled:hover:text-muted"
       >
         <Mic size={18} />
       </button>

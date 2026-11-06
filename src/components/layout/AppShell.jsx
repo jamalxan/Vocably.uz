@@ -11,6 +11,8 @@ import IconButton from '@/components/ui/IconButton';
 import NotificationBell from '@/components/NotificationBell';
 import Avatar from '@/components/avatar/Avatar';
 import AiPanel from './AiPanel';
+import NavBadge from './NavBadge';
+import { useRealtime } from '@/context/RealtimeContext';
 import { SIDEBAR_NAV, BOTTOM_NAV, LUGAT_MODES, isNavActive } from './navConfig';
 import { decideTabNavigation, readBase, writeBase } from '@/lib/tabHistory';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
@@ -32,6 +34,9 @@ export default function AppShell({ children }) {
   const router = useRouter();
   const { displayName, username, logout, chatAccess, chatRole, chatUserId, myPhotoId } = useApp();
   const { t } = useT();
+  // PARITY_PLAN WP1 — "Friends" elementidagi o'qilmaganlar belgisi (RealtimeProvider, har qanday sahifada).
+  const { unread } = useRealtime();
+  const badgeFor = (item) => (item.badge === 'chatUnread' ? { count: unread.total, mutedOnly: unread.total === 0 && unread.mutedTotal > 0 } : null);
 
   // TCH-01/02 — "O'qituvchi paneli" yorlig'i xuddi "Do'stlar" (requiresChatAccess)
   // kabi, faqat mos rolga ega foydalanuvchilarga ko'rinadi. `chatRole` —
@@ -138,6 +143,7 @@ export default function AppShell({ children }) {
                   >
                     <item.icon size={16} />
                     <span className="flex-1 text-left">{item.label}</span>
+                    {badgeFor(item) && <NavBadge {...badgeFor(item)} />}
                     {item.key === 'lugat' && (
                       <ChevronRight size={14} className={`transition-transform ${onLugat && lugatOpen ? 'rotate-90' : ''}`} />
                     )}
@@ -205,7 +211,10 @@ export default function AppShell({ children }) {
                   aria-current={active ? 'page' : undefined}
                   onClick={() => setRailOpen(false)}
                 >
-                  <item.icon size={16} className="flex-shrink-0" />
+                  <span className="relative flex-shrink-0">
+                    <item.icon size={16} />
+                    {badgeFor(item) && <NavBadge {...badgeFor(item)} className="absolute -top-2 -right-2.5" />}
+                  </span>
                   <span className={railLabelClass}>{item.label}</span>
                 </Link>
               );
@@ -243,7 +252,10 @@ export default function AppShell({ children }) {
                 active ? 'text-accent font-semibold' : 'text-on-primary/55'
               }`}
             >
-              <item.icon size={20} />
+              <span className="relative">
+                <item.icon size={20} />
+                {badgeFor(item) && <NavBadge {...badgeFor(item)} className="absolute -top-1 -right-1 translate-x-1/2" />}
+              </span>
               {item.label}
             </Link>
           );

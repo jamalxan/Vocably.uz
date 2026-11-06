@@ -20,6 +20,17 @@ describe('i18n kalitlari', () => {
     }
   });
 
+  it('ru (qisman, LOCALES’da yo‘q): har bir kalit en’da bor, o‘rinbosarlar mos, matn bo‘sh emas', () => {
+    expect(LOCALES).not.toContain('ru');
+    const ru = (MESSAGES as any).ru as Record<string, string>;
+    expect(Object.keys(ru).length).toBeGreaterThan(0);
+    for (const [k, v] of Object.entries(ru)) {
+      expect(base, `ru:${k} en'da yo'q`).toContain(k);
+      expect(v.trim().length, `ru:${k} bo'sh`).toBeGreaterThan(0);
+      expect(placeholders(v), `ru:${k} o'rinbosarlari`).toEqual(placeholders((MESSAGES.en as any)[k]));
+    }
+  });
+
   it("o'zbekcha matnlar haqiqatan tarjima (inglizcha nusxa emas) — ko'rinadigan matnlarda", () => {
     const same = base.filter((k) => (MESSAGES.uz as any)[k] === (MESSAGES.en as any)[k] && /[a-z]{4,}/i.test((MESSAGES.en as any)[k]));
     // Nomlar/atamalar (Telegram, Premium…) ikkala tilda bir xil bo'lishi mumkin — ularning ulushi kichik bo'lishi kerak.
