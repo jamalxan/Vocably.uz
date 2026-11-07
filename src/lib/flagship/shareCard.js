@@ -31,6 +31,17 @@ const T = {
     baseFell: 'Base fell',
     baseHeld: 'Base held',
   },
+  ru: {
+    run: { title: 'Vocably Run', unit: 'очков', stats: ['Верно', 'Точность', 'Комбо', 'Секунды'], cta: 'Сможешь побить?' },
+    speak: { title: 'Говори или падай', unit: 'секунд продержался', stats: ['Паузы', 'Самая длинная пауза', 'Филлеры', 'Слов/мин'], cta: 'Сколько продержишься ты?' },
+    tunnel: { title: 'Туннель слов', unit: 'очков', stats: ['Верно', 'Точность', 'Комбо', 'Букв/мин'], cta: 'Сможешь побить?' },
+    defense: { title: 'Word Defense', unit: 'очков', stats: ['Уничтожено', 'Точность', 'Комбо', 'Осталось HP'], cta: 'Удержишь базу?' },
+    win: 'Получилось!',
+    fell: 'Я упал',
+    stopped: 'Остановил',
+    baseFell: 'База пала',
+    baseHeld: 'База устояла',
+  },
 };
 
 /** Card content from a game result. `game`: 'run' | 'speak' | 'tunnel' | 'defense'. */
