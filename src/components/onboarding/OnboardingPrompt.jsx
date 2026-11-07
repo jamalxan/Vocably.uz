@@ -15,6 +15,7 @@ import { claimGuestMissed } from '@/lib/flagship/client';
 const COPY = {
   uz: { title: 'Shaxsiy rejangizni oling', body: "7 ta savol, 2 daqiqa — imtihon sanangiz va kunlik vaqtingizga mos reja.", cta: 'Boshlash' },
   en: { title: 'Get your personal plan', body: '7 questions, 2 minutes — a plan sized to your exam date and daily time.', cta: 'Start' },
+  ru: { title: 'Получите личный план', body: '7 вопросов, 2 минуты — план под дату экзамена и ваше время в день.', cta: 'Начать' },
 };
 
 function readStored() {

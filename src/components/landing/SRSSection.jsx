@@ -27,6 +27,16 @@ const COPY = {
     daySuffix: 'd',
     stages: ['Flashcard', 'Reading', 'Listening', 'Speaking / Writing'],
   },
+  ru: {
+    eyebrow: 'Интервальное повторение',
+    title: 'Как Vocably помогает запоминать слова?',
+    body: 'Новое слово стирается из памяти за несколько дней. Vocably показывает его снова прямо перед тем, как вы бы его забыли, — после каждого повторения кривая снижается медленнее, пока слово не перейдёт в долговременную память.',
+    legendPlain: 'Обычное заучивание',
+    legendSrs: 'Vocably SRS',
+    chartLabel: 'Сравнение кривой забывания и кривой повторений SRS',
+    daySuffix: 'д',
+    stages: ['Карточка', 'Reading', 'Listening', 'Speaking / Writing'],
+  },
 };
 
 // Chart geometry — retention over 7 days.

@@ -32,6 +32,16 @@ const COPY = {
     lang: 'Site language',
     rights: 'All rights reserved.',
   },
+  ru: {
+    about: 'Платформа для изучения английского для узбекоязычных учеников — словарный запас строится на научно обоснованной системе интервального повторения.',
+    columns: [
+      { title: 'Учёба', links: ['Попробовать бесплатно', 'Словарь', 'Блог'] },
+      { title: 'IELTS', links: ['Гид по IELTS', 'Калькулятор band', 'Mock-тест онлайн', 'Reading', 'Writing'] },
+      { title: 'Аккаунт', links: ['Войти', 'Регистрация', 'Цены'] },
+    ],
+    lang: 'Язык сайта',
+    rights: 'Все права защищены.',
+  },
 };
 
 export default function LandingFooter() {

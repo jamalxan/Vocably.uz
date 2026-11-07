@@ -22,16 +22,16 @@ import {
 const POOL_TTL_MS = 10 * 60_000;
 let poolCache = { at: 0, pool: null };
 
-/** Word pool: the public Run bank + published library words with an Uzbek translation. Cached 10 min. */
+/** Word pool: the public Run bank + published library words with an Uzbek translation (+ Russian when present). Cached 10 min. */
 export async function duelPool(now = Date.now()) {
   if (poolCache.pool && now - poolCache.at < POOL_TTL_MS) return poolCache.pool;
-  const bank = RUN_BANK.map((e) => ({ word: e.word, uz: e.uz, cefr: e.cefr }));
+  const bank = RUN_BANK.map((e) => ({ word: e.word, uz: e.uz, ru: e.ru || '', cefr: e.cefr }));
   let lib = [];
   try {
     lib = await VocabularyEntry.aggregate([
       { $match: { status: 'PUBLISHED', translationUz: { $nin: ['', null] }, cefr: { $in: ['A2', 'B1', 'B2', 'C1'] } } },
       { $sample: { size: 300 } },
-      { $project: { _id: 0, word: 1, uz: '$translationUz', cefr: 1 } },
+      { $project: { _id: 0, word: 1, uz: '$translationUz', ru: '$translationRu', cefr: 1 } },
     ]);
   } catch {
     lib = [];
@@ -397,7 +397,7 @@ export async function saveMissedWords(userId, code, now = new Date()) {
   const unclaim = () => Duel.updateOne({ _id: duel._id }, { $set: { [`${side}.savedWords`]: false } }).catch(() => {});
   let out;
   try {
-    out = await addToSystemDeck(userId, DUEL_DECK_NAME, missed.map((m) => ({ word: m.word, syns: [m.uz], enrichment: m.cefr ? { cefr: m.cefr } : undefined })));
+    out = await addToSystemDeck(userId, DUEL_DECK_NAME, missed.map((m) => ({ word: m.word, syns: [m.uz], ...(m.ru && m.ru !== m.uz ? { synsRu: [m.ru] } : {}), enrichment: m.cefr ? { cefr: m.cefr } : undefined })));
   } catch (e) {
     await unclaim();
     throw e;

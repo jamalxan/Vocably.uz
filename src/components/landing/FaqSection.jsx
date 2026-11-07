@@ -9,6 +9,7 @@ import useCopy from './useCopy';
 const COPY = {
   uz: { title: "Ko'p beriladigan savollar" },
   en: { title: 'Frequently asked questions' },
+  ru: { title: 'Часто задаваемые вопросы' },
 };
 
 export default function FaqSection() {

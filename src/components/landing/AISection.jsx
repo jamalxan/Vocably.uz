@@ -51,6 +51,26 @@ const COPY = {
     tipAdded: "has been added to today's SRS queue.",
     tipNext: "You'll meet it in a Reading passage tomorrow.",
   },
+  ru: {
+    eyebrow: 'AI-ассистент',
+    title: 'Ваш личный AI-репетитор',
+    lead: 'Замечает ошибку, объясняет, в чём она, и сразу добавляет это слово в вашу очередь повторения.',
+    features: [
+      { label: 'Чат', body: 'Спрашивайте что угодно — по-русски или по-английски' },
+      { label: 'Поиск ошибок', body: 'Ошибки в грамматике и коллокациях' },
+      { label: 'Обратная связь', body: 'Почему это ошибка — с понятным объяснением' },
+      { label: 'Рекомендации', body: 'Упражнения под ваши слабые места' },
+      { label: 'Путь обучения', body: 'Добавляет слова в вашу очередь SRS' },
+    ],
+    status: 'онлайн · IELTS-репетитор',
+    userAsk: '— это правильно?',
+    aiLead: 'Почти —',
+    aiInsteadOf: 'нужно заменить на',
+    aiRule: 'В Present Perfect используется третья форма глагола (past participle).',
+    fixChip: 'Грамматика исправлена',
+    tipAdded: 'добавлено в сегодняшнюю очередь SRS.',
+    tipNext: 'Завтра вы встретите его в тексте Reading.',
+  },
 };
 // Paired with COPY.*.features by index.
 const FEATURE_ICONS = [MessagesSquare, ScanSearch, Wand2, Target, Lightbulb];

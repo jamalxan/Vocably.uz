@@ -8,6 +8,7 @@ import useCopy from '../useCopy';
 const COPY = {
   uz: { noteLabel: 'Izoh', gloss: 'qiyinchiliklarga chidamli, tez tiklanuvchan.' },
   en: { noteLabel: 'Note', gloss: 'able to withstand difficulties and recover quickly.' },
+  ru: { noteLabel: 'Пояснение', gloss: 'способный выдерживать трудности и быстро восстанавливаться.' },
 };
 
 // Brief §13 — a UI fragment (not a stock illustration): a passage with a

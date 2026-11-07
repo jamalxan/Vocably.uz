@@ -11,6 +11,7 @@ import { cardModel, renderCardBlob } from '@/lib/flagship/shareCard';
 const COPY = {
   uz: { title: 'Natija kartasi (9:16)', download: 'Yuklab olish', share: 'Ulashish', copy: 'Havolani nusxalash', copied: 'Nusxalandi', alt: 'Natija kartasi', failed: "Kartani yaratib bo'lmadi" },
   en: { title: 'Result card (9:16)', download: 'Download', share: 'Share', copy: 'Copy link', copied: 'Copied', alt: 'Result card', failed: 'Could not create the card' },
+  ru: { title: 'Карточка результата (9:16)', download: 'Скачать', share: 'Поделиться', copy: 'Копировать ссылку', copied: 'Скопировано', alt: 'Карточка результата', failed: 'Не удалось создать карточку' },
 };
 
 export default function ShareCard({ game, result }) {

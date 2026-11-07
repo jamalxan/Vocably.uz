@@ -160,15 +160,15 @@ export function maskAnswer(text, word) {
 /**
  * Guest questions from the public bank: { qid, prompt, promptKind, answerLength, first, word, accepted }.
  * Guests get the "easy" hint (first letter + length) — they meet the game cold on a landing page.
- * The first three prompts are always Uzbek meanings; after that ~25 % are English definitions.
+ * The first three prompts are always meanings (Uzbek, or Russian with lang 'ru'); after that ~25 % are English definitions.
  */
-export function guestTypedQuestions(bank, rand = Math.random, count = 20) {
+export function guestTypedQuestions(bank, rand = Math.random, count = 20, lang = 'uz') {
   const order = shuffle(bank, rand).slice(0, Math.min(count, bank.length));
   return order.map((item, i) => {
     const useDefinition = i >= 3 && !!item.definition && rand() < 0.25;
     return {
       qid: `g${i + 1}`,
-      prompt: useDefinition ? maskAnswer(item.definition, item.word) : item.uz,
+      prompt: useDefinition ? maskAnswer(item.definition, item.word) : (lang === 'ru' && item.ru) || item.uz,
       promptKind: useDefinition ? 'definition' : 'meaning',
       answerLength: item.word.length,
       first: item.word.charAt(0),

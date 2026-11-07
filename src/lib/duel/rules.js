@@ -77,17 +77,21 @@ export function cleanPool(pool) {
   for (const e of pool || []) {
     const word = String(e?.word || '').trim();
     const uz = String(e?.uz || '').trim();
+    const ru = String(e?.ru || '').trim();
     if (!word || !uz || word.length > 40 || uz.length > 60) continue;
     if (seenWord.has(norm(word)) || seenUz.has(norm(uz))) continue;
     seenWord.add(norm(word));
     seenUz.add(norm(uz));
-    out.push({ word, uz, cefr: e.cefr || '' });
+    out.push({ word, uz, ...(ru && ru.length <= 60 ? { ru } : {}), cefr: e.cefr || '' });
   }
   return out;
 }
 
 /**
- * 10 questions both players share. Even questions: English word → Uzbek meaning; odd: Uzbek → English.
+ * 10 questions both players share. Even questions: English word → meaning; odd: meaning → English.
+ * Meanings are Uzbek; `promptRu` / `optionsRu` carry the same question in Russian (same option order and
+ * answer index) for a player whose UI is Russian — see localizeDuelPayload. A word without a Russian
+ * translation falls back to Uzbek there.
  * Distractors prefer the same CEFR level so the right answer doesn't stand out.
  * @returns {{ word: string, uz: string, cefr: string, dir: 'en_uz'|'uz_en', prompt: string, options: string[], answer: number }[] | null}
  */
@@ -102,15 +106,53 @@ export function buildDuelQuestions(pool, seed, count = DUEL.words) {
     const same = shuffle(others.filter((x) => x.cefr && x.cefr === e.cefr), rand);
     const rest = shuffle(others.filter((x) => !(x.cefr && x.cefr === e.cefr)), rand);
     const distractors = [...same, ...rest].slice(0, DUEL.options - 1);
-    const right = dir === 'en_uz' ? e.uz : e.word;
-    const options = shuffle([right, ...distractors.map((d) => (dir === 'en_uz' ? d.uz : d.word))], rand);
-    return { word: e.word, uz: e.uz, cefr: e.cefr, dir, prompt: dir === 'en_uz' ? e.word : e.uz, options, answer: options.indexOf(right) };
+    // Shuffle the entries (same rand calls as shuffling their texts), so both languages share one order.
+    const entries = shuffle([e, ...distractors], rand);
+    const ruOf = (x) => x.ru || x.uz;
+    const options = entries.map((x) => (dir === 'en_uz' ? x.uz : x.word));
+    const optionsRu = entries.map((x) => (dir === 'en_uz' ? ruOf(x) : x.word));
+    return {
+      word: e.word,
+      uz: e.uz,
+      ru: ruOf(e),
+      cefr: e.cefr,
+      dir,
+      prompt: dir === 'en_uz' ? e.word : e.uz,
+      promptRu: dir === 'en_uz' ? e.word : ruOf(e),
+      options,
+      optionsRu,
+      answer: entries.indexOf(e),
+    };
   });
 }
 
 /** What the browser may see of a question: never the answer. */
 export function publicQuestion(q, index) {
-  return { index, dir: q.dir, prompt: q.prompt, options: q.options, total: DUEL.words, limitMs: DUEL.answerMs };
+  const ru = q.optionsRu ? { promptRu: q.promptRu, optionsRu: q.optionsRu } : {};
+  return { index, dir: q.dir, prompt: q.prompt, options: q.options, ...ru, total: DUEL.words, limitMs: DUEL.answerMs };
+}
+
+/**
+ * Shows a duel API payload in the player's translation language ('uz' | 'ru'): questions use
+ * promptRu/optionsRu, review/missed rows put the Russian meaning in `uz` (the field the client reads).
+ * The Russian helper fields are always removed. Pure; returns a new object.
+ */
+export function localizeDuelPayload(value, lang = 'uz') {
+  if (Array.isArray(value)) return value.map((v) => localizeDuelPayload(v, lang));
+  if (!value || typeof value !== 'object' || value instanceof Date) return value;
+  const out = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (k === 'promptRu' || k === 'optionsRu' || k === 'ru') continue;
+    out[k] = localizeDuelPayload(v, lang);
+  }
+  if (lang === 'ru') {
+    if (Array.isArray(value.optionsRu)) {
+      out.options = value.optionsRu;
+      out.prompt = value.promptRu ?? out.prompt;
+    }
+    if (typeof value.ru === 'string' && value.ru && typeof value.uz === 'string') out.uz = value.ru;
+  }
+  return out;
 }
 
 /**
@@ -172,13 +214,13 @@ export function missedWords(questions, answers) {
   return (questions || [])
     .map((q, i) => ({ q, a: (answers || [])[i] }))
     .filter(({ a }) => !a || !a.ok)
-    .map(({ q }) => ({ word: q.word, uz: q.uz, cefr: q.cefr }));
+    .map(({ q }) => ({ word: q.word, uz: q.uz, ...(q.ru ? { ru: q.ru } : {}), cefr: q.cefr }));
 }
 
 /** Review of one player's run, safe to show once that player has finished. */
 export function reviewRows(questions, answers) {
   return (questions || []).map((q, i) => {
     const a = (answers || [])[i];
-    return { word: q.word, uz: q.uz, ok: !!a?.ok, late: !!a?.late, ms: a?.ms ?? null, points: a?.points || 0 };
+    return { word: q.word, uz: q.uz, ...(q.ru ? { ru: q.ru } : {}), ok: !!a?.ok, late: !!a?.late, ms: a?.ms ?? null, points: a?.points || 0 };
   });
 }

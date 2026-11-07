@@ -100,9 +100,10 @@ function shuffle(arr, rand) {
 
 /**
  * Builds guest gates from the public bank: { qid, prompt, promptKind, options:[{id,text}], answer, word }.
+ * `lang` — translation shown as the meaning prompt ('uz' | 'ru', see translationLangFor).
  * Distractors come from the same CEFR band where possible so lanes aren't trivially obvious.
  */
-export function guestQuestions(bank, rand = Math.random, count = 30) {
+export function guestQuestions(bank, rand = Math.random, count = 30, lang = 'uz') {
   const order = shuffle(bank, rand);
   const out = [];
   for (let i = 0; i < count && order.length >= 3; i++) {
@@ -115,7 +116,7 @@ export function guestQuestions(bank, rand = Math.random, count = 30) {
     const useDefinition = !!item.definition && rand() < 0.4;
     out.push({
       qid: `g${i + 1}`,
-      prompt: useDefinition ? item.definition : item.uz,
+      prompt: useDefinition ? item.definition : (lang === 'ru' && item.ru) || item.uz,
       promptKind: useDefinition ? 'definition' : 'meaning',
       options,
       answer: options[words.indexOf(item.word)].id,

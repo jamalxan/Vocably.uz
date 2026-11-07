@@ -1299,7 +1299,7 @@ const en = {
   'ai.helloName': 'Hello, {name}!',
   'ai.intro': "I'm your Vocably assistant. How can I help you today?",
   'ai.example': 'For example: show the word "arise" used in several sentences, or send a picture',
-  'ai.langRule': 'I reply in English — if you write in Uzbek or ask me to "speak Uzbek", I will reply in Uzbek.',
+  'ai.langRule': 'I reply in English — if you write in Uzbek or Russian (or ask me to "speak Uzbek" / "speak Russian"), I will reply in that language.',
   'ai.typing': 'is typing...',
   'ai.noVoice': 'Your browser does not support voice input — continue in text mode.',
   'ai.closeErr': 'Dismiss error',

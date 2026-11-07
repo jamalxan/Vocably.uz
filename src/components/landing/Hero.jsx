@@ -31,6 +31,16 @@ const COPY = {
     noCard: '· no credit card required',
     scroll: 'Scroll',
   },
+  ru: {
+    badge: 'Современная платформа для подготовки к IELTS',
+    title: [{ w: 'Учите' }, { w: 'английский,' }, { w: 'который' }, { w: 'не' }, { w: 'забывается', shimmer: true }],
+    lead: 'Vocably объединяет Reading, Listening, Writing, Speaking, Vocabulary, AI и mock-тесты в одну систему подготовки к IELTS.',
+    ctaPrimary: 'Получить бесплатный план',
+    ctaSecondary: 'Как это работает',
+    chips: ['4 навыка', 'SRS', 'AI-фидбек', 'Mock-тест'],
+    noCard: '· банковская карта не нужна',
+    scroll: 'Scroll',
+  },
 };
 
 // Each word sits in an overflow-hidden mask and rises into place. The
