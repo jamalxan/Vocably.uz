@@ -10,6 +10,7 @@ const NAV_HREFS = ['/ielts', '/dictionary', '/blog', '/pricing'];
 const TEXT = {
   en: { nav: ['IELTS', 'Dictionary', 'Blog', 'Pricing'], login: 'Log in', start: 'Start free', menu: 'Main menu', mobile: 'Mobile menu', open: 'Open menu', close: 'Close menu', lang: 'Language' },
   uz: { nav: ['IELTS', "Lug'at", 'Blog', 'Narxlar'], login: 'Kirish', start: 'Bepul boshlash', menu: 'Asosiy menyu', mobile: 'Mobil menyu', open: 'Menyuni ochish', close: 'Menyuni yopish', lang: 'Til' },
+  ru: { nav: ['IELTS', 'Словарь', 'Блог', 'Цены'], login: 'Войти', start: 'Начать бесплатно', menu: 'Главное меню', mobile: 'Мобильное меню', open: 'Открыть меню', close: 'Закрыть меню', lang: 'Язык' },
 };
 
 // Faqat mobil menyu ochiq/yopiqligi uchun client — qolgan butun landing sahifa
