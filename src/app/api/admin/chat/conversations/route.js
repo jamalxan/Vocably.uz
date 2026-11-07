@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { requireAdminUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { Conversation, User } from '@/lib/models';
+import { currentPhotoId } from '@/lib/avatars';
 import { NextResponse } from 'next/server';
 
 // Admin nazorati uchun barcha suhbatlar ro'yxati. Bu route hujjatlarni
@@ -39,7 +40,7 @@ export async function GET(req) {
     const nextCursor = hasMore ? page[page.length - 1].lastMessageAt : null;
 
     const userIds = [...new Set(page.flatMap((c) => c.participantIds.map(String)))];
-    const users = await User.find({ _id: { $in: userIds } }).select('username name phone').lean();
+    const users = await User.find({ _id: { $in: userIds } }).select('username name phone photos photoVisibility').lean();
     const byId = new Map(users.map((u) => [String(u._id), u]));
 
     const result = page.map((c) => {
@@ -48,11 +49,20 @@ export async function GET(req) {
       // qanday saqlagan" javobi nicknames[p1] (p1 bergan taxallus), va aksincha.
       const nicks = c.nicknames || {};
       const [id0, id1] = c.participantIds;
-      const participants = c.participantIds.map((id, i) => ({
-        ...(byId.get(String(id)) || { username: null, name: '?' }),
-        // Boshqa ishtirokchi buni qanday nom bilan saqlagani (bo'sh bo'lsa — taxallus qo'yilmagan).
-        savedAsByOther: nicks[String(i === 0 ? id1 : id0)] || null,
-      }));
+      // Avatar: /api/avatars maxfiylikni admin uchun ham tekshiradi, shuning uchun
+      // photoId faqat admin ko'ra oladigan holatda beriladi (aks holda 404 o'rniga
+      // to'g'ridan-to'g'ri bosh harfli gradient chiqadi). Xom `photos` javobga chiqmaydi.
+      const adminInConvo = c.participantIds.some((id) => String(id) === String(admin._id));
+      const participants = c.participantIds.map((id, i) => {
+        const raw = byId.get(String(id));
+        const { photos: _photos, photoVisibility: _visibility, ...user } = raw || { username: null, name: '?' };
+        return {
+          ...user,
+          photoId: currentPhotoId(raw, { isOwner: String(id) === String(admin._id), hasConversation: adminInConvo }),
+          // Boshqa ishtirokchi buni qanday nom bilan saqlagani (bo'sh bo'lsa — taxallus qo'yilmagan).
+          savedAsByOther: nicks[String(i === 0 ? id1 : id0)] || null,
+        };
+      });
       return {
         id: c._id,
         participants,
