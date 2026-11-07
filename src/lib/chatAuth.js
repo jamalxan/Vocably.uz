@@ -22,7 +22,7 @@ export async function requireChatUser(req) {
   await connectToDatabase();
 
   const user = await User.findById(userId)
-    .select('username chatAccess chatBanned role name phone lastActiveAt tgMessageNotify telegramChatId')
+    .select('username chatAccess chatBanned role name phone lastActiveAt tgMessageNotify telegramChatId lastSeenVisibility')
     .lean();
   if (!user) return { error: 'Foydalanuvchi topilmadi', status: 404 };
   if (!user.chatAccess || user.chatBanned) {

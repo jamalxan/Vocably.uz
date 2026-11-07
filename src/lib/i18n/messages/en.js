@@ -1426,6 +1426,7 @@ const en = {
   'ch.yesterday': 'Yesterday',
   'ch.toastClose': 'Dismiss',
   'ch.connecting': 'Connecting…',
+  'ch.lastSeenRecently': 'last seen recently',
   'ch.searchClear': 'Clear search',
   'ch.prevMedia': 'Previous',
   'ch.nextMedia': 'Next',

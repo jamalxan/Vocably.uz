@@ -51,6 +51,28 @@ function readPersistedOfflineQueue(userId) {
 // haqiqiy (lekin 60 soniyalik, faqat shu maqsad uchun) tokenga muhtoj —
 // buni har ulanishda `/api/chat/socket-ticket`dan (cookie orqali) olamiz,
 // hech qachon localStorage'ga yozmaymiz.
+// Socket yo'q paytda ro'yxatni (va onlayn holatini) yangilash oralig'i.
+const PRESENCE_REFRESH_OFFLINE_MS = 30_000;
+
+export const newerIso = (a, b) => {
+  if (!a) return b || null;
+  if (!b) return a;
+  return new Date(b).getTime() > new Date(a).getTime() ? b : a;
+};
+
+// Server ro'yxati kelganda mahalliy "hozir faol edi" belgisi (noteOtherActive) yo'qolmasin:
+// lastActiveAt'ning kechrog'ini olamiz. Suhbatdosh maxfiylikni yoqqan bo'lsa server qiymati (null) ustun.
+function keepNewerPresence(prevList, nextList) {
+  if (!prevList?.length) return nextList;
+  const prevById = new Map(prevList.map((c) => [String(c.id), c]));
+  return nextList.map((c) => {
+    const old = prevById.get(String(c.id));
+    if (!old?.otherUser?.lastActiveAt || !c.otherUser || c.otherUser.showPresence === false) return c;
+    const lastActiveAt = newerIso(c.otherUser.lastActiveAt, old.otherUser.lastActiveAt);
+    return lastActiveAt === c.otherUser.lastActiveAt ? c : { ...c, otherUser: { ...c.otherUser, lastActiveAt } };
+  });
+}
+
 export function ChatProvider({ myUserId, children }) {
   const [conversations, setConversations] = useState([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
@@ -177,7 +199,7 @@ export function ChatProvider({ myUserId, children }) {
         .then((res) =>
           res.json().then((data) => {
             if (res.ok) {
-              setConversations(data.conversations || []);
+              setConversations((prev) => keepNewerPresence(prev, data.conversations || []));
               setConversationsError(false);
               // WP6: serverdagi qoralamalar (boshqa qurilmada yozilgani) mahalliy kesh bilan yarashtiriladi.
               mergeRemoteDraftsRef.current?.((data.conversations || []).filter((c) => 'draft' in c).map((c) => [c.id, c.draft]));
@@ -1439,6 +1461,21 @@ export function ChatProvider({ myUserId, children }) {
       live().loadConversations();
     };
     const typingTimers = typingTimersRef;
+    // Suhbatdosh hozir nimadir qildi (xabar yubordi / mening xabarimni o'qidi) — bu uning onlayn
+    // ekanining aniq dalili, hatto uning socket'i uzilgan bo'lsa ham (REST/poll orqali ishlayotgan
+    // bo'lishi mumkin). `lastActiveAt`ni hozirga suramiz — isOnline() buni bir daqiqa onlayn deb
+    // ko'rsatadi (src/lib/presence.js). Faqat ko'rinish uchun: server qiymatiga tegmaydi.
+    const noteOtherActive = (conversationId) => {
+      if (!conversationId) return;
+      const id = String(conversationId);
+      const at = new Date().toISOString();
+      const bump = (c) =>
+        c && String(c.id) === id && c.otherUser && c.otherUser.showPresence !== false
+          ? { ...c, otherUser: { ...c.otherUser, lastActiveAt: at } }
+          : c;
+      setConversations((prev) => (prev.some((c) => String(c.id) === id) ? prev.map(bump) : prev));
+      setActiveConversation((prev) => (prev && String(prev.id) === id ? bump(prev) : prev));
+    };
     const offs = [
       // F — reconnect sync ("Reconnect'da o'tkazib yuborilgan xabarlarni sync qilish"): HAR bir
       // 'connect'da (dastlabki va qayta ulanishlarda) ro'yxat, ochiq suhbat va offline navbat.
@@ -1475,6 +1512,7 @@ export function ChatProvider({ myUserId, children }) {
         const mine = String(message.senderId) === String(myIdRef.current);
         const isActive = String(conversationId) === String(activeIdRef.current);
         const visible = typeof document !== 'undefined' && !document.hidden;
+        if (!mine) noteOtherActive(conversationId);
         if (isActive) {
           l.upsertLiveMessage(message);
           // Telegram uslubi: suhbat ochiq va tab ko'rinib turgan bo'lsa kelgan zahoti "o'qildi";
@@ -1490,6 +1528,7 @@ export function ChatProvider({ myUserId, children }) {
       }),
       // Men yuborgan xabar(lar) boshqa tomonda o'qilganda — bitta ptichka ikkitaga aylanadi.
       on('message:read', ({ conversationId, readAt } = {}) => {
+        if (conversationId) noteOtherActive(conversationId);
         if (!conversationId || String(conversationId) !== String(activeIdRef.current)) return;
         setMessages((prev) =>
           prev.map((m) => (m.readAt || String(m.senderId) !== String(myIdRef.current) ? m : { ...m, readAt }))
@@ -1544,6 +1583,16 @@ export function ChatProvider({ myUserId, children }) {
     if (loadingConversations || conversationsError) return;
     setUnreadFromConversations(conversations);
   }, [conversations, loadingConversations, conversationsError, setUnreadFromConversations]);
+
+  // Realtime socket yo'q paytda onlayn holati faqat ro'yxat qayta yuklanganda yangilanadi — aks holda
+  // suhbatdosh faol bo'lsa ham sarlavha eski vaqtni ko'rsatib "N daqiqa oldin" bo'lib qolardi.
+  useEffect(() => {
+    if (socketConnected) return undefined;
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') loadConversations();
+    }, PRESENCE_REFRESH_OFFLINE_MS);
+    return () => clearInterval(timer);
+  }, [socketConnected, loadConversations]);
 
   // Fallback when the realtime socket is down or not configured: poll the open
   // conversation — every 2s while the tab is visible (close to live), every

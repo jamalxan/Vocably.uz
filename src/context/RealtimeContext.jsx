@@ -11,7 +11,7 @@ import {
   titleWithBadge,
   unreadFromConversations,
 } from '@/lib/realtime/clientState';
-import { isMutedNow, previewForMessage } from '@/lib/chatConstants';
+import { PRESENCE_SETTINGS_EVENT, isMutedNow, previewForMessage } from '@/lib/chatConstants';
 import { installAudioUnlock, isAudioUnlocked, playMessageBlip } from '@/lib/call/sounds';
 
 // docs/chat/PARITY_PLAN.md WP1 — butun (main) zona uchun YAGONA socket. Avval socket ChatProvider
@@ -273,6 +273,12 @@ export function RealtimeProvider({ children }) {
       if (!userId) return;
       setLivePresence((prev) => (prev[String(userId)] === online ? prev : { ...prev, [String(userId)]: online }));
     });
+    // "Yozmoqda" faqat ulangan socket'dan keladi — demak yozayotgan odam hozir onlayn. Server
+    // presence:update'ni kechiktirib yuborishi mumkin (offline grace) — bu yerda darhol ko'rsatamiz.
+    s.on('typing', ({ userId } = {}) => {
+      if (!userId || String(userId) === String(myIdRef.current)) return;
+      setLivePresence((prev) => (prev[String(userId)] === true ? prev : { ...prev, [String(userId)]: true }));
+    });
     // Boshqa qurilmamda suhbat o'qildi (WP3 self-event) — umumiy sonni server'dan qayta olamiz.
     s.on('conversation:read', () => refreshUnread());
     s.on('message:new', (payload = {}) => {
@@ -321,10 +327,20 @@ export function RealtimeProvider({ children }) {
     };
     document.addEventListener('visibilitychange', onVisible);
 
+    // "Oxirgi marta ko'rilgan" maxfiyligi o'zgardi (ProfileSettings) — chipta shu sozlamani olib
+    // yuradi (`hp`), shuning uchun yangi chipta bilan qayta ulanamiz.
+    const onPresenceSettings = () => {
+      if (disposed || stopped) return;
+      if (s.connected) s.disconnect();
+      s.connect();
+    };
+    window.addEventListener(PRESENCE_SETTINGS_EVENT, onPresenceSettings);
+
     return () => {
       disposed = true;
       clearTimeout(retryTimer);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener(PRESENCE_SETTINGS_EVENT, onPresenceSettings);
       s.removeAllListeners();
       s.disconnect();
       if (socketRef.current === s) socketRef.current = null;

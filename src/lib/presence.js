@@ -34,10 +34,19 @@ const DAY_MS = 24 * HOUR_MS;
 // (boolean) har doim ustuvor — bu "hozir aynan ulanganmi" degan haqiqiy signal,
 // `lastActiveAt` esa faqat throttled taxmin. Socket yo'q/hali javob bermagan bo'lsa
 // (undefined) — eski taxminga tushamiz.
+//
+// Socket "oflayn" desa ham, bir daqiqa ichidagi HAQIQIY faollik (xabar yubordi/o'qidi — ChatContext
+// buni `lastActiveAt`ga yozadi) onlayn deb ko'rsatiladi: suhbatdoshning socket'i uzilgan bo'lishi,
+// lekin u REST (poll) orqali o'qib/yozib turgan bo'lishi mumkin. Avval bunday paytda "1 daqiqa
+// oldin" chiqib turardi, garchi u xabarni aynan o'sha payt o'qiyotgan bo'lsa ham.
+const LIVE_OFFLINE_ACTIVITY_MS = 60 * 1000;
+
 export function isOnline(lastActiveAt, liveOnline) {
-  if (typeof liveOnline === 'boolean') return liveOnline;
+  if (liveOnline === true) return true;
   if (!lastActiveAt) return false;
-  return Date.now() - new Date(lastActiveAt).getTime() < ONLINE_THRESHOLD_MS;
+  const age = Date.now() - new Date(lastActiveAt).getTime();
+  if (liveOnline === false) return age < LIVE_OFFLINE_ACTIVITY_MS;
+  return age < ONLINE_THRESHOLD_MS;
 }
 
 // Suhbatlar ro'yxatidagi "oxirgi xabar qachon" vaqt yorlig'i uchun — TZ-vocably-v2.md

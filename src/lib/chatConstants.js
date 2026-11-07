@@ -5,6 +5,10 @@
 // to'g'ridan-to'g'ri import qilinadi (masalan ConversationList.jsx).
 export const LAST_ACTIVE_THROTTLE_MS = 2 * 60 * 1000;
 
+// ProfileSettings "Oxirgi marta ko'rilgan" sozlamasini saqlagach window'ga yuboradigan hodisa —
+// RealtimeProvider socket'ni yangi chipta (yangi `hp` qiymati) bilan qayta ulaydi.
+export const PRESENCE_SETTINGS_EVENT = 'vocably:presence-settings';
+
 // Message.type -> qisqa yorliq — media xabarlarda matn yo'q, shuning uchun
 // javob (reply) iqtibosida va tahrirlash-taqiqlangan holatlarda shu ko'rsatiladi
 // (MessageBubble.jsx'dagi ReplyQuote va Composer.jsx'dagi javob paneli ishlatadi).

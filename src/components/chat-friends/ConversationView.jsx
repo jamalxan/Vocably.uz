@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ShieldOff, Bell, BellOff, Pin, UserCheck, ArrowDown, X, Send, Forward, Trash2, Copy, Upload, Phone, Video, EllipsisVertical, User, Loader2 } from 'lucide-react';
-import { useChat } from '@/context/ChatContext';
+import { newerIso, useChat } from '@/context/ChatContext';
 import { useApp } from '@/context/AppContext';
 import { useT } from '@/context/LocaleContext';
 import { useCall } from '@/context/CallContext';
@@ -95,6 +95,7 @@ export default function ConversationView({ onBack }) {
   const { t, ts, locale } = useT();
   const {
     activeConversation,
+    conversations,
     messages,
     loadingMessages,
     messagesError,
@@ -232,10 +233,18 @@ export default function ConversationView({ onBack }) {
     return <div className="hidden lg:flex flex-1 items-center justify-center text-sm text-muted">{t('cv.pickChat')}</div>;
   }
 
-  const showPresence = activeConversation.otherUser?.showPresence !== false;
-  const online = showPresence && isOnline(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
+  // `activeConversation` alohida holat; ro'yxat esa qayta yuklanib turadi (socket yo'q paytda har
+  // 30 s) — sarlavha ikkalasining yangirog'ini ko'rsatadi, aks holda eski vaqtda "qotib" qolardi.
+  const listEntry = conversations.find((c) => String(c.id) === String(activeConversation.id));
+  const showPresence = (listEntry?.otherUser?.showPresence ?? activeConversation.otherUser?.showPresence) !== false;
+  const otherLastActiveAt = newerIso(activeConversation.otherUser?.lastActiveAt, listEntry?.otherUser?.lastActiveAt);
+  const online = showPresence && isOnline(otherLastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
   const typingKind = typingByConversation[activeConversation.id];
-  const lastSeenText = showPresence ? ts(formatLastSeen(activeConversation.otherUser?.lastActiveAt, livePresence[String(activeConversation.otherUser?.id)])) : null;
+  // Suhbatdosh "Oxirgi marta ko'rilgan"ni yashirgan bo'lsa (sozlamalarda "Hech kim") — Telegram kabi
+  // aniq vaqt ham, "onlayn" ham emas, faqat "yaqinda onlayn edi".
+  const lastSeenText = showPresence
+    ? ts(formatLastSeen(otherLastActiveAt, livePresence[String(activeConversation.otherUser?.id)]))
+    : t('ch.lastSeenRecently');
   const muteUntilText = activeConversation.muted ? ts(formatMuteUntil(activeConversation.mutedUntil)) : null;
 
   const handleScroll = () => {

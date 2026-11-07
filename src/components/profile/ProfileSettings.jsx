@@ -10,6 +10,7 @@ import IconButton from '@/components/ui/IconButton';
 import Skeleton from '@/components/ui/Skeleton';
 import { useDialogFocus } from '@/features/exam/state/useDialogFocus';
 import { useBackClose } from '@/lib/useBackClose';
+import { PRESENCE_SETTINGS_EVENT } from '@/lib/chatConstants';
 
 // Profil sahifasidagi "sozlama"ga o'xshash bo'limlar (IELTS tayyorgarlik, Telegram, Ko'rinish, Maxfiylik) bitta "Sozlamalar" oynasiga
 // jamlandi — sahifa endi faqat profil, daraja va statistikani ko'rsatadi. Ma'lumotlar (/api/profile, /api/chat/settings) faqat oyna
@@ -187,6 +188,7 @@ export default function ProfileSettings({ open, onClose }) {
         body: JSON.stringify({ [field]: value }),
       });
       if (!res.ok) throw new Error();
+      if (field === 'lastSeenVisibility') window.dispatchEvent(new Event(PRESENCE_SETTINGS_EVENT));
     } catch {
       setter(prev);
       setVisibilityError(true);
