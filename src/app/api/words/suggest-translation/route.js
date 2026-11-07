@@ -3,6 +3,7 @@ import { generateJson } from '@/lib/aiJson';
 import { aiErrorResponse, checkAndIncrementAiRateLimit, rateLimitMessage } from '@/lib/ai/client';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
+import { requestTranslationLang } from '@/lib/vocab/translationLang';
 
 // TZ-vocably-v2.md §11.3 / §19 Faza 3 item 18 — "Natija ekranida: Matnda
 // uchragan qiyin so'zlarni ajratib, 'Lug'atga qo'shish' tugmasi". Imtihon
@@ -23,12 +24,13 @@ const RESPONSE_SCHEMA = {
   required: ['pronunciation', 'syns'],
 };
 
-function buildPrompt(word, context) {
+function buildPrompt(word, context, lang = 'uz') {
+  const target = lang === 'ru' ? 'RUSCHA (rus tilida, kirill yozuvida)' : "o'zbekcha";
   return `Ingliz tili so'zi: "${word}"${context ? `\nMatndagi jumla (kontekst uchun): "${context}"` : ''}
 
 Shu so'z uchun (aynan shu kontekstdagi ma'nosida, agar kontekst berilgan bo'lsa):
 - pronunciation: IPA talaffuz transkripsiyasi (masalan "/əˈraɪz/")
-- syns: 1-4 ta ENG TABIIY o'zbekcha tarjima (sinonim tarjimalar, vergul bilan sanab bo'lmaydi — massiv sifatida)
+- syns: 1-4 ta ENG TABIIY ${target} tarjima (sinonim tarjimalar, vergul bilan sanab bo'lmaydi — massiv sifatida)
 
 JAVOBNI FAQAT JSON sxemaga qat'iy mos qaytar.`;
 }
@@ -51,7 +53,7 @@ export async function POST(req) {
 
     let data;
     try {
-      data = await generateJson(buildPrompt(cleanWord, typeof context === 'string' ? context.slice(0, 300) : ''), RESPONSE_SCHEMA);
+      data = await generateJson(buildPrompt(cleanWord, typeof context === 'string' ? context.slice(0, 300) : '', requestTranslationLang(req)), RESPONSE_SCHEMA);
     } catch (aiErr) {
       return aiErrorResponse(aiErr, { endpoint: 'words/suggest-translation', userId });
     }
