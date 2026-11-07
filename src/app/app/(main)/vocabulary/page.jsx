@@ -44,8 +44,10 @@ function ModeCard({ mode, t, count }) {
 
 export default function LugatIndexPage() {
   const { t } = useT();
-  const { categories, reviewStreak, loadingApp } = useApp();
+  const { categories, activeCategory, reviewStreak, loadingApp } = useApp();
 
+  // Daily review barcha kategoriyalardan takrorlatadi (SpacedRepetition) — shuning uchun hero umumiy son;
+  // Word list esa tepadagi faol kategoriyani ko'rsatadi, uning badge'i ham shu kategoriya soni.
   const { total, due } = useMemo(() => {
     // eslint-disable-next-line react-hooks/purity -- navbatni hozirgi vaqt bilan solishtirish uchun — ataylab
     const now = Date.now();
@@ -63,7 +65,7 @@ export default function LugatIndexPage() {
 
   const hero = LUGAT_MODES.find((m) => m.key === HERO_KEY);
   const ready = !loadingApp;
-  const counts = { jadval: ready ? total : null };
+  const counts = { jadval: ready ? (activeCategory?.words?.length ?? 0) : null };
 
   return (
     <div className="grid gap-8">
@@ -86,7 +88,7 @@ export default function LugatIndexPage() {
           <RotateCw size={150} strokeWidth={1} className="pointer-events-none absolute -bottom-10 -right-6 text-on-primary/10" aria-hidden="true" />
           <span className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <span className="min-w-0">
-              <span className="text-xs font-bold uppercase tracking-wider text-on-primary/70">{hero.label}</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-on-primary/70">{hero.label} · {t('lugat.allCategories')}</span>
               <span className="mt-2 flex items-baseline gap-2">
                 <span className="font-display text-5xl font-bold leading-none">{ready ? due : '—'}</span>
                 <span className="text-sm font-semibold text-on-primary/80">{t('lugat.dueWords')}</span>

@@ -328,6 +328,7 @@ const uz = {
   'lugat.gamesCtaTitle': "XP va kvestlar bilan o'ynash",
   'lugat.gamesCtaText': "Vocably Run, So'z tunneli va Word Defense kabi 3D o'yinlar, reyting va kunlik reja",
   'lugat.dueWords': "so'z takrorlashni kutmoqda",
+  'lugat.allCategories': 'barcha kategoriyalar',
   'lugat.dueHint': "Bugun takrorlasangiz, so'zlar uzoq muddatli xotiraga o'tadi.",
   'lugat.dueNone': "Hammasi takrorlangan. Yangi so'z qo'shing yoki kartochkalarni ko'rib chiqing.",
   'lugat.noWords': "Hali so'z yo'q. Ro'yxatdan yoki kutubxonadan so'z qo'shing.",
