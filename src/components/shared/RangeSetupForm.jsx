@@ -1,6 +1,6 @@
 'use client';
 import { useId, useState } from 'react';
-import { Target } from 'lucide-react';
+import { ChevronDown, Target } from 'lucide-react';
 import { useT } from '@/context/LocaleContext';
 
 // Barcha o'yin/mashq rejimlarining "boshlash oldidan oraliq tanlash" ekrani uchun umumiy forma —
@@ -45,22 +45,8 @@ export default function RangeSetupForm({
   const inputClass =
     'flex-1 min-w-0 px-3 py-2 bg-bg border border-border rounded-lg text-base md:text-sm text-ink outline-none focus:border-accent transition-colors';
 
-  return (
-    <div className="flex flex-col items-center">
-      {showQuickStart && (
-        <button
-          onClick={onQuickStart}
-          className="w-full max-w-md flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-on-accent font-semibold py-3 rounded-xl text-sm transition-colors shadow-glow mb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-        >
-          <Target size={16} />
-          {t('lg.setupQuick', { n: quickStartCount })}
-        </button>
-      )}
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-md bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card"
-      >
-        {showQuickStart && <p className="text-[11px] text-muted mb-3 -mt-1">{t('lg.setupOr')}</p>}
+  const form = (
+    <form onSubmit={onSubmit} className={showQuickStart ? 'pt-4' : 'w-full max-w-md bg-surface border border-border rounded-3xl p-5 sm:p-6 shadow-card'}>
         <h3 className="font-bold text-ink mb-4 font-display">{title}</h3>
         <div className="space-y-3 mb-2">
           <div className="flex items-center gap-4">
@@ -119,7 +105,39 @@ export default function RangeSetupForm({
         >
           {buttonLabel || t('diag.start')}
         </button>
-      </form>
+    </form>
+  );
+
+  if (!showQuickStart) return <div className="flex flex-col items-center">{form}</div>;
+
+  // Due-navbat bor: bitta asosiy harakat (bugungi so'zlar), qo'lda oraliq — yig'ilgan ikkinchi daraja.
+  return (
+    <div className="flex flex-col items-center">
+      <div className="w-full max-w-md rounded-3xl border border-border bg-surface p-5 shadow-card sm:p-6">
+        <div className="flex items-center gap-4">
+          <span className="grid h-14 w-14 flex-shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent">
+            <Target size={24} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-display text-3xl font-bold leading-none text-ink">{quickStartCount}</p>
+            <p className="mt-1 text-sm text-muted">{t('lugat.dueWords')}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onQuickStart}
+          className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-bold text-on-accent shadow-glow transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+        >
+          {t('lg.setupQuick', { n: quickStartCount })}
+        </button>
+        <details className="group mt-4 border-t border-border pt-3" open={rangeInvalid || !!error || undefined}>
+          <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg py-1 text-sm font-semibold text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+            {t('lg.setupManual')}
+            <ChevronDown size={16} aria-hidden="true" className="motion-safe:transition-transform group-open:rotate-180" />
+          </summary>
+          {form}
+        </details>
+      </div>
     </div>
   );
 }

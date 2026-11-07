@@ -16,22 +16,14 @@ import {
   User,
   BookOpen,
   BookOpenText,
-  Edit3,
-  Grid,
-  ListChecks,
-  Zap,
-  Headphones,
   Ear,
   Mic,
   PenLine,
   Dumbbell,
   RotateCw,
-  PenSquare,
   Link2,
   GitBranch,
-  Rows,
   Lightbulb,
-  Swords,
   Target,
   Trophy,
   GraduationCap,
@@ -87,23 +79,16 @@ export const BOTTOM_NAV = [
 ];
 
 // Lug'at ichidagi rejimlar — Lug'at'ning o'z sahifasida menyu sifatida (group: 'study' = faqat shu
-// bo'limda bor o'rganish usullari, 'drill' = ballsiz tez mashqlar; XP'li ko'rinishi /app/games'da),
+// bo'limda bor o'rganish usullari, 'drill' = ballsiz mashqlar). O'yinlarni takrorlaydigan drill'lar
+// 2026-11-07 olib tashlandi (XP'li ko'rinishi /app/games'da),
 // desktop Sidebar'da "LUG'AT" bo'limi ostida ro'yxat sifatida ko'rinadi.
 export const LUGAT_MODES = [
   { key: 'jadval', label: 'Word list', group: 'study', href: '/app/vocabulary/words', icon: BookOpen, description: "So'zlar ro'yxati va boshqaruvi" },
   { key: 'takrorlash', label: 'Daily review', group: 'study', href: '/app/vocabulary/review', icon: RotateCw, description: "SRS navbati bo'yicha takrorlash" },
   { key: 'kartochka', label: 'Flashcards', group: 'study', href: '/app/vocabulary/flashcards', icon: Layers, description: 'Aylantirib yodlash' },
-  { key: 'test', label: 'Quiz', group: 'drill', href: '/app/vocabulary/quiz', icon: ListChecks, description: "Ko'p variantli savollar" },
-  { key: 'yozish', label: 'Spelling', group: 'drill', href: '/app/vocabulary/spelling', icon: Edit3, description: "So'zni yozib mashq qilish" },
-  { key: 'juftlik', label: 'Match pairs', group: 'drill', href: '/app/vocabulary/match', icon: Grid, description: "Xotira o'yini" },
-  { key: 'tezkor', label: 'Speed round', group: 'drill', href: '/app/vocabulary/speed', icon: Zap, description: 'Vaqt bilan tez javob' },
-  { key: 'tinglab-yozish', label: 'Dictation', group: 'drill', href: '/app/vocabulary/dictation', icon: Headphones, description: 'Audio orqali yozish' },
-  { key: 'cloze', label: 'In context', group: 'drill', href: '/app/vocabulary/context', icon: PenSquare, description: "Jumladagi bo'sh joyni to'ldirish" },
   { key: 'kollokatsiya', label: 'Collocations', group: 'drill', href: '/app/vocabulary/collocations', icon: Link2, description: "To'g'ri sherik so'zni tanlash" },
   { key: 'soz-oilasi', label: 'Word family', group: 'drill', href: '/app/vocabulary/word-family', icon: GitBranch, description: "Bir o'zakdan turkumlarni ajratish" },
-  { key: 'jumla-qurish', label: 'Sentence builder', group: 'drill', href: '/app/vocabulary/sentence-builder', icon: Rows, description: "So'zlardan jumla yig'ish" },
   { key: 'mnemonika', label: 'Mnemonics', group: 'study', href: '/app/vocabulary/mnemonics', icon: Lightbulb, description: "O'z eslab qolish usulingizni yozing" },
-  { key: 'antonim', label: 'Antonym battle', group: 'drill', href: '/app/vocabulary/antonyms', icon: Swords, description: "Qarama-qarshi so'zni tez topish" },
   { key: 'zaif-sozlar', label: 'Weak words', group: 'study', href: '/app/vocabulary/weak-words', icon: Crosshair, description: "Xato qilingan so'zlar va sabablari" },
   { key: 'kutubxona', label: 'Library', group: 'study', href: '/app/vocabulary/library', icon: BookMarked, description: "Tekshirilgan so'zlar to'plami — lug'atga qo'shing" },
 ];

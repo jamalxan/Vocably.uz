@@ -3,35 +3,29 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  ArrowRight,
   Award,
   BookOpen,
+  Box,
   CheckCircle2,
+  ChevronDown,
   Circle,
-  CloudRain,
-  Crosshair,
-  Crown,
-  Footprints,
   Mic,
   Ear,
   Flame,
   Gamepad2,
-  Grid,
+  Globe2,
   Headphones,
-  GalleryHorizontal,
-  Image as ImageIcon,
-  Keyboard,
-  Link2,
   ListChecks,
   Lock,
   PenSquare,
-  Rows,
+  Play,
   Snowflake,
   Sparkles,
   Star,
   Swords,
   Target,
   Trophy,
-  Zap,
 } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import Button, { buttonClasses } from '@/components/ui/Button';
@@ -44,8 +38,8 @@ import ReminderSettings from './ReminderSettings';
 import StoryCard from './StoryCard';
 import { useT } from '@/context/LocaleContext';
 import { getGames, getGamificationProfile, savePlanMinutes } from './api';
+import { GAME_ICONS, skillTone } from './gameVisuals';
 
-const ICONS = { Link2, ListChecks, PenSquare, Ear, Headphones, CloudRain, Grid, Rows, Zap, BookOpen, Swords, Crown, Footprints, Keyboard, Crosshair, Image: ImageIcon, Images: GalleryHorizontal };
 const PLAN_ICON = { review: ListChecks, weak: Target, new: Sparkles, game: Gamepad2, listening: Ear, writing: PenSquare, speaking: Headphones };
 const MINUTE_OPTIONS = [5, 10, 20, 30, 45];
 const STATUS_KEYS = ['new', 'learning', 'familiar', 'strong', 'advanced', 'mastered'];
@@ -73,7 +67,7 @@ function QuestRow({ quest }) {
   const title = ts(quest.title);
   const pct = Math.round(Math.max(0, Math.min(1, quest.ratio)) * 100);
   return (
-    <li className={`flex items-start gap-3 py-3 ${quest.done ? '' : ''}`}>
+    <li className="flex items-start gap-3 py-3">
       <span className={`mt-0.5 flex-shrink-0 ${quest.done ? 'text-success' : 'text-muted'}`} aria-hidden="true">
         {quest.done ? <CheckCircle2 size={20} /> : <Circle size={20} strokeWidth={1.75} />}
       </span>
@@ -148,37 +142,192 @@ function QuestBlock({ title, hint, list }) {
   );
 }
 
-function GameCard({ game }) {
-  const { t, ts } = useT();
-  const Icon = ICONS[game.icon] || Gamepad2;
-  const disabled = !game.unlocked || !game.available;
-  const reason = ts(!game.unlocked ? game.lockedReason : game.unavailableReason);
-  const body = (
+// --- 3D (flagship) o'yinlar: har biri o'z sahnasining rangida, CSS bilan chizilgan "kadr" bilan
+// (rasm yuklanmaydi). Ranglar o'yin sahnalari bilan bir oila: runTheme.js (coral), tunnel (lagoon),
+// defense (ember). Matn doim to'q fonda oq — tema (yorug'/qorong'i) ta'sir qilmaydi.
+const FLAGSHIP_KEYS = ['vocably_run', 'word_tunnel', 'word_defense'];
+
+function RunArt() {
+  return (
     <>
-      <div className="flex items-start gap-3">
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${disabled ? 'bg-bg-sunken text-muted' : 'bg-accent-soft text-accent'}`}>
-          {!game.unlocked ? <Lock size={18} aria-hidden="true" /> : <Icon size={20} aria-hidden="true" />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-ink">{ts(game.title)}</p>
-            {game.recommended && <Badge tone="accent">{t('hub.forYou')}</Badge>}
-            {game.priority === 'P2' && <Badge tone="warning">Premium</Badge>}
-          </div>
-          <p className="text-xs text-muted mt-0.5">{ts(game.description)}</p>
-          {reason && <p className="text-[11px] text-warning mt-1.5">{reason}</p>}
-        </div>
-      </div>
+      <span
+        className="absolute left-1/2 top-[18%] h-24 w-24 -translate-x-1/2 rounded-full"
+        style={{ background: 'linear-gradient(180deg, #ffd27a, #e0566a)', boxShadow: '0 0 48px #ff6f8680' }}
+      />
+      <span className="absolute inset-x-0 top-[58%] h-px" style={{ background: '#ff6f86', boxShadow: '0 0 12px #ff6f86' }} />
+      <span
+        className="absolute inset-x-[-50%] bottom-0 h-[42%] origin-bottom"
+        style={{
+          transform: 'perspective(120px) rotateX(60deg)',
+          backgroundImage: 'linear-gradient(#e0566a 1px, transparent 1px), linear-gradient(90deg, #e0566a 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+        }}
+      />
     </>
   );
-  const cls = `block p-4 bg-surface border border-border rounded-2xl shadow-card transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
-    game.unlocked && game.available ? 'hover:shadow-premium motion-safe:hover:-translate-y-0.5' : game.unlocked ? 'opacity-70' : 'opacity-80'
-  }`;
+}
+
+function TunnelArt() {
+  return (
+    <>
+      {[96, 74, 54, 36, 20].map((s, i) => (
+        <span
+          key={s}
+          className="absolute left-1/2 top-[56%] -translate-x-1/2 -translate-y-1/2 rounded-full border-2"
+          style={{ width: `${s}%`, aspectRatio: '1', borderColor: i % 2 ? '#26b3d6' : '#cff6ff', opacity: 0.2 + i * 0.16, boxShadow: i === 4 ? '0 0 24px #43d6ff' : 'none' }}
+        />
+      ))}
+      <span className="absolute left-1/2 top-[56%] -translate-x-1/2 -translate-y-1/2 font-display text-sm font-bold tracking-[0.3em] text-white/90">
+        W_RD
+      </span>
+    </>
+  );
+}
+
+function DefenseArt() {
+  return (
+    <>
+      <span
+        className="absolute inset-0"
+        style={{ backgroundImage: 'linear-gradient(#ff944026 1px, transparent 1px), linear-gradient(90deg, #ff944026 1px, transparent 1px)', backgroundSize: '18px 18px' }}
+      />
+      <span className="absolute left-1/2 top-[58%] h-10 w-10 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-md border-2" style={{ borderColor: '#fff0a6', boxShadow: '0 0 28px #ff9f4a' }} />
+      <span className="absolute left-1/2 top-[58%] h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed" style={{ borderColor: '#ff9f4a80' }} />
+      {[
+        [14, 24],
+        [82, 30],
+        [26, 84],
+        [76, 80],
+        [52, 14],
+      ].map(([x, y]) => (
+        <span key={`${x}-${y}`} className="absolute h-2 w-2 rounded-full" style={{ left: `${x}%`, top: `${y}%`, background: '#5cc7ff', boxShadow: '0 0 10px #5cc7ff' }} />
+      ))}
+    </>
+  );
+}
+
+const FLAGSHIP_ART = {
+  vocably_run: { bg: 'linear-gradient(180deg, #0b1020 0%, #26163f 40%, #3d1d4c 58%, #0a0d1f 58%)', Art: RunArt, accent: '#ff7d92' },
+  word_tunnel: { bg: 'radial-gradient(circle at 50% 56%, #43d6ff40 0%, #0b2747 38%, #07111f 72%)', Art: TunnelArt, accent: '#5fdcff' },
+  word_defense: { bg: 'radial-gradient(circle at 50% 58%, #ff9f4a33 0%, #3a1530 42%, #130b1c 76%)', Art: DefenseArt, accent: '#ffa95c' },
+};
+
+function FeaturedGameCard({ game }) {
+  const { t, ts } = useT();
+  const { bg, Art, accent } = FLAGSHIP_ART[game.key];
+  const reason = ts(!game.unlocked ? game.lockedReason : game.unavailableReason);
+  return (
+    <Link
+      href={`/app/games/${game.key}`}
+      aria-label={`${ts(game.title)}${reason ? ` — ${reason}` : ''}`}
+      className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0d1124] text-white shadow-premium motion-safe:transition-transform duration-300 motion-safe:hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+    >
+      <div className="relative h-36 overflow-hidden sm:h-40" style={{ background: bg }} aria-hidden="true">
+        <Art />
+        <span className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#0d1124] to-transparent" />
+        <span
+          className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold tracking-wide backdrop-blur"
+          style={{ color: accent }}
+        >
+          <Box size={12} /> 3D
+        </span>
+      </div>
+      {game.recommended && (
+        <span className="absolute right-4 top-4 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#0d1124]">{t('hub.forYou')}</span>
+      )}
+      <div className="relative flex flex-1 flex-col gap-3 p-5 pt-2">
+        <div>
+          <h3 className="font-display text-xl font-bold leading-tight">{ts(game.title)}</h3>
+          <p className="mt-1 text-sm leading-relaxed text-white/75">{ts(game.description)}</p>
+        </div>
+        {reason && <p className="text-xs text-amber-200">{reason}</p>}
+        <span
+          className="mt-auto inline-flex w-fit items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-[#0d1124] motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5"
+          style={{ background: accent }}
+        >
+          <Play size={15} aria-hidden="true" fill="currentColor" /> {t('hub.play')}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function GameCard({ game }) {
+  const { t, ts } = useT();
+  const Icon = GAME_ICONS[game.icon] || Gamepad2;
+  const disabled = !game.unlocked || !game.available;
+  const reason = ts(!game.unlocked ? game.lockedReason : game.unavailableReason);
+  const n = game.questionCount?.medium;
+  const tone = disabled ? 'bg-bg-sunken text-muted' : skillTone(game.skill);
   // Yopiq o'yinlar ham sahifaga olib boradi (u yerda sabab va /pricing havolasi ko'rsatiladi).
   return (
-    <Link href={`/app/games/${game.key}`} className={cls} aria-label={`${ts(game.title)}${reason ? ` — ${reason}` : ''}`}>
-      {body}
+    <Link
+      href={`/app/games/${game.key}`}
+      aria-label={`${ts(game.title)}${reason ? ` — ${reason}` : ''}`}
+      className={`group flex h-full flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+        disabled ? 'opacity-75' : 'hover:border-accent/40 hover:shadow-premium motion-safe:hover:-translate-y-0.5'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className={`grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl ${tone}`}>
+          <Icon size={20} aria-hidden="true" />
+        </span>
+        <span className="flex flex-wrap justify-end gap-1.5">
+          {game.recommended && <Badge tone="accent">{t('hub.forYou')}</Badge>}
+          {!game.unlocked && (
+            <Badge tone="warning">
+              <Lock size={11} aria-hidden="true" className="mr-1 inline" />
+              {game.minTier === 'premium' ? 'Premium' : 'Standard'}
+            </Badge>
+          )}
+        </span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-[15px] font-bold leading-snug text-ink">{ts(game.title)}</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">{ts(game.description)}</p>
+        {game.unlocked && reason && <p className="mt-2 text-[11px] text-warning">{reason}</p>}
+      </div>
+      <div className="flex items-center justify-between border-t border-border/70 pt-3 text-[11px] font-semibold text-muted">
+        <span className="tabular-nums">
+          {t(`hub.skill.${game.skill}`)}
+          {n ? ` · ${t('hub.questionsN', { n })}` : ''}
+        </span>
+        <ArrowRight size={14} aria-hidden="true" className="text-accent motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5" />
+      </div>
     </Link>
+  );
+}
+
+function ExtraModeCard({ href, icon: Icon, title, body, testId }) {
+  return (
+    <Link
+      href={href}
+      data-testid={testId}
+      className="group flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card transition-all hover:border-accent/40 hover:shadow-premium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-primary text-on-primary">
+        <Icon size={20} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] font-bold text-ink">{title}</span>
+        <span className="block text-xs text-muted">{body}</span>
+      </span>
+      <ArrowRight size={16} aria-hidden="true" className="flex-shrink-0 text-accent motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5" />
+    </Link>
+  );
+}
+
+function SectionHeading({ id, title, hint, right }) {
+  return (
+    <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <h2 id={id} className="font-display text-lg font-bold text-ink">
+          {title}
+        </h2>
+        {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
+      </div>
+      {right}
+    </div>
   );
 }
 
@@ -210,7 +359,7 @@ export default function GamesHub() {
     return fetchAll();
   };
 
-  // Til (t) o'zgarsa qayta yuklanadi â€” yuklanish holati render vaqtida yoqiladi.
+  // Til (t) o'zgarsa qayta yuklanadi — yuklanish holati render vaqtida yoqiladi.
   const [prevFetch, setPrevFetch] = useState(() => fetchAll);
   if (prevFetch !== fetchAll) {
     setPrevFetch(() => fetchAll);
@@ -239,8 +388,12 @@ export default function GamesHub() {
   if (loading && !profile) {
     return (
       <div className="grid gap-4" aria-busy="true">
-        <Skeleton className="h-36 w-full" />
-        <Skeleton className="h-56 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-72 w-full" />
+          <Skeleton className="h-72 w-full" />
+          <Skeleton className="h-72 w-full" />
+        </div>
         <Skeleton className="h-64 w-full" />
       </div>
     );
@@ -260,47 +413,48 @@ export default function GamesHub() {
   const { level, xp, streak, plan, overview, quests, badges } = profile;
   const firstItem = plan?.items?.[0];
   const earned = (badges || []).filter((b) => b.earned);
+  const locked = (badges || []).filter((b) => !b.earned);
   const streakDays = streak?.streak || 0;
+  const allGames = games?.games || [];
+  const featured = FLAGSHIP_KEYS.map((k) => allGames.find((g) => g.key === k)).filter(Boolean);
+  const classic = allGames.filter((g) => !FLAGSHIP_KEYS.includes(g.key));
 
   return (
-    <div className="grid gap-6">
-      <CoachCard />
-      <DiagnosticCard />
-      <StoryCard />
-      {/* --- Hero --- */}
-      <section className="bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card" aria-labelledby="hub-hero">
-        <h1 id="hub-hero" className="text-2xl font-bold text-ink font-display mb-4">
-          {t('hub.title')}
-        </h1>
-        <div className="grid sm:grid-cols-[1fr_auto] gap-5 items-center">
-          <div>
-            <div className="flex items-baseline justify-between gap-3 mb-2">
-              <p className="text-sm font-semibold text-ink">{t('hub.levelLine', { level: level.level, name: ts(level.name) })}</p>
-              <p className="text-xs text-muted tabular-nums">
-                {xp.toLocaleString(numLocale)} XP{level.nextLevelXp != null ? ` · ${t('hub.toNext', { n: level.xpToNext.toLocaleString(numLocale) })}` : ''}
-              </p>
-            </div>
-            <ProgressBar value={level.progress} label={t('hub.levelProgress')} />
+    <div className="grid gap-8">
+      {/* --- Sarlavha: daraja, XP va seriya bir qatorda (avval 4 ta katta blok edi) --- */}
+      <section className="rounded-3xl border border-border bg-surface p-5 shadow-card sm:p-6" aria-labelledby="hub-hero">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 id="hub-hero" className="font-display text-2xl font-bold text-ink sm:text-3xl">
+              {t('hub.title')}
+            </h1>
+            <p className="mt-1 text-sm font-semibold text-ink">{t('hub.levelLine', { level: level.level, name: ts(level.name) })}</p>
           </div>
-          <div className="flex items-center gap-4">
-            <p className="flex items-center gap-1.5 text-sm" title={streak?.atRisk ? t('hub.streakRiskTitle') : ''}>
-              <Flame size={20} className={streakDays > 0 ? 'text-warning' : 'text-muted'} aria-hidden="true" />
-              <strong className="text-ink text-lg tabular-nums">{streakDays}</strong>
-              <span className="text-muted">{t('hub.streakDays')}</span>
-            </p>
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold tabular-nums ${streakDays > 0 ? 'bg-warning-soft text-warning' : 'bg-bg-sunken text-muted'}`}
+              title={streak?.atRisk ? t('hub.streakRiskTitle') : ''}
+            >
+              <Flame size={16} aria-hidden="true" /> {streakDays}
+              <span className="font-medium">{t('hub.streakDays')}</span>
+            </span>
             {streak?.freezes > 0 && (
-              <p className="flex items-center gap-1 text-xs text-info" title={t('hub.freezeTitle')}>
+              <span className="inline-flex items-center gap-1 rounded-full bg-info-soft px-2.5 py-1.5 text-xs font-bold text-info" title={t('hub.freezeTitle')}>
                 <Snowflake size={14} aria-hidden="true" /> {streak.freezes}
-              </p>
+              </span>
             )}
           </div>
         </div>
-        {streak?.atRisk && (
-          <p className="mt-3 text-xs text-muted">{t('hub.streakRisk')}</p>
-        )}
+        <div className="mt-4">
+          <div className="mb-1.5 flex items-baseline justify-between gap-3 text-xs text-muted tabular-nums">
+            <span>{xp.toLocaleString(numLocale)} XP</span>
+            {level.nextLevelXp != null && <span>{t('hub.toNext', { n: level.xpToNext.toLocaleString(numLocale) })}</span>}
+          </div>
+          <ProgressBar value={level.progress} label={t('hub.levelProgress')} />
+        </div>
+        {streak?.atRisk && <p className="mt-3 text-xs text-muted">{t('hub.streakRisk')}</p>}
         {streak?.brokenPreview && <p className="mt-3 text-xs text-muted">{t('hub.streakBroken')}</p>}
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5" data-tabular>
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4" data-tabular>
           <StatTile tone="sunken" icon={BookOpen} label={t('hub.statTotal')} value={overview.total} />
           <StatTile tone="sunken" icon={Trophy} label={t('hub.statMastered')} value={overview.mastered} sub={overview.total ? `${Math.round((overview.mastered / overview.total) * 100)}%` : null} />
           <StatTile tone="sunken" icon={Sparkles} label={t('hub.statLearning')} value={overview.learning} />
@@ -308,7 +462,44 @@ export default function GamesHub() {
         </div>
       </section>
 
-      <CefrPathCard cefrPath={profile.cefrPath} ieltsPath={profile.ieltsPath} targetBand={profile.targetBand} />
+      <CoachCard />
+
+      {/* --- 3D o'yinlar: sahifaning asosiy maqsadi, endi birinchi ekranda --- */}
+      {featured.length > 0 && (
+        <section aria-labelledby="hub-featured">
+          <SectionHeading
+            id="hub-featured"
+            title={t('hub.featuredTitle')}
+            hint={t('hub.featuredHint')}
+            right={
+              games?.dailyLimit != null ? (
+                <span className="text-xs font-semibold text-muted tabular-nums">{t('hub.todayCount', { a: games.sessionsToday, b: games.dailyLimit })}</span>
+              ) : null
+            }
+          />
+          <div className="grid gap-4 md:grid-cols-3">
+            {featured.map((g) => (
+              <FeaturedGameCard key={g.key} game={g} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* --- Klassik o'yinlar va boshqa rejimlar --- */}
+      <section aria-labelledby="hub-games">
+        <SectionHeading id="hub-games" title={t('hub.classicTitle')} hint={t('hub.classicHint')} />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {classic.map((g) => (
+            <GameCard key={g.key} game={g} />
+          ))}
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          {/* Vocabulary World (3D hub) — portallar shu ro'yxatdagi o'yinlarga olib boradi */}
+          <ExtraModeCard href="/app/vocabulary-world" icon={Globe2} title="Vocabulary World 3D" body={t('hub.worldShort')} />
+          <ExtraModeCard href="/app/duel" icon={Swords} title={t('hub.duelTitle')} body={t('hub.duelBody')} testId="hub-duel" />
+          <ExtraModeCard href="/games/speak" icon={Mic} title={t('hub.speakTitle')} body={t('hub.speakBody')} />
+        </div>
+      </section>
 
       {/* --- Bugungi reja --- */}
       <section className="bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card" aria-labelledby="hub-plan">
@@ -339,7 +530,7 @@ export default function GamesHub() {
         </div>
         {plan?.items?.length ? (
           <>
-            <ul className="grid gap-2 mb-4">
+            <ul className="grid gap-2 mb-4 sm:grid-cols-2">
               {plan.items.map((item, i) => {
                 const Icon = PLAN_ICON[item.type] || Star;
                 return (
@@ -381,97 +572,55 @@ export default function GamesHub() {
         <QuestBlock title={t('hub.questsWeekly')} hint={t('hub.questsWeeklyHint')} list={quests.weekly} />
       </section>
 
-      {/* --- O'yinlar --- */}
-      <section aria-labelledby="hub-games">
-        <div className="flex items-center justify-between mb-3">
-          <h2 id="hub-games" className="text-lg font-bold text-ink font-display">
-            {t('hub.games')}
-          </h2>
-          {games?.dailyLimit != null && (
-            <span className="text-xs text-muted">{t('hub.todayCount', { a: games.sessionsToday, b: games.dailyLimit })}</span>
-          )}
-        </div>
-        {/* Vocabulary World (3D hub) — portallar shu ro'yxatdagi o'yinlarga olib boradi */}
-        {/* Brend yuzasi (--color-primary — ikkala temada ham to'q), AppShell sidebar'i bilan bir
-            oilada. Avvalgi neon-navy banner sahifadagi yagona "begona" rang bloki edi. */}
-        <div className="mb-4 p-5 rounded-2xl bg-primary text-on-primary border border-accent/25 shadow-premium relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: 'radial-gradient(120% 140% at 100% 0%, rgb(var(--color-accent) / .35), transparent 55%), linear-gradient(160deg, rgb(var(--color-primary)), rgb(var(--color-primary-hover)))' }}
-            aria-hidden="true"
-          />
-          <Gamepad2 size={120} strokeWidth={1} className="absolute -right-4 -bottom-8 text-on-primary/10 pointer-events-none" aria-hidden="true" />
-          <div className="relative z-10 min-w-0">
-            <Badge tone="accent" className="mb-2">{t('world.bannerBadge')}</Badge>
-            <h3 className="text-xl font-bold font-display text-on-primary">Vocabulary World 3D</h3>
-            <p className="text-xs text-on-primary/75 max-w-md mt-1 leading-relaxed">{t('world.bannerBody')}</p>
-          </div>
-          <Link
-            href="/app/vocabulary-world"
-            className={`${buttonClasses({ variant: 'primary', size: 'md' })} relative z-10 flex-shrink-0 focus-visible:ring-offset-primary`}
-          >
-            <Gamepad2 size={18} aria-hidden="true" />
-            {t('world.bannerCta')}
-          </Link>
-        </div>
+      <DiagnosticCard />
+      <StoryCard />
+      <CefrPathCard cefrPath={profile.cefrPath} ieltsPath={profile.ieltsPath} targetBand={profile.targetBand} />
 
-        <div className="grid sm:grid-cols-2 gap-3">
-          {(games?.games || []).map((g) => (
-            <GameCard key={g.key} game={g} />
-          ))}
-          <Link
-            href="/app/duel"
-            data-testid="hub-duel"
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent grid place-items-center flex-shrink-0">
-              <Swords size={20} aria-hidden="true" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-bold text-ink">{t('hub.duelTitle')}</span>
-              <span className="block text-xs text-muted">{t('hub.duelBody')}</span>
-            </span>
-          </Link>
-          <Link
-            href="/games/speak"
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent grid place-items-center flex-shrink-0">
-              <Mic size={20} aria-hidden="true" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-bold text-ink">{t('hub.speakTitle')}</span>
-              <span className="block text-xs text-muted">{t('hub.speakBody')}</span>
-            </span>
-          </Link>
-        </div>
-      </section>
-
-      {/* --- Yutuqlar --- */}
+      {/* --- Yutuqlar: olinganlari ko'rinadi, yopiqlari yig'ilgan (avval 16 ta kulrang chip edi) --- */}
       <section className="bg-surface border border-border rounded-2xl p-5 shadow-card" aria-labelledby="hub-ach">
         <div className="flex items-center justify-between mb-3">
           <h2 id="hub-ach" className="text-base font-bold text-ink font-display flex items-center gap-2">
             <Award size={18} aria-hidden="true" /> {t('hub.achievements')}
           </h2>
-          <span className="text-xs text-muted">
+          <span className="text-xs text-muted tabular-nums">
             {earned.length}/{badges.length}
           </span>
         </div>
-        <ul className="flex flex-wrap gap-2">
-          {badges.map((b) => (
-            <li
-              key={b.key}
-              title={ts(b.description || b.label)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs ${
-                b.earned ? 'border-accent/40 bg-accent-soft text-accent-hover font-semibold' : 'border-border text-muted opacity-70'
-              }`}
-            >
-              <span aria-hidden="true">{b.icon}</span>
-              {ts(b.label)}
-              {!b.earned && <span className="sr-only">{t('hub.notEarned')}</span>}
-            </li>
-          ))}
-        </ul>
+        {earned.length ? (
+          <ul className="flex flex-wrap gap-2">
+            {earned.map((b) => (
+              <li
+                key={b.key}
+                title={ts(b.description || b.label)}
+                className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent-hover"
+              >
+                <span aria-hidden="true">{b.icon}</span>
+                {ts(b.label)}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">{t('hub.achNone')}</p>
+        )}
+        {locked.length > 0 && (
+          <details className="group mt-3">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-lg text-xs font-semibold text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              {t('hub.achLocked', { n: locked.length })}
+              <ChevronDown size={14} aria-hidden="true" className="motion-safe:transition-transform group-open:rotate-180" />
+            </summary>
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {locked.map((b) => (
+                <li key={b.key} title={ts(b.description || b.label)} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted">
+                  <span aria-hidden="true" className="grayscale">
+                    {b.icon}
+                  </span>
+                  {ts(b.label)}
+                  <span className="sr-only">{t('hub.notEarned')}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/app/leaderboard" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
             <Trophy size={14} aria-hidden="true" /> {t('hub.leaderboard')}

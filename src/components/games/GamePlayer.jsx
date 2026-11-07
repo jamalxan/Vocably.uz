@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Heart, Lock, Play, X, WifiOff } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Gamepad2, Heart, Lock, Play, Volume2, X, WifiOff } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useT } from '@/context/LocaleContext';
 import Button, { buttonClasses } from '@/components/ui/Button';
@@ -11,6 +11,7 @@ import { abandonGame, completeGame, getActiveSession, getGames, startGame } from
 import { createAnswerQueue } from './answerQueue';
 import { ArrangeQuestion, AudioPlayer, ChoiceQuestion, Feedback, TypedQuestion } from './QuestionViews';
 import ResultScreen from './ResultScreen';
+import { GAME_ICONS, skillTone } from './gameVisuals';
 
 // Matnlar i18n kalitlarida: game.diff.<key>(.hint), game.mode.<key>, game.kind.<kind>.
 const DIFFICULTY_KEYS = ['auto', 'easy', 'medium', 'hard', 'expert'];
@@ -324,13 +325,32 @@ export default function GamePlayer({ gameKey }) {
   if (phase === 'setup' || phase === 'starting') {
     const locked = meta && !meta.unlocked;
     const unavailable = meta && meta.unlocked && !meta.available;
+    const MetaIcon = GAME_ICONS[meta?.icon] || Gamepad2;
     return (
       <div className="max-w-2xl mx-auto">
         <Link href="/app/games" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink mb-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
           <ArrowLeft size={14} aria-hidden="true" /> {t('game.allGames')}
         </Link>
-        <h1 className="text-2xl font-bold text-ink font-display">{ts(meta?.title) || t('game.defaultTitle')}</h1>
-        <p className="text-sm text-muted mt-1 mb-5">{ts(meta?.description)}</p>
+        <div className="mb-5 flex items-start gap-4">
+          <span className={`grid h-14 w-14 flex-shrink-0 place-items-center rounded-2xl ${meta ? skillTone(meta.skill) : 'bg-bg-sunken text-muted'}`}>
+            <MetaIcon size={26} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">{ts(meta?.title) || t('game.defaultTitle')}</h1>
+            <p className="mt-1 text-sm text-muted">{ts(meta?.description)}</p>
+            {meta && (
+              <ul className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-muted" aria-label={t('game.metaAria')}>
+                <li className="rounded-full bg-bg-sunken px-2.5 py-1">{t(`hub.skill.${meta.skill}`)}</li>
+                {meta.questionCount?.medium ? <li className="rounded-full bg-bg-sunken px-2.5 py-1 tabular-nums">{t('hub.questionsN', { n: meta.questionCount.medium })}</li> : null}
+                {meta.needsAudio && (
+                  <li className="inline-flex items-center gap-1 rounded-full bg-bg-sunken px-2.5 py-1">
+                    <Volume2 size={12} aria-hidden="true" /> {t('game.needsAudio')}
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+        </div>
 
         {error && (
           <p role="alert" className="mb-4 text-sm text-danger bg-danger-soft border border-danger/30 rounded-xl px-4 py-3">
@@ -361,10 +381,10 @@ export default function GamePlayer({ gameKey }) {
         )}
 
         {meta && !locked && (
-          <fieldset disabled={phase === 'starting' || unavailable} className="bg-surface border border-border rounded-2xl p-5 grid gap-5 shadow-card">
+          <fieldset disabled={phase === 'starting' || unavailable} className="bg-surface border border-border rounded-3xl p-5 sm:p-6 grid gap-6 shadow-card">
             <div>
               <legend className="text-sm font-semibold text-ink mb-2">{t('game.difficulty')}</legend>
-              <div role="radiogroup" aria-label={t('game.difficultyAria')} className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div role="radiogroup" aria-label={t('game.difficultyAria')} className="grid grid-cols-3 sm:grid-cols-5 gap-1 rounded-2xl border border-border bg-bg-sunken/60 p-1">
                 {DIFFICULTY_KEYS.map((key) => (
                   <button
                     key={key}
@@ -373,8 +393,8 @@ export default function GamePlayer({ gameKey }) {
                     aria-checked={opts.difficulty === key}
                     onClick={() => setOpts((o) => ({ ...o, difficulty: key }))}
                     title={t(`game.diff.${key}.hint`)}
-                    className={`px-2 py-2.5 min-h-11 rounded-lg border text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                      opts.difficulty === key ? 'border-accent bg-accent-soft text-accent-hover' : 'border-border text-ink hover:bg-bg-sunken'
+                    className={`px-2 py-2.5 min-h-11 rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                      opts.difficulty === key ? 'bg-accent text-on-accent shadow-glow' : 'text-ink hover:bg-surface'
                     }`}
                   >
                     {t(`game.diff.${key}`)}
@@ -392,7 +412,7 @@ export default function GamePlayer({ gameKey }) {
                   id="game-mode"
                   value={opts.mode}
                   onChange={(e) => setOpts((o) => ({ ...o, mode: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                  className="w-full min-h-11 px-3 py-2.5 border border-border rounded-xl text-sm bg-surface text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
                 >
                   {MODE_KEYS.map((key) => (
                     <option key={key} value={key}>
@@ -409,7 +429,7 @@ export default function GamePlayer({ gameKey }) {
                   id="game-cat"
                   value={opts.categoryId}
                   onChange={(e) => setOpts((o) => ({ ...o, categoryId: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                  className="w-full min-h-11 px-3 py-2.5 border border-border rounded-xl text-sm bg-surface text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
                 >
                   <option value="">{t('game.allMyWords')}</option>
                   {(categories || []).map((c) => (
@@ -433,8 +453,8 @@ export default function GamePlayer({ gameKey }) {
               </span>
             </label>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Button size="lg" onClick={start} disabled={phase === 'starting' || unavailable}>
+            <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-5">
+              <Button size="lg" onClick={start} disabled={phase === 'starting' || unavailable} className="w-full sm:w-auto">
                 <Play size={18} aria-hidden="true" /> {phase === 'starting' ? t('game.preparing') : t('game.begin')}
               </Button>
               {meta.dailyLimit != null && <span className="text-xs text-muted">{t('game.todayCount', { a: meta.sessionsToday, b: meta.dailyLimit })}</span>}
@@ -479,7 +499,7 @@ export default function GamePlayer({ gameKey }) {
       </div>
 
       <div
-        className="h-1.5 rounded-full bg-bg-sunken overflow-hidden mb-4"
+        className="h-2 rounded-full bg-bg-sunken overflow-hidden mb-5"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -515,8 +535,8 @@ export default function GamePlayer({ gameKey }) {
         </p>
       )}
 
-      <div className="bg-surface border border-border rounded-2xl p-5 sm:p-6 shadow-card" aria-busy={phase === 'finishing' || checking}>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">{KNOWN_KINDS.has(q.kind) ? t(`game.kind.${q.kind}`) : ''}</p>
+      <div className="bg-surface border border-border rounded-3xl p-5 sm:p-8 shadow-card" aria-busy={phase === 'finishing' || checking}>
+        <p className="mb-3 inline-flex rounded-full bg-bg-sunken px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">{KNOWN_KINDS.has(q.kind) ? t(`game.kind.${q.kind}`) : ''}</p>
 
         {timeLimit && timeLeft != null && (
           <div className="mb-3" role="timer" aria-label={t('game.timerAria', { n: Math.ceil(timeLeft / 1000) })}>
@@ -531,7 +551,7 @@ export default function GamePlayer({ gameKey }) {
         )}
 
         {q.kind !== 'listen_choose' && q.kind !== 'listen_type' && (
-          <h2 className="text-xl sm:text-2xl font-bold text-ink font-display mb-4 break-words">{q.prompt}</h2>
+          <h2 className="mb-6 break-words font-display text-2xl font-bold leading-tight text-ink sm:text-3xl">{q.prompt}</h2>
         )}
         {showAudio && (
           <div className="mb-4">
