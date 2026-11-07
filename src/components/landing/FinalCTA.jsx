@@ -24,6 +24,13 @@ const COPY = {
     register: 'Sign up',
     more: 'Learn more',
   },
+  ru: {
+    headline: [{ w: 'Начните' }, { w: 'сегодня.' }, { w: 'Измените' }, { w: 'свои результаты.', accent: true }],
+    marquee: 'Начните сегодня ✦',
+    note: 'Регистрация занимает 1 минуту, банковская карта не нужна.',
+    register: 'Зарегистрироваться',
+    more: 'Подробнее',
+  },
 };
 
 // Finale: dark chapter, the Learning Core returns above the headline with

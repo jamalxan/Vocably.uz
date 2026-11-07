@@ -34,6 +34,20 @@ const COPY = {
     capped: 'monthly cap',
     error: 'Could not load',
   },
+  ru: {
+    title: 'Пригласите друзей',
+    body: 'За каждого друга, который присоединится, вы оба получите {n} дн. Premium.',
+    code: 'Ваш код',
+    copy: 'Скопировать ссылку',
+    copied: 'Скопировано',
+    share: 'Поделиться в Telegram',
+    shareText: 'Учи английский со мной в Vocably — зарегистрируйся по этой ссылке, и мы оба получим {n} дн. Premium.',
+    invited: 'Присоединилось друзей: {n}',
+    earned: 'Получено дней Premium: {n}',
+    recent: 'Последние приглашения',
+    capped: 'месячный лимит',
+    error: 'Не удалось загрузить',
+  },
 };
 const fill = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '');
 

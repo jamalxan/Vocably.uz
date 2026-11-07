@@ -88,6 +88,41 @@ const COPY = {
       haveAccount: 'I have an account — log in', restart: 'Start over', saveError: "Couldn't save, please try again",
     },
   },
+  ru: {
+    step: 'Шаг', of: 'из', back: 'Назад', next: 'Продолжить', skip: 'Пропустить',
+    q: {
+      goal: { title: 'Какая у вас цель?', options: { ielts: 'Сдать IELTS', general: 'Общий английский' } },
+      examType: { title: 'Какой модуль?', options: { academic: 'Academic', general: 'General Training' } },
+      targetBand: { title: 'Целевой band?', hint: 'Его можно изменить позже в профиле' },
+      examDate: { title: 'Когда экзамен?', unknown: 'Пока не знаю (план на 90 дней)' },
+      selfLevel: { title: 'Ваш текущий уровень?', options: { beginner: 'Начальный (A1–A2)', intermediate: 'Средний (B1)', advanced: 'Продвинутый (B2+)' } },
+      dailyMinutes: { title: 'Сколько минут в день вы готовы заниматься?', unit: 'минут' },
+      weakestSkill: { title: 'Какой навык даётся труднее всего?', options: { reading: 'Reading', listening: 'Listening', writing: 'Writing', speaking: 'Speaking' } },
+    },
+    diag: {
+      title: '5-минутный тест на словарный запас',
+      lead: '16 слов — чтобы точнее определить уровень и подстроить под него план.',
+      start: 'Начать тест', skip: 'Продолжить без теста', dontKnow: 'Не знаю',
+      progress: (i, n) => `${i} / ${n}`, question: (w) => `Что значит «${w}»?`,
+    },
+    result: {
+      title: 'Ваш личный план готов',
+      days: 'дн.', perDay: 'мин / день', words: 'слов нужно выучить', wordsPerDay: (n) => `~${n} новых слов в день`,
+      level: (c, b) => `Примерный уровень: ${c} (band ≈ ${b})`,
+      offTrack: 'В таком темпе вы не успеете набрать нужный словарный запас к экзамену — советуем заниматься больше минут в день.',
+      planTitle: 'Каждый день',
+      plan: (w) => [
+        'Повторение SRS — слова, которые начинают забываться',
+        'Новые слова + 1 игра',
+        `Практика ${w} (больше времени на самый слабый навык)`,
+        'Раз в неделю — пробный раздел, план пересчитывается',
+      ],
+      pricesTitle: 'Цены — ничего скрытого',
+      perMonth: 'сум / мес', free: 'Бесплатно', trial: 'Пробный Premium при регистрации — без карты',
+      cta: 'Сохранить план — бесплатная регистрация', ctaLoggedIn: 'Сохранить план', saving: 'Сохранение…',
+      haveAccount: 'У меня есть аккаунт — войти', restart: 'Начать заново', saveError: 'Не удалось сохранить, попробуйте ещё раз',
+    },
+  },
 };
 
 const BANDS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9];

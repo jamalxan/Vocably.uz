@@ -25,7 +25,7 @@ export async function POST(req) {
     const entries = [...new Map(raw.map(bankEntry).filter(Boolean).map((e) => [e.word, e])).values()];
     if (!entries.length) return NextResponse.json({ error: "Saqlash uchun so'z topilmadi" }, { status: 400 });
 
-    const docs = entries.map((e) => ({ word: e.word, syns: [e.uz], enrichment: { cefr: e.cefr, definitionEn: e.definition } }));
+    const docs = entries.map((e) => ({ word: e.word, syns: [e.uz], ...(e.ru ? { synsRu: [e.ru] } : {}), enrichment: { cefr: e.cefr, definitionEn: e.definition } }));
     const out = await addToSystemDeck(userId, RUN_DECK_NAME, docs);
     if (out.error === 'not_found') return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
     if (out.error === 'word_limit') return NextResponse.json({ error: WORD_CAP_MESSAGE(), code: 'word_limit', room: out.room }, { status: 409 });

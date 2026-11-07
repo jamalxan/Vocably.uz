@@ -1299,7 +1299,7 @@ const uz = {
   'ai.helloName': "Assalomu alaykum, {name}!",
   'ai.intro': "Men sizning Vocably yordamchingizman. Bugun sizga qanday yordam bera olaman?",
   'ai.example': "Masalan: \"arise\" so'zini bir nechta gapda ishlatib ko'rsat, yoki rasm yuboring",
-  'ai.langRule': "Javoblar ingliz tilida — o'zbekcha yozsangiz yoki «o'zbekcha gapir» desangiz, o'zbekcha javob beraman.",
+  'ai.langRule': "Javoblar ingliz tilida — o'zbekcha yoki ruscha yozsangiz (yoki «o'zbekcha gapir» / «по-русски» desangiz), o'sha tilda javob beraman.",
   'ai.typing': "javob yozmoqda...",
   'ai.noVoice': "Brauzeringiz ovozli kiritishni qo'llab-quvvatlamaydi — matn rejimida davom eting.",
   'ai.closeErr': "Xatoni yopish",

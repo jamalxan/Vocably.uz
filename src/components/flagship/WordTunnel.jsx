@@ -7,9 +7,11 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Pause, Play, RotateCcw, Volume2, VolumeX, Smartphone, ArrowRight, Loader2, Keyboard, SkipForward, Box, RefreshCw } from 'lucide-react';
 import useCopy from '@/components/landing/useCopy';
+import { useT } from '@/context/LocaleContext';
+import { translationLangFor } from '@/lib/i18n';
 import { TUNNEL, initialTunnel, resolveWord, summary } from '@/lib/flagship/tunnel';
 import { guestTypedQuestions, fromServerQuestion, slotsFor, hasCyrillic, canSkip, scheduleCounted, createSendHold } from '@/lib/flagship/typing';
-import { RUN_BANK, bankEntry } from '@/lib/flagship/runBank';
+import { RUN_BANK, bankMeaning } from '@/lib/flagship/runBank';
 import { beep } from '@/lib/flagship/client';
 import { createFpsWatchdog, stepDown, writeRenderPref, readRenderPref, detectRenderTier } from '@/lib/flagship/gpu';
 import { abandonGame } from '@/components/games/api';
@@ -189,10 +191,82 @@ const COPY = {
     credit: 'The tunnel mechanic is adapted from Boom123bam/cooltypinggame (Apache-2.0).',
     licenses: 'Licences',
   },
+  ru: {
+    title: 'Word Tunnel',
+    kicker: 'Правописание для IELTS',
+    tagline: 'Появляется значение — напечатайте английское слово. Каждая буква становится частью тоннеля.',
+    rules: [
+      '90 секунд: напечатайте правильно как можно больше слов.',
+      'Быстрые верные ответы подряд дают комбо и бонусные очки.',
+      'Успеете пройти все слова раньше — каждая оставшаяся секунда даст до +10 очков с учётом точности.',
+    ],
+    controls: 'Напечатайте слово и нажмите Enter (или «Готово» на телефоне). Не знаете? Пропустите. Esc — пауза.',
+    guestNote: 'Аккаунт не нужен. Слова с ошибками сохранятся — зарегистрируйтесь, и они попадут в повторения.',
+    userNote: 'Слова берутся из вашего словаря. Каждый ответ проверяется на сервере и обновляет график повторений.',
+    start: 'Начать',
+    again: 'Ещё раз',
+    loading: 'Готовим…',
+    getReady: 'Приготовьтесь — сейчас будет первое слово',
+    meaning: 'Значение',
+    definition: 'Определение',
+    score: 'Очки',
+    combo: 'Комбо',
+    time: 'Время',
+    pause: 'Пауза',
+    resume: 'Продолжить',
+    paused: 'Пауза',
+    endRound: 'Завершить раунд',
+    sound: 'Звук',
+    vibrate: 'Вибрация',
+    inputLabel: 'Напечатайте английское слово',
+    placeholder: 'Английское слово…',
+    submit: 'Отправить',
+    skip: 'Пропустить',
+    right: 'Верно!',
+    wrong: 'Неверно. Ответ:',
+    near: 'Почти! Ответ:',
+    skipped: 'Пропущено. Ответ:',
+    offline: 'Ответ пока не проверен — проверим, когда появится связь',
+    offlinePause: 'Связь пропала. Проверьте интернет и продолжайте.',
+    cyrillic: 'Переключите клавиатуру на латиницу (английский)',
+    letters: (n) => `Букв: ${n}`,
+    firstLetter: (ch, n) => `Начинается на «${ch}», букв: ${n}`,
+    timeUp: 'Время вышло',
+    allDone: 'Все слова напечатаны!',
+    finished: 'Раунд окончен',
+    expired: 'Сессия истекла',
+    correct: 'Верно',
+    accuracy: 'Точность',
+    maxCombo: 'Лучшее комбо',
+    cpm: 'Знаков/мин',
+    bonus: (n) => `бонус за время +${n}`,
+    xp: (n) => `+${n} XP`,
+    flagged: 'Раунд отправлен на проверку — XP не начислен.',
+    notSaved: 'Результат ещё не дошёл до сервера. Проверьте связь и отправьте снова — ответы сохранены в этой вкладке.',
+    resend: 'Отправить снова',
+    resending: 'Отправляем…',
+    missedTitle: 'Слова с ошибками',
+    yours: 'Вы ввели:',
+    noMissed: 'Ни одной ошибки — отлично!',
+    reviewNow: 'Повторить сейчас',
+    saveCta: 'Сохраните результат и получите план',
+    saveNote: (n) => `Слова с ошибками (${n}) попадут в повторения, как только у вас появится аккаунт.`,
+    practiceFewWords: 'У вас пока мало слов для набора — тренируемся на частых словах (без сохранения).',
+    practiceLimit: 'Бесплатные игры на сегодня закончились — это тренировочный раунд, без XP.',
+    pricing: 'Посмотреть тарифы',
+    errorStart: 'Не удалось запустить игру',
+    claimed: (n) => `Слова с ошибками из прошлой игры (${n}) добавлены в повторения.`,
+    lite: 'Устройство тормозит — включён облегчённый режим (2D).',
+    liteLost: '3D-графика остановилась — продолжаем в 2D.',
+    try3d: 'Снова попробовать 3D',
+    credit: 'Механика тоннеля адаптирована из Boom123bam/cooltypinggame (Apache-2.0).',
+    licenses: 'Лицензии',
+  },
 };
 
 export default function WordTunnel() {
   const c = useCopy(COPY);
+  const tLang = translationLangFor(useT().locale); // guest meanings: Russian UI -> Russian
   const [notice, setNotice] = useState('');
   const onClaimed = useCallback((n) => setNotice(c.claimed(n)), [c]);
   const { audience, fx, fxRef, toggleFx, tier, setTier } = useFlagshipAudience('word_tunnel', onClaimed);
@@ -324,7 +398,7 @@ export default function WordTunnel() {
       const msLeft = s.allSubmitted ? Math.max(0, TUNNEL.roundMs - s.lastSubmitElapsed) : 0;
       const sum = summary(s.state, playMs, { msLeft, allAnswered: s.allSubmitted && !stopped });
       const reason = why === 'expired' ? c.expired : why === 'stopped' ? c.finished : s.allSubmitted ? c.allDone : c.timeUp;
-      const local = sum.missed.map((m) => ({ word: m.word, prompt: m.prompt, yours: m.yours, note: s.round.session ? m.prompt : bankEntry(m.word)?.uz || m.prompt }));
+      const local = sum.missed.map((m) => ({ word: m.word, prompt: m.prompt, yours: m.yours, note: s.round.session ? m.prompt : bankMeaning(m.word, tLang) || m.prompt }));
       s.local = local; // kept for "send again"
       if (disposedRef.current) {
         completeRound(s.round, local); // the page was left while the round settled: save it all the same
@@ -351,7 +425,7 @@ export default function WordTunnel() {
       setPhase('result');
       done.later?.then((late) => applyDone(s, late));
     },
-    [applyDone, c, fxRef]
+    [applyDone, c, fxRef, tLang]
   );
 
   // "Send again" for a result the server has not got yet: the same round's save once more (joining
@@ -544,7 +618,7 @@ export default function WordTunnel() {
         gameKey: 'word_tunnel',
         audience,
         toQuestion: fromServerQuestion,
-        guestQuestions: () => guestTypedQuestions(RUN_BANK, Math.random, TUNNEL.guestQuestions),
+        guestQuestions: () => guestTypedQuestions(RUN_BANK, Math.random, TUNNEL.guestQuestions, tLang),
       });
     } catch (e) {
       if (disposedRef.current) return;

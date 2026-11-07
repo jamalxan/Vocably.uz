@@ -33,6 +33,18 @@ const COPY = {
     band: 'Band (mock)',
     skills: 'By skill',
   },
+  ru: {
+    eyebrow: 'Прогресс',
+    title: 'Ваш рост — в цифрах',
+    xpLabel: 'XP · эта неделя',
+    days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+    streak: 'Серия',
+    streakUnit: 'дней',
+    vocab: 'Словарь',
+    vocabGoal: '{pct}% от цели в {goal} слов',
+    band: 'Band (mock)',
+    skills: 'По навыкам',
+  },
 };
 
 // Bar heights pair with COPY.*.days by index.

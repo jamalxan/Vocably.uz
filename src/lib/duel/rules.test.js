@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   DUEL, rng, duelCode, cleanPool, buildDuelQuestions, publicQuestion, gradeAnswer, timeoutAnswer, tally, isSuspicious,
-  decideWinner, eloUpdate, resultFor, xpFor, missedWords, reviewRows,
+  decideWinner, eloUpdate, resultFor, xpFor, missedWords, reviewRows, localizeDuelPayload,
 } from './rules';
 import { RUN_BANK } from '../flagship/runBank';
 
@@ -44,8 +44,33 @@ describe('question set', () => {
   it('public question never carries the answer or the source word', () => {
     const q = buildDuelQuestions(POOL, 5)[1];
     const pub = publicQuestion(q, 1);
-    expect(pub).toEqual({ index: 1, dir: 'uz_en', prompt: q.uz, options: q.options, total: 10, limitMs: 7000 });
+    expect(pub).toEqual({ index: 1, dir: 'uz_en', prompt: q.uz, options: q.options, promptRu: q.promptRu, optionsRu: q.optionsRu, total: 10, limitMs: 7000 });
     expect(JSON.stringify(pub)).not.toContain('"answer"');
+  });
+
+  it('Russian view: same order and answer, Russian meanings (Uzbek fallback), helper fields removed', () => {
+    const pool = Array.from({ length: 12 }, (_, i) => ({ word: `w${i}`, uz: `uz${i}`, ru: i === 3 ? '' : `ru${i}`, cefr: 'B1' }));
+    const qs = buildDuelQuestions(pool, 9);
+    const legacy = buildDuelQuestions(pool.map(({ ru, ...e }) => e), 9);
+    // Adding Russian doesn't change the Uzbek questions (same rand sequence).
+    expect(qs.map(({ word, prompt, options, answer }) => ({ word, prompt, options, answer }))).toEqual(
+      legacy.map(({ word, prompt, options, answer }) => ({ word, prompt, options, answer }))
+    );
+    for (const q of qs) {
+      expect(q.optionsRu.length).toBe(q.options.length);
+      const ruRight = q.optionsRu[q.answer];
+      if (q.dir === 'en_uz') expect(ruRight).toBe(q.word === 'w3' ? 'uz3' : q.word.replace('w', 'ru'));
+      else expect(ruRight).toBe(q.word);
+    }
+    const en = qs.find((q) => q.dir === 'en_uz');
+    const ruView = localizeDuelPayload({ question: publicQuestion(en, 0), review: reviewRows([en], []) }, 'ru');
+    expect(ruView.question.options).toEqual(en.optionsRu);
+    expect(ruView.question).not.toHaveProperty('optionsRu');
+    expect(ruView.review[0].uz).toBe(en.ru);
+    expect(ruView.review[0]).not.toHaveProperty('ru');
+    const uzView = localizeDuelPayload({ question: publicQuestion(en, 0) }, 'uz');
+    expect(uzView.question.options).toEqual(en.options);
+    expect(uzView.question).not.toHaveProperty('promptRu');
   });
 });
 

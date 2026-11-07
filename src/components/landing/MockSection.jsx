@@ -27,6 +27,15 @@ const COPY = {
     tabsLabel: 'Mock sections',
     options: ['A  Historical context', 'B  Economic impact', 'C  Technological solution'],
   },
+  ru: {
+    title: 'Атмосфера настоящего экзамена',
+    lead: 'Полный тест из четырёх частей с серверным таймером, автосохранением и настоящим интерфейсом IELTS — в день экзамена ничто не будет для вас новым.',
+    chips: ['Серверный таймер', 'Автосохранение', '4 части'],
+    result: 'Результат',
+    flag: 'Отметить',
+    tabsLabel: 'Разделы mock-теста',
+    options: ['A  Исторический контекст', 'B  Экономическое влияние', 'C  Технологическое решение'],
+  },
 };
 
 // Non-text chip config, paired with COPY[locale].chips by index.

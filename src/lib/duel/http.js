@@ -3,6 +3,8 @@ import { connectToDatabase } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { checkRateLimit } from '@/lib/chatAuth';
+import { requestTranslationLang } from '@/lib/vocab/translationLang';
+import { localizeDuelPayload } from './rules';
 
 // Shared plumbing for /api/duels/* routes (TZ 2.0 §6.8.4).
 const MESSAGES = {
@@ -44,7 +46,8 @@ export async function duelRoute(req, label, fn, { limit } = {}) {
       const { error, status, ...rest } = out;
       return NextResponse.json({ error: MESSAGES[error] || error, code: error, ...rest }, { status: status || 400 });
     }
-    return NextResponse.json(out, { headers: { 'Cache-Control': 'no-store' } });
+    // Questions/review in the player's translation language (UI ru -> Russian meanings).
+    return NextResponse.json(localizeDuelPayload(out, requestTranslationLang(req)), { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     return serverError(err, `duels/${label}`);
   }

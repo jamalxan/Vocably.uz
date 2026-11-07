@@ -6,6 +6,7 @@ import useCopy from '../useCopy';
 const COPY = {
   uz: { nav: 'Sahifa boblari', labels: { manifesto: 'Nega Vocably', story: "So'z → ko'nikma", srs: 'SRS', skills: "4 ko'nikma", ai: 'AI tutor', progress: 'Progress', mock: 'Mock', faq: 'FAQ' } },
   en: { nav: 'Page chapters', labels: { manifesto: 'Why Vocably', story: 'Word → skill', srs: 'SRS', skills: '4 skills', ai: 'AI tutor', progress: 'Progress', mock: 'Mock', faq: 'FAQ' } },
+  ru: { nav: 'Разделы страницы', labels: { manifesto: 'Почему Vocably', story: 'Слово → навык', srs: 'SRS', skills: '4 навыка', ai: 'AI-репетитор', progress: 'Прогресс', mock: 'Mock', faq: 'FAQ' } },
 };
 
 // Fixed chapter rail (desktop, pointer devices): one tick per chapter of the

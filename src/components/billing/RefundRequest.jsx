@@ -34,6 +34,19 @@ const COPY = {
     declined: 'Refund declined',
     failed: 'Could not send the request',
   },
+  ru: {
+    ask: 'Вернуть деньги',
+    until: 'до {date}',
+    reason: 'Причина (необязательно)',
+    placeholder: 'Что не понравилось? Это поможет нам стать лучше.',
+    send: 'Отправить запрос',
+    cancel: 'Отмена',
+    warn: 'Деньги вернутся полностью, а тариф сократится на срок этого платежа. Один раз на аккаунт.',
+    requested: 'Запрос на возврат отправлен — рассмотрим в течение 3 рабочих дней',
+    approved: 'Деньги возвращены',
+    declined: 'В возврате отказано',
+    failed: 'Не удалось отправить запрос',
+  },
 };
 
 export default function RefundRequest({ request, onChange }) {

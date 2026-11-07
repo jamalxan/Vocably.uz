@@ -13,6 +13,7 @@ import { useT } from '@/context/LocaleContext';
 const COPY = {
   uz: { or: 'yoki', button: 'Telegram orqali kirish', hint: "Parolsiz. Telefon bilan ochilgan hisobingiz shu Telegram'ga ulangan bo'lsa, o'sha hisob ochiladi.", busy: 'Kirilmoqda…', failed: "Telegram orqali kirib bo'lmadi", network: 'Internet aloqasini tekshiring', noScript: "Telegram yuklanmadi — sahifani yangilang" },
   en: { or: 'or', button: 'Continue with Telegram', hint: "No password. If your phone account is linked to this Telegram, you'll land in that account.", busy: 'Signing in…', failed: 'Could not sign in with Telegram', network: 'Check your internet connection', noScript: 'Telegram did not load — refresh the page' },
+  ru: { or: 'или', button: 'Войти через Telegram', hint: 'Без пароля. Если ваш аккаунт с номером телефона привязан к этому Telegram, откроется он.', busy: 'Вход…', failed: 'Не удалось войти через Telegram', network: 'Проверьте подключение к интернету', noScript: 'Telegram не загрузился — обновите страницу' },
 };
 
 const SCRIPT_ID = 'telegram-login-js';

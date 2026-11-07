@@ -4,8 +4,10 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Heart, Pause, Play, RotateCcw, Volume2, VolumeX, Smartphone, ArrowRight, Loader2, Zap, ChevronLeft, ChevronRight, Box } from 'lucide-react';
 import useCopy from '@/components/landing/useCopy';
+import { useT } from '@/context/LocaleContext';
+import { translationLangFor } from '@/lib/i18n';
 import { RUN, initialRun, resolveGate, moveLane, summary, guestQuestions, travelMsFor, speedFor } from '@/lib/flagship/run';
-import { RUN_BANK, bankEntry } from '@/lib/flagship/runBank';
+import { RUN_BANK, bankMeaning } from '@/lib/flagship/runBank';
 import { saveGuestMissed, claimGuestMissed, readFx, writeFx, beep } from '@/lib/flagship/client';
 import { createFpsWatchdog, stepDown, writeRenderPref, readRenderPref, detectRenderTier } from '@/lib/flagship/gpu';
 import { startGame, completeGame } from '@/components/games/api';
@@ -120,6 +122,52 @@ const COPY = {
     liteLost: '3D graphics stopped — continuing in 2D.',
     try3d: 'Try 3D mode again',
   },
+  ru: {
+    title: 'Vocably Run',
+    tagline: 'Сверху значение — беги в полосу с правильным словом.',
+    rules: ['3 жизни. Ошибка с полосой отнимает одну.', 'Скорость +8% за каждые 10 правильных ответов.', 'Очки = правильные × скорость × комбо. Раунд — 90 секунд.'],
+    controls: 'Управление: ← → (или A/D), свайп или нажатие на слово внизу.',
+    guestNote: 'Аккаунт не нужен. Слова с ошибками сохранятся — зарегистрируйтесь, и они попадут в повторения.',
+    userNote: 'Слова берутся из вашего словаря. Каждый ответ обновляет график повторений.',
+    start: 'Начать',
+    again: 'Ещё раз',
+    loading: 'Готовим…',
+    meaning: 'Значение',
+    definition: 'Определение',
+    lives: 'Жизни',
+    score: 'Очки',
+    combo: 'Комбо',
+    time: 'Время',
+    pause: 'Пауза',
+    resume: 'Продолжить',
+    paused: 'Пауза',
+    sound: 'Звук',
+    vibrate: 'Вибрация',
+    lane: (n, w) => `Полоса ${n}: ${w}`,
+    locked: 'Зафиксировано',
+    right: 'Верно!',
+    wrong: 'Неверно. Ответ:',
+    offline: 'Нет связи — этот ответ не засчитан',
+    over: 'Жизни закончились',
+    timeUp: 'Время вышло',
+    finished: 'Раунд окончен',
+    correct: 'Верно',
+    accuracy: 'Точность',
+    maxCombo: 'Лучшее комбо',
+    seconds: 'Секунды',
+    xp: (n) => `+${n} XP`,
+    missedTitle: 'Слова с ошибками',
+    noMissed: 'Ни одной ошибки — отлично!',
+    reviewNow: 'Повторить сейчас',
+    saveCta: 'Сохраните результат и получите план',
+    saveNote: (n) => `Слова с ошибками (${n}) попадут в повторения, как только у вас появится аккаунт.`,
+    practiceFallback: 'У вас пока мало слов — играем с частыми словами (без сохранения).',
+    errorStart: 'Не удалось запустить игру',
+    claimed: (n) => `Слова с ошибками из Vocably Run (${n}) добавлены в повторения.`,
+    lite: 'Устройство тормозит — включён облегчённый режим (2D).',
+    liteLost: '3D-графика остановилась — продолжаем в 2D.',
+    try3d: 'Снова попробовать 3D',
+  },
 };
 
 /** Fallback when 3D is off (render tier 'none', see gpu.js): the gate slides down a 2D track. */
@@ -152,6 +200,7 @@ function Track2D({ sceneRef, running }) {
 
 export default function VocablyRun() {
   const c = useCopy(COPY);
+  const tLang = translationLangFor(useT().locale); // guest meanings: Russian UI -> Russian
   const [audience, setAudience] = useState(null); // null (checking) | 'guest' | 'user'
   const [phase, setPhase] = useState('intro'); // intro | loading | playing | finishing | result
   const [paused, setPaused] = useState(false);
@@ -285,7 +334,7 @@ export default function VocablyRun() {
     beep('end', fxRef.current);
     if (!s.session) {
       if (s.saveGuest) saveGuestMissed(sum.missed.map((m) => m.word));
-      setResult({ ...sum, reason, guest: s.saveGuest, practice: !s.saveGuest, missed: sum.missed.map((m) => ({ word: m.word, note: bankEntry(m.word)?.uz || m.prompt })) });
+      setResult({ ...sum, reason, guest: s.saveGuest, practice: !s.saveGuest, missed: sum.missed.map((m) => ({ word: m.word, note: bankMeaning(m.word, tLang) || m.prompt })) });
       setPhase('result');
       return;
     }
@@ -300,7 +349,7 @@ export default function VocablyRun() {
     } catch { /* result still shown; the session expires on its own */ }
     setResult({ ...sum, reason, xp, guest: false, missed });
     setPhase('result');
-  }, [c]);
+  }, [c, tLang]);
 
   const grade = useCallback((q, optionId, responseMs) => {
     const s = g.current;
@@ -404,7 +453,7 @@ export default function VocablyRun() {
         }
       }
     }
-    if (!qs) qs = guestQuestions(RUN_BANK, Math.random, 30);
+    if (!qs) qs = guestQuestions(RUN_BANK, Math.random, 30, tLang);
     const now = performance.now();
     g.current = {
       active: true,
