@@ -117,7 +117,9 @@ const WordEnrichmentSchema = new mongoose.Schema(
 
 const WordSchema = new mongoose.Schema({
   word: { type: String, required: true, trim: true },
-  syns: [{ type: String, trim: true }],
+  syns: [{ type: String, trim: true }], // o'zbekcha tarjimalar
+  // Ruscha tarjimalar (2026-11-07) — interfeys ruscha bo'lganda ko'rsatiladi; src/lib/vocab/translationLang.js.
+  synsRu: { type: [{ type: String, trim: true }], default: undefined },
   // AI orqali qo'shilgan so'zlar uchun talaffuz transkripsiyasi (masalan "/əˈraɪz/") —
   // ixtiyoriy, qo'lda qo'shilgan eski so'zlarda bo'sh qoladi. Bu maydon TZ §4.1'dagi
   // `ipa`ning aynan o'zi — ikkinchi nom bilan dublikat qilinmadi.

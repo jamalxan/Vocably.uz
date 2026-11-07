@@ -7,6 +7,7 @@ import { serverError } from '@/lib/apiError';
 import { WORD_CAP_MESSAGE } from '@/lib/vocab/wordCap';
 import { checkWordRoom } from '@/lib/vocab/server/wordCap';
 import { NextResponse } from 'next/server';
+import { requestTranslationLang, wordDocForLang } from '@/lib/vocab/translationLang';
 
 const NEW_WORD_XP_DAILY_CAP = 250; // ≈ 50 so'z/kun
 
@@ -28,7 +29,9 @@ export async function POST(req) {
         word: w.word.trim(),
         syns: Array.isArray(w.syns) ? w.syns.map((s) => String(s).trim()).filter(Boolean) : [],
       }))
-      .filter((w) => w.syns.length > 0);
+      .filter((w) => w.syns.length > 0)
+      // Tarjima foydalanuvchi tilidagi maydonga yoziladi (ru -> synsRu).
+      .map((w) => wordDocForLang(w, requestTranslationLang(req)));
 
     if (cleanWords.length === 0) {
       return NextResponse.json({ error: "Qo'shish uchun so'z topilmadi" }, { status: 400 });

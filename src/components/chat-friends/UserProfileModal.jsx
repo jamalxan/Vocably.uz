@@ -9,6 +9,7 @@ import Avatar from '@/components/avatar/Avatar';
 import PhotoViewer from '@/components/avatar/PhotoViewer';
 import { fetchUserPhotos } from '@/lib/profilePhotosClient';
 import { useT } from '@/context/LocaleContext';
+import { numLocaleFor } from '@/lib/i18n';
 import { useCall } from '@/context/CallContext';
 
 // C-09 (VOCABLY_TZ_V2_LIVE_AUDIT_2026-09-22.md §9.2/§9.3 E) — 80x80 grid
@@ -198,7 +199,7 @@ function MediaGallery({ conversationId, type }) {
           {visibleMessages.map((m) => (
             <li key={m.id || m._id} className="rounded-xl border border-border bg-bg p-2.5">
               {type === 'file' ? <GalleryFileRow media={m.media} /> : <GalleryLinkRow text={m.text} />}
-              <p className="text-[11px] text-muted mt-1">{new Date(m.createdAt).toLocaleString(locale === 'uz' ? 'uz-UZ' : 'en-US')}</p>
+              <p className="text-[11px] text-muted mt-1">{new Date(m.createdAt).toLocaleString(numLocaleFor(locale))}</p>
             </li>
           ))}
         </ul>
@@ -220,7 +221,7 @@ function MediaGallery({ conversationId, type }) {
         {visibleMessages.map((m) => (
           <div key={m.id || m._id} className="w-fit max-w-full rounded-xl border border-border bg-bg p-2 flex flex-col gap-1">
             <Bubble media={m.media} />
-            <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString(locale === 'uz' ? 'uz-UZ' : 'en-US')}</p>
+            <p className="text-[11px] text-muted">{new Date(m.createdAt).toLocaleString(numLocaleFor(locale))}</p>
           </div>
         ))}
       </div>

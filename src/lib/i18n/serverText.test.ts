@@ -20,6 +20,13 @@ describe('ko‘plik (inglizcha)', () => {
   });
 });
 
+describe('ko‘plik (ruscha)', () => {
+  const f = ['слово', 'слова', 'слов'];
+  it.each([[1, 0], [21, 0], [101, 0], [2, 1], [4, 1], [22, 1], [5, 2], [11, 2], [12, 2], [14, 2], [111, 2], [0, 2]])('%i', (n, i) =>
+    expect(pluralForm('ru', n, f)).toBe(f[i])
+  );
+});
+
 describe('translateServerText', () => {
   it('aniq moslik, shablon (ko‘plik bilan), uz va noma’lum matn', () => {
     expect(translateServerText('en', "So'z juftligi")).toBe('Word Pairs');
@@ -38,7 +45,8 @@ describe('translateServerText', () => {
 });
 
 describe('qamrov: serverdagi har bir ko‘rinadigan matn tarjima qilingan', () => {
-  const missing = (texts: (string | undefined)[]) => [...new Set(texts.filter((t): t is string => !!t))].filter((t) => !hasServerTranslation('en', t));
+  const missing = (texts: (string | undefined)[]) =>
+    [...new Set(texts.filter((t): t is string => !!t))].flatMap((t) => ['en', 'ru'].filter((l) => !hasServerTranslation(l, t)).map((l) => `${l}: ${t}`));
 
   it('o‘yinlar (nom + tavsif)', () => {
     expect(missing(GAME_CATALOG.flatMap((g) => [g.title, g.description]))).toEqual([]);

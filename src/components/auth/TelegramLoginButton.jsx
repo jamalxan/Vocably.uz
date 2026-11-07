@@ -81,7 +81,7 @@ export default function TelegramLoginButton({ bot, onSuccess }) {
     setError('');
     setBusy(true);
     // Must run inside the click handler: the popup is opened synchronously.
-    api.auth({ bot_id: bot.id, request_access: 'write', lang: locale === 'en' ? 'en' : 'uz' }, signIn);
+    api.auth({ bot_id: bot.id, request_access: 'write', lang: locale }, signIn);
   };
 
   if (!bot) return null;

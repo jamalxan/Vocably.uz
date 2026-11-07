@@ -6,6 +6,7 @@ import { cardFromStats, localDateWithCutoff, LEECH_THRESHOLD } from '@/lib/srs';
 import { isMasteredStats } from '@/lib/vocab/server/words';
 import { getSkillBandEstimate } from '@/lib/exam/attemptServer';
 import { NextResponse } from 'next/server';
+import { localizeCategories, requestTranslationLang } from '@/lib/vocab/translationLang';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MISTAKE_CATEGORY = "Xato asosida qo'shilgan so'zlar";
@@ -45,6 +46,7 @@ export async function GET(req) {
       )
       .lean();
     if (!user) return NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 });
+    user.categories = localizeCategories(user.categories, requestTranslationLang(req));
 
     const now = new Date();
     const tz = user.timezone || 'Asia/Tashkent';

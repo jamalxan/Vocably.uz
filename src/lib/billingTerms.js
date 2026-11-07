@@ -3,21 +3,26 @@
 //   Refund: "14 kun ichida to'liq qaytarish" — the full amount of a paid plan, requested in the app
 //   within 14 days of the payment being confirmed. One refund per account, so buy→refund can't loop.
 import { addMonths } from '@/lib/subscription';
+import { pluralForm } from '@/lib/i18n';
 
 export const BILLING_MONTHS = [1, 3, 12];
 export const REFUND_WINDOW_DAYS = 14;
 const DAY_MS = 86_400_000;
 
 /** "1 oy" / "3 oy" / "1 yil" / "7 kun" — also for trial terms given in days. */
+const TERM_WORDS = {
+  en: { day: ['day', 'days'], year: ['year', 'years'], month: ['month', 'months'] },
+  ru: { day: ['день', 'дня', 'дней'], year: ['год', 'года', 'лет'], month: ['месяц', 'месяца', 'месяцев'] },
+  uz: { day: ['kun'], year: ['yil'], month: ['oy'] },
+};
+
 export function termLabel({ months = null, days = null } = {}, locale = 'uz') {
-  const en = locale === 'en';
-  if (days) return en ? `${days} day${days === 1 ? '' : 's'}` : `${days} kun`;
+  const l = TERM_WORDS[locale] ? locale : 'uz';
+  const say = (n, unit) => `${n} ${pluralForm(l, n, TERM_WORDS[l][unit])}`;
+  if (days) return say(days, 'day');
   const m = Number(months) || 1;
-  if (m % 12 === 0) {
-    const y = m / 12;
-    return en ? `${y} year${y === 1 ? '' : 's'}` : `${y} yil`;
-  }
-  return en ? `${m} month${m === 1 ? '' : 's'}` : `${m} oy`;
+  if (m % 12 === 0) return say(m / 12, 'year');
+  return say(m, 'month');
 }
 
 /** Savings of a multi-month price against paying monthly, in whole percent (0 when none). */

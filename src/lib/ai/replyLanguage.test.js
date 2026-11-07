@@ -62,3 +62,28 @@ describe('chooseReplyLanguage', () => {
     expect(chooseReplyLanguage('resilient', ['Can you translate words for me?'])).toBe('en');
   });
 });
+
+describe('Russian (2026-11-07)', () => {
+  it('detects Russian Cyrillic but not Uzbek Cyrillic', () => {
+    expect(detectMessageLanguage('Как переводится это слово?')).toBe('ru');
+    expect(detectMessageLanguage('Что значит resilient?')).toBe('ru');
+    expect(detectMessageLanguage('Бу сўз нима дегани?')).toBe('uz');
+    expect(detectMessageLanguage('What does это mean in this sentence?')).toBe('en');
+  });
+
+  it('explicit requests and stickiness', () => {
+    expect(explicitLanguageRequest('Ответь по-русски')).toBe('ru');
+    expect(explicitLanguageRequest('answer in Russian please')).toBe('ru');
+    expect(explicitLanguageRequest('ruscha gapir')).toBe('ru');
+    expect(chooseReplyLanguage('resilient', ['пожалуйста, на русском'])).toBe('ru');
+    expect(chooseReplyLanguage('Explain this word', ['по-русски, пожалуйста'])).toBe('ru');
+    expect(chooseReplyLanguage("o'zbekcha tushuntir", ['по-русски'])).toBe('uz');
+  });
+
+  it('instruction names the translation language', async () => {
+    const { replyLanguageInstruction } = await import('./replyLanguage');
+    expect(replyLanguageInstruction('ru', 'ru')).toMatch(/Answer this message in Russian[\s\S]*translation language is Russian/);
+    expect(replyLanguageInstruction('en', 'ru')).toContain('add_words must be in Russian (not Uzbek)');
+    expect(replyLanguageInstruction('en')).toContain('translation language is Uzbek');
+  });
+});

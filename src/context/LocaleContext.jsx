@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from 'react';
-import { DEFAULT_LOCALE, LANG_COOKIE, normalizeLocale, translate } from '@/lib/i18n';
+import { DEFAULT_LOCALE, LANG_COOKIE, normalizeLocale, numLocaleFor, translate } from '@/lib/i18n';
 import { translateServerText } from '@/lib/i18n/serverText';
 
 // Til brauzerda saqlanadi (cookie `vocably_lang`, 1 yil) va FAQAT mijozda o'qiladi: ildiz layout'da `cookies()` ishlatish barcha sahifani
@@ -49,7 +49,7 @@ export function LocaleProvider({ children }) {
 
   // `ts` — serverdan o'zbekcha kelgan matnni (o'yin/vazifa/yutuq nomlari, daraja, reja) tanlangan tilga o'giradi; `numLocale` — sonlarni formatlash uchun.
   const value = useMemo(
-    () => ({ locale, setLocale, t: (key, vars) => translate(locale, key, vars), ts: (text) => translateServerText(locale, text), numLocale: locale === 'uz' ? 'uz-UZ' : 'en-US' }),
+    () => ({ locale, setLocale, t: (key, vars) => translate(locale, key, vars), ts: (text) => translateServerText(locale, text), numLocale: numLocaleFor(locale) }),
     [locale, setLocale]
   );
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
@@ -88,7 +88,7 @@ export function LocaleFallback({ locale: fallback, children }) {
   }, [locale, parent.locale]);
 
   const value = useMemo(
-    () => ({ ...parent, locale, t: (key, vars) => translate(locale, key, vars), ts: (text) => translateServerText(locale, text), numLocale: locale === 'uz' ? 'uz-UZ' : 'en-US' }),
+    () => ({ ...parent, locale, t: (key, vars) => translate(locale, key, vars), ts: (text) => translateServerText(locale, text), numLocale: numLocaleFor(locale) }),
     [parent, locale]
   );
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;

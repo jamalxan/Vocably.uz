@@ -17,6 +17,7 @@ import {
 } from '@/lib/ai/client';
 import { buildDictionaryContext, formatDictionaryContextForPrompt } from '@/lib/ai/dictionaryContext';
 import { chooseReplyLanguage, replyLanguageInstruction } from '@/lib/ai/replyLanguage';
+import { requestTranslationLang } from '@/lib/vocab/translationLang';
 import { NextResponse } from 'next/server';
 import { validateChatInput, pruneOldSessions, trimSessionHistory } from '@/lib/ai/chatLimits';
 
@@ -342,7 +343,7 @@ export async function POST(req) {
       .filter((m) => m.role === 'user')
       .map((m) => (m.parts || []).map((p) => p.text || '').join(' '))
       .slice(-12);
-    systemInstruction += `\n\n${replyLanguageInstruction(chooseReplyLanguage(message || '', previousUserTexts))}`;
+    systemInstruction += `\n\n${replyLanguageInstruction(chooseReplyLanguage(message || '', previousUserTexts), requestTranslationLang(req))}`;
 
     // Eski sessiyalarda roli 'function'/'assistant' bo'lgan buzuq yozuvlar bo'lishi mumkin —
     // history quruvchilar ularni normallashtiradi yoki tashlab ketadi.

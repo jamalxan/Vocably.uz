@@ -1,8 +1,10 @@
 // Student AI chat reply language (product rule, 2026-09-29):
 //   - English by default — the platform teaches English, answers are practice.
-//   - If the user writes in Uzbek, or explicitly asks for Uzbek ("o'zbekcha
-//     gapir"), answer in Uzbek. An explicit request sticks for the rest of the
-//     conversation until the user asks for English again.
+//   - If the user writes in Uzbek or Russian, or explicitly asks for one ("o'zbekcha
+//     gapir", "по-русски"), answer in it. An explicit request sticks for the rest of the
+//     conversation until the user asks for another language.
+//   - Word translations (and add_words "syns") use the learner's translation language:
+//     Russian when the UI is Russian, otherwise Uzbek (2026-11-07).
 // Decided here in code (not left to the model): the base system prompt is
 // written in Uzbek, which on its own pulled replies into Uzbek.
 
@@ -16,6 +18,18 @@ const ASK_UZ = new RegExp(
     `\\b(?:in|speak|answer in|reply in|write in) uzbek\\b`,
     `\\buzbek please\\b`,
     'ўзбекча',
+  ].join('|'),
+  'i'
+);
+
+const ASK_RU = new RegExp(
+  [
+    'по-русски',
+    'на русском',
+    'русский язык',
+    `\\b(?:in|speak|answer in|reply in|write in) russian\\b`,
+    `\\brussian please\\b`,
+    `ruscha|rus tilida|rus tilda`,
   ].join('|'),
   'i'
 );
@@ -46,10 +60,14 @@ function tokens(text) {
   return (text.toLowerCase().match(/[\p{L}'‘’ʻʼ]+/gu) || []).map((t) => t.replace(/[‘’ʻʼ]/g, "'"));
 }
 
-/** 'uz' | 'en' | null (no clear signal, e.g. a single English word to translate). */
+/** 'uz' | 'ru' | 'en' | null (no clear signal, e.g. a single English word to translate). */
 export function detectMessageLanguage(text) {
   if (!text || !text.trim()) return null;
   if (/[ўқғҳЎҚҒҲ]/.test(text)) return 'uz'; // Uzbek Cyrillic
+  // Boshqa kirill matni — ruscha (kamida bitta kirill so'z, lotin so'zlardan ko'p yoki teng).
+  const cyr = (text.match(/[Ѐ-ӿ]+/g) || []).length;
+  const lat = (text.match(/[A-Za-z]+/g) || []).length;
+  if (cyr > 0 && cyr >= lat) return 'ru';
   const toks = tokens(text);
   let uz = 0;
   let en = 0;
@@ -65,20 +83,17 @@ export function detectMessageLanguage(text) {
   return null;
 }
 
-/** Explicit "answer in X" request in this message, or null. English wins a tie. */
+/** Explicit "answer in X" request in this message, or null (none, or more than one). */
 export function explicitLanguageRequest(text) {
   if (!text) return null;
-  const en = ASK_EN.test(text);
-  const uz = ASK_UZ.test(text);
-  if (en && !uz) return 'en';
-  if (uz && !en) return 'uz';
-  return null;
+  const hits = [['en', ASK_EN], ['uz', ASK_UZ], ['ru', ASK_RU]].filter(([, re]) => re.test(text)).map(([l]) => l);
+  return hits.length === 1 ? hits[0] : null;
 }
 
 /**
  * @param {string} message current user message
  * @param {string[]} previousUserMessages oldest -> newest, excluding `message`
- * @returns {'en' | 'uz'}
+ * @returns {'en' | 'uz' | 'ru'}
  */
 export function chooseReplyLanguage(message, previousUserMessages = []) {
   const explicitNow = explicitLanguageRequest(message);
@@ -90,7 +105,8 @@ export function chooseReplyLanguage(message, previousUserMessages = []) {
     if (req) {
       // ...unless the user has since switched to writing in the other language.
       const detectedNow = detectMessageLanguage(message);
-      return detectedNow && detectedNow !== req && detectedNow === 'uz' ? 'uz' : req;
+      // (English text alone doesn't cancel a request for Uzbek/Russian — learners practise in English.)
+      return detectedNow && detectedNow !== req && detectedNow !== 'en' ? detectedNow : req;
     }
   }
 
@@ -104,16 +120,36 @@ export function chooseReplyLanguage(message, previousUserMessages = []) {
   return 'en';
 }
 
-export function replyLanguageInstruction(lang) {
+const NATIVE_NAME = { uz: 'Uzbek', ru: 'Russian' };
+
+/**
+ * @param {'en'|'uz'|'ru'} lang reply language
+ * @param {'uz'|'ru'} translationLang the learner's translation language (UI ru -> ru, otherwise uz)
+ */
+export function replyLanguageInstruction(lang, translationLang = 'uz') {
+  const native = NATIVE_NAME[translationLang] || NATIVE_NAME.uz;
+  const words =
+    `\n[TRANSLATION LANGUAGE — MANDATORY] This learner's translation language is ${native}. ` +
+    `Translate English words into ${native}, and every "syns" item you send to add_words must be in ${native}` +
+    (translationLang === 'ru' ? ' (not Uzbek).' : '.');
+  if (lang === 'ru') {
+    return (
+      '[REPLY LANGUAGE — MANDATORY] Answer this message in Russian. ' +
+      'Keep English example sentences and the English words being taught in English, but all explanations in Russian.' +
+      words
+    );
+  }
   if (lang === 'uz') {
     return (
       '[REPLY LANGUAGE — MANDATORY] Answer this message in Uzbek (Latin script). ' +
-      'Keep English example sentences and the English words being taught in English, but all explanations in Uzbek.'
+      'Keep English example sentences and the English words being taught in English, but all explanations in Uzbek.' +
+      words
     );
   }
   return (
     '[REPLY LANGUAGE — MANDATORY] Answer this message in English, even though these instructions are written in Uzbek. ' +
-    'Use clear, learner-friendly English (about B1-B2). You may add a short Uzbek translation for a vocabulary item, but explanations stay in English. ' +
-    'If the user asks you to speak Uzbek ("o\'zbekcha gapir") or writes in Uzbek, switch to Uzbek.'
+    `Use clear, learner-friendly English (about B1-B2). You may add a short ${native} translation for a vocabulary item, but explanations stay in English. ` +
+    'If the user asks you to speak Uzbek or Russian, or writes in one of them, switch to that language.' +
+    words
   );
 }

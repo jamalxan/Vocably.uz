@@ -5,6 +5,7 @@ import { resolveTestForAttempt } from '@/lib/exam/attemptServer';
 import { wrongQuestions } from '@/lib/exam/mistakes';
 import { serverError } from '@/lib/apiError';
 import { NextResponse } from 'next/server';
+import { localizeCategories, requestTranslationLang } from '@/lib/vocab/translationLang';
 
 // Mistake notebook: recent wrong Reading/Listening answers (question, your
 // answer, the accepted answer) and the words collected from them for SRS
@@ -35,7 +36,7 @@ export async function GET(req) {
     }
 
     const user = await User.findById(userId).select('categories').lean();
-    const cat = (user?.categories || []).find((c) => c.name === CATEGORY);
+    const cat = localizeCategories(user?.categories || [], requestTranslationLang(req)).find((c) => c.name === CATEGORY);
     const now = Date.now();
     const words = (cat?.words || []).map((w) => ({
       id: String(w._id),

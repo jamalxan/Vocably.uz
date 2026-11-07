@@ -123,10 +123,11 @@ const COPY = {
 const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? ''));
 const fmtBand = (b) => Number(b).toFixed(1);
 
-/** Uzbek range comes from the server ("2–8 noyabr"); English is formatted here. */
+/** Uzbek range comes from the server ("2–8 noyabr"); English and Russian are formatted here. */
 function rangeLabel(data, locale) {
-  if (locale !== 'en') return data.range;
-  const f = (d, opts) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', ...opts });
+  if (locale === 'uz') return data.range;
+  const intl = locale === 'ru' ? 'ru-RU' : 'en-GB';
+  const f = (d, opts) => new Date(`${d}T00:00:00Z`).toLocaleDateString(intl, { timeZone: 'UTC', ...opts });
   return data.start.slice(5, 7) === data.end.slice(5, 7)
     ? `${f(data.start, { day: 'numeric' })}–${f(data.end, { day: 'numeric', month: 'long' })}`
     : `${f(data.start, { day: 'numeric', month: 'long' })} – ${f(data.end, { day: 'numeric', month: 'long' })}`;
