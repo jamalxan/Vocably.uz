@@ -2,7 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { User } from '@/lib/models';
-import { canViewerSeePhotos } from '@/lib/avatars';
+import { canViewerSeePhotos, pruneMissingPhotos } from '@/lib/avatars';
 import { presignAvatarDownload } from '@/lib/s3';
 import { NextResponse } from 'next/server';
 
@@ -37,6 +37,12 @@ export async function GET(req, props) {
         return new NextResponse(null, { status: 404 });
       }
     }
+
+    // Fayli yo'qolgan rasm (2026-11-06 server yo'qotishi): imzolangan URL'ga 302 o'rniga
+    // yozuvni tozalab 404 qaytaramiz — <Avatar> bosh harfli gradientga o'tadi, keyingi
+    // ro'yxat so'rovlarida esa keyingi (mavjud) rasm asosiy bo'lib chiqadi.
+    const [alive] = await pruneMissingPhotos(owner._id, [photo]);
+    if (!alive) return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } });
 
     const size = req.nextUrl.searchParams.get('size') === 'full' ? 'full' : 'small';
     const url = await presignAvatarDownload(size === 'full' ? photo.key : photo.smallKey);

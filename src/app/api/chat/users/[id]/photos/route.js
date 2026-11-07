@@ -2,7 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { requireChatUser } from '@/lib/chatAuth';
 import { serverError } from '@/lib/apiError';
 import { User } from '@/lib/models';
-import { canViewerSeePhotos } from '@/lib/avatars';
+import { canViewerSeePhotos, pruneMissingPhotos } from '@/lib/avatars';
 import { serializePhotos } from '@/lib/avatarShared';
 import { NextResponse } from 'next/server';
 
@@ -22,7 +22,7 @@ export async function GET(req, props) {
     if (!owner || !owner.chatAccess || owner.chatBanned) return NextResponse.json({ photos: [] });
 
     const visible = await canViewerSeePhotos(owner, user._id);
-    return NextResponse.json({ photos: visible ? serializePhotos(owner.photos) : [] });
+    return NextResponse.json({ photos: visible ? serializePhotos(await pruneMissingPhotos(owner._id, owner.photos)) : [] });
   } catch (err) {
     return serverError(err, 'chat/users/[id]/photos');
   }

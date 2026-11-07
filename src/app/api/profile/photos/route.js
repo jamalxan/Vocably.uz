@@ -3,6 +3,7 @@ import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { User } from '@/lib/models';
 import { MAX_PROFILE_PHOTOS, serializePhotos } from '@/lib/avatarShared';
+import { pruneMissingPhotos } from '@/lib/avatars';
 import { AVATAR_MAX_BYTES, buildAvatarKey, deleteObjects, objectSize, readObjectPrefix } from '@/lib/s3';
 import { NextResponse } from 'next/server';
 
@@ -20,7 +21,7 @@ export async function GET(req) {
 
     return NextResponse.json({
       userId: String(user._id),
-      photos: serializePhotos(user.photos),
+      photos: serializePhotos(await pruneMissingPhotos(user._id, user.photos)),
       photoVisibility: user.photoVisibility || 'everyone',
     });
   } catch (err) {
