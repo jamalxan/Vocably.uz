@@ -7,6 +7,7 @@ import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { vocabEngineFlag } from '@/lib/vocab/access';
 import { ServiceError } from './sessionService';
+import { localizeCategories, requestTranslationLang } from '@/lib/vocab/translationLang';
 
 const DEFAULT_SELECT = 'role subscriptionTier timezone categories xp badges reviewStreak longestReviewStreak lastReviewDate streakFreezes gameStats dailyStudyMinutes targetBand vocabOnboarding name username';
 
@@ -20,6 +21,8 @@ export async function requireVocabUser(req, { select = DEFAULT_SELECT, ignoreFla
   await connectToDatabase();
   const user = await User.findById(userId).select(select).lean();
   if (!user) return { error: NextResponse.json({ error: 'Foydalanuvchi topilmadi' }, { status: 404 }) };
+  // So'z tarjimalari foydalanuvchi tilida (ru -> synsRu): o'yinlar, reja, zaif so'zlar shu `syns`ni o'qiydi.
+  if (Array.isArray(user.categories)) user.categories = localizeCategories(user.categories, requestTranslationLang(req));
   if (!ignoreFlag) {
     const flag = vocabEngineFlag(String(user._id), user.role, process.env);
     if (!flag.enabled) {

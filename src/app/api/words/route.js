@@ -5,6 +5,7 @@ import { migrateChatHistoryIfNeeded } from '@/lib/chatMigration';
 import { serverError } from '@/lib/apiError';
 import { MAX_WORDS_PER_USER, WORD_CAP_MESSAGE } from '@/lib/vocab/wordCap';
 import { NextResponse } from 'next/server';
+import { localizeCategories, requestTranslationLang, synsField } from '@/lib/vocab/translationLang';
 
 export async function GET(req) {
   try {
@@ -41,7 +42,8 @@ export async function GET(req) {
     await migrateChatHistoryIfNeeded(user);
 
     return NextResponse.json({
-      categories: user.categories,
+      // Tarjimalar foydalanuvchi tilida (ru -> synsRu); `tlMissing` — AI to'ldirishi kerak bo'lgan so'zlar.
+      categories: localizeCategories(user.categories, requestTranslationLang(req)),
       reviewStreak: user.reviewStreak || 0,
       lastReviewDate: user.lastReviewDate || null,
       // Source of truth for the greeting/sidebar name (localStorage alone
@@ -73,7 +75,26 @@ export async function POST(req) {
       return NextResponse.json({ error: WORD_CAP_MESSAGE(), code: 'word_limit', room: 0 }, { status: 409 });
     }
 
-    await User.findByIdAndUpdate(userId, { categories });
+    // Mijoz so'zlarni o'z tilida ko'radi (GET localizeCategories): kelgan `syns` shu tildagi maydonga yoziladi,
+    // ikkinchi tildagi tarjima esa saqlangan hujjatdan olinadi — aks holda butun massivni yozish uni o'chirib yuborardi.
+    const lang = requestTranslationLang(req);
+    const field = synsField(lang);
+    const otherField = synsField(lang === 'ru' ? 'uz' : 'ru');
+    const stored = await User.findById(userId).select('categories').lean();
+    const prev = new Map();
+    for (const c of stored?.categories || []) for (const w of c.words || []) prev.set(String(w._id), w);
+    const merged = categories.map((c) => ({
+      ...c,
+      words: (Array.isArray(c?.words) ? c.words : []).map((w) => {
+        const { tlMissing, syns, ...rest } = w || {};
+        const old = w?._id ? prev.get(String(w._id)) : null;
+        // tlMissing: mijozga ikkinchi tildagi tarjima ko'rsatilgan edi — u shu tildagi tarjima emas.
+        const mine = tlMissing ? old?.[field] || [] : syns || [];
+        return { ...rest, [field]: mine, [otherField]: old?.[otherField] ?? (otherField === 'syns' ? [] : undefined) };
+      }),
+    }));
+
+    await User.findByIdAndUpdate(userId, { categories: merged });
     return NextResponse.json({ success: true });
   } catch (err) {
     return serverError(err, 'words');

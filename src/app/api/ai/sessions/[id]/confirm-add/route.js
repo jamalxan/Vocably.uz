@@ -4,6 +4,7 @@ import { getUserIdFromRequest } from '@/lib/auth';
 import { serverError } from '@/lib/apiError';
 import { WORD_CAP_MESSAGE, wordRoom } from '@/lib/vocab/wordCap';
 import { NextResponse } from 'next/server';
+import { requestTranslationLang, wordDocForLang } from '@/lib/vocab/translationLang';
 
 export async function POST(req, props) {
   const params = await props.params;
@@ -31,7 +32,8 @@ export async function POST(req, props) {
         pronunciation: typeof w.pronunciation === 'string' ? w.pronunciation.trim() : '',
         syns: Array.isArray(w.syns) ? w.syns.map((s) => String(s).trim()).filter(Boolean) : [],
       }))
-      .filter((w) => w.syns.length > 0);
+      .filter((w) => w.syns.length > 0)
+      .map((w) => wordDocForLang(w, requestTranslationLang(req)));
 
     if (cleanWords.length === 0) {
       return NextResponse.json({ error: "Qo'shish uchun so'z topilmadi" }, { status: 400 });

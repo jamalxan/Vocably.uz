@@ -8,6 +8,7 @@ import { useT } from '@/context/LocaleContext';
 import { useLocalStorageString } from '@/lib/useLocalStorage';
 
 const AppContext = createContext(null);
+const FILL_MAX_ROUNDS = 5;
 
 // N-15 (VOCABLY_TZ_V2_LIVE_AUDIT §4) — butun lug'at (`/api/words`, ba'zi
 // foydalanuvchilarda bir necha MB) ilgari HAR bir /app sahifasida (mock,
@@ -40,7 +41,7 @@ function needsVocabulary(pathname) {
 export function AppProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { t } = useT();
+  const { t, locale } = useT();
   // Root layout (src/app/app/layout.jsx) izohiga q. — AppProvider navigatsiya
   // paytida qayta mount bo'lmaydi, shuning uchun "lug'at allaqachon yuklandimi"
   // holatini oddiy state emas, ref bilan kuzatamiz (qayta render'ni talab qilmaydi).
@@ -180,6 +181,39 @@ export function AppProvider({ children }) {
         }),
     []
   );
+
+  // Tarjima tili interfeys tiliga bog'liq (ru -> ruscha, aks holda o'zbekcha) va server uni cookie'dan oladi:
+  // til almashganda yuklangan lug'at yangi tilda qayta olinadi.
+  const prevLocaleRef = useRef(locale);
+  useEffect(() => {
+    if (prevLocaleRef.current === locale) return;
+    prevLocaleRef.current = locale;
+    if (vocabLoadedRef.current) refreshCategories();
+  }, [locale, refreshCategories]);
+
+  // Eski so'zlarda tanlangan tildagi tarjima bo'lmasa (`tlMissing`), AI fonda to'ldiradi — bir sahifa yuklanishida
+  // ko'pi bilan FILL_MAX_ROUNDS chaqiruv (har biri 40 so'zgacha); xato/limitda to'xtaydi, keyingi yuklanishda davom etadi.
+  const fillingRef = useRef(false);
+  const fillRoundsRef = useRef(0);
+  const hasMissingTranslation = categories.some((c) => (c.words || []).some((w) => w.tlMissing));
+  useEffect(() => {
+    if (!hasMissingTranslation || fillingRef.current || fillRoundsRef.current >= FILL_MAX_ROUNDS) return;
+    fillingRef.current = true;
+    fillRoundsRef.current += 1;
+    fetch('/api/words/translations', { method: 'POST' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.updated) return refreshCategories();
+        fillRoundsRef.current = FILL_MAX_ROUNDS; // to'ldirib bo'lmadi — bu yuklanishda qayta urinmaymiz
+        return undefined;
+      })
+      .catch(() => {
+        fillRoundsRef.current = FILL_MAX_ROUNDS;
+      })
+      .finally(() => {
+        fillingRef.current = false;
+      });
+  }, [hasMissingTranslation, categories, refreshCategories]);
 
   // N-15: agar boshlang'ich sahifa lug'atga muhtoj bo'lmasa (masalan
   // to'g'ridan-to'g'ri /app/mock'ga kirilgan) va keyin foydalanuvchi lug'atga

@@ -317,14 +317,19 @@ export function entriesToCsv(entries: Partial<NormalizedEntry>[]): string {
  * `syns` — o'zbekcha tarjima(lar) (mavjud konventsiya), `synonymsEn` — inglizcha sinonimlar.
  */
 export function toUserWord(e: NormalizedEntry | (Partial<NormalizedEntry> & { word: string })) {
-  const syns = String(e.translationUz || '')
-    .split(/[;,]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const split = (v?: string) =>
+    String(v || '')
+      .split(/[;,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  const syns = split(e.translationUz);
+  // Ruscha tarjima bo'lsa — u ham saqlanadi (ru interfeysda ko'rsatiladi, src/lib/vocab/translationLang.js).
+  const synsRu = split((e as { translationRu?: string }).translationRu);
   const pos = (POS_VALUES as readonly string[]).includes(e.pos || '') ? e.pos : '';
   return {
     word: e.word,
     syns,
+    ...(synsRu.length ? { synsRu } : {}),
     pronunciation: e.ipaUk || e.ipaUs || '',
     enrichment: {
       pos,
