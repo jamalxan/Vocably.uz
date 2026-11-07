@@ -1078,6 +1078,7 @@ const ru = {
   'ch.noArchived': 'Архив пуст',
   'ch.download': 'Скачать',
   'ch.speed': 'Скорость',
+  'ch.voiceSeek': 'Перемотка голосового сообщения',
   'ch.album': '📷 Альбом',
   'ch.notLoaded': 'Сообщение не найдено',
   'ch.tabFiles': 'Файлы',

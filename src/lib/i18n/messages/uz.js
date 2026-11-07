@@ -1076,6 +1076,7 @@ const uz = {
   'ch.noArchived': "Arxiv bo'sh",
   'ch.download': "Yuklab olish",
   'ch.speed': "Tezlik",
+  'ch.voiceSeek': "Ovozli xabarni o'tkazish",
   'ch.album': "📷 Albom",
   'ch.notLoaded': "Xabar topilmadi",
   'ch.tabFiles': "Fayllar",

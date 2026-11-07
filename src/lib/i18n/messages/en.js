@@ -1076,6 +1076,7 @@ const en = {
   'ch.noArchived': 'The archive is empty',
   'ch.download': 'Download',
   'ch.speed': 'Speed',
+  'ch.voiceSeek': 'Seek voice message',
   'ch.album': '📷 Album',
   'ch.notLoaded': 'Message not found',
   'ch.tabFiles': 'Files',
