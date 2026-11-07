@@ -20,15 +20,14 @@ describe('i18n kalitlari', () => {
     }
   });
 
-  it('ru (qisman, LOCALES’da yo‘q): har bir kalit en’da bor, o‘rinbosarlar mos, matn bo‘sh emas', () => {
-    expect(LOCALES).not.toContain('ru');
+  it('ru: har bir ko‘plik shakli 3 ta (one|few|many) va matnlar haqiqatan ruscha', () => {
+    expect(LOCALES).toContain('ru');
     const ru = (MESSAGES as any).ru as Record<string, string>;
-    expect(Object.keys(ru).length).toBeGreaterThan(0);
     for (const [k, v] of Object.entries(ru)) {
-      expect(base, `ru:${k} en'da yo'q`).toContain(k);
-      expect(v.trim().length, `ru:${k} bo'sh`).toBeGreaterThan(0);
-      expect(placeholders(v), `ru:${k} o'rinbosarlari`).toEqual(placeholders((MESSAGES.en as any)[k]));
+      for (const m of v.matchAll(/\{(\w+)#([^}]+)\}/g)) expect(m[2].split('|').length, `ru:${k} ko'plik`).toBe(3);
     }
+    const same = base.filter((k) => ru[k] === (MESSAGES.en as any)[k] && /[a-z]{4,}/i.test((MESSAGES.en as any)[k]));
+    expect(same.length / base.length).toBeLessThan(0.05);
   });
 
   it("o'zbekcha matnlar haqiqatan tarjima (inglizcha nusxa emas) — ko'rinadigan matnlarda", () => {
@@ -49,7 +48,7 @@ describe('translate', () => {
 
   it('normalizeLocale', () => {
     expect(normalizeLocale('uz')).toBe('uz');
-    expect(normalizeLocale('ru')).toBe('en');
+    expect(normalizeLocale('ru')).toBe('ru');
     expect(normalizeLocale(undefined)).toBe('en');
     expect(DEFAULT_LOCALE).toBe('en');
   });
