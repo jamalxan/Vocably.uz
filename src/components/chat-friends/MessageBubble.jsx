@@ -317,6 +317,8 @@ function VoiceBubble({ message, isMine }) {
   const [pos, setPos] = useState(0);
   const [dur, setDur] = useState(media.durationSec || 0);
   const [speed, setSpeed] = useState(1);
+  const pendingSeekRef = useRef(null);
+  const draggingRef = useRef(false);
   const { url: signed, error } = useAuthedMediaUrl(armed && !message._localUrl ? media.key : null);
   const url = armed ? message._localUrl || signed : null;
   const bars = media.waveform?.length ? media.waveform : Array.from({ length: 40 }, (_, i) => 8 + ((i * 7) % 11));
@@ -350,11 +352,56 @@ function VoiceBubble({ message, isMine }) {
       a.play().catch(() => {});
     } else a.pause();
   };
-  const seek = (e) => {
+  // O'tkazish (seek). Brauzerda yozilgan webm ovozlarda `audio.duration` ko'pincha
+  // Infinity — shunda serverdagi `durationSec` ishlatiladi (aks holda bosish jim
+  // ishlamay qolardi). Audio hali yuklanmagan bo'lsa (birinchi bosish), joy eslab
+  // qolinadi, audio yuklanadi va o'sha joydan ijro boshlanadi.
+  const totalSec = () => {
+    const d = audioRef.current?.duration;
+    return Number.isFinite(d) && d > 0 ? d : dur;
+  };
+  const seekTo = (frac) => {
+    const f = Math.min(1, Math.max(0, frac));
+    const total = totalSec();
+    // Uzunlik hali noma'lum (eski xabar, metadata yuklanmagan) — hech bo'lmasa ijroni boshlaymiz.
+    if (!total) {
+      if (!audioRef.current) setArmed(true);
+      return;
+    }
+    setPos(f * total);
     const a = audioRef.current;
-    if (!a || !a.duration) return;
+    if (!a) {
+      pendingSeekRef.current = f * total;
+      setArmed(true);
+      return;
+    }
+    a.currentTime = f * total;
+  };
+  const fracFromEvent = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    a.currentTime = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)) * a.duration;
+    return rect.width ? (e.clientX - rect.left) / rect.width : 0;
+  };
+  const onScrubStart = (e) => {
+    if (e.button != null && e.button !== 0) return;
+    draggingRef.current = true;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    seekTo(fracFromEvent(e));
+  };
+  const onScrubMove = (e) => {
+    if (draggingRef.current) seekTo(fracFromEvent(e));
+  };
+  const onScrubEnd = () => {
+    draggingRef.current = false;
+  };
+  const onSeekKey = (e) => {
+    const total = totalSec();
+    if (!total) return;
+    const step = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key];
+    if (step != null) seekTo((pos + step) / total);
+    else if (e.key === 'Home') seekTo(0);
+    else if (e.key === 'End') seekTo(0.999);
+    else return;
+    e.preventDefault();
   };
 
   if (error) return <MediaError />;
@@ -370,7 +417,22 @@ function VoiceBubble({ message, isMine }) {
         {loading ? <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> : playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
       </button>
       <div className="flex-1 min-w-0">
-        <div role="presentation" onClick={seek} className="relative h-7 flex items-center gap-[2px] cursor-pointer" aria-hidden="true">
+        <div
+          role="slider"
+          tabIndex={0}
+          aria-label={t('ch.voiceSeek')}
+          aria-valuemin={0}
+          aria-valuemax={Math.round(dur) || 0}
+          aria-valuenow={Math.round(pos)}
+          aria-valuetext={`${fmtTime(pos)} / ${fmtTime(dur)}`}
+          onPointerDown={onScrubStart}
+          onPointerMove={onScrubMove}
+          onPointerUp={onScrubEnd}
+          onPointerCancel={onScrubEnd}
+          onKeyDown={onSeekKey}
+          data-testid="voice-seek"
+          className="relative h-7 flex items-center gap-[2px] cursor-pointer select-none touch-pan-y rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
           {bars.map((b, i) => {
             const on = (i / bars.length) * 100 < pct;
             return <span key={i} className={`flex-1 rounded-full ${on ? played : rest}`} style={{ height: `${Math.max(12, (b / 31) * 100)}%` }} />;
@@ -399,8 +461,15 @@ function VoiceBubble({ message, isMine }) {
             setPlaying(true);
           }}
           onPause={() => setPlaying(false)}
-          onLoadedMetadata={(e) => Number.isFinite(e.currentTarget.duration) && setDur(e.currentTarget.duration)}
-          onTimeUpdate={(e) => setPos(e.currentTarget.currentTime)}
+          onLoadedMetadata={(e) => {
+            const a = e.currentTarget;
+            if (Number.isFinite(a.duration)) setDur(a.duration);
+            if (pendingSeekRef.current != null) {
+              a.currentTime = pendingSeekRef.current;
+              pendingSeekRef.current = null;
+            }
+          }}
+          onTimeUpdate={(e) => !draggingRef.current && setPos(e.currentTarget.currentTime)}
           onEnded={() => {
             setPlaying(false);
             setPos(0);

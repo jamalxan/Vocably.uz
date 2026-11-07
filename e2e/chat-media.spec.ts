@@ -216,6 +216,33 @@ test('a voice note recorded with the (fake) microphone carries a waveform and pl
   await expect(voice.getByRole('button', { name: 'Tezlik' })).toBeVisible({ timeout: 15_000 });
 });
 
+test('a voice note can be seeked: tap before playing, drag and keyboard', async ({ page }) => {
+  await openChat(page, E2E_PHONE, E2E_FRIEND_USERNAME);
+  const voice = page.getByTestId('voice-bubble').last();
+  await voice.scrollIntoViewIfNeeded();
+  const seek = voice.getByRole('slider', { name: "Ovozli xabarni o'tkazish" });
+  await expect(seek).toBeVisible();
+  const box = (await seek.boundingBox())!;
+  const audioTime = () => voice.locator('audio').evaluate((a: HTMLAudioElement) => a.currentTime);
+  // Tap at ~80% before the audio was ever loaded: it loads and starts from there, not from 0.
+  await page.mouse.click(box.x + box.width * 0.8, box.y + box.height / 2);
+  await expect(voice.locator('audio')).toHaveCount(1, { timeout: 15_000 });
+  await expect.poll(audioTime, { timeout: 15_000 }).toBeGreaterThan(1);
+  await voice.locator('audio').evaluate((a: HTMLAudioElement) => a.pause());
+  // Drag back to the start.
+  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.4, box.y + box.height / 2, { steps: 4 });
+  await page.mouse.move(box.x + 1, box.y + box.height / 2, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(audioTime).toBeLessThan(0.6);
+  // Keyboard: Right arrow jumps forward 5 s (clamped to the end of a short note).
+  await seek.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(audioTime).toBeGreaterThan(1);
+  await expect(seek).toHaveAttribute('aria-valuenow', /[1-9]/);
+});
+
 test('forward copies the photo inside the bucket; a reply to it shows a thumbnail', async ({ page }) => {
   await openChat(page, E2E_PHONE, E2E_FRIEND_USERNAME);
   const original: any = await withDb(async (db) => {
