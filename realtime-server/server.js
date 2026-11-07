@@ -66,6 +66,16 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
   // userId -> shu foydalanuvchining ochiq socket ulanishlari soni (bir nechta tab/qurilma
   // bo'lishi mumkin) — presence "onlayn"ligini socket sonidan aniqlaymiz.
   const onlineCounts = new Map();
+  // Oxirgi socket uzilgach "oflayn" darhol EMAS, shu oynadan keyin e'lon qilinadi: telefonda ilova
+  // fonga o'tishi, tarmoq almashishi yoki chipta yangilanib qayta ulanish bir necha soniya oladi —
+  // avval bu "onlayn" -> "1 daqiqa oldin" -> "onlayn" bo'lib miltillardi, garchi odam chatni o'qib
+  // turgan bo'lsa ham. Oyna ichida qayta ulansa hech narsa e'lon qilinmaydi.
+  const OFFLINE_GRACE_MS = positiveInt(env.PRESENCE_OFFLINE_GRACE_MS, 20000);
+  const pendingOffline = new Map(); // userId -> timer
+  // lastSeenVisibility 'nobody' (chiptadagi `hp: true`) — bu foydalanuvchining holati hech kimga
+  // yuborilmaydi (presence:update yo'q, presence:query -> null). Eng oxirgi ulanish chiptasi hal qiladi.
+  const hiddenUsers = new Set();
+  const isPresent = (userId) => onlineCounts.has(userId) || pendingOffline.has(userId);
 
   const persist = createPersister({ url: NEXTJS_INTERNAL_URL, secret: INTERNAL_SECRET, fetchImpl, log });
   const calls = createCallManager({
@@ -90,6 +100,7 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
       // (scope 'call') yoki boshqa token bilan ulanib bo'lmaydi.
       if (decoded.scope !== 'realtime') throw new Error('bad scope');
       socket.userId = String(decoded.userId);
+      socket.hidePresence = decoded.hp === true;
       next();
     } catch {
       next(new Error('unauthorized'));
@@ -135,11 +146,25 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
   io.on('connection', (socket) => {
     const room = `user:${socket.userId}`;
     socket.join(room);
-    const wasOffline = !onlineCounts.has(socket.userId);
-    onlineCounts.set(socket.userId, (onlineCounts.get(socket.userId) || 0) + 1);
-    if (wasOffline) {
-      broadcastPresence(socket.userId, true);
-      notifyPresenceOnline(socket.userId);
+    const uid = socket.userId;
+    const wasPresent = isPresent(uid);
+    const wasVisible = !hiddenUsers.has(uid);
+    if (pendingOffline.has(uid)) {
+      clearTimeout(pendingOffline.get(uid));
+      pendingOffline.delete(uid);
+    }
+    if (socket.hidePresence) hiddenUsers.add(uid);
+    else hiddenUsers.delete(uid);
+    onlineCounts.set(uid, (onlineCounts.get(uid) || 0) + 1);
+    if (!socket.hidePresence) {
+      // Haqiqiy oflayn -> onlayn: hammaga + Telegram bildirishnomasi. Yashirin holatdan ochiq
+      // holatga o'tib qayta ulanganda: faqat e'lon (u allaqachon "kirgan" edi).
+      if (!wasPresent) {
+        broadcastPresence(uid, true);
+        notifyPresenceOnline(uid);
+      } else if (!wasVisible) {
+        broadcastPresence(uid, true);
+      }
     }
 
     // Client ulanganda/ro'yxati yangilanganda "hozir kim onlayn" haqida bir martalik
@@ -149,7 +174,8 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
       const ids = Array.isArray(userIds) ? userIds.slice(0, 200) : []; // cheksiz massiv — DoS
       const result = {};
       ids.forEach((id) => {
-        result[String(id)] = onlineCounts.has(String(id));
+        const key = String(id);
+        result[key] = hiddenUsers.has(key) ? null : isPresent(key);
       });
       cb(result);
     });
@@ -180,8 +206,16 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
       // Qo'ng'iroq qoidalari onlineCounts yangilanishidan OLDIN (userNowOffline shu songa qarab).
       safe('call:disconnect', () => calls.onDisconnect(socket, { userNowOffline: n <= 0 }))();
       if (n <= 0) {
-        onlineCounts.delete(socket.userId);
-        broadcastPresence(socket.userId, false);
+        const uid = socket.userId;
+        onlineCounts.delete(uid);
+        clearTimeout(pendingOffline.get(uid));
+        const timer = setTimeout(() => {
+          pendingOffline.delete(uid);
+          if (onlineCounts.has(uid) || hiddenUsers.has(uid)) return;
+          broadcastPresence(uid, false);
+        }, OFFLINE_GRACE_MS);
+        timer.unref?.();
+        pendingOffline.set(uid, timer);
       } else {
         onlineCounts.set(socket.userId, n);
       }
@@ -296,6 +330,8 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
   }
 
   function close() {
+    pendingOffline.forEach((t) => clearTimeout(t));
+    pendingOffline.clear();
     return new Promise((resolve) => {
       io.close(() => resolve());
     });

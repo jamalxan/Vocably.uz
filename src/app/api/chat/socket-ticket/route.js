@@ -32,7 +32,12 @@ export async function POST(req) {
       return NextResponse.json({ error: "Server sozlanmagan" }, { status: 500 });
     }
 
-    const ticket = jwt.sign({ userId: String(user._id), scope: 'realtime' }, secret, { expiresIn: '60s' });
+    // `hp` (hide presence) — "Oxirgi marta ko'rilgan: hech kim" tanlagan foydalanuvchining onlayn
+    // holatini realtime-server hech kimga yubormaydi (presence.test.js). Sozlama o'zgarsa client
+    // socket'ni qayta ulaydi (yangi chipta = yangi qiymat).
+    const claims = { userId: String(user._id), scope: 'realtime' };
+    if (user.lastSeenVisibility === 'nobody') claims.hp = true;
+    const ticket = jwt.sign(claims, secret, { expiresIn: '60s' });
     return NextResponse.json({ ticket });
   } catch (err) {
     return serverError(err, 'chat/socket-ticket');

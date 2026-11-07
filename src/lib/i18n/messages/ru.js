@@ -86,6 +86,7 @@ const ru = {
   'ch.yesterday': 'Вчера',
   'ch.toastClose': 'Закрыть',
   'ch.connecting': 'Соединение…',
+  'ch.lastSeenRecently': 'был(а) недавно',
   'ch.searchClear': 'Очистить поиск',
   'ch.prevMedia': 'Предыдущее',
   'ch.nextMedia': 'Следующее',

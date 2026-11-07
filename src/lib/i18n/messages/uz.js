@@ -1426,6 +1426,7 @@ const uz = {
   'ch.yesterday': 'Kecha',
   'ch.toastClose': 'Yopish',
   'ch.connecting': 'Ulanmoqda…',
+  'ch.lastSeenRecently': 'yaqinda onlayn edi',
   'ch.searchClear': 'Qidiruvni tozalash',
   'ch.prevMedia': 'Oldingi',
   'ch.nextMedia': 'Keyingi',
