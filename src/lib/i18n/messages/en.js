@@ -328,6 +328,7 @@ const en = {
   'lugat.gamesCtaTitle': 'Play with XP and quests',
   'lugat.gamesCtaText': '3D games like Vocably Run, Word Tunnel and Word Defense, plus the leaderboard and daily plan',
   'lugat.dueWords': 'words due for review',
+  'lugat.allCategories': 'all categories',
   'lugat.dueHint': 'Review them today to move them into long-term memory.',
   'lugat.dueNone': 'All caught up. Add new words or browse your flashcards.',
   'lugat.noWords': 'No words yet. Add some from your list or the library.',
