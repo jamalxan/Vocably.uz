@@ -1,9 +1,9 @@
 # Vocably realtime (socket.io: presence, xabarlar, qo'ng'iroq signalingi) + coturn (STUN/TURN).
-# VPS 185.237.97.126 sxemasi (docs/chat/CALLS_SPEC.md §8.3):
-# - `realtime` tashqariga port OCHMAYDI — SocialAuto'ning Caddy'si (socialauto_default tarmog'i)
+# Azure VM 20.219.147.37 sxemasi (2026-11-06 dan; avval VPS 185.237.97.126) (docs/chat/CALLS_SPEC.md §8.3):
+# - `realtime` tashqariga port OCHMAYDI — shu serverdagi umumiy edge Caddy (jamolxon-caddy, jamolxon_edge tarmog'i)
 #   uni konteyner nomi bilan topadi: `ws.vocably.uz { reverse_proxy vocably-realtime:4001 }`
 #   (Caddyfile.snippet).
-# - `coturn` host tarmog'ida (UDP/TCP 3478 + relay UDP 49160-49360, ufw'da ochiladi) —
+# - `coturn` host tarmog'ida (UDP/TCP 3478 + relay UDP 49160-49360, Azure NSG'da ochiladi) —
 #   NAT ortidagi relay portlarini Docker port-mapping orqali o'tkazish amalda ishlamaydi.
 # Ishga tushirish: `cp .env.example .env && chmod 600 .env` (qiymatlarni to'ldiring),
 # `chmod 644 coturn/turnserver.conf`, keyin `docker compose up -d --build`.
@@ -16,7 +16,7 @@ services:
     expose:
       - '4001'
     networks:
-      - socialauto_default
+      - edge
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4001/health']
       interval: 30s
@@ -55,5 +55,6 @@ services:
         max-file: '3'
 
 networks:
-  socialauto_default:
+  edge:
     external: true
+    name: jamolxon_edge
