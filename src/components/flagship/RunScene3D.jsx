@@ -3,6 +3,7 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RUN } from '@/lib/flagship/run';
 import { RUN_THEMES, THEME_KEYS, SIGN_TONES, themeIndex, themeBlend } from '@/lib/flagship/runTheme';
 import { dprFor } from '@/lib/flagship/gpu';
@@ -29,6 +30,9 @@ const CAMERA = { position: CAM_POS, fov: 55, near: 0.1, far: 400 };
 const WORLD_SPEED = (Math.abs(GATE_FAR) * 1000) / RUN.travelMs;
 const CELL = 2; // one lane per grid cell: lane lines at x = ±1 and ±3
 const ROAD = 3; // road half-width
+// Roadside lamp posts (world section); the floor shader draws their light pools.
+const POST = { x: ROAD + 2.2, spacing: 7, count: 15, z0: 6, arm: 0.9, top: 3.3 };
+const POST_POOL_X = POST.x - POST.arm;
 const FOG_NEAR = 18;
 const FOG_FAR = 100;
 const FLOOR = { w: 320, l: 240, nearZ: 8 };
@@ -43,10 +47,11 @@ const SIGN_PX = [512, 256];
 const RIM_PAD = 64; // canvas px of glow around a sign panel
 const SIGN_FADE = 0.1; // share of the gate's travel over which it fades in at the far end
 
-// Cost by render tier (gpu.js): fewer stars and halo shells, no floor glow and no MSAA on 'low'.
+// Cost by render tier (gpu.js): fewer stars and halo shells, no floor glow, no MSAA, and a lighter world
+// (no lamp posts or light pools, one mountain ridge) on 'low'.
 const TIERS = {
-  high: { stars: 4000, starSize: 5, arc: 72, glow: true, antialias: true, halos: [{ tube: 0.2, opacity: 0.55 }, { tube: 0.48, opacity: 0.2 }] },
-  low: { stars: 1500, starSize: 5, arc: 40, glow: false, antialias: false, halos: [{ tube: 0.3, opacity: 0.45 }] },
+  high: { stars: 4000, starSize: 5, arc: 72, glow: true, world: true, antialias: true, halos: [{ tube: 0.2, opacity: 0.55 }, { tube: 0.48, opacity: 0.2 }] },
+  low: { stars: 1500, starSize: 5, arc: 40, glow: false, world: false, antialias: false, halos: [{ tube: 0.3, opacity: 0.45 }] },
 };
 
 const glf = (n) => Number(n).toFixed(4); // a GLSL float literal
@@ -223,6 +228,7 @@ const FLOOR_FRAG = /* glsl */ `
   uniform vec3 uGrid;
   uniform vec3 uLane;
   uniform vec2 uFog;
+  uniform float uPost;
   ${HAZE_GLSL}
   varying vec3 vWorld;
   varying float vDepth;
@@ -249,6 +255,13 @@ const FLOOR_FRAG = /* glsl */ `
     vec3 col = uFloor + uLane * (0.03 * onRoad);
     col += uLane * (0.07 * onRoad * exp(-(${glf(ROAD)} - min(ax, ${glf(ROAD)})) * 1.6));
     col += alongCol * along + uGrid * across;
+  #ifdef GLOW
+    // Light pools under the roadside lamps (same spacing and scroll as the posts).
+    float pz = vWorld.z - ${glf(POST.z0)} - uPost;
+    pz -= ${glf(POST.spacing)} * floor(pz / ${glf(POST.spacing)} + 0.5);
+    float px = ax - ${glf(POST_POOL_X)};
+    col += uLane * (0.16 * exp(-(px * px * 0.55 + pz * pz * 0.3)));
+  #endif
   #ifdef GLOW
     float near = 1.0 - smoothstep(0.03, 0.18, fz);
     float dx = abs(fract(ux + 0.5) - 0.5) * ${glf(CELL)};
@@ -368,7 +381,7 @@ function StarField({ cfg }) {
 }
 
 // ---------------------------------------------------------------------------------- floor
-function Floor({ sceneRef, pal, cfg }) {
+function Floor({ sceneRef, pal, cfg, postScrollRef }) {
   const mesh = useRef(null);
   const scroll = useRef(0);
   const geometry = useMemo(() => {
@@ -389,6 +402,7 @@ function Floor({ sceneRef, pal, cfg }) {
           uGlow: { value: pal.cur.glow },
           uSunGlow: { value: pal.cur.sunBottom },
           uFog: fogUniform(),
+          uPost: { value: 0 },
         },
         defines: cfg.glow ? { GLOW: '' } : {},
         vertexShader: WORLD_VERT,
@@ -407,30 +421,336 @@ function Floor({ sceneRef, pal, cfg }) {
     // Frozen while paused or between rounds; wrapped at one cell, which the pattern repeats on.
     if (s.running) scroll.current = (scroll.current + Math.min(0.1, dt) * WORLD_SPEED * (s.speed || 1)) % CELL;
     m.material.uniforms.uScroll.value = scroll.current;
+    m.material.uniforms.uPost.value = postScrollRef.current;
   });
   return <mesh ref={mesh} geometry={geometry} material={material} frustumCulled={false} />;
 }
 
-// ---------------------------------------------------------------------------------- runner
-// The runner stays Vocably coral in every theme, so the player's avatar is always recognisable. It
-// glows a little on its own, and the theme reaches it as light: the sky light leans toward the
-// horizon glow, the bounce light comes from the grid, and a soft spot in the lane colour sits under it.
-const RUNNER_COLOR = '#e0566a';
+// ---------------------------------------------------------------------------------- world
+// Distant mountain ridges and roadside lamp posts give the run a place and a sense of speed. The
+// ridges are two flat strips (a near one in front of the sun, a hazier far one behind it) with a lit
+// ridge line; the posts are instanced and scroll with the floor, and their light pools are drawn by
+// the floor shader at the same spacing, so posts and pools never drift apart.
 
-function Runner({ sceneRef, pal }) {
-  const g = useRef(null);
+/** Seeded ridge heights: jagged low-poly peaks, low in the middle so the road runs into a valley. */
+function ridgeHeights(n, halfW, seed, peak) {
+  let a = seed >>> 0;
+  const rand = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const x = -halfW + (2 * halfW * i) / n;
+    const ax = Math.abs(x);
+    const valley = 0.12 + 0.88 * Math.min(1, Math.max(0, (ax - 6) / (halfW * 0.38)));
+    const h = (i % 2 ? 0.55 + rand() * 0.45 : 0.2 + rand() * 0.35) * peak * valley;
+    out.push([x, h]);
+  }
+  return out;
+}
+
+function ridgeGeometry(points) {
+  const pos = [];
+  const top = [];
+  for (const [x, h] of points) {
+    pos.push(x, -4, 0, x, h, 0);
+    top.push(0, 1);
+  }
+  const index = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = i * 2;
+    index.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aTop', new THREE.Float32BufferAttribute(top, 1));
+  g.setIndex(index);
+  return g;
+}
+
+const RIDGE_VERT = /* glsl */ `
+  attribute float aTop;
+  varying float vTop;
+  void main() {
+    vTop = aTop;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+// A dark silhouette that thins into the haze toward its foot, with a one-pixel lit ridge line.
+const RIDGE_FRAG = /* glsl */ `
+  uniform vec3 uFloor;
+  uniform vec3 uHorizon;
+  uniform vec3 uLine;
+  uniform float uHaze;
+  uniform float uLineAmt;
+  varying float vTop;
+  void main() {
+    vec3 col = mix(uFloor, uHorizon, uHaze + (1.0 - uHaze) * 0.45 * (1.0 - vTop));
+    float fw = max(fwidth(vTop), 1e-4);
+    float line = 1.0 - smoothstep(0.0, fw * 1.6, 1.0 - vTop);
+    col += uLine * line * uLineAmt;
+    gl_FragColor = vec4(col, 1.0);
+    #include <colorspace_fragment>
+  }
+`;
+
+const RIDGES = [
+  { z: -150, halfW: 200, n: 46, seed: 7, peak: 20, haze: 0.62, line: 0.35 },
+  { z: -88, halfW: 130, n: 38, seed: 3, peak: 12, haze: 0.28, line: 0.8 },
+];
+
+function Mountains({ pal, cfg }) {
+  const layers = useMemo(
+    () =>
+      RIDGES.filter((r, i) => cfg.world || i === RIDGES.length - 1).map((r) => ({
+        r,
+        geometry: ridgeGeometry(ridgeHeights(r.n, r.halfW, r.seed, r.peak)),
+        material: new THREE.ShaderMaterial({
+          uniforms: {
+            uFloor: { value: pal.cur.floor },
+            uHorizon: { value: pal.cur.horizon },
+            uLine: { value: pal.cur.grid },
+            uHaze: { value: r.haze },
+            uLineAmt: { value: r.line },
+          },
+          vertexShader: RIDGE_VERT,
+          fragmentShader: RIDGE_FRAG,
+          fog: false,
+          toneMapped: false,
+        }),
+      })),
+    [pal, cfg.world]
+  );
+  useEffect(
+    () => () =>
+      layers.forEach((l) => {
+        l.geometry.dispose();
+        l.material.dispose();
+      }),
+    [layers]
+  );
+  return layers.map((l) => <mesh key={l.r.z} geometry={l.geometry} material={l.material} position={[0, 0, l.r.z]} frustumCulled={false} />);
+}
+
+const HALO_VERT = /* glsl */ `
+  varying vec2 vUv;
+  varying float vDepth;
+  void main() {
+    vUv = uv;
+    vec4 p = vec4(position, 1.0);
+  #ifdef USE_INSTANCING
+    p = instanceMatrix * p;
+  #endif
+    vec4 mv = modelViewMatrix * p;
+    vDepth = -mv.z;
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+const HALO_FRAG = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uOpacity;
+  uniform vec2 uFog;
+  varying vec2 vUv;
+  varying float vDepth;
+  void main() {
+    float a = 1.0 - smoothstep(0.0, 1.0, length(vUv * 2.0 - 1.0));
+    gl_FragColor = vec4(uColor, a * a * uOpacity * (1.0 - 0.85 * smoothstep(uFog.x, uFog.y, vDepth)));
+    #include <colorspace_fragment>
+  }
+`;
+
+/** Lamp posts on both sides of the road; `postScrollRef` is shared with the floor's light pools. */
+function Roadside({ sceneRef, pal, postScrollRef }) {
+  const poles = useRef(null);
+  const heads = useRef(null);
+  const halos = useRef(null);
+  const n = POST.count * 2;
+  const res = useMemo(() => {
+    const pole = new THREE.BoxGeometry(0.1, POST.top, 0.1);
+    pole.translate(0, POST.top / 2, 0);
+    const arm = new THREE.BoxGeometry(POST.arm + 0.06, 0.07, 0.09);
+    arm.translate(POST.arm / 2, POST.top - 0.04, 0);
+    const poleGeo = mergeGeometries([pole, arm]);
+    pole.dispose();
+    arm.dispose();
+    const headGeo = new THREE.BoxGeometry(0.42, 0.06, 0.18);
+    headGeo.translate(POST.arm - 0.1, POST.top - 0.1, 0);
+    const haloGeo = new THREE.PlaneGeometry(1.6, 1.0);
+    haloGeo.translate(POST.arm - 0.1, POST.top - 0.14, 0.02);
+    return {
+      poleGeo,
+      headGeo,
+      haloGeo,
+      poleMat: new THREE.MeshStandardMaterial({ color: '#3a3f60', roughness: 0.5, metalness: 0.15 }),
+      headMat: new THREE.MeshBasicMaterial({ color: new THREE.Color(), toneMapped: false }),
+      haloMat: new THREE.ShaderMaterial({
+        uniforms: { uColor: { value: pal.cur.lane }, uOpacity: { value: 0.55 }, uFog: fogUniform() },
+        vertexShader: HALO_VERT,
+        fragmentShader: HALO_FRAG,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        fog: false,
+        toneMapped: false,
+      }),
+    };
+  }, [pal]);
+  useEffect(
+    () => () => {
+      for (const v of Object.values(res)) v.dispose();
+    },
+    [res]
+  );
+  const m4 = useMemo(() => new THREE.Matrix4(), []);
+  const one = useMemo(() => new THREE.Vector3(1, 1, 1), []);
+  const posV = useMemo(() => new THREE.Vector3(), []);
+  // The right-hand posts are turned half a circle, so every arm points at the road.
+  const turns = useMemo(() => [new THREE.Quaternion(), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)], []);
+  useFrame((_, dt) => {
+    const s = sceneRef.current;
+    if (s.running) postScrollRef.current = (postScrollRef.current + Math.min(0.1, dt) * WORLD_SPEED * (s.speed || 1)) % POST.spacing;
+    res.headMat.color.copy(pal.cur.lane);
+    for (let i = 0; i < n; i++) {
+      const side = i % 2 ? 1 : -1;
+      const z = POST.z0 - Math.floor(i / 2) * POST.spacing + postScrollRef.current;
+      posV.set(-side * POST.x, 0, z);
+      m4.compose(posV, turns[side < 0 ? 1 : 0], one);
+      poles.current?.setMatrixAt(i, m4);
+      heads.current?.setMatrixAt(i, m4);
+      halos.current?.setMatrixAt(i, m4);
+    }
+    for (const r of [poles, heads, halos]) if (r.current) r.current.instanceMatrix.needsUpdate = true;
+  });
+  return (
+    <>
+      <instancedMesh ref={poles} args={[res.poleGeo, res.poleMat, n]} frustumCulled={false} />
+      <instancedMesh ref={heads} args={[res.headGeo, res.headMat, n]} frustumCulled={false} />
+      <instancedMesh ref={halos} args={[res.haloGeo, res.haloMat, n]} frustumCulled={false} renderOrder={1} />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------------- runner
+// A jointed runner (pelvis, torso, head, thighs, shins, feet, upper arms, forearms) driven by a run
+// cycle: the knee folds high in the swing and stays soft in the stance, the arms swing against the legs,
+// the torso leans forward and twists against the hips, the body rises twice a stride, and it banks into
+// a lane change. The shirt stays Vocably coral in every theme so the avatar is always recognisable; the
+// theme reaches it as light (sky light, grid bounce, and a rim light from the sun ahead).
+const RUNNER_COLOR = '#e0566a';
+const LOOK = { skin: '#c98d6b', shorts: '#1c2250', shoe: '#f3f0ea', sole: '#4a4f66', hair: '#2a1a16' };
+const BODY = { hipY: 1.0, hipX: 0.1, thigh: 0.45, shin: 0.44, shoulderX: 0.25, shoulderY: 0.47, upper: 0.29, fore: 0.27 };
+const TAU = Math.PI * 2;
+
+/** A capsule that hangs from its pivot: from y = 0 down to y = -len. */
+function limbGeometry(r, len) {
+  const g = new THREE.CapsuleGeometry(r, Math.max(0.01, len - 2 * r), 4, 10);
+  g.translate(0, -len / 2, 0);
+  return g;
+}
+
+/** Paints a geometry one colour (as a vertex colour), so parts of different colours can share a draw. */
+function tinted(geo, hex) {
+  const c = new THREE.Color(hex);
+  const n = geo.attributes.position.count;
+  const col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return geo;
+}
+
+/** Merges tinted parts into one geometry (one draw call per body segment). */
+function segment(...parts) {
+  const merged = mergeGeometries(parts);
+  parts.forEach((g) => g.dispose());
+  return merged;
+}
+
+/**
+ * The runner's segments, each one geometry with vertex colours, sharing one material: 13 draw calls for
+ * the whole body. `lite` (the low tier) lights it with Lambert instead of PBR.
+ */
+function useRunnerKit(lite) {
+  const kit = useMemo(() => {
+    const shoe = tinted(new THREE.CapsuleGeometry(0.052, 0.15, 4, 10), LOOK.shoe);
+    shoe.rotateX(Math.PI / 2);
+    shoe.translate(0, -0.05, -0.05);
+    const sole = tinted(new THREE.BoxGeometry(0.11, 0.03, 0.27), LOOK.sole);
+    sole.translate(0, -0.095, -0.05);
+    const head = tinted(new THREE.SphereGeometry(0.12, 20, 16), LOOK.skin);
+    head.scale(0.9, 1.05, 1);
+    const hair = tinted(new THREE.SphereGeometry(0.126, 18, 12, 0, TAU, 0, Math.PI * 0.6), LOOK.hair);
+    hair.rotateX(0.55); // covers the crown and the back of the head, which is what the camera sees
+    hair.translate(0, 0.012, 0.004);
+    const hips = tinted(new THREE.CapsuleGeometry(0.135, 0.12, 4, 12), LOOK.shorts);
+    hips.rotateZ(Math.PI / 2);
+    hips.scale(1, 1, 0.75);
+    // Shoulders wider than the waist: a broad chest over a narrower abdomen.
+    const chest = tinted(new THREE.CapsuleGeometry(0.15, 0.16, 6, 14), RUNNER_COLOR);
+    chest.scale(1.45, 1, 0.7);
+    chest.translate(0, 0.38, 0);
+    const waist = tinted(new THREE.CapsuleGeometry(0.12, 0.16, 6, 14), RUNNER_COLOR);
+    waist.scale(1.18, 1, 0.78);
+    waist.translate(0, 0.15, 0);
+    const neck = tinted(limbGeometry(0.05, 0.12), LOOK.skin);
+    neck.translate(0, 0.66, 0);
+    const hand = tinted(new THREE.SphereGeometry(0.048, 12, 10), LOOK.skin);
+    hand.translate(0, -BODY.fore - 0.02, 0);
+    const Mat = lite ? THREE.MeshLambertMaterial : THREE.MeshStandardMaterial;
+    return {
+      geo: {
+        pelvis: hips,
+        torso: segment(chest, waist, neck),
+        head: segment(head, hair),
+        thigh: segment(tinted(limbGeometry(0.097, 0.22), LOOK.shorts), tinted(limbGeometry(0.084, BODY.thigh), LOOK.skin)),
+        shin: tinted(limbGeometry(0.064, BODY.shin), LOOK.skin),
+        foot: segment(shoe, sole),
+        upper: segment(tinted(limbGeometry(0.066, 0.13), RUNNER_COLOR), tinted(limbGeometry(0.052, BODY.upper), LOOK.skin)),
+        fore: segment(tinted(limbGeometry(0.042, BODY.fore), LOOK.skin), hand),
+      },
+      mat: new Mat({ vertexColors: true, ...(lite ? {} : { roughness: 0.62 }) }),
+    };
+  }, [lite]);
+  useEffect(
+    () => () => {
+      Object.values(kit.geo).forEach((g) => g.dispose());
+      kit.mat.dispose();
+    },
+    [kit]
+  );
+  return kit;
+}
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const bend = (joint, x) => {
+  if (joint) joint.rotation.x = x;
+};
+
+function Runner({ sceneRef, pal, cfg }) {
+  const { geo, mat } = useRunnerKit(!cfg.world);
+  const root = useRef(null);
+  const body = useRef(null);
+  const pelvis = useRef(null);
+  const torso = useRef(null);
+  const head = useRef(null);
   const spot = useRef(null);
-  const legs = useRef([]);
+  const shadow = useRef(null);
+  const j = useRef({ thigh: [], knee: [], ankle: [], shoulder: [], elbow: [] });
   const phase = useRef(0);
+  const amt = useRef(0); // 0 = standing, 1 = running; eased so a pause or a new round never snaps
   const spotGeo = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(1.8, 1.8);
-    geo.rotateX(-Math.PI / 2);
-    return geo;
+    const g = new THREE.PlaneGeometry(1.8, 1.8);
+    g.rotateX(-Math.PI / 2);
+    return g;
   }, []);
   const spotMat = useMemo(
     () =>
       new THREE.ShaderMaterial({
-        uniforms: { uColor: { value: pal.cur.lane }, uOpacity: { value: 0.32 } },
+        uniforms: { uColor: { value: pal.cur.lane }, uOpacity: { value: 0.26 } },
         vertexShader: UV_VERT,
         fragmentShader: SPOT_FRAG,
         transparent: true,
@@ -441,48 +761,116 @@ function Runner({ sceneRef, pal }) {
       }),
     [pal]
   );
+  const shadowGeo = useMemo(() => {
+    const g = new THREE.PlaneGeometry(0.9, 1.1);
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }, []);
+  const shadowMat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: { uColor: { value: new THREE.Color(0, 0, 0) }, uOpacity: { value: 0.6 } },
+        vertexShader: UV_VERT,
+        fragmentShader: SPOT_FRAG,
+        transparent: true,
+        depthWrite: false,
+        fog: false,
+        toneMapped: false,
+      }),
+    []
+  );
   useEffect(() => () => spotGeo.dispose(), [spotGeo]);
   useEffect(() => () => spotMat.dispose(), [spotMat]);
-  useFrame((_, dt) => {
+  useEffect(() => () => shadowGeo.dispose(), [shadowGeo]);
+  useEffect(() => () => shadowMat.dispose(), [shadowMat]);
+
+  useFrame((_, rawDt) => {
     const s = sceneRef.current;
-    if (!g.current) return;
+    const r = root.current;
+    if (!r || !body.current) return;
+    const dt = Math.min(0.1, rawDt);
     const tx = LANE_X[s.lane] ?? 0;
-    const k = Math.min(1, dt * 14);
-    g.current.position.x += (tx - g.current.position.x) * k;
-    // Stride phase accumulates (no jump when the speed steps up), and rests while paused.
-    if (s.running) phase.current = (phase.current + Math.min(0.1, dt) * 12 * (s.speed || 1)) % (Math.PI * 2000);
-    const t = s.running ? phase.current : 0;
-    g.current.position.y = s.running ? Math.abs(Math.sin(t)) * 0.12 : 0;
-    g.current.rotation.z = (g.current.position.x - tx) * 0.12;
-    for (let i = 0; i < legs.current.length; i++) {
-      if (legs.current[i]) legs.current[i].rotation.x = Math.sin(t + i * Math.PI) * 0.7;
+    r.position.x += (tx - r.position.x) * Math.min(1, dt * 12);
+    const off = r.position.x - tx;
+    r.rotation.z = off * 0.11; // bank into the turn
+    r.rotation.y = off * 0.12; // and look where it goes
+    // About 1.5 strides a second at ×1, quicker as the speed steps up; the phase accumulates, so a
+    // speed change never jumps the pose.
+    if (s.running) phase.current = (phase.current + dt * 9.5 * Math.min(1.6, s.speed || 1)) % (TAU * 1000);
+    amt.current += ((s.running ? 1 : 0) - amt.current) * Math.min(1, dt * 6);
+    const a = amt.current;
+    const p = phase.current;
+    const jt = j.current;
+    for (let side = 0; side < 2; side++) {
+      const q = p + side * Math.PI; // the right leg is half a stride behind the left
+      const sq = Math.sin(q);
+      const swing = Math.max(0, Math.cos(q)); // > 0 while this leg travels forward
+      bend(jt.thigh[side], lerp(0.02, 0.22 + 0.72 * sq, a));
+      bend(jt.knee[side], lerp(-0.06, -(0.2 + 1.5 * swing ** 1.4), a));
+      bend(jt.ankle[side], lerp(0.04, 0.42 * sq, a));
+      // Arms swing against the legs on the same side, elbows bent near a right angle.
+      bend(jt.shoulder[side], lerp(0.05, -0.75 * sq, a));
+      bend(jt.elbow[side], lerp(0.25, 1.35 - 0.3 * sq, a));
     }
-    if (spot.current) spot.current.position.x = g.current.position.x;
+    const s0 = Math.sin(p);
+    body.current.position.y = lerp(0, -0.045 + 0.085 * Math.abs(s0), a); // up in flight, down in stance
+    if (torso.current) {
+      torso.current.rotation.x = lerp(-0.02, -0.2 - 0.03 * Math.abs(s0), a); // forward lean
+      torso.current.rotation.y = lerp(0, 0.16 * s0, a); // shoulders against the hips
+    }
+    if (pelvis.current) pelvis.current.rotation.y = lerp(0, -0.09 * s0, a);
+    if (head.current) {
+      head.current.rotation.x = lerp(0.02, 0.14, a); // eyes stay on the road
+      head.current.rotation.y = lerp(0, -0.13 * s0, a);
+    }
+    if (spot.current) spot.current.position.x = r.position.x;
+    if (shadow.current) {
+      shadow.current.position.x = r.position.x;
+      const lift = Math.max(0, body.current.position.y);
+      const k = 1 - lift * 2.5;
+      shadow.current.scale.set(k, 1, k);
+      shadow.current.material.uniforms.uOpacity.value = 0.6 * k;
+    }
   });
+
+  const set = (key, i) => (m) => {
+    j.current[key][i] = m;
+  };
   return (
     <>
       <mesh ref={spot} geometry={spotGeo} material={spotMat} position={[0, 0.02, 0]} />
-      <group ref={g} position={[0, 0, 0]}>
-        <mesh position={[0, 1.05, 0]}>
-          <capsuleGeometry args={[0.32, 0.6, 6, 12]} />
-          <meshStandardMaterial color={RUNNER_COLOR} emissive={RUNNER_COLOR} emissiveIntensity={0.2} roughness={0.45} />
-        </mesh>
-        <mesh position={[0, 1.78, 0]}>
-          <sphereGeometry args={[0.26, 16, 16]} />
-          <meshStandardMaterial color="#f2d1b3" />
-        </mesh>
-        {[-0.14, 0.14].map((x, i) => (
-          <mesh
-            key={x}
-            ref={(m) => {
-              legs.current[i] = m;
-            }}
-            position={[x, 0.45, 0]}
-          >
-            <boxGeometry args={[0.16, 0.6, 0.16]} />
-            <meshStandardMaterial color="#2b3170" />
-          </mesh>
-        ))}
+      <mesh ref={shadow} geometry={shadowGeo} material={shadowMat} position={[0, 0.025, -0.02]} renderOrder={1} />
+      <group ref={root}>
+        <group ref={body}>
+          <group ref={pelvis} position={[0, BODY.hipY, 0]}>
+            <mesh geometry={geo.pelvis} material={mat} />
+            {[-1, 1].map((sx, i) => (
+              <group key={sx} ref={set('thigh', i)} position={[sx * BODY.hipX, 0, 0]}>
+                <mesh geometry={geo.thigh} material={mat} />
+                <group ref={set('knee', i)} position={[0, -BODY.thigh, 0]}>
+                  <mesh geometry={geo.shin} material={mat} />
+                  <group ref={set('ankle', i)} position={[0, -BODY.shin, 0]}>
+                    <mesh geometry={geo.foot} material={mat} />
+                  </group>
+                </group>
+              </group>
+            ))}
+          </group>
+          <group ref={torso} position={[0, BODY.hipY + 0.03, 0]}>
+            <mesh geometry={geo.torso} material={mat} />
+            <group ref={head} position={[0, 0.7, 0]}>
+              <mesh geometry={geo.head} material={mat} />
+            </group>
+            {[-1, 1].map((sx, i) => (
+              <group key={sx} ref={set('shoulder', i)} position={[sx * BODY.shoulderX, BODY.shoulderY, 0]} rotation={[0, 0, sx * 0.13]}>
+                <mesh geometry={geo.upper} material={mat} />
+                <group ref={set('elbow', i)} position={[0, -BODY.upper, 0]}>
+                  <mesh geometry={geo.fore} material={mat} />
+                </group>
+              </group>
+            ))}
+          </group>
+        </group>
       </group>
     </>
   );
@@ -490,20 +878,41 @@ function Runner({ sceneRef, pal }) {
 
 function Lights({ pal }) {
   const hemi = useRef(null);
-  // The runner is the only lit object. Its light is mostly white, so the coral stays coral: a tint of
-  // the horizon glow from above, the grid's colour bounced from below.
+  const rim = useRef(null);
+  // The runner and the posts are the only lit objects. Mostly white light keeps the coral coral: a tint
+  // of the horizon glow from above, the grid bounced from below, and the sun's colour as a rim light
+  // from ahead that outlines the runner against the road.
   useFrame(() => {
     const h = hemi.current;
-    if (!h) return;
-    h.color.copy(WHITE).lerp(pal.cur.glow, 0.2);
-    h.groundColor.copy(pal.cur.grid).multiplyScalar(0.35);
+    if (h) {
+      h.color.copy(WHITE).lerp(pal.cur.glow, 0.2);
+      h.groundColor.copy(pal.cur.grid).multiplyScalar(0.35);
+    }
+    if (rim.current) rim.current.color.copy(pal.cur.sunTop).lerp(pal.cur.sunBottom, 0.5);
   });
   return (
     <>
-      <hemisphereLight ref={hemi} intensity={1.1} />
-      <directionalLight position={[4, 8, 6]} intensity={1.1} />
+      <hemisphereLight ref={hemi} intensity={1.0} />
+      <directionalLight position={[4, 8, 6]} intensity={1.15} />
+      <directionalLight ref={rim} position={[-2, 4, -14]} intensity={1.6} />
     </>
   );
+}
+
+/** The camera drifts a little toward the runner's lane and sways with the stride, so the view feels held. */
+function CameraRig({ sceneRef }) {
+  const cx = useRef(0);
+  const t = useRef(0);
+  useFrame((state, rawDt) => {
+    const s = sceneRef.current;
+    const dt = Math.min(0.1, rawDt);
+    cx.current += ((LANE_X[s.lane] ?? 0) * 0.3 - cx.current) * Math.min(1, dt * 3);
+    if (s.running) t.current += dt * 9.5 * Math.min(1.6, s.speed || 1);
+    const cam = state.camera;
+    cam.position.set(CAM_POS[0] + cx.current, CAM_POS[1] + (s.running ? Math.sin(t.current * 2) * 0.018 : 0), CAM_POS[2]);
+    cam.lookAt(CAM_LOOK[0] + cx.current * 0.5, CAM_LOOK[1], CAM_LOOK[2]);
+  });
+  return null;
 }
 
 // ---------------------------------------------------------------------------------- gate
@@ -741,6 +1150,7 @@ function RunScene3D({ sceneRef, running, visible = true, tier = 'high' }) {
   const cfg = TIERS[tier] || TIERS.high;
   const dpr = useMemo(() => dprFor(tier, typeof window !== 'undefined' ? window.devicePixelRatio : 1), [tier]);
   const pal = useMemo(() => createPalette(), []);
+  const postScrollRef = useRef(0); // written by Roadside, read by the floor's light pools
   return (
     <Canvas
       frameloop={running && visible ? 'always' : 'never'}
@@ -759,9 +1169,12 @@ function RunScene3D({ sceneRef, running, visible = true, tier = 'high' }) {
       <Sky pal={pal} />
       <StarField cfg={cfg} />
       <Sun sceneRef={sceneRef} pal={pal} />
-      <Floor sceneRef={sceneRef} pal={pal} cfg={cfg} />
+      <Mountains pal={pal} cfg={cfg} />
+      {cfg.world && <Roadside sceneRef={sceneRef} pal={pal} postScrollRef={postScrollRef} />}
+      <Floor sceneRef={sceneRef} pal={pal} cfg={cfg} postScrollRef={postScrollRef} />
       <Gate sceneRef={sceneRef} pal={pal} cfg={cfg} />
-      <Runner sceneRef={sceneRef} pal={pal} />
+      <Runner sceneRef={sceneRef} pal={pal} cfg={cfg} />
+      <CameraRig sceneRef={sceneRef} />
     </Canvas>
   );
 }
