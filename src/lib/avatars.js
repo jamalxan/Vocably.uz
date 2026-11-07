@@ -1,4 +1,5 @@
-import { Block, Conversation } from '@/lib/models';
+import { Block, Conversation, User } from '@/lib/models';
+import { objectPresence } from '@/lib/s3';
 import { canViewPhoto } from '@/lib/avatarShared';
 
 // Server-only yordamchilar — profil rasmini boshqa foydalanuvchiga ko'rsatish
@@ -36,4 +37,20 @@ export function currentPhotoId(user, { isOwner = false, hasConversation = false,
   if (!top) return null;
   if (!canViewPhoto(user.photoVisibility, { isOwner, hasConversation, blocked })) return null;
   return String(top._id);
+}
+
+// Bazada yozilgan, lekin S3'da fayli yo'q rasmlarni ro'yxatdan olib tashlaydi va
+// qolganlarini qaytaradi. Sabab: 2026-11-06 media server (VPS) o'lganda undagi barcha
+// avatar fayllari yo'qoldi, `User.photos` esa ularga ishora qilib qolgan edi — natijada
+// asosiy rasm o'rnida bo'sh joy, galereyada buzuq slaydlar chiqardi. Faqat S3 aniq
+// 404 bergan rasm o'chiriladi (`objectPresence === false`); tarmoq xatosida hech narsa
+// o'zgarmaydi. `photos` — lean hujjatdagi massiv (tartib saqlanadi).
+export async function pruneMissingPhotos(userId, photos) {
+  if (!photos?.length) return photos || [];
+  const checks = await Promise.all(photos.map((p) => objectPresence(p.smallKey)));
+  const missing = photos.filter((_, i) => checks[i] === false);
+  if (!missing.length) return photos;
+  await User.updateOne({ _id: userId }, { $pull: { photos: { _id: { $in: missing.map((p) => p._id) } } } });
+  const gone = new Set(missing.map((p) => String(p._id)));
+  return photos.filter((p) => !gone.has(String(p._id)));
 }

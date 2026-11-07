@@ -222,6 +222,21 @@ export async function deleteObjects(keys) {
 
 // Obyekt hajmi (baytlarda) yoki mavjud bo'lmasa null — avatar yuklangandan keyin
 // klient da'vo qilgan emas, S3'dagi HAQIQIY hajmni tekshirish uchun.
+// Obyekt borligini QAT'IY aniqlaydi (`objectExists`dan farqli — u har qanday xatoda false): true — bor, false — S3 aniq "yo'q" (404) dedi,
+// null — bilib bo'lmadi (tarmoq/ruxsat xatosi). `objectSize` har qanday xatoda null
+// qaytaradi; yozuvni o'chirish kabi qaytarib bo'lmaydigan qarorlar faqat `false`ga
+// tayanishi kerak (vaqtinchalik uzilishda sog' rasmlar o'chib ketmasin).
+export async function objectPresence(key) {
+  try {
+    await getClient().send(new HeadObjectCommand({ Bucket: BUCKET(), Key: key }));
+    return true;
+  } catch (err) {
+    const code = err?.$metadata?.httpStatusCode;
+    if (code === 404 || err?.name === 'NotFound' || err?.name === 'NoSuchKey') return false;
+    return null;
+  }
+}
+
 export async function objectSize(key) {
   try {
     const res = await getClient().send(new HeadObjectCommand({ Bucket: BUCKET(), Key: key }));
