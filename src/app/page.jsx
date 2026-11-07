@@ -22,12 +22,6 @@ import { ldGraph, organizationLd, webApplicationLd, tierOffers, SITE_URL, SITE_N
 import FunnelBeacon from '@/components/analytics/FunnelBeacon';
 import LocalizedTitle from '@/components/landing/LocalizedTitle';
 
-// Tab title for visitors who picked Russian or English (Uzbek stays the indexed `metadata.title`).
-const TAB_TITLES = {
-  ru: 'Vocably — IELTS и английский: SRS-словарь, пробный экзамен, AI-репетитор',
-  en: 'Vocably — IELTS and English: SRS vocabulary, mock exams, AI tutor',
-};
-
 // VOCABLY-TZ.md §3.1 (IA) — '/' ochiq marketing landing (SEO uchun server
 // komponent), login formasi /login'da (src/app/kirish).
 //
@@ -50,6 +44,13 @@ export const metadata = {
     type: 'website',
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Vocably' }],
   },
+};
+
+// Tab title for visitors who picked Russian or English (`uz` is the indexed `metadata.title`).
+const TAB_TITLES = {
+  uz: metadata.title,
+  ru: 'Vocably — IELTS и английский: SRS-словарь, пробный экзамен, AI-репетитор',
+  en: 'Vocably — IELTS and English: SRS vocabulary, mock exams, AI tutor',
 };
 
 export default function LandingPage() {
