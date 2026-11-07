@@ -1,0 +1,20 @@
+# Vocably chat media (S3-compatible, Garage). Served publicly as https://media.vocably.uz
+# through the shared edge Caddy (jamolxon-caddy) via /opt/jamolxon/edge/vocably.caddy.
+name: vocably-media
+services:
+  garage:
+    image: dxflrs/garage:v2.1.0
+    container_name: vocably-garage
+    restart: always
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - ./meta:/var/lib/garage/meta
+      - ./data:/var/lib/garage/data
+    ports: ["127.0.0.1:3900:3900"]
+    networks: [edge]
+    mem_limit: 1g
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
+networks:
+  edge:
+    external: true
+    name: jamolxon_edge

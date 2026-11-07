@@ -1,0 +1,24 @@
+# Vocably (separate project) - chat media S3 (Garage, /opt/vocably-media). Owned by vocably, not jamolxon.
+media.vocably.uz {
+	request_body {
+		max_size 200MB
+	}
+	@preflight method OPTIONS
+	handle @preflight {
+		header Access-Control-Allow-Origin "*"
+		header Access-Control-Allow-Methods "GET, PUT, HEAD, POST, DELETE"
+		header Access-Control-Allow-Headers "*"
+		header Access-Control-Max-Age "86400"
+		respond 204
+	}
+	handle {
+		header Access-Control-Allow-Origin "*"
+		header Access-Control-Expose-Headers "ETag, Content-Length, Content-Range, Accept-Ranges"
+		reverse_proxy vocably-garage:3900
+	}
+}
+
+# Vocably realtime (socket.io) - /opt/vocably-realtime
+ws.vocably.uz {
+	reverse_proxy vocably-realtime:4001
+}
