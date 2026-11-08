@@ -5,6 +5,10 @@
       "schedule": "0 4 * * *"
     },
     {
+      "path": "/api/internal/vocab/winback",
+      "schedule": "0 13 * * *"
+    },
+    {
       "path": "/api/internal/telegram/daily",
       "schedule": "0 14 * * *"
     },

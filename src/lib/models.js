@@ -278,6 +278,8 @@ const UserSchema = new mongoose.Schema({
     riskCheckedOn: { type: String, default: null },
     // Haftalik hisobot (TZ 2.0 §6.10.2, src/lib/weeklyReportServer.js): oxirgi yuborilgan ISO hafta ('2026-W45').
     weeklyReportWeek: { type: String, default: null },
+    // "Qaytarish" xabari (src/lib/vocab/winback.ts): qaysi nofaollik davri (o'sha paytdagi lastReviewDate) uchun yuborilgan.
+    winbackFor: { type: String, default: null },
   },
   // Kuniga ko'pi bilan 2 ta proaktiv Telegram xabari (TZ 2.0 §6.10.5) — eslatmalar va kunlik mini-test birga
   // hisoblanadi. src/lib/telegramCap.js atomik "band qiladi". day — foydalanuvchi mahalliy sanasi.
