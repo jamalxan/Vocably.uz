@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Heart, Pause, Play, RotateCcw, Volume2, VolumeX, Smartphone, ArrowRight, Loader2, Zap, ChevronLeft, ChevronRight, Box } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Heart, Pause, Play, RotateCcw, Volume2, VolumeX, Smartphone, ArrowRight, Loader2, Zap, ChevronLeft, ChevronRight, Box, ArrowLeft, Square, LogOut } from 'lucide-react';
 import useCopy from '@/components/landing/useCopy';
 import { useT } from '@/context/LocaleContext';
 import { translationLangFor } from '@/lib/i18n';
@@ -13,7 +14,10 @@ import { createFpsWatchdog, stepDown, writeRenderPref, readRenderPref, detectRen
 import { startGame, completeGame } from '@/components/games/api';
 import { createAnswerQueue } from '@/components/games/answerQueue';
 import SceneBoundary from './SceneBoundary';
+import { trapTab } from './PauseOverlay';
 import ShareCard from './ShareCard';
+
+const PAUSE_BTN = 'min-h-12 px-6 rounded-2xl inline-flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1020]';
 
 const loadScene = () => import('./RunScene3D');
 const RunScene3D = dynamic(loadScene, { ssr: false, loading: () => null });
@@ -49,6 +53,9 @@ const COPY = {
     pause: 'Pauza',
     resume: 'Davom etish',
     paused: 'Pauza',
+    back: 'Orqaga',
+    endRound: 'Raundni tugatish',
+    exit: "O'yinlardan chiqish",
     sound: 'Ovoz',
     vibrate: 'Tebranish',
     lane: (n, w) => `${n}-yo'lak: ${w}`,
@@ -95,6 +102,9 @@ const COPY = {
     pause: 'Pause',
     resume: 'Resume',
     paused: 'Paused',
+    back: 'Back',
+    endRound: 'End round',
+    exit: 'Leave to games',
     sound: 'Sound',
     vibrate: 'Vibration',
     lane: (n, w) => `Lane ${n}: ${w}`,
@@ -141,6 +151,9 @@ const COPY = {
     pause: 'Пауза',
     resume: 'Продолжить',
     paused: 'Пауза',
+    back: 'Назад',
+    endRound: 'Завершить раунд',
+    exit: 'Выйти к играм',
     sound: 'Звук',
     vibrate: 'Вибрация',
     lane: (n, w) => `Полоса ${n}: ${w}`,
@@ -201,6 +214,9 @@ function Track2D({ sceneRef, running }) {
 export default function VocablyRun() {
   const c = useCopy(COPY);
   const tLang = translationLangFor(useT().locale); // guest meanings: Russian UI -> Russian
+  const router = useRouter();
+  // Where "leave" goes: the in-app games hub, or the landing page for the public /games/run.
+  const exitHref = usePathname()?.startsWith('/app') ? '/app/games' : '/';
   const [audience, setAudience] = useState(null); // null (checking) | 'guest' | 'user'
   const [phase, setPhase] = useState('intro'); // intro | loading | playing | finishing | result
   const [paused, setPaused] = useState(false);
@@ -515,6 +531,21 @@ export default function VocablyRun() {
     sceneRef.current.running = true;
     setPaused(false);
   }, []);
+  // From the pause dialog: close the round now (answers so far are saved, the result is shown).
+  const endRound = useCallback(() => {
+    const s = g.current;
+    if (s.pausedAt) {
+      s.pausedTotal += performance.now() - s.pausedAt; // the pause is not playing time
+      s.pausedAt = 0;
+    }
+    setPaused(false);
+    finish();
+  }, [finish]);
+  const leave = useCallback(() => {
+    g.current.active = false;
+    cancelAnimationFrame(g.current.raf);
+    router.push(exitHref);
+  }, [router, exitHref]);
 
   // keyboard + tab visibility
   useEffect(() => {
@@ -604,35 +635,16 @@ export default function VocablyRun() {
       {/* The stage stays mounted (hidden) between rounds once a round started, so the 3D Canvas is
           created once and only paused (frameloop "never"), never unmounted from a frame. */}
       {everStarted && (
-        <section aria-label={c.title} className={`relative rounded-3xl overflow-hidden border border-border shadow-card bg-[#0b1020] select-none touch-none ${showStage ? '' : 'hidden'}`} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
-          {/* HUD */}
-          <div className="relative z-10 flex items-center justify-between gap-2 px-4 pt-3 text-white">
-            <div className="flex items-center gap-1" aria-label={`${c.lives}: ${hud.lives}`} role="img">
-              {Array.from({ length: RUN.lives }, (_, i) => (
-                <Heart key={i} size={18} className={i < hud.lives ? 'fill-rose-500 text-rose-500' : 'text-white/25'} aria-hidden="true" />
-              ))}
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-black tabular-nums leading-none">{hud.score}</p>
-              {hud.combo >= 2 && <p className="text-[11px] font-bold text-amber-300 tabular-nums">{c.combo} ×{hud.combo}</p>}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold tabular-nums" aria-label={`${c.time}: ${hud.timeLeft}`}>{hud.timeLeft}s</span>
-              <button type="button" onClick={pause} className="p-2 rounded-lg bg-white/10 hover:bg-white/20" aria-label={c.pause}>
-                <Pause size={16} aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          {/* prompt */}
-          <div className="relative z-10 mx-4 mt-3 rounded-2xl bg-white/95 text-[#0b1020] px-4 py-3 text-center shadow-lg">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-accent">{hud.promptKind === 'definition' ? c.definition : c.meaning}</p>
-            <p className="text-lg sm:text-xl font-bold leading-snug break-words">{hud.prompt}</p>
-          </div>
-          {lite && <p className="relative z-10 mx-4 mt-1 text-center text-[11px] text-white/60">{lite === 'lost' ? c.liteLost : c.lite}</p>}
-
+        // A fixed full-viewport layer over the app shell (like the typing games). The scene fills it;
+        // the HUD and the lane buttons float above it.
+        <section
+          aria-label={c.title}
+          className={showStage ? 'fixed inset-0 z-[60] h-dvh flex flex-col bg-[#0b1020] text-white select-none touch-none overscroll-contain' : 'hidden'}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
+        >
           {/* scene */}
-          <div className="relative h-[46vh] min-h-72 max-h-[440px] -mt-14">
+          <div className="absolute inset-0">
             {use3d ? (
               <SceneBoundary onError={to2d}>
                 <RunScene3D sceneRef={sceneRef} running={playing && !paused} visible={showStage} tier={tier} />
@@ -640,48 +652,97 @@ export default function VocablyRun() {
             ) : (
               <Track2D sceneRef={sceneRef} running={playing && !paused} />
             )}
-            {hud.feedback && (
-              <p className={`absolute left-1/2 -translate-x-1/2 bottom-4 rounded-full px-4 py-1.5 text-sm font-bold shadow-lg ${hud.feedback.ok ? 'bg-emerald-500 text-white' : hud.feedback.ok === false ? 'bg-rose-500 text-white' : 'bg-white/90 text-[#0b1020]'}`}>
-                {hud.feedback.ok ? c.right : hud.feedback.ok === false ? `${c.wrong} ${hud.feedback.word}` : c.offline}
-              </p>
-            )}
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[#0b1020]/85 to-transparent" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#0b1020] via-[#0b1020]/70 to-transparent" aria-hidden="true" />
+
+          {/* HUD */}
+          <div className="relative z-10 w-full max-w-xl mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={pause} disabled={!playing} className="min-h-11 min-w-11 grid place-items-center rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={c.back}>
+                <ArrowLeft size={18} aria-hidden="true" />
+              </button>
+              <div className="flex items-center gap-0.5" aria-label={`${c.lives}: ${hud.lives}`} role="img">
+                {Array.from({ length: RUN.lives }, (_, i) => (
+                  <Heart key={i} size={18} className={i < hud.lives ? 'fill-rose-500 text-rose-500' : 'text-white/25'} aria-hidden="true" />
+                ))}
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-black tabular-nums leading-none">{hud.score}</p>
+              <p className="h-4 text-[11px] font-bold text-amber-300 tabular-nums">{hud.combo >= 2 ? `${c.combo} ×${hud.combo}` : ''}</p>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <span className={`text-sm font-bold tabular-nums ${hud.timeLeft <= 10 ? 'text-rose-300' : ''}`} aria-label={`${c.time}: ${hud.timeLeft}`}>{hud.timeLeft}s</span>
+              <button type="button" onClick={pause} disabled={!playing} className="min-h-11 min-w-11 grid place-items-center rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={c.pause}>
+                <Pause size={16} aria-hidden="true" />
+              </button>
+            </div>
           </div>
 
-          {/* lanes — the accessible control and the one-thumb control */}
-          <div className="relative z-10 grid grid-cols-3 gap-2 p-3 bg-[#0b1020]">
-            {hud.options.map((o, i) => {
-              const fb = hud.feedback;
-              const tone = fb
-                ? i === fb.correctLane ? 'bg-emerald-500 text-white border-emerald-300' : i === fb.chosen && fb.ok === false ? 'bg-rose-500 text-white border-rose-300' : 'bg-white/5 text-white/60 border-white/10'
-                : i === hud.lane ? (hud.locked ? 'bg-amber-400 text-[#0b1020] border-amber-200' : 'bg-accent text-on-accent border-white/60') : 'bg-white/10 text-white border-white/15';
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => setLane(i)}
-                  aria-pressed={i === hud.lane}
-                  aria-label={c.lane(i + 1, o.text)}
-                  className={`min-h-14 rounded-xl border-2 px-1.5 text-sm sm:text-base font-bold font-word break-words leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${tone}`}
-                >
-                  {o.text}
-                </button>
-              );
-            })}
+          {/* prompt */}
+          <div className="relative z-10 w-full max-w-xl mx-auto px-3 mt-2">
+            <div className="rounded-2xl bg-white/95 text-[#0b1020] px-4 py-3 text-center shadow-lg">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-accent">{hud.promptKind === 'definition' ? c.definition : c.meaning}</p>
+              <p className="text-lg sm:text-xl font-bold leading-snug break-words">{hud.prompt}</p>
+            </div>
+            {lite && <p className="mt-1 text-center text-[11px] text-white/60">{lite === 'lost' ? c.liteLost : c.lite}</p>}
           </div>
-          <div className="relative z-10 flex justify-between px-4 pb-3 text-white/40 text-[11px]" aria-hidden="true">
-            <ChevronLeft size={14} /> <span>{hud.locked ? c.locked : ''}</span> <ChevronRight size={14} />
+
+          <div className="flex-1" />
+
+          {/* feedback + lanes — the accessible control and the one-thumb control */}
+          <div className="relative z-10 w-full max-w-xl mx-auto px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <div className="h-10 grid place-items-center">
+              {hud.feedback && (
+                <p className={`rounded-full px-4 py-1.5 text-sm font-bold shadow-lg ${hud.feedback.ok ? 'bg-emerald-500 text-white' : hud.feedback.ok === false ? 'bg-rose-500 text-white' : 'bg-white/90 text-[#0b1020]'}`}>
+                  {hud.feedback.ok ? c.right : hud.feedback.ok === false ? `${c.wrong} ${hud.feedback.word}` : c.offline}
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {hud.options.map((o, i) => {
+                const fb = hud.feedback;
+                const tone = fb
+                  ? i === fb.correctLane ? 'bg-emerald-500 text-white border-emerald-300' : i === fb.chosen && fb.ok === false ? 'bg-rose-500 text-white border-rose-300' : 'bg-[#0b1020]/60 text-white/60 border-white/10'
+                  : i === hud.lane ? (hud.locked ? 'bg-amber-400 text-[#0b1020] border-amber-200' : 'bg-accent text-on-accent border-white/60') : 'bg-[#0b1020]/60 text-white border-white/20';
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => setLane(i)}
+                    aria-pressed={i === hud.lane}
+                    aria-label={c.lane(i + 1, o.text)}
+                    className={`min-h-14 rounded-xl border-2 px-1.5 text-sm sm:text-base font-bold font-word break-words leading-tight backdrop-blur-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${tone}`}
+                  >
+                    {o.text}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex justify-between px-1 pt-2 text-white/40 text-[11px]" aria-hidden="true">
+              <ChevronLeft size={14} /> <span>{hud.locked ? c.locked : ''}</span> <ChevronRight size={14} />
+            </div>
           </div>
 
           {(paused || phase === 'finishing') && (
-            <div className="absolute inset-0 z-20 grid place-items-center bg-[#0b1020]/80 backdrop-blur-sm">
+            <div className="absolute inset-0 z-20 grid place-items-center bg-[#0b1020]/90 backdrop-blur-sm px-6" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
               {phase === 'finishing' ? (
                 <Loader2 className="w-8 h-8 animate-spin text-white" aria-label={c.loading} />
               ) : (
-                <div className="text-center">
-                  <p className="text-white text-xl font-bold mb-4">{c.paused}</p>
-                  <button type="button" onClick={resume} autoFocus className="min-h-12 px-6 rounded-2xl bg-accent text-on-accent font-bold inline-flex items-center gap-2">
-                    <Play size={18} aria-hidden="true" /> {c.resume}
-                  </button>
+                <div className="w-full max-w-xs text-center" role="dialog" aria-modal="true" aria-labelledby="run-pause-h" onKeyDown={trapTab}>
+                  <p id="run-pause-h" className="text-xl font-bold">{c.paused}</p>
+                  <div className="mt-5 grid gap-2">
+                    <button type="button" onClick={resume} autoFocus className={`${PAUSE_BTN} font-bold bg-accent text-on-accent`}>
+                      <Play size={18} aria-hidden="true" /> {c.resume}
+                    </button>
+                    <button type="button" onClick={endRound} className={`${PAUSE_BTN} font-semibold border border-white/25 hover:border-white/50`}>
+                      <Square size={15} aria-hidden="true" /> {c.endRound}
+                    </button>
+                    <button type="button" onClick={leave} className={`${PAUSE_BTN} font-semibold text-white/75 hover:text-white`}>
+                      <LogOut size={16} aria-hidden="true" /> {c.exit}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
