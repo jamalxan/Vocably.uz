@@ -36,6 +36,44 @@ test.describe('Vocably Run', () => {
     await expect(page.getByRole('button', { name: 'Davom etish' })).toBeVisible();
   });
 
+  test('the round fills the whole screen; Back pauses with resume / end round / leave', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await loginAs(page, E2E_PHONE);
+    await page.goto('/app/games/vocably_run');
+    await page.getByRole('button', { name: 'Boshlash' }).click();
+    const stage = page.getByRole('region', { name: 'Vocably Run' });
+    await expect(lanes(page)).toHaveCount(3, { timeout: 30_000 }); // cold compile of the session API
+    const box = await stage.boundingBox();
+    expect(box).toMatchObject({ x: 0, y: 0, width: 390, height: 844 });
+    await page.screenshot({ path: 'test-results/run-fullscreen-mobile.png' });
+
+    await stage.getByRole('button', { name: 'Orqaga' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Pauza' });
+    await expect(dialog.getByRole('button', { name: 'Davom etish' })).toBeFocused();
+    await dialog.getByRole('button', { name: 'Davom etish' }).click();
+    await expect(dialog).toBeHidden();
+
+    // End round → the result screen (answers so far are kept).
+    await stage.getByRole('button', { name: 'Orqaga' }).click();
+    await dialog.getByRole('button', { name: 'Raundni tugatish' }).click();
+    await expect(page.getByText('Raund tugadi')).toBeVisible({ timeout: 15_000 });
+
+    // Leave → back to the games hub.
+    await page.getByRole('button', { name: 'Yana o‘ynash' }).click();
+    await stage.getByRole('button', { name: 'Orqaga' }).click();
+    await dialog.getByRole('button', { name: "O'yinlardan chiqish" }).click();
+    await expect(page).toHaveURL(/\/app\/games$/);
+  });
+
+  test('desktop: the stage covers the app shell edge to edge', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/games/run');
+    await page.getByRole('button', { name: 'Boshlash' }).click();
+    await expect(lanes(page)).toHaveCount(3);
+    expect(await page.getByRole('region', { name: 'Vocably Run' }).boundingBox()).toMatchObject({ x: 0, y: 0, width: 1440, height: 900 });
+    await page.screenshot({ path: 'test-results/run-fullscreen-desktop.png' });
+  });
+
   test('a finished guest round shows the missed words and a downloadable 9:16 card', async ({ page }) => {
     test.setTimeout(150_000);
     await page.goto('/games/run');
@@ -122,15 +160,20 @@ test.describe('Vocably Run', () => {
       await expect(lanes(page).nth(2)).toHaveAttribute('aria-pressed', 'true');
       // The first gate arrives after ~4.2 s. A guest gate is graded on the device, so it either scores
       // or costs a life (both stay on the HUD, unlike the 650 ms verdict pill).
-      await expect(stage.getByRole('img', { name: /^Jon: [0-2]$/ }).or(stage.getByText(/^[1-9]\d{2,}$/))).toBeVisible({ timeout: 10_000 });
+      await expect(stage.getByRole('img', { name: /^Jon: [0-2]$/ }).or(stage.getByText(/^[1-9]\d{2,}$/)).first()).toBeVisible({ timeout: 10_000 });
       await expect(canvas).toHaveCount(1);
+      // Pause first: the canvas is CPU-rendered here (SwiftShader), which can starve the test runner
+      // enough that the round loses its last life before the next step.
+      await stage.getByRole('button', { name: 'Pauza' }).click();
+      await expect(stage.getByRole('dialog', { name: 'Pauza' })).toBeVisible();
 
       // A lost context moves the round to the 2D track with its own notice. The stored render
       // preference is left alone: a context loss can be transient, unlike a device that is too slow.
       await canvas.evaluate((c: HTMLCanvasElement) => c.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext());
       await expect(stage.getByText("3D grafika to'xtadi — 2D rejimda davom etamiz.")).toBeVisible({ timeout: 5_000 });
       await expect(canvas).toHaveCount(0);
-      await expect(lanes(page)).toHaveCount(3); // the round goes on
+      await stage.getByRole('button', { name: 'Davom etish' }).click();
+      await expect(lanes(page)).toHaveCount(3); // the round goes on in 2D
       expect(await page.evaluate(() => localStorage.getItem('vocably.flagship.render.v1'))).toBeNull();
       expect(errors).toEqual([]);
     });
