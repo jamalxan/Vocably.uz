@@ -160,15 +160,20 @@ test.describe('Vocably Run', () => {
       await expect(lanes(page).nth(2)).toHaveAttribute('aria-pressed', 'true');
       // The first gate arrives after ~4.2 s. A guest gate is graded on the device, so it either scores
       // or costs a life (both stay on the HUD, unlike the 650 ms verdict pill).
-      await expect(stage.getByRole('img', { name: /^Jon: [0-2]$/ }).or(stage.getByText(/^[1-9]\d{2,}$/))).toBeVisible({ timeout: 10_000 });
+      await expect(stage.getByRole('img', { name: /^Jon: [0-2]$/ }).or(stage.getByText(/^[1-9]\d{2,}$/)).first()).toBeVisible({ timeout: 10_000 });
       await expect(canvas).toHaveCount(1);
+      // Pause first: the canvas is CPU-rendered here (SwiftShader), which can starve the test runner
+      // enough that the round loses its last life before the next step.
+      await stage.getByRole('button', { name: 'Pauza' }).click();
+      await expect(stage.getByRole('dialog', { name: 'Pauza' })).toBeVisible();
 
       // A lost context moves the round to the 2D track with its own notice. The stored render
       // preference is left alone: a context loss can be transient, unlike a device that is too slow.
       await canvas.evaluate((c: HTMLCanvasElement) => c.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext());
       await expect(stage.getByText("3D grafika to'xtadi — 2D rejimda davom etamiz.")).toBeVisible({ timeout: 5_000 });
       await expect(canvas).toHaveCount(0);
-      await expect(lanes(page)).toHaveCount(3); // the round goes on
+      await stage.getByRole('button', { name: 'Davom etish' }).click();
+      await expect(lanes(page)).toHaveCount(3); // the round goes on in 2D
       expect(await page.evaluate(() => localStorage.getItem('vocably.flagship.render.v1'))).toBeNull();
       expect(errors).toEqual([]);
     });
