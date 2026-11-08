@@ -6,6 +6,7 @@ import { generateCode } from '@/lib/otp';
 import { sendMessage, requestContactKeyboard, removeKeyboard, answerCallbackQuery, editMessageReplyMarkup } from '@/lib/telegram';
 import { handleQuizCallback, sendDailyPractice } from '@/lib/telegramQuiz';
 import { handleAdminBroadcastMessage, handleBroadcastCallback, handleTrialCommand, isAdminChat } from '@/lib/telegramBroadcast';
+import { formatWinback, winbackMarkup } from '@/lib/vocab/winback';
 import { NextResponse } from 'next/server';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
@@ -42,7 +43,8 @@ const ADMIN_MENU =
   `/admin ban &lt;telefon&gt; — chatdan bloklash\n` +
   `/admin unban &lt;telefon&gt; — blokdan chiqarish\n\n` +
   `<b>Sozlamalar:</b>\n` +
-  `/admin trial — yangi foydalanuvchiga bepul tarif (ko'rish/yoqish/o'chirish)\n\n` +
+  `/admin trial — yangi foydalanuvchiga bepul tarif (ko'rish/yoqish/o'chirish)\n` +
+  `/admin winback — "qaytarish" xabari namunasini shu chatga yuborish\n\n` +
   `<b>Reklama:</b> shu chatga matn, rasm, video, ovozli/video xabar yoki fayl yuboring — bot "Barchaga yuborish" tugmasini ko'rsatadi.\n\n` +
   `Masalan: <code>/admin grant +998901234567 nodira</code>`;
 
@@ -115,6 +117,15 @@ async function handleAdminCommand(chatId, text) {
 
     if (!action) {
       await sendMessage(chatId, ADMIN_MENU);
+      return true;
+    }
+    if (action === 'winback') {
+      // Namuna: nofaol foydalanuvchiga Telegram'da qanday ko'rinadi (src/lib/vocab/winback.ts). Hech kimga yuborilmaydi.
+      const me = await User.findOne({ telegramChatId: Number(chatId) }).select('name').lean();
+      const baseUrl = (process.env.APP_URL || 'https://vocably.uz').replace(/\/$/, '');
+      const msg = formatWinback({ name: me?.name || '', days: 5, due: 12, baseUrl });
+      await sendMessage(chatId, '👀 <i>Namuna (5 kun, 12 ta so‘z):</i>');
+      await sendMessage(chatId, msg.html, { reply_markup: winbackMarkup(baseUrl), disable_web_page_preview: true });
       return true;
     }
     if (action === 'trial') {
