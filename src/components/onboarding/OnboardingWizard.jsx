@@ -200,8 +200,11 @@ export default function OnboardingWizard() {
       authed = false;
     }
     if (authed) {
+      // Trust the flag right away so a signed-in user never sees "Register / Log in" while the
+      // check runs; a 401 (expired session) switches back to the guest buttons.
+      setLoggedIn(true);
       fetch('/api/onboarding', { credentials: 'same-origin' })
-        .then((r) => setLoggedIn(r.ok))
+        .then((r) => { if (r.status === 401) setLoggedIn(false); })
         .catch(() => {});
     }
   }, []);

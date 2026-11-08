@@ -8,9 +8,9 @@ import LanguageSwitch from '@/components/LanguageSwitch';
 
 const NAV_HREFS = ['/ielts', '/dictionary', '/blog', '/pricing'];
 const TEXT = {
-  en: { nav: ['IELTS', 'Dictionary', 'Blog', 'Pricing'], login: 'Log in', start: 'Start free', menu: 'Main menu', mobile: 'Mobile menu', open: 'Open menu', close: 'Close menu', lang: 'Language' },
-  uz: { nav: ['IELTS', "Lug'at", 'Blog', 'Narxlar'], login: 'Kirish', start: 'Bepul boshlash', menu: 'Asosiy menyu', mobile: 'Mobil menyu', open: 'Menyuni ochish', close: 'Menyuni yopish', lang: 'Til' },
-  ru: { nav: ['IELTS', 'Словарь', 'Блог', 'Цены'], login: 'Войти', start: 'Начать бесплатно', menu: 'Главное меню', mobile: 'Мобильное меню', open: 'Открыть меню', close: 'Закрыть меню', lang: 'Язык' },
+  en: { nav: ['IELTS', 'Dictionary', 'Blog', 'Pricing'], login: 'Log in', start: 'Start free', app: 'Open the app', menu: 'Main menu', mobile: 'Mobile menu', open: 'Open menu', close: 'Close menu', lang: 'Language' },
+  uz: { nav: ['IELTS', "Lug'at", 'Blog', 'Narxlar'], login: 'Kirish', start: 'Bepul boshlash', app: "Ilovaga o'tish", menu: 'Asosiy menyu', mobile: 'Mobil menyu', open: 'Menyuni ochish', close: 'Menyuni yopish', lang: 'Til' },
+  ru: { nav: ['IELTS', 'Словарь', 'Блог', 'Цены'], login: 'Войти', start: 'Начать бесплатно', app: 'Открыть приложение', menu: 'Главное меню', mobile: 'Мобильное меню', open: 'Открыть меню', close: 'Закрыть меню', lang: 'Язык' },
 };
 
 // Faqat mobil menyu ochiq/yopiqligi uchun client — qolgan butun landing sahifa
@@ -27,6 +27,15 @@ export default function LandingHeader({ floating = false }) {
   const NAV_LINKS = NAV_HREFS.map((href, i) => ({ href, label: tx.nav[i] }));
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(!floating);
+  // Signed-in visitors on a public page (e.g. /start from the dashboard card) get "Open the app",
+  // not "Log in / Start free". Read after mount: the server render cannot know, so it shows the guest links.
+  const [authed, setAuthed] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of the session flag
+      setAuthed(localStorage.getItem('vocably_authed') === '1');
+    } catch { /* storage blocked: guest links */ }
+  }, []);
 
   // Escape bosilganda mobil menyu yopiladi
   useEffect(() => {
@@ -74,15 +83,26 @@ export default function LandingHeader({ floating = false }) {
         <div className="hidden md:flex items-center gap-3">
           <LanguageSwitch />
           <span className="h-6 w-px bg-border" aria-hidden="true" />
-          <Link href="/login" className="text-sm font-medium text-ink hover:text-accent transition-colors px-2">
-            {tx.login}
-          </Link>
-          <Link
-            href="/register"
-            className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-4 py-2 rounded-xl text-sm transition-colors shadow-glow"
-          >
-            {tx.start}
-          </Link>
+          {authed ? (
+            <Link
+              href="/app"
+              className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-4 py-2 rounded-xl text-sm transition-colors shadow-glow"
+            >
+              {tx.app}
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="text-sm font-medium text-ink hover:text-accent transition-colors px-2">
+                {tx.login}
+              </Link>
+              <Link
+                href="/register"
+                className="bg-accent hover:bg-accent-hover text-on-accent font-semibold px-4 py-2 rounded-xl text-sm transition-colors shadow-glow"
+              >
+                {tx.start}
+              </Link>
+            </>
+          )}
         </div>
 
         <div className="md:hidden flex items-center gap-2">
@@ -120,16 +140,24 @@ export default function LandingHeader({ floating = false }) {
               </Link>
             ))}
             <div className="h-px bg-border my-1.5" />
-            <Link href="/login" onClick={() => setOpen(false)} className="px-3 py-3 rounded-xl text-sm text-ink hover:bg-bg transition-colors">
-              {tx.login}
-            </Link>
-            <Link
-              href="/register"
-              onClick={() => setOpen(false)}
-              className="bg-accent text-on-accent font-semibold px-3 py-3 rounded-xl text-sm text-center mt-1"
-            >
-              {tx.start}
-            </Link>
+            {authed ? (
+              <Link href="/app" onClick={() => setOpen(false)} className="bg-accent text-on-accent font-semibold px-3 py-3 rounded-xl text-sm text-center mt-1">
+                {tx.app}
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" onClick={() => setOpen(false)} className="px-3 py-3 rounded-xl text-sm text-ink hover:bg-bg transition-colors">
+                  {tx.login}
+                </Link>
+                <Link
+                  href="/register"
+                  onClick={() => setOpen(false)}
+                  className="bg-accent text-on-accent font-semibold px-3 py-3 rounded-xl text-sm text-center mt-1"
+                >
+                  {tx.start}
+                </Link>
+              </>
+            )}
           </nav>
         </>
       )}

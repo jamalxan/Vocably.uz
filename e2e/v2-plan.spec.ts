@@ -34,6 +34,30 @@ test.describe('Vocably 2.0 — onboarding', () => {
     expect((await status.json()).completed).toBe(true);
   });
 
+  test('a signed-in user opening /start from the dashboard sees no login / register prompts', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await loginAs(page, E2E_FREE_PHONE);
+    await page.goto('/app'); // sets the session flag, as a real visit does
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('vocably_authed')), { timeout: 20_000 }).toBe('1');
+    await page.evaluate(() => localStorage.removeItem('vocably.onboarding.v1'));
+    await page.goto('/start');
+    const header = page.getByRole('banner');
+    await expect(header.getByRole('link', { name: "Ilovaga o'tish" })).toHaveAttribute('href', '/app');
+    await expect(header.getByRole('link', { name: 'Kirish' })).toHaveCount(0);
+    await expect(header.getByRole('link', { name: 'Bepul boshlash' })).toHaveCount(0);
+
+    await page.getByRole('radio', { name: 'IELTS topshirish' }).click();
+    await page.getByRole('radio', { name: 'Academic' }).click();
+    await page.getByRole('radio', { name: '7.0' }).click();
+    await page.getByRole('radio', { name: /Hali bilmayman/ }).click();
+    await page.getByRole('radio', { name: /O'rta/ }).click();
+    await page.getByRole('radio', { name: '40 daqiqa' }).click();
+    await page.getByRole('radio', { name: 'Writing' }).click();
+    await page.getByRole('button', { name: 'Testsiz davom etish' }).click();
+    await expect(page.getByRole('button', { name: 'Rejani saqlash' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /ro‘yxatdan o‘tish|Hisobim bor/ })).toHaveCount(0);
+  });
+
   test('the onboarding API rejects incomplete answers', async ({ page }) => {
     await loginAs(page, E2E_FREE_PHONE);
     const r = await page.request.post('/api/onboarding', { data: { answers: { goal: 'ielts' } } });
