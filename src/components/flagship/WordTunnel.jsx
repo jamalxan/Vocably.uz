@@ -849,6 +849,8 @@ export default function WordTunnel() {
         style={stageActive ? { top: box ? box.top : 0, height: box ? box.height : '100dvh' } : undefined}
         inert={!stageActive}
         onMouseDown={keepTypingFocus}
+        role="region"
+        aria-label={c.title}
       >
         {/* Scrolls only on very short screens; the input row then stays pinned at the bottom. */}
         {/* The tunnel fills the whole stage (like Vocably Run); the HUD, the prompt and the input float
@@ -867,7 +869,7 @@ export default function WordTunnel() {
           <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#070a18]/85 to-transparent" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#070a18] via-[#070a18]/70 to-transparent" aria-hidden="true" />
         </div>
-        <section aria-label={c.title} className="relative z-10 flex-1 min-h-0 flex flex-col w-full max-w-xl mx-auto overflow-y-auto overflow-x-hidden overscroll-contain">
+        <div className="relative z-10 flex-1 min-h-0 flex flex-col w-full max-w-xl mx-auto overflow-y-auto overflow-x-hidden overscroll-contain">
           {/* HUD */}
           <div className="flex items-center justify-between gap-2 px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 select-none">
             <div className="min-w-20">
@@ -951,7 +953,7 @@ export default function WordTunnel() {
             </div>
           </div>
 
-        </section>
+        </div>
         {(paused || phase === 'finishing') && (
           <PauseOverlay idPrefix="tunnel" finishing={phase === 'finishing'} offline={offline} c={c} onResume={resumeRound} onEnd={() => finish('stopped')} />
         )}
