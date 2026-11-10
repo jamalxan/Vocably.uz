@@ -1061,7 +1061,7 @@ export default function WordDefense() {
             </SceneBoundary>
           )}
           {!use3d && (
-            <div className="absolute inset-y-0 left-1/2 w-full max-w-xl -translate-x-1/2">
+            <div className="absolute top-44 bottom-32 left-1/2 w-full max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl">
               <DefenseScene2D sceneRef={sceneRef} enemies={hud.enemies} targetId={hud.targetId} running={stageActive && !paused} hitKey={hud.hitKey} />
             </div>
           )}

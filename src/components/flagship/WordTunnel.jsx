@@ -860,7 +860,7 @@ export default function WordTunnel() {
             </SceneBoundary>
           )}
           {!use3d && (
-            <div className="absolute inset-y-0 left-1/2 w-full max-w-xl -translate-x-1/2">
+            <div className="absolute top-44 bottom-32 left-1/2 w-full max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl">
               <TunnelScene2D typed={typed} trail={trail} hue={(hud.count * 47) % 360} calm={calm} />
             </div>
           )}
