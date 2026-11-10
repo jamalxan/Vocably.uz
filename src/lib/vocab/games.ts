@@ -44,7 +44,8 @@ export type GameKey =
   | 'vocably_run'
   | 'word_tunnel'
   | 'word_defense'
-  | 'word_orbit';
+  | 'word_orbit'
+  | 'word_island';
 
 export type Priority = 'P0' | 'P1' | 'P2';
 
@@ -255,6 +256,26 @@ export const GAME_CATALOG: GameDefinition[] = [
     minWords: 4,
     // One sentence per word (the verdict reveals the word), so a small deck gives a shorter round.
     questionCount: cnt(16, 16, 16, 16),
+    timePerQuestionSec: tm(null, null, null, null),
+    lives: 3,
+    instantFeedback: true,
+    needsAudio: false,
+  },
+  {
+    // Flagship exploration game: the player walks a 3D island; each of its 8 beacons asks one word
+    // (an Uzbek meaning or an English definition, 3 options, like Vocably Run). The right word lights
+    // the beacon, a wrong one breaks it and costs one of 3 hearts. Graded on the server; walking and
+    // the 180 s clock are on the device.
+    key: 'word_island',
+    title: "So'z oroli",
+    description: "3D orolda yuring, mayoqlarni toping va so'zini topib ularni yoqing",
+    priority: 'P0',
+    minTier: 'free',
+    icon: 'TreePalm',
+    skill: 'recall',
+    minWords: 4,
+    // One beacon per word (the verdict reveals it); a small deck lights fewer beacons.
+    questionCount: cnt(8, 8, 8, 8),
     timePerQuestionSec: tm(null, null, null, null),
     lives: 3,
     instantFeedback: true,
@@ -703,7 +724,7 @@ function generatorsFor(gameKey: GameKey, difficulty: Difficulty, rand: Rand): Ge
     if (difficulty === 'medium') return rand() < 0.5 ? [genMcMeaning, genMcWord] : [genMcWord, genMcMeaning];
     return [genMcMeaning, genDefinition, genMcWord];
   }
-  if (gameKey === 'vocably_run') return [runQuestion];
+  if (gameKey === 'vocably_run' || gameKey === 'word_island') return [runQuestion];
   if (gameKey === 'word_orbit') return [orbitQuestion];
   if (gameKey === 'word_tunnel' || gameKey === 'word_defense') return [typedQuestion];
   if (gameKey === 'fill_gap') {
@@ -735,7 +756,7 @@ const orbitQuestion: Generator = threeLanes((c) => genFill(c, false));
  * Games that ask every word at most once without the typing games' answer-form rules: each verdict
  * shows the word, so a second sentence for it would be answered from memory of the first.
  */
-const ASK_ONCE = new Set<GameKey>(['word_orbit']);
+const ASK_ONCE = new Set<GameKey>(['word_orbit', 'word_island']);
 
 /**
  * Typed flagship games (word_tunnel, word_defense): the English word is typed from a prompt.

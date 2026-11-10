@@ -232,6 +232,8 @@ const en = {
     "Ma'nosini ko'ring, inglizchasini yozing — har bir harf 3D tunnelga aylanadi": 'See the meaning, type the English word — every letter becomes a 3D tunnel',
     "So'z orbitasi": 'Word Orbit',
     "Gapdagi bo'sh joyga mos so'z turgan sayyoraga uching — so'zni kontekstda o'rganing": 'Fly to the planet whose word completes the sentence — learn words in context',
+    "So'z oroli": 'Word Island',
+    "3D orolda yuring, mayoqlarni toping va so'zini topib ularni yoqing": 'Walk a 3D island, find the beacons and light each one by finding its word',
     'Word Defense': 'Word Defense',
     "Ma'no ko'targan dushmanlar bazaga yaqinlashadi — inglizchasini yozib, ularni urib tushiring": 'Enemies carry meanings toward your base — type the English word to shoot them down',
     'Haftalik Vocabulary Boss sinovini tugating': 'Complete the weekly Vocabulary Boss challenge',

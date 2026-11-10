@@ -25,6 +25,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/games/tunnel`, lastModified: new Date('2026-11-06'), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/games/defense`, lastModified: new Date('2026-11-06'), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/games/orbit`, lastModified: new Date('2026-11-10'), changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE_URL}/games/island`, lastModified: new Date('2026-11-10'), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/pricing`, lastModified: CONTENT_UPDATED, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE_URL}/blog`, lastModified: new Date(BLOG_POSTS[0]?.date || CONTENT_UPDATED), changeFrequency: 'weekly', priority: 0.7 },
     { url: `${BASE_URL}/dictionary`, lastModified: CONTENT_UPDATED, changeFrequency: 'monthly', priority: 0.6 },

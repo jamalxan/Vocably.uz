@@ -37,7 +37,7 @@ describe('katalog (TZ §9)', () => {
     }
   });
   it('P0 o\'yinlar mavjud', () => {
-    for (const k of ['multiple_choice', 'fill_gap', 'listen_choose', 'listen_type', 'vocably_run', 'word_tunnel', 'word_defense', 'word_orbit']) {
+    for (const k of ['multiple_choice', 'fill_gap', 'listen_choose', 'listen_type', 'vocably_run', 'word_tunnel', 'word_defense', 'word_orbit', 'word_island']) {
       expect(getGame(k)?.priority).toBe('P0');
     }
   });
@@ -263,6 +263,29 @@ describe("word_orbit (So'z orbitasi)", () => {
     expect(availabilityFor(def, SAMPLE_WORDS).available).toBe(true);
     expect(availabilityFor(def, BARE_WORDS).available).toBe(false);
     expect(availabilityFor(def, SAMPLE_WORDS.slice(0, 2)).available).toBe(false);
+  });
+});
+
+describe("word_island (So'z oroli)", () => {
+  it('asks one 3-option question per beacon, each word once; no answer in the client view', () => {
+    for (const d of DIFFICULTIES) {
+      const s = build('word_island', d, `island-${d}`);
+      expect(s.questions.length).toBe(8);
+      expect(new Set(s.questions.map((q) => q.wordId)).size).toBe(8);
+      expect(s.shortfall).toBeUndefined();
+      for (const q of s.questions) {
+        expect(q.options).toHaveLength(3);
+        expect(['mc_word', 'definition']).toContain(q.kind);
+        expect(q.options!.find((o) => o.id === q.answer)?.text).toBe(q.word);
+        const c = toClientQuestion(q) as Record<string, unknown>;
+        for (const f of ['answer', 'accepted', 'word', 'wordId', 'correctDisplay', 'explanation', 'categoryId']) expect(c[f]).toBeUndefined();
+      }
+    }
+  });
+  it('a small deck lights fewer beacons instead of repeating a word', () => {
+    const s = buildGameSession({ gameKey: 'word_island', difficulty: 'medium', words: SAMPLE_WORDS.slice(0, 5), rand: seededRandom('few') });
+    expect(s.questions.length).toBe(5);
+    expect(s.shortfall).toBeUndefined();
   });
 });
 

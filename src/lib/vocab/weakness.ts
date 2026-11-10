@@ -160,6 +160,7 @@ export function buildSkillProfile(words: WeakInput[]): SkillProfile {
 export const GAME_SKILL: Record<string, keyof SkillProfile> = {
   multiple_choice: 'recall',
   definition_challenge: 'recall',
+  word_island: 'recall',
   synonym_antonym: 'recall',
   listen_choose: 'listening',
   listen_type: 'spelling',

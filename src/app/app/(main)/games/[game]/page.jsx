@@ -4,9 +4,10 @@ import VocablyRun from '@/components/flagship/VocablyRun';
 import WordTunnel from '@/components/flagship/WordTunnel';
 import WordDefense from '@/components/flagship/WordDefense';
 import WordOrbit from '@/components/flagship/WordOrbit';
+import WordIsland from '@/components/flagship/WordIsland';
 
 // Flagship o'yinlarning o'z ekrani bor (sessiya API'si bir xil).
-const FLAGSHIP = { vocably_run: VocablyRun, word_tunnel: WordTunnel, word_defense: WordDefense, word_orbit: WordOrbit };
+const FLAGSHIP = { vocably_run: VocablyRun, word_tunnel: WordTunnel, word_defense: WordDefense, word_orbit: WordOrbit, word_island: WordIsland };
 
 // `useSearchParams` (GamePlayer ichida, ?mode=weak) Suspense chegarasini talab qiladi.
 export default async function OyinPage(props) {
