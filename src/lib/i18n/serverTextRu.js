@@ -230,6 +230,8 @@ const ru = {
     "3 yo'lakli yugurish: to'g'ri so'z turgan yo'lakka o'ting": 'Забег по трём дорожкам: переходите на дорожку с правильным словом',
     "So'z tunneli": 'Word Tunnel',
     "Ma'nosini ko'ring, inglizchasini yozing — har bir harf 3D tunnelga aylanadi": 'Смотрите значение, пишите английское слово — каждая буква превращается в 3D-туннель',
+    "So'z orbitasi": 'Word Orbit',
+    "Gapdagi bo'sh joyga mos so'z turgan sayyoraga uching — so'zni kontekstda o'rganing": 'Летите к планете со словом, которое подходит в предложение, — учите слова в контексте',
     'Word Defense': 'Word Defense',
     "Ma'no ko'targan dushmanlar bazaga yaqinlashadi — inglizchasini yozib, ularni urib tushiring": 'Враги несут значения к вашей базе — напишите английское слово, чтобы сбить их',
     'Haftalik Vocabulary Boss sinovini tugating': 'Пройдите еженедельное испытание Vocabulary Boss',

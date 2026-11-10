@@ -166,6 +166,7 @@ export const GAME_SKILL: Record<string, keyof SkillProfile> = {
   word_tunnel: 'spelling',
   word_defense: 'spelling',
   fill_gap: 'context',
+  word_orbit: 'context',
   sentence_builder: 'context',
 };
 

@@ -144,8 +144,8 @@ function QuestBlock({ title, hint, list }) {
 
 // --- 3D (flagship) o'yinlar: har biri o'z sahnasining rangida, CSS bilan chizilgan "kadr" bilan
 // (rasm yuklanmaydi). Ranglar o'yin sahnalari bilan bir oila: runTheme.js (coral), tunnel (lagoon),
-// defense (ember). Matn doim to'q fonda oq — tema (yorug'/qorong'i) ta'sir qilmaydi.
-const FLAGSHIP_KEYS = ['vocably_run', 'word_tunnel', 'word_defense'];
+// defense (violet), orbit (deep space). Matn doim to'q fonda oq — tema (yorug'/qorong'i) ta'sir qilmaydi.
+const FLAGSHIP_KEYS = ['vocably_run', 'word_orbit', 'word_tunnel', 'word_defense'];
 
 function RunArt() {
   return (
@@ -206,10 +206,32 @@ function DefenseArt() {
   );
 }
 
+function OrbitArt() {
+  return (
+    <>
+      {[
+        [12, 20],
+        [30, 70],
+        [58, 12],
+        [84, 34],
+        [72, 78],
+        [44, 40],
+      ].map(([x, y]) => (
+        <span key={`${x}-${y}`} className="absolute h-[3px] w-[3px] rounded-full bg-white/80" style={{ left: `${x}%`, top: `${y}%` }} />
+      ))}
+      <span className="absolute left-1/2 top-[54%] h-28 w-44 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-dashed" style={{ borderColor: '#7dd3fc66', transform: 'translate(-50%, -50%) rotate(-14deg)' }} />
+      <span className="absolute left-[22%] top-[40%] h-9 w-9 rounded-full" style={{ background: 'radial-gradient(circle at 32% 30%, #ffd7a8, #f97362 55%, #7a2a3a)', boxShadow: '0 0 22px #f9736280' }} />
+      <span className="absolute left-[47%] top-[30%] h-12 w-12 rounded-full" style={{ background: 'radial-gradient(circle at 32% 30%, #d6f6ff, #38bdf8 55%, #1e3a8a)', boxShadow: '0 0 26px #38bdf880' }} />
+      <span className="absolute left-[70%] top-[52%] h-7 w-7 rounded-full" style={{ background: 'radial-gradient(circle at 32% 30%, #ede9fe, #a78bfa 55%, #3b2a7a)', boxShadow: '0 0 20px #a78bfa80' }} />
+    </>
+  );
+}
+
 const FLAGSHIP_ART = {
   vocably_run: { bg: 'linear-gradient(180deg, #0b1020 0%, #26163f 40%, #3d1d4c 58%, #0a0d1f 58%)', Art: RunArt, accent: '#ff7d92' },
   word_tunnel: { bg: 'radial-gradient(circle at 50% 56%, #43d6ff40 0%, #0b2747 38%, #07111f 72%)', Art: TunnelArt, accent: '#5fdcff' },
   word_defense: { bg: 'radial-gradient(circle at 50% 58%, #ff9f4a33 0%, #3a1530 42%, #130b1c 76%)', Art: DefenseArt, accent: '#ffa95c' },
+  word_orbit: { bg: 'radial-gradient(circle at 50% 40%, #1b2a6b 0%, #0b1030 46%, #050716 80%)', Art: OrbitArt, accent: '#7dd3fc' },
 };
 
 function FeaturedGameCard({ game }) {

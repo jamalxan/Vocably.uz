@@ -1,6 +1,7 @@
 // Haqiqiy MongoDB (mongodb-memory-server) ustida integratsiya testi:
 // Game -> Result -> XP -> Mastery -> SRS -> Quest -> Achievement zanjiri (TZ §58).
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { unlockMsFor } from '@/lib/flagship/orbit';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import * as Models from '@/lib/models';
@@ -566,5 +567,39 @@ describeDb('Flagship yozish o\'yinlari (word_tunnel / word_defense)', () => {
     expect(stored.suspicious).toBe(false);
     expect(stored.flags || []).not.toContain('impossible_response_time');
     expect(stored.flags || []).not.toContain('response_time_exceeds_elapsed');
+  });
+});
+
+// So'z orbitasi: a choice game on sentences. The client never gets the answer, a word is asked once,
+// an empty answer (the fuel ran out) is wrong and reveals the word, and the controller's timings
+// (answers no faster than orbit.js unlockMsFor) pass anti-cheat.
+describeDb("So'z orbitasi (word_orbit)", () => {
+  it("javob klientga bormaydi; to'g'ri tanlov XP oladi; bo'sh javob xato va so'zni ochadi", async () => {
+    const u = await createUser();
+    const v: any = await startGameSession({ user: u.toObject(), gameKey: 'word_orbit', difficulty: 'medium', now: T0 });
+    expect(v.questions.length).toBeGreaterThanOrEqual(4);
+    for (const q of v.questions) {
+      expect(q.kind).toBe('fill_choice');
+      expect(q.options).toHaveLength(3);
+      for (const k of ['answer', 'accepted', 'correctDisplay', 'word', 'wordId', 'explanation']) expect(q[k], `${q.qid}.${k}`).toBeUndefined();
+    }
+    const s: any = await GameSession.findById(v.sessionId).lean();
+    expect(new Set(s.questions.map((q: any) => String(q.wordId))).size).toBe(s.questions.length);
+
+    // first sentence: the tank ran dry (empty answer); the rest: the right planet, soon after unlock
+    let t = 0;
+    const answers = s.questions.map((q: any, i: number) => {
+      const responseMs = i === 0 ? 16_000 : unlockMsFor(q.prompt) + 400 + ((i * 733) % 2600);
+      t += responseMs + 1300;
+      return { qid: q.qid, answer: i === 0 ? '' : q.answer, responseMs };
+    });
+    const r = await submitAnswers({ userId: u._id, sessionId: v.sessionId, answers, now: new Date(T0.getTime() + t) });
+    expect(r.results[0]).toMatchObject({ isCorrect: false, correctDisplay: s.questions[0].correctDisplay });
+    expect(r.results.slice(1).every((x: any) => x.isCorrect && x.counted)).toBe(true);
+    const done: any = await completeSession({ userId: u._id, sessionId: v.sessionId, now: new Date(T0.getTime() + t + 2000) });
+    expect(done.notice).toBeNull();
+    expect(done.suspicious ?? false).toBe(false);
+    expect(done.xp.earned).toBeGreaterThan(0);
+    expect(done.mistakes.map((m: any) => m.correctAnswer)).toEqual([s.questions[0].correctDisplay]);
   });
 });

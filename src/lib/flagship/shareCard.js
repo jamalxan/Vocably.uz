@@ -6,7 +6,7 @@ export const CARD_W = 1080;
 export const CARD_H = 1920;
 export const CARD_URL = 'vocably.uz';
 
-const GAMES = ['run', 'speak', 'tunnel', 'defense'];
+const GAMES = ['run', 'speak', 'tunnel', 'defense', 'orbit'];
 
 const T = {
   uz: {
@@ -14,6 +14,7 @@ const T = {
     speak: { title: 'Gapir yoki yiqil', unit: 'soniya chidadim', stats: ['Pauzalar', 'Eng uzun pauza', 'Filler', "So'z/daq"], cta: "Sen nechchi soniya chidaysan?" },
     tunnel: { title: "So'z tunneli", unit: 'ball', stats: ["To'g'ri", 'Aniqlik', 'Kombo', 'Harf/daq'], cta: "Sen ham sinab ko'r" },
     defense: { title: 'Word Defense', unit: 'ball', stats: ["Yo'q qilindi", 'Aniqlik', 'Kombo', 'Qolgan jon'], cta: 'Bazangni himoya qila olasanmi?' },
+    orbit: { title: "So'z orbitasi", unit: 'ball', stats: ["To'g'ri", 'Aniqlik', 'Kombo', 'Soniya'], cta: "Sen ham sinab ko'r" },
     win: 'G‘alaba!',
     fell: 'Yiqildim',
     stopped: "To'xtatdim",
@@ -25,6 +26,7 @@ const T = {
     speak: { title: 'Speak or Fall', unit: 'seconds survived', stats: ['Pauses', 'Longest pause', 'Fillers', 'Words/min'], cta: 'How long can you last?' },
     tunnel: { title: 'Word Tunnel', unit: 'points', stats: ['Correct', 'Accuracy', 'Combo', 'Chars/min'], cta: 'Can you beat it?' },
     defense: { title: 'Word Defense', unit: 'points', stats: ['Destroyed', 'Accuracy', 'Combo', 'HP left'], cta: 'Can you hold the base?' },
+    orbit: { title: 'Word Orbit', unit: 'points', stats: ['Correct', 'Accuracy', 'Combo', 'Seconds'], cta: 'Can you beat it?' },
     win: 'Made it!',
     fell: 'I fell',
     stopped: 'Stopped',
@@ -36,6 +38,7 @@ const T = {
     speak: { title: 'Говори или падай', unit: 'секунд продержался', stats: ['Паузы', 'Самая длинная пауза', 'Филлеры', 'Слов/мин'], cta: 'Сколько продержишься ты?' },
     tunnel: { title: 'Туннель слов', unit: 'очков', stats: ['Верно', 'Точность', 'Комбо', 'Букв/мин'], cta: 'Сможешь побить?' },
     defense: { title: 'Word Defense', unit: 'очков', stats: ['Уничтожено', 'Точность', 'Комбо', 'Осталось HP'], cta: 'Удержишь базу?' },
+    orbit: { title: 'Word Orbit', unit: 'очков', stats: ['Верно', 'Точность', 'Комбо', 'Секунды'], cta: 'Сможешь побить?' },
     win: 'Получилось!',
     fell: 'Я упал',
     stopped: 'Остановил',
@@ -44,7 +47,7 @@ const T = {
   },
 };
 
-/** Card content from a game result. `game`: 'run' | 'speak' | 'tunnel' | 'defense'. */
+/** Card content from a game result. `game`: 'run' | 'speak' | 'tunnel' | 'defense' | 'orbit'. */
 export function cardModel(game, result, locale = 'uz') {
   const t = T[locale] || T.uz;
   const g = GAMES.includes(game) ? t[game] : null;
@@ -72,7 +75,7 @@ export function cardModel(game, result, locale = 'uz') {
       fileName: `vocably-${game}-${result.score ?? 0}.png`,
     };
   }
-  if (game === 'run') {
+  if (game === 'run' || game === 'orbit') {
     return {
       game,
       title: g.title,
@@ -88,8 +91,8 @@ export function cardModel(game, result, locale = 'uz') {
       ],
       pauses: null,
       cta: g.cta,
-      url: `${CARD_URL}/games/run`,
-      fileName: `vocably-run-${result.score ?? 0}.png`,
+      url: `${CARD_URL}/games/${game}`,
+      fileName: `vocably-${game}-${result.score ?? 0}.png`,
     };
   }
   return {
@@ -163,6 +166,19 @@ export function drawCard(ctx, model, { logo = null, family = 'system-ui, -apple-
       roundRect(ctx, W / 2 - s / 2, 1600 - s / 4, s, s / 2, 40);
       ctx.stroke();
     }
+  } else if (model.game === 'orbit') {
+    // two orbits and a planet
+    for (const [rx, ry] of [
+      [460, 150],
+      [300, 96],
+    ]) {
+      ctx.beginPath();
+      ctx.ellipse(W / 2, 1640, rx, ry, -0.2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(W * 0.8, 1560, 44, 0, Math.PI * 2);
+    ctx.stroke();
   } else if (model.game === 'defense') {
     // a reticle over the horizon
     ctx.beginPath();
