@@ -36,7 +36,7 @@ const POST_POOL_X = POST.x - POST.arm;
 const FOG_NEAR = 18;
 const FOG_FAR = 100;
 const FLOOR = { w: 320, l: 240, nearZ: 8 };
-const SKY = { z: -300, w: 760, h: 220, y: 80 };
+const SKY = { z: -300, w: 900, h: 560, y: 250 }; // tall enough for the wider portrait field of view
 const SUN = { z: -94, r: 17, y: 7 };
 const SUN_E = (SUN.y - CAM_POS[1]) / (CAM_POS[2] - SUN.z); // tan(elevation) of the sun's centre
 const SUN_RT = SUN.r / (CAM_POS[2] - SUN.z); // tan of its angular radius
@@ -911,6 +911,14 @@ function CameraRig({ sceneRef }) {
     const cam = state.camera;
     cam.position.set(CAM_POS[0] + cx.current, CAM_POS[1] + (s.running ? Math.sin(t.current * 2) * 0.018 : 0), CAM_POS[2]);
     cam.lookAt(CAM_LOOK[0] + cx.current * 0.5, CAM_LOOK[1], CAM_LOOK[2]);
+    // A portrait stage gets a taller field of view, so the three word signs stay inside the screen
+    // until the gate is almost at the runner (at the fixed 55° the outer signs were cut off on phones).
+    const aspect = state.size.width / Math.max(1, state.size.height);
+    const fov = Math.min(78, Math.max(CAMERA.fov, (2 * Math.atan(Math.tan((26 * Math.PI) / 180) / Math.max(0.3, aspect)) * 180) / Math.PI));
+    if (Math.abs(cam.fov - fov) > 0.1) {
+      cam.fov = fov;
+      cam.updateProjectionMatrix();
+    }
   });
   return null;
 }

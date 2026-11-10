@@ -851,7 +851,23 @@ export default function WordTunnel() {
         onMouseDown={keepTypingFocus}
       >
         {/* Scrolls only on very short screens; the input row then stays pinned at the bottom. */}
-        <section aria-label={c.title} className="relative flex-1 min-h-0 flex flex-col w-full max-w-xl mx-auto overflow-y-auto overflow-x-hidden overscroll-contain">
+        {/* The tunnel fills the whole stage (like Vocably Run); the HUD, the prompt and the input float
+            above it in a readable column. */}
+        <div className="absolute inset-0 overflow-hidden select-none">
+          {everStarted && use3d && (
+            <SceneBoundary onError={to2d}>
+              <TunnelScene3D sceneRef={sceneRef} running={stageActive && !paused} visible={stageActive} tier={tier} />
+            </SceneBoundary>
+          )}
+          {!use3d && (
+            <div className="absolute inset-y-0 left-1/2 w-full max-w-xl -translate-x-1/2">
+              <TunnelScene2D typed={typed} trail={trail} hue={(hud.count * 47) % 360} calm={calm} />
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#070a18]/85 to-transparent" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#070a18] via-[#070a18]/70 to-transparent" aria-hidden="true" />
+        </div>
+        <section aria-label={c.title} className="relative z-10 flex-1 min-h-0 flex flex-col w-full max-w-xl mx-auto overflow-y-auto overflow-x-hidden overscroll-contain">
           {/* HUD */}
           <div className="flex items-center justify-between gap-2 px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 select-none">
             <div className="min-w-20">
@@ -890,12 +906,6 @@ export default function WordTunnel() {
 
           {/* scene */}
           <div className={`relative flex-1 overflow-hidden select-none ${compact ? 'min-h-12' : 'min-h-28'}`}>
-            {everStarted && use3d && (
-              <SceneBoundary onError={to2d}>
-                <TunnelScene3D sceneRef={sceneRef} running={stageActive && !paused} visible={stageActive} tier={tier} />
-              </SceneBoundary>
-            )}
-            {!use3d && <TunnelScene2D typed={typed} trail={trail} hue={(hud.count * 47) % 360} calm={calm} />}
             {phase === 'loading' && <Loader2 className="absolute inset-0 m-auto w-8 h-8 animate-spin text-white/80" aria-hidden="true" />}
             {phase === 'countdown' && hud.countdown > 0 && (
               <p className="absolute inset-0 grid place-items-center text-7xl font-black tabular-nums drop-shadow-[0_0_24px_rgba(124,92,255,.85)]" aria-hidden="true">{hud.countdown}</p>
@@ -912,7 +922,7 @@ export default function WordTunnel() {
           </div>
 
           {/* input */}
-          <div className="sticky bottom-0 z-10 bg-[#070a18] px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="sticky bottom-0 z-10 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {warn === 'cyrillic' && <p role="alert" className="mb-1.5 text-center text-xs font-semibold text-amber-300">{c.cyrillic}</p>}
             <div className="flex items-stretch gap-2">
               <div className="flex-1 min-w-0">
@@ -933,7 +943,7 @@ export default function WordTunnel() {
                 onPointerDown={(e) => e.preventDefault()}
                 onClick={skip}
                 disabled={!playing || !hud.canSkip || hud.ending}
-                className="shrink-0 min-h-14 min-w-16 px-2 rounded-2xl border-2 border-white/20 text-white/85 text-[11px] font-bold inline-flex flex-col items-center justify-center gap-0.5 hover:border-white/40 disabled:opacity-35"
+                className="shrink-0 min-h-14 min-w-16 px-2 rounded-2xl border-2 border-white/20 bg-[#0b1020]/60 backdrop-blur-sm text-white/85 text-[11px] font-bold inline-flex flex-col items-center justify-center gap-0.5 hover:border-white/40 disabled:opacity-35"
               >
                 <SkipForward size={18} aria-hidden="true" />
                 {c.skip}

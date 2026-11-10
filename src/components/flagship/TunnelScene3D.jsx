@@ -33,7 +33,7 @@ const BAD = new THREE.Color('#fb7185');
 const IDLE = new THREE.Color('#94a3b8');
 
 const TIERS = {
-  high: { rings: 48, glyphs: 8, wall: 32, antialias: true },
+  high: { rings: 48, glyphs: 8, wall: 48, antialias: true },
   low: { rings: 30, glyphs: 6, wall: 16, antialias: false },
 };
 
@@ -93,8 +93,8 @@ const GLYPH_FRAG = /* glsl */ `
   varying float vDepth;
   void main() {
     float a = texture2D(uAtlas, vUv).a;
-    float nearFade = smoothstep(0.4, 2.4, vDepth);
-    float farFade = 1.0 - smoothstep(13.0, 21.0, vDepth);
+    float nearFade = smoothstep(1.3, 3.8, vDepth);
+    float farFade = 1.0 - smoothstep(14.0, 24.0, vDepth);
     float alpha = a * vTint.a * nearFade * farFade;
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(vTint.rgb, alpha);
@@ -120,21 +120,53 @@ const WALL_FRAG = /* glsl */ `
   uniform vec3 uPulseCol;
   uniform vec3 uColA;
   uniform vec3 uColB;
+  uniform vec3 uFar;
   varying vec2 vUv;
   varying float vWz;
   varying float vDepth;
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
   void main() {
-    float around = abs(fract(vUv.x * 16.0) - 0.5);
-    float along = abs(fract(vWz * 0.35) - 0.5);
-    float lineA = smoothstep(0.465, 0.5, around) * 0.55;
-    float lineB = smoothstep(0.455, 0.5, along);
-    float l = max(lineA, lineB);
-    float fade = 1.0 - smoothstep(5.0, 32.0, vDepth);
+    // The wall is a shell of panels: seams around the tunnel and a rib every two units along it.
+    float seam = smoothstep(0.468, 0.5, abs(fract(vUv.x * 12.0) - 0.5));
+    float rib = smoothstep(0.455, 0.5, abs(fract(vWz * 0.5) - 0.5));
+    float panel = hash(vec2(floor(vUv.x * 12.0), floor(vWz * 0.5)));
+    // a band of light that runs down the ribs, away from the camera
+    float run = smoothstep(0.86, 1.0, 0.5 + 0.5 * sin(vWz * 0.32 + uTime * 2.4));
     vec3 col = mix(uColA, uColB, 0.5 + 0.5 * sin(vWz * 0.09 + uTime * 0.25));
     col = mix(col, uPulseCol, uPulse);
-    vec3 base = vec3(0.015, 0.02, 0.06) + uPulseCol * uPulse * 0.08;
-    gl_FragColor = vec4(base * fade + col * l * fade, 1.0);
+    float fade = 1.0 - smoothstep(7.0, 36.0, vDepth);
+    vec3 base = vec3(0.012, 0.014, 0.05) + col * (0.018 + 0.05 * panel) + uPulseCol * uPulse * 0.1;
+    vec3 lit = base + col * (seam * 0.42 + rib * (0.7 + 1.5 * run));
+    // far away the wall melts into the glow at the end of the tunnel instead of going black
+    gl_FragColor = vec4(mix(uFar, lit, fade), 1.0);
     #include <colorspace_fragment>
+  }
+`;
+const CORE_FRAG = /* glsl */ `
+  uniform float uTime;
+  uniform float uPulse;
+  uniform vec3 uPulseCol;
+  uniform vec3 uCol;
+  varying vec2 vUv;
+  void main() {
+    vec2 p = (vUv - 0.5) * 2.0;
+    float r = length(p);
+    float a = atan(p.y, p.x);
+    float rays = 0.75 + 0.25 * sin(a * 9.0 + uTime * 0.6);
+    float glow = exp(-r * 3.2) * rays + exp(-r * 11.0) * 1.4;
+    vec3 col = mix(uCol, uPulseCol, uPulse) * glow + vec3(1.0) * exp(-r * 16.0);
+    float alpha = clamp(glow, 0.0, 1.0) * (1.0 - smoothstep(0.75, 1.0, r));
+    gl_FragColor = vec4(col * alpha, alpha);
+    #include <colorspace_fragment>
+  }
+`;
+const UV_VERT = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
@@ -295,6 +327,7 @@ function Wall({ sceneRef, cfg }) {
           uPulseCol: { value: new THREE.Color('#34d399') },
           uColA: { value: new THREE.Color('#5b3bd6') },
           uColB: { value: new THREE.Color('#e0566a') },
+          uFar: { value: new THREE.Color('#140b36') },
         },
         vertexShader: WALL_VERT,
         fragmentShader: WALL_FRAG,
@@ -303,7 +336,7 @@ function Wall({ sceneRef, cfg }) {
     []
   );
   const geometry = useMemo(() => {
-    const g = new THREE.CylinderGeometry(1.6, 1.6, 44, cfg.wall, 1, true);
+    const g = new THREE.CylinderGeometry(1.6, 1.6, 48, cfg.wall, 1, true);
     g.rotateX(Math.PI / 2);
     return g;
   }, [cfg.wall]);
@@ -324,6 +357,41 @@ function Wall({ sceneRef, cfg }) {
     u.uColA.value.setRGB(0.36 + 0.3 * hot, 0.23, 0.84 - 0.3 * hot);
   });
   return <mesh ref={mesh} geometry={geometry} material={material} frustumCulled={false} />;
+}
+
+/** The light at the end of the tunnel: it stays ahead of the camera and takes the verdict colour. */
+function Core({ sceneRef }) {
+  const mesh = useRef(null);
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 }, uPulse: { value: 0 }, uPulseCol: { value: new THREE.Color('#34d399') }, uCol: { value: new THREE.Color('#a78bfa') } },
+        vertexShader: UV_VERT,
+        fragmentShader: CORE_FRAG,
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    []
+  );
+  useEffect(() => () => material.dispose(), [material]);
+  useFrame(({ camera }) => {
+    const m = mesh.current;
+    if (!m) return;
+    const s = sceneRef.current;
+    const now = performance.now();
+    m.position.set(0, 0, camera.position.z - 38);
+    const u = m.material.uniforms;
+    u.uTime.value = (now / 1000) % 1000;
+    u.uPulse.value = Math.max(0, 1 - (now - (s.pulse?.at || -1e9)) / 380) * 0.7;
+    u.uPulseCol.value.copy(s.pulse?.ok ? OK : BAD);
+  });
+  return (
+    <mesh ref={mesh} material={material} renderOrder={1} frustumCulled={false}>
+      <planeGeometry args={[9, 9]} />
+    </mesh>
+  );
 }
 
 function Rig({ sceneRef }) {
@@ -374,9 +442,10 @@ function TunnelScene3D({ sceneRef, running, visible = true, tier = 'high' }) {
       style={{ visibility: visible ? 'visible' : 'hidden' }}
       aria-hidden="true"
     >
-      <color attach="background" args={['#070a18']} />
+      <color attach="background" args={['#140b36']} />
       <Rig sceneRef={sceneRef} />
       <Wall sceneRef={sceneRef} cfg={cfg} />
+      <Core sceneRef={sceneRef} />
       <Gates sceneRef={sceneRef} />
       <Glyphs sceneRef={sceneRef} cfg={cfg} />
     </Canvas>
