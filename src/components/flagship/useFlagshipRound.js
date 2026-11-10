@@ -112,7 +112,7 @@ export async function startRound({ gameKey, audience, toQuestion, guestQuestions
  * Resolves to { r } (r = the server result, or null when offline / rejected) plus `fatal` when the
  * session itself is gone (expired / already completed) — no later answer can count either.
  */
-async function gradeViaQueue(queue, answer) {
+export async function gradeViaQueue(queue, answer) {
   queue.add(answer);
   const attempt = answer.attempt || 1;
   for (let i = 0; i < 3; i++) {

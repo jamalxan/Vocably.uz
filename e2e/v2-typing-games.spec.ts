@@ -63,7 +63,9 @@ test.describe("So'z tunneli", () => {
     await expect(stage.locator('canvas')).toHaveCount(1, { timeout: 20_000 });
     await expect(stage.getByText(/^(Ma'nosi|Definition)$/)).toBeVisible({ timeout: 10_000 });
     // a tap on the scene or the prompt keeps the focus (and a phone keyboard) on the input
-    await stage.locator('canvas').click({ position: { x: 24, y: 24 } });
+    // (the scene fills the whole stage behind the HUD, so tap the stage where only the scene shows)
+    const box = (await stage.boundingBox())!;
+    await stage.click({ position: { x: 24, y: Math.round(box.height * 0.55) } });
     await expect(input).toBeFocused();
     await stage.getByText(/^(Ma'nosi|Definition)$/).click();
     await expect(input).toBeFocused();

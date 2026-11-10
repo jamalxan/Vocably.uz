@@ -144,8 +144,8 @@ function QuestBlock({ title, hint, list }) {
 
 // --- 3D (flagship) o'yinlar: har biri o'z sahnasining rangida, CSS bilan chizilgan "kadr" bilan
 // (rasm yuklanmaydi). Ranglar o'yin sahnalari bilan bir oila: runTheme.js (coral), tunnel (lagoon),
-// defense (ember). Matn doim to'q fonda oq — tema (yorug'/qorong'i) ta'sir qilmaydi.
-const FLAGSHIP_KEYS = ['vocably_run', 'word_tunnel', 'word_defense'];
+// defense (violet), orbit (deep space), island (dusk). Matn doim to'q fonda oq — tema (yorug'/qorong'i) ta'sir qilmaydi.
+const FLAGSHIP_KEYS = ['vocably_run', 'word_island', 'word_orbit', 'word_tunnel', 'word_defense'];
 
 function RunArt() {
   return (
@@ -174,7 +174,7 @@ function TunnelArt() {
         <span
           key={s}
           className="absolute left-1/2 top-[56%] -translate-x-1/2 -translate-y-1/2 rounded-full border-2"
-          style={{ width: `${s}%`, aspectRatio: '1', borderColor: i % 2 ? '#26b3d6' : '#cff6ff', opacity: 0.2 + i * 0.16, boxShadow: i === 4 ? '0 0 24px #43d6ff' : 'none' }}
+          style={{ width: `${s}%`, aspectRatio: '1', borderColor: i % 2 ? '#e0566a' : '#c4b5fd', opacity: 0.2 + i * 0.16, boxShadow: i === 4 ? '0 0 24px #a78bfa' : 'none' }}
         />
       ))}
       <span className="absolute left-1/2 top-[56%] -translate-x-1/2 -translate-y-1/2 font-display text-sm font-bold tracking-[0.3em] text-white/90">
@@ -189,10 +189,10 @@ function DefenseArt() {
     <>
       <span
         className="absolute inset-0"
-        style={{ backgroundImage: 'linear-gradient(#ff944026 1px, transparent 1px), linear-gradient(90deg, #ff944026 1px, transparent 1px)', backgroundSize: '18px 18px' }}
+        style={{ backgroundImage: 'linear-gradient(#7c5cff33 1px, transparent 1px), linear-gradient(90deg, #7c5cff33 1px, transparent 1px)', backgroundSize: '18px 18px' }}
       />
-      <span className="absolute left-1/2 top-[58%] h-10 w-10 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-md border-2" style={{ borderColor: '#fff0a6', boxShadow: '0 0 28px #ff9f4a' }} />
-      <span className="absolute left-1/2 top-[58%] h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed" style={{ borderColor: '#ff9f4a80' }} />
+      <span className="absolute left-1/2 top-[58%] h-10 w-10 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-md border-2" style={{ borderColor: '#c4b5fd', boxShadow: '0 0 28px #8b5cf6' }} />
+      <span className="absolute left-1/2 top-[58%] h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed" style={{ borderColor: '#fde68a99' }} />
       {[
         [14, 24],
         [82, 30],
@@ -200,7 +200,47 @@ function DefenseArt() {
         [76, 80],
         [52, 14],
       ].map(([x, y]) => (
-        <span key={`${x}-${y}`} className="absolute h-2 w-2 rounded-full" style={{ left: `${x}%`, top: `${y}%`, background: '#5cc7ff', boxShadow: '0 0 10px #5cc7ff' }} />
+        <span key={`${x}-${y}`} className="absolute h-2 w-2 rounded-full" style={{ left: `${x}%`, top: `${y}%`, background: '#5eead4', boxShadow: '0 0 10px #5eead4' }} />
+      ))}
+    </>
+  );
+}
+
+function OrbitArt() {
+  return (
+    <>
+      {[
+        [12, 20],
+        [30, 70],
+        [58, 12],
+        [84, 34],
+        [72, 78],
+        [44, 40],
+      ].map(([x, y]) => (
+        <span key={`${x}-${y}`} className="absolute h-[3px] w-[3px] rounded-full bg-white/80" style={{ left: `${x}%`, top: `${y}%` }} />
+      ))}
+      <span className="absolute left-1/2 top-[54%] h-28 w-44 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-dashed" style={{ borderColor: '#7dd3fc66', transform: 'translate(-50%, -50%) rotate(-14deg)' }} />
+      <span className="absolute left-[22%] top-[40%] h-9 w-9 rounded-full" style={{ background: 'radial-gradient(circle at 32% 30%, #ffd7a8, #f97362 55%, #7a2a3a)', boxShadow: '0 0 22px #f9736280' }} />
+      <span className="absolute left-[47%] top-[30%] h-12 w-12 rounded-full" style={{ background: 'radial-gradient(circle at 32% 30%, #d6f6ff, #38bdf8 55%, #1e3a8a)', boxShadow: '0 0 26px #38bdf880' }} />
+      <span className="absolute left-[70%] top-[52%] h-7 w-7 rounded-full" style={{ background: 'radial-gradient(circle at 32% 30%, #ede9fe, #a78bfa 55%, #3b2a7a)', boxShadow: '0 0 20px #a78bfa80' }} />
+    </>
+  );
+}
+
+function IslandArt() {
+  return (
+    <>
+      <span className="absolute left-[68%] top-[16%] h-10 w-10 rounded-full" style={{ background: 'radial-gradient(circle, #fff3c4, #ffb36b 60%, transparent 72%)', boxShadow: '0 0 40px #ffb36b90' }} />
+      <span className="absolute inset-x-0 bottom-0 h-[38%]" style={{ background: 'linear-gradient(180deg, #2a6f97 0%, #123b5c 100%)' }} />
+      <span className="absolute left-1/2 top-[62%] h-9 w-40 -translate-x-1/2 -translate-y-1/2 rounded-[50%]" style={{ background: 'linear-gradient(180deg, #7ccf7a 0%, #3f9b5b 55%, #e9cf9a 56%, #d9b97e 100%)' }} />
+      <span className="absolute left-1/2 top-[40%] h-12 w-3 -translate-x-1/2 rounded-sm" style={{ background: 'linear-gradient(180deg, #ffffff, #e0566a 34%, #ffffff 35%, #ffffff 64%, #e0566a 65%)' }} />
+      <span className="absolute left-1/2 top-[34%] h-3 w-3 -translate-x-1/2 rounded-full" style={{ background: '#ffe9a8', boxShadow: '0 0 18px #ffd27a' }} />
+      {[
+        [30, 52],
+        [70, 54],
+        [40, 66],
+      ].map(([x, y]) => (
+        <span key={`${x}-${y}`} className="absolute h-2.5 w-2.5 rotate-45" style={{ left: `${x}%`, top: `${y}%`, background: '#7dd3fc', boxShadow: '0 0 12px #7dd3fc' }} />
       ))}
     </>
   );
@@ -208,8 +248,10 @@ function DefenseArt() {
 
 const FLAGSHIP_ART = {
   vocably_run: { bg: 'linear-gradient(180deg, #0b1020 0%, #26163f 40%, #3d1d4c 58%, #0a0d1f 58%)', Art: RunArt, accent: '#ff7d92' },
-  word_tunnel: { bg: 'radial-gradient(circle at 50% 56%, #43d6ff40 0%, #0b2747 38%, #07111f 72%)', Art: TunnelArt, accent: '#5fdcff' },
-  word_defense: { bg: 'radial-gradient(circle at 50% 58%, #ff9f4a33 0%, #3a1530 42%, #130b1c 76%)', Art: DefenseArt, accent: '#ffa95c' },
+  word_tunnel: { bg: 'radial-gradient(circle at 50% 56%, #a78bfa55 0%, #2a145e 40%, #0c0824 76%)', Art: TunnelArt, accent: '#c4b5fd' },
+  word_defense: { bg: 'linear-gradient(180deg, #050716 0%, #12113a 34%, #3a1a78 58%, #0d0b2a 58%)', Art: DefenseArt, accent: '#5eead4' },
+  word_orbit: { bg: 'radial-gradient(circle at 50% 40%, #1b2a6b 0%, #0b1030 46%, #050716 80%)', Art: OrbitArt, accent: '#7dd3fc' },
+  word_island: { bg: 'linear-gradient(180deg, #1b2350 0%, #6b3fa0 38%, #ff9e7a 62%, #2a6f97 62%)', Art: IslandArt, accent: '#ffd27a' },
 };
 
 function FeaturedGameCard({ game }) {

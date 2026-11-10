@@ -43,7 +43,9 @@ export type GameKey =
   | 'synonym_antonym'
   | 'vocably_run'
   | 'word_tunnel'
-  | 'word_defense';
+  | 'word_defense'
+  | 'word_orbit'
+  | 'word_island';
 
 export type Priority = 'P0' | 'P1' | 'P2';
 
@@ -237,6 +239,45 @@ export const GAME_CATALOG: GameDefinition[] = [
     questionCount: cnt(16, 20, 24, 26),
     timePerQuestionSec: tm(null, null, null, null),
     lives: 5,
+    instantFeedback: true,
+    needsAudio: false,
+  },
+  {
+    // Flagship context game: an English sentence with one word missing, three planets each carrying
+    // a word; flying to the planet whose word completes the sentence scores. Graded on the server
+    // (kind `fill_choice`, always 3 options); the round is timed on the device (3 shields, 120 s).
+    key: 'word_orbit',
+    title: "So'z orbitasi",
+    description: "Gapdagi bo'sh joyga mos so'z turgan sayyoraga uching — so'zni kontekstda o'rganing",
+    priority: 'P0',
+    minTier: 'free',
+    icon: 'Orbit',
+    skill: 'context',
+    minWords: 4,
+    // One sentence per word (the verdict reveals the word), so a small deck gives a shorter round.
+    questionCount: cnt(16, 16, 16, 16),
+    timePerQuestionSec: tm(null, null, null, null),
+    lives: 3,
+    instantFeedback: true,
+    needsAudio: false,
+  },
+  {
+    // Flagship exploration game: the player walks a 3D island; each of its 8 beacons asks one word
+    // (an Uzbek meaning or an English definition, 3 options, like Vocably Run). The right word lights
+    // the beacon, a wrong one breaks it and costs one of 3 hearts. Graded on the server; walking and
+    // the 180 s clock are on the device.
+    key: 'word_island',
+    title: "So'z oroli",
+    description: "3D orolda yuring, mayoqlarni toping va so'zini topib ularni yoqing",
+    priority: 'P0',
+    minTier: 'free',
+    icon: 'TreePalm',
+    skill: 'recall',
+    minWords: 4,
+    // One beacon per word (the verdict reveals it); a small deck lights fewer beacons.
+    questionCount: cnt(8, 8, 8, 8),
+    timePerQuestionSec: tm(null, null, null, null),
+    lives: 3,
     instantFeedback: true,
     needsAudio: false,
   },
@@ -683,7 +724,8 @@ function generatorsFor(gameKey: GameKey, difficulty: Difficulty, rand: Rand): Ge
     if (difficulty === 'medium') return rand() < 0.5 ? [genMcMeaning, genMcWord] : [genMcWord, genMcMeaning];
     return [genMcMeaning, genDefinition, genMcWord];
   }
-  if (gameKey === 'vocably_run') return [runQuestion];
+  if (gameKey === 'vocably_run' || gameKey === 'word_island') return [runQuestion];
+  if (gameKey === 'word_orbit') return [orbitQuestion];
   if (gameKey === 'word_tunnel' || gameKey === 'word_defense') return [typedQuestion];
   if (gameKey === 'fill_gap') {
     const typed = difficulty === 'hard' || difficulty === 'expert';
@@ -706,6 +748,15 @@ const runQuestion: Generator = (c) => {
   if (c.difficulty === 'easy') return runMeaning(c) || runDefinition(c);
   return c.rand() < 0.5 ? runDefinition(c) || runMeaning(c) : runMeaning(c) || runDefinition(c);
 };
+
+/** So'z orbitasi: a sentence with a gap and always 3 planets (options), whatever the difficulty. */
+const orbitQuestion: Generator = threeLanes((c) => genFill(c, false));
+
+/**
+ * Games that ask every word at most once without the typing games' answer-form rules: each verdict
+ * shows the word, so a second sentence for it would be answered from memory of the first.
+ */
+const ASK_ONCE = new Set<GameKey>(['word_orbit', 'word_island']);
 
 /**
  * Typed flagship games (word_tunnel, word_defense): the English word is typed from a prompt.
@@ -891,7 +942,7 @@ export function buildGameSession(opts: BuildOptions): BuiltSession {
     const used = usedCount.get(w.wordId) || 0;
     const fairShare = Math.floor(questions.length / Math.max(1, words.length)) + 1;
     if (used >= fairShare) continue;
-    if (used >= 1 && oneShot) continue;
+    if (used >= 1 && (oneShot || ASK_ONCE.has(opts.gameKey))) continue;
     const forms = oneShot ? formsFor(w) : [];
     if (!forms || forms.some((f) => usedForms.has(f))) continue;
     for (const gen of gens) {
@@ -907,7 +958,7 @@ export function buildGameSession(opts: BuildOptions): BuiltSession {
   }
   const final = oneShot ? maskOtherAnswers(questions, asked, { pool, difficulty, rand, timeLimit }) : questions;
   // One-question-per-word games are expected to be shorter than `count` when the deck is small.
-  const shortfall = final.length < count && !oneShot ? `Faqat ${final.length}/${count} ta savol tuzildi (so'zlarda ma'lumot yetarli emas)` : undefined;
+  const shortfall = final.length < count && !oneShot && !ASK_ONCE.has(opts.gameKey) ? `Faqat ${final.length}/${count} ta savol tuzildi (so'zlarda ma'lumot yetarli emas)` : undefined;
   return { gameKey: opts.gameKey, difficulty, questions: final, shortfall };
 }
 
@@ -934,7 +985,7 @@ export function availabilityFor(def: GameDefinition, words: GameWord[]): Availab
   if (def.key === 'sentence_builder' && words.filter((w) => (w.examples || []).some((e) => tokenizeSentence(e.en || '').length >= 4)).length < 3) {
     return { available: false, reason: "Kamida 3 ta so'zda misol gap bo'lishi kerak" };
   }
-  if (def.key === 'fill_gap' && words.filter((w) => (w.examples || []).some((e) => findWordInSentence(e.en || '', w.word))).length < 4) {
+  if ((def.key === 'fill_gap' || def.key === 'word_orbit') && words.filter((w) => (w.examples || []).some((e) => findWordInSentence(e.en || '', w.word))).length < 4) {
     return { available: false, reason: "Kamida 4 ta so'zda misol gap bo'lishi kerak (AI bilan boyiting)" };
   }
   const needsTranslations = ['word_tunnel', 'word_defense'].includes(def.key);

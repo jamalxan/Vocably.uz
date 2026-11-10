@@ -1050,9 +1050,27 @@ export default function WordDefense() {
         style={stageActive ? { top: box ? box.top : 0, height: box ? box.height : '100dvh' } : undefined}
         inert={!stageActive}
         onMouseDown={keepTypingFocus}
+        role="region"
+        aria-label={c.title}
       >
         {/* Scrolls only on very short screens; the chips and the input then stay pinned at the bottom. */}
-        <section aria-label={c.title} className="relative flex-1 min-h-0 flex flex-col w-full max-w-xl mx-auto overflow-y-auto overflow-x-hidden overscroll-contain">
+        {/* The scene fills the whole stage (like Vocably Run); the HUD, the target card, the chips and
+            the input float above it in a readable column. */}
+        <div className="absolute inset-0 overflow-hidden select-none">
+          {everStarted && use3d && (
+            <SceneBoundary onError={to2d}>
+              <DefenseScene3D sceneRef={sceneRef} running={stageActive && !paused} visible={stageActive} tier={tier} />
+            </SceneBoundary>
+          )}
+          {!use3d && (
+            <div className="absolute top-44 bottom-32 left-1/2 w-full max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl">
+              <DefenseScene2D sceneRef={sceneRef} enemies={hud.enemies} targetId={hud.targetId} running={stageActive && !paused} hitKey={hud.hitKey} />
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-[#050716]/90 to-transparent" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-[#050716] via-[#050716]/75 to-transparent" aria-hidden="true" />
+        </div>
+        <div className="relative z-10 flex-1 min-h-0 flex flex-col w-full max-w-xl mx-auto overflow-y-auto overflow-x-hidden overscroll-contain">
           {/* HUD */}
           <div className="flex items-center justify-between gap-2 px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 select-none">
             <div className="flex items-center gap-0.5" role="img" aria-label={`${c.lives}: ${hud.hp}`}>
@@ -1110,12 +1128,6 @@ export default function WordDefense() {
 
           {/* scene */}
           <div className={`relative flex-1 overflow-hidden select-none ${compact ? 'min-h-12' : 'min-h-28'}`}>
-            {everStarted && use3d && (
-              <SceneBoundary onError={to2d}>
-                <DefenseScene3D sceneRef={sceneRef} running={stageActive && !paused} visible={stageActive} tier={tier} />
-              </SceneBoundary>
-            )}
-            {!use3d && <DefenseScene2D sceneRef={sceneRef} enemies={hud.enemies} targetId={hud.targetId} running={stageActive && !paused} hitKey={hud.hitKey} />}
             {phase === 'loading' && <Loader2 className="absolute inset-0 m-auto w-8 h-8 animate-spin text-white/80" aria-hidden="true" />}
             {phase === 'countdown' && hud.countdown > 0 && (
               <p className="absolute inset-0 grid place-items-center text-7xl font-black tabular-nums drop-shadow-[0_0_24px_rgba(124,92,255,.85)]" aria-hidden="true">{hud.countdown}</p>
@@ -1133,12 +1145,12 @@ export default function WordDefense() {
             )}
           </div>
 
-          <div className="sticky bottom-0 z-10 bg-[#070a18]">
+          <div className="sticky bottom-0 z-10">
             {/* enemy chips: the accessible way to pick a target, mirrored by the numbers in the scene */}
             <div className="px-3 pt-2 flex gap-1.5 overflow-x-auto select-none [scrollbar-width:none]" role="group" aria-label={c.target}>
               {chips.map((e) => {
                 const isTarget = e.id === hud.targetId;
-                const tone = e.state === 'pending' ? 'border-white/40 bg-white/15' : e.state === 'revealed' ? 'border-rose-300/70 bg-rose-500/25' : isTarget ? 'border-amber-300 bg-amber-300/15' : 'border-white/15 bg-white/[0.06]';
+                const tone = e.state === 'pending' ? 'border-white/40 bg-white/20' : e.state === 'revealed' ? 'border-rose-300/70 bg-rose-500/30' : isTarget ? 'border-amber-300 bg-amber-300/20' : 'border-white/20 bg-[#0b1020]/60';
                 const label = e.state === 'revealed' ? e.revealed : e.prompt;
                 return (
                   <button
@@ -1149,7 +1161,7 @@ export default function WordDefense() {
                     disabled={e.state === 'pending' || !playing}
                     aria-pressed={isTarget}
                     aria-label={c.chip(e.slot + 1, label)}
-                    className={`relative shrink-0 min-h-11 max-w-[11rem] rounded-xl border-2 pl-1.5 pr-2.5 py-1 inline-flex items-center gap-1.5 text-left overflow-hidden ${tone}`}
+                    className={`relative shrink-0 min-h-11 max-w-[11rem] rounded-xl border-2 pl-1.5 pr-2.5 py-1 inline-flex items-center gap-1.5 text-left overflow-hidden backdrop-blur-sm ${tone}`}
                   >
                     <span className="shrink-0 grid place-items-center w-6 h-6 rounded-full bg-white/15 text-xs font-black" aria-hidden="true">{e.slot + 1}</span>
                     <span className={`truncate text-xs font-semibold ${e.state === 'revealed' ? 'font-word text-rose-100' : 'text-white/90'}`}>{label}</span>
@@ -1177,7 +1189,7 @@ export default function WordDefense() {
               />
             </div>
           </div>
-        </section>
+        </div>
         {(paused || phase === 'finishing') && (
           <PauseOverlay idPrefix="defense" finishing={phase === 'finishing'} offline={offline} c={c} onResume={resumeRound} onEnd={() => finish('stopped')} />
         )}

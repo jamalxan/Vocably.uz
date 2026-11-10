@@ -37,7 +37,7 @@ describe('katalog (TZ §9)', () => {
     }
   });
   it('P0 o\'yinlar mavjud', () => {
-    for (const k of ['multiple_choice', 'fill_gap', 'listen_choose', 'listen_type', 'vocably_run', 'word_tunnel', 'word_defense']) {
+    for (const k of ['multiple_choice', 'fill_gap', 'listen_choose', 'listen_type', 'vocably_run', 'word_tunnel', 'word_defense', 'word_orbit', 'word_island']) {
       expect(getGame(k)?.priority).toBe('P0');
     }
   });
@@ -228,6 +228,64 @@ describe('vocably_run (TZ 2.0 flagship)', () => {
   it('easy asks Uzbek meanings; harder levels mix in definitions', () => {
     expect(build('vocably_run', 'easy').questions.every((q) => q.kind === 'mc_word')).toBe(true);
     expect(new Set(build('vocably_run', 'hard').questions.map((q) => q.kind))).toEqual(new Set(['mc_word', 'definition']));
+  });
+});
+
+describe("word_orbit (So'z orbitasi)", () => {
+  it('always has 3 planets around a sentence with a gap; one question per word; no answer in the client view', () => {
+    for (const d of DIFFICULTIES) {
+      const s = build('word_orbit', d, `orbit-${d}`);
+      expect(s.questions.length).toBeGreaterThanOrEqual(4);
+      expect(s.questions.length).toBeLessThanOrEqual(getGame('word_orbit')!.questionCount[d]);
+      expect(new Set(s.questions.map((q) => q.wordId)).size).toBe(s.questions.length);
+      expect(s.shortfall).toBeUndefined();
+      for (const q of s.questions) {
+        expect(q.kind).toBe('fill_choice');
+        expect(q.inputType).toBe('choice');
+        expect(q.skill).toBe('context');
+        expect(q.difficulty).toBe(d);
+        expect(q.options).toHaveLength(3);
+        expect(q.prompt).toContain('_____');
+        const right = q.options!.find((o) => o.id === q.answer)!.text;
+        expect(right).toBe(q.correctDisplay);
+        // the sentence reads correctly with the right word, and does not already contain it
+        expect(q.prompt.toLowerCase()).not.toContain(right.toLowerCase());
+        expect(validateAnswer(q, q.answer!).isCorrect).toBe(true);
+        expect(validateAnswer(q, '').isCorrect).toBe(false); // out of fuel: an empty answer is wrong
+        const c = toClientQuestion(q) as Record<string, unknown>;
+        for (const f of ['answer', 'accepted', 'word', 'wordId', 'correctDisplay', 'explanation', 'categoryId']) expect(c[f]).toBeUndefined();
+      }
+    }
+  });
+
+  it('needs example sentences that contain the word', () => {
+    const def = getGame('word_orbit')!;
+    expect(availabilityFor(def, SAMPLE_WORDS).available).toBe(true);
+    expect(availabilityFor(def, BARE_WORDS).available).toBe(false);
+    expect(availabilityFor(def, SAMPLE_WORDS.slice(0, 2)).available).toBe(false);
+  });
+});
+
+describe("word_island (So'z oroli)", () => {
+  it('asks one 3-option question per beacon, each word once; no answer in the client view', () => {
+    for (const d of DIFFICULTIES) {
+      const s = build('word_island', d, `island-${d}`);
+      expect(s.questions.length).toBe(8);
+      expect(new Set(s.questions.map((q) => q.wordId)).size).toBe(8);
+      expect(s.shortfall).toBeUndefined();
+      for (const q of s.questions) {
+        expect(q.options).toHaveLength(3);
+        expect(['mc_word', 'definition']).toContain(q.kind);
+        expect(q.options!.find((o) => o.id === q.answer)?.text).toBe(q.word);
+        const c = toClientQuestion(q) as Record<string, unknown>;
+        for (const f of ['answer', 'accepted', 'word', 'wordId', 'correctDisplay', 'explanation', 'categoryId']) expect(c[f]).toBeUndefined();
+      }
+    }
+  });
+  it('a small deck lights fewer beacons instead of repeating a word', () => {
+    const s = buildGameSession({ gameKey: 'word_island', difficulty: 'medium', words: SAMPLE_WORDS.slice(0, 5), rand: seededRandom('few') });
+    expect(s.questions.length).toBe(5);
+    expect(s.shortfall).toBeUndefined();
   });
 });
 
