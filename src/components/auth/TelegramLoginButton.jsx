@@ -11,9 +11,9 @@ import { useT } from '@/context/LocaleContext';
 // Works only on the domain set for the bot in @BotFather (/setdomain).
 
 const COPY = {
-  uz: { or: 'yoki', button: 'Telegram orqali kirish', hint: "Parolsiz. Telefon bilan ochilgan hisobingiz shu Telegram'ga ulangan bo'lsa, o'sha hisob ochiladi.", busy: 'Kirilmoqda…', failed: "Telegram orqali kirib bo'lmadi", network: 'Internet aloqasini tekshiring', noScript: "Telegram yuklanmadi — sahifani yangilang" },
-  en: { or: 'or', button: 'Continue with Telegram', hint: "No password. If your phone account is linked to this Telegram, you'll land in that account.", busy: 'Signing in…', failed: 'Could not sign in with Telegram', network: 'Check your internet connection', noScript: 'Telegram did not load — refresh the page' },
-  ru: { or: 'или', button: 'Войти через Telegram', hint: 'Без пароля. Если ваш аккаунт с номером телефона привязан к этому Telegram, откроется он.', busy: 'Вход…', failed: 'Не удалось войти через Telegram', network: 'Проверьте подключение к интернету', noScript: 'Telegram не загрузился — обновите страницу' },
+  uz: { or: 'yoki', button: 'Telegram orqali kirish', hint: "Parolsiz. Telefon bilan ochilgan hisobingiz shu Telegram'ga ulangan bo'lsa, o'sha hisob ochiladi.", busy: 'Kirilmoqda…', failed: "Telegram orqali kirib bo'lmadi", network: 'Internet aloqasini tekshiring', noScript: "Telegram yuklanmadi — sahifani yangilang", popupBlocked: "Brauzer Telegram oynasini ochmadi. Qalqib chiquvchi oynalarga ruxsat bering yoki telefon raqam va parol bilan kiring." },
+  en: { or: 'or', button: 'Continue with Telegram', hint: "No password. If your phone account is linked to this Telegram, you'll land in that account.", busy: 'Signing in…', failed: 'Could not sign in with Telegram', network: 'Check your internet connection', noScript: 'Telegram did not load — refresh the page', popupBlocked: 'Your browser did not open the Telegram window. Allow pop-ups, or sign in with your phone number and password.' },
+  ru: { or: 'или', button: 'Войти через Telegram', hint: 'Без пароля. Если ваш аккаунт с номером телефона привязан к этому Telegram, откроется он.', busy: 'Вход…', failed: 'Не удалось войти через Telegram', network: 'Проверьте подключение к интернету', noScript: 'Telegram не загрузился — обновите страницу', popupBlocked: 'Браузер не открыл окно Telegram. Разрешите всплывающие окна или войдите по номеру телефона и паролю.' },
 };
 
 const SCRIPT_ID = 'telegram-login-js';
@@ -81,8 +81,28 @@ export default function TelegramLoginButton({ bot, onSuccess }) {
     }
     setError('');
     setBusy(true);
-    // Must run inside the click handler: the popup is opened synchronously.
-    api.auth({ bot_id: bot.id, request_access: 'write', lang: locale }, signIn);
+    // Telegram's script opens its popup with window.open and, when the browser refuses (a popup blocker, many
+    // in-app browsers), never calls back: the button would spin forever. Its popup handle is private, so that
+    // one synchronous call is watched here.
+    let blocked = false;
+    const nativeOpen = window.open;
+    window.open = (...args) => {
+      const popup = nativeOpen.apply(window, args);
+      blocked = !popup;
+      return popup;
+    };
+    try {
+      // Must run inside the click handler: the popup is opened synchronously.
+      api.auth({ bot_id: bot.id, request_access: 'write', lang: locale }, signIn);
+    } catch {
+      blocked = true;
+    } finally {
+      window.open = nativeOpen;
+    }
+    if (blocked) {
+      setBusy(false);
+      setError(c.popupBlocked);
+    }
   };
 
   if (!bot) return null;
