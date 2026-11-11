@@ -207,6 +207,7 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
       return;
     }
     setLoading(true);
+    let leaving = false; // signed in and on the way to /app: the button stays busy until the page changes
     try {
       const res = await fetch('/api/auth/verify-code', {
         method: 'POST',
@@ -220,6 +221,7 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
         localStorage.setItem('vocably_authed', '1');
         localStorage.setItem('username', data.name || '');
         localStorage.setItem('phone', data.phone || phone);
+        leaving = true;
         router.replace(afterAuthPath()); // replace: /login tarixda qolmasin (orqaga bosilsa yana /app ga sakrab, tuzoqqa tushirardi)
       } else {
         setStep('newPassword');
@@ -228,7 +230,7 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
     } catch (err) {
       setError(errorMessage(err, t));
     } finally {
-      setLoading(false);
+      if (!leaving) setLoading(false);
     }
   };
 
@@ -272,6 +274,9 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
       return;
     }
     setLoading(true);
+    // /app is a much bigger page than this one: on a slow phone it takes seconds to arrive. An idle "Kirish"
+    // during that wait reads as "nothing happened", so the button stays busy until the page changes.
+    let leaving = false;
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -284,13 +289,18 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
       localStorage.setItem('vocably_authed', '1');
       localStorage.setItem('username', data.name || '');
       localStorage.setItem('phone', data.phone || phone);
+      leaving = true;
       router.replace(afterAuthPath()); // replace: /login tarixda qolmasin (orqaga bosilsa yana /app ga sakrab, tuzoqqa tushirardi)
     } catch (err) {
       setError(errorMessage(err, t));
     } finally {
-      setLoading(false);
+      if (!leaving) setLoading(false);
     }
   };
+
+  // Until the page is interactive (`ready`) the card ignores taps; the submit button then shows a spinner
+  // instead of a label that looks pressable and does nothing.
+  const busy = loading || !ready;
 
   const titleMap = {
     login: t('auth.titleLogin'),
@@ -382,7 +392,7 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
                   {t('auth.forgotLink')}
                 </button>
               </div>
-              <SubmitButton loading={loading}>{t('auth.login')}</SubmitButton>
+              <SubmitButton loading={busy}>{t('auth.login')}</SubmitButton>
             </form>
           )}
 
@@ -424,7 +434,7 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </Field>
-              <SubmitButton loading={loading}>{t('auth.continue')}</SubmitButton>
+              <SubmitButton loading={busy}>{t('auth.continue')}</SubmitButton>
             </form>
           )}
 
@@ -442,7 +452,7 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </Field>
-              <SubmitButton loading={loading}>{t('auth.getCode')}</SubmitButton>
+              <SubmitButton loading={busy}>{t('auth.getCode')}</SubmitButton>
             </form>
           )}
 
@@ -500,7 +510,7 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
               />
-              <SubmitButton loading={loading}>{t('auth.verify')}</SubmitButton>
+              <SubmitButton loading={busy}>{t('auth.verify')}</SubmitButton>
               <button
                 type="button"
                 onClick={() => { setStep('telegram'); setError(''); setInfo(''); startPolling(sessionToken); }}
@@ -534,7 +544,7 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </Field>
-              <SubmitButton loading={loading}>{t('auth.savePassword')}</SubmitButton>
+              <SubmitButton loading={busy}>{t('auth.savePassword')}</SubmitButton>
             </form>
           )}
 
@@ -544,6 +554,7 @@ export default function AuthForm({ initialMode = 'login', telegramBot = null }) 
               onSuccess={(data) => {
                 localStorage.setItem('vocably_authed', '1');
                 localStorage.setItem('username', data.name || '');
+                setLoading(true); // signed in, /app is loading
                 router.replace(afterAuthPath());
               }}
             />

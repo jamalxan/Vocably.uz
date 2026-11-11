@@ -34,7 +34,9 @@ function buildConnectSrc() {
   }
   // blob: — brauzerda siqilgan rasm/yozilgan ovoz object URL'lari (createObjectURL) fetch orqali
   // o'qiladi; ularsiz CSP konsolda xato beradi (ma'lumot chiqib ketmaydi — blob: shu sahifaniki).
-  return ["'self'", 'blob:', ...new Set(extra)].join(' ');
+  // oauth.telegram.org — Telegram's login script asks it for the sign-in result (POST /auth/get) once its popup
+  // closes. That request is the only way the result arrives when the popup could not message this page back.
+  return ["'self'", 'blob:', 'https://oauth.telegram.org', ...new Set(extra)].join(' ');
 }
 
 function buildMediaImgSrc() {
