@@ -86,3 +86,22 @@ export function shouldToast({ conversationId, message, silent, myId, activeConve
   if (silent) return false;
   return !isActiveVisible({ conversationId, activeConversationId, hidden });
 }
+
+/**
+ * Onlayn holat xaritasiga (`userId -> true | false | null`) yangi qiymatlarni qo'shadi va kim
+ * HOZIR oflaynga o'tganini aytadi — o'sha lahza uning "oxirgi marta ko'rilgan" vaqti
+ * (src/lib/presence.js formatLastSeen). `broadcast` — server e'lon qilgan `presence:update`:
+ * u faqat haqiqiy o'tishda yuboriladi, shuning uchun bu yerda oldin onlayn ko'rilmagan
+ * foydalanuvchi uchun ham hisoblanadi. So'rov javobida (`presence:query`) esa faqat oldin onlayn
+ * bo'lgani ma'lum bo'lsa. `null` (yashirin holat) hech qachon hisoblanmaydi.
+ * O'zgarmasa AYNAN shu `prev` obyektini qaytaradi.
+ */
+export function mergePresence(prev, patch, { broadcast = false } = {}) {
+  const wentOffline = [];
+  let changed = false;
+  for (const [id, value] of Object.entries(patch || {})) {
+    if (prev[id] !== value) changed = true;
+    if (value === false && (prev[id] === true || (broadcast && prev[id] !== false))) wentOffline.push(id);
+  }
+  return { next: changed ? { ...prev, ...patch } : prev, wentOffline };
+}

@@ -113,25 +113,36 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
     io.emit('presence:update', { userId, online });
   }
 
-  // Faqat haqiqiy oflayn->onlayn o'tishda (bir nechta tab/qurilmadan biri qo'shilganda
-  // EMAS). Javobni kutmaydi: Telegram'ga yetib bormasa ham presence ta'sirlanmasligi kerak.
-  async function notifyPresenceOnline(userId) {
+  // Next.js ichki route'iga bitta POST. Javobni hech kim kutmaydi: Next.js'ga yetib bormasa ham
+  // presence ta'sirlanmasligi kerak.
+  async function postInternal(path, body, what) {
     if (!NEXTJS_INTERNAL_URL) return;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
     try {
-      await fetchImpl(`${NEXTJS_INTERNAL_URL.replace(/\/$/, '')}/api/internal/presence-online`, {
+      await fetchImpl(`${NEXTJS_INTERNAL_URL.replace(/\/$/, '')}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': INTERNAL_SECRET },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
     } catch (err) {
-      log.error('[realtime] onlayn bildirishnomasi yuborilmadi', err?.message || err);
+      log.error(`[realtime] ${what} yuborilmadi`, err?.message || err);
     } finally {
       clearTimeout(timeout);
     }
   }
+
+  // Faqat haqiqiy oflayn->onlayn o'tishda (bir nechta tab/qurilmadan biri qo'shilganda
+  // EMAS) — Telegram "onlayn bo'ldi" (src/app/api/internal/presence-online).
+  const notifyPresenceOnline = (userId) => postInternal('/api/internal/presence-online', { userId }, 'onlayn bildirishnomasi');
+
+  // Foydalanuvchi haqiqatan chiqib ketdi — oxirgi socket uzilgan LAHZA uning "oxirgi marta
+  // ko'rilgan" vaqti (src/app/api/internal/presence-offline -> User.lastActiveAt). Next.js uni
+  // faqat chat REST so'rovlarida yozadi, ulangan socket esa so'rov yubormaydi: busiz ilovada bir
+  // soat o'tirib chiqib ketgan odam darhol "1 soat oldin ko'rilgan" bo'lib qolardi.
+  const notifyPresenceOffline = (userId, leftAt) =>
+    postInternal('/api/internal/presence-offline', { userId, at: new Date(leftAt).toISOString() }, 'oxirgi faollik vaqti');
 
   // Handler ichidagi kutilmagan xato butun jarayonni (va barcha qo'ng'iroqlarni) yiqitmasin.
   const safe = (name, fn) => (...args) => {
@@ -207,11 +218,15 @@ function createRealtimeServer({ env = process.env, fetchImpl = globalThis.fetch,
       safe('call:disconnect', () => calls.onDisconnect(socket, { userNowOffline: n <= 0 }))();
       if (n <= 0) {
         const uid = socket.userId;
+        const leftAt = now();
         onlineCounts.delete(uid);
         clearTimeout(pendingOffline.get(uid));
         const timer = setTimeout(() => {
           pendingOffline.delete(uid);
-          if (onlineCounts.has(uid) || hiddenUsers.has(uid)) return;
+          if (onlineCounts.has(uid)) return;
+          // Yashirin holatdagilar uchun ham yoziladi — vaqtni kimga ko'rsatishni Next.js API hal qiladi.
+          notifyPresenceOffline(uid, leftAt);
+          if (hiddenUsers.has(uid)) return;
           broadcastPresence(uid, false);
         }, OFFLINE_GRACE_MS);
         timer.unref?.();

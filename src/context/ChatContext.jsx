@@ -91,6 +91,7 @@ export function ChatProvider({ myUserId, children }) {
   const {
     connected: socketConnected,
     livePresence,
+    liveLastSeen,
     queryPresence,
     emit,
     on,
@@ -1691,6 +1692,7 @@ export function ChatProvider({ myUserId, children }) {
     setConversationFlags,
     bulkConversations,
     livePresence,
+    liveLastSeen,
     typingByConversation,
     sendTyping,
     stickerPacks: stickerCatalog.packs,
