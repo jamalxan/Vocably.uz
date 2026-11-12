@@ -101,3 +101,74 @@ test('turning hidden presence off later makes the user visible again', async () 
   visible.s.disconnect();
   b.s.disconnect();
 });
+
+// "Last seen" must be the moment the user actually left. The app only writes lastActiveAt on chat
+// REST requests, and a connected socket makes none, so without this the stored time is as old as
+// the user's last chat request (hours) the moment they go offline.
+function startRecording() {
+  const posts = [];
+  const rt = createRealtimeServer({
+    env: { REALTIME_SHARED_SECRET: SECRET, PRESENCE_OFFLINE_GRACE_MS: String(GRACE), NEXTJS_INTERNAL_URL: 'http://next.test/' },
+    fetchImpl: async (url, init) => {
+      posts.push({ url, secret: init.headers['X-Internal-Secret'], body: JSON.parse(init.body) });
+      return { ok: true };
+    },
+    log: quiet,
+  });
+  servers.push(rt);
+  const offline = () => posts.filter((p) => p.url === 'http://next.test/api/internal/presence-offline');
+  return rt.listen(0, '127.0.0.1').then(({ port }) => ({ url: `http://127.0.0.1:${port}`, offline }));
+}
+
+test('going offline stores the moment the last socket closed', async () => {
+  const { url, offline } = await startRecording();
+  const a = await connect(url, A);
+  await sleep(50);
+  const before = Date.now();
+  a.s.disconnect();
+  const after = Date.now() + 50;
+  await sleep(GRACE / 4);
+  assert.strictEqual(offline().length, 0, 'nothing is stored inside the grace window');
+  await sleep(GRACE + 100);
+  assert.strictEqual(offline().length, 1);
+  const [{ body, secret }] = offline();
+  assert.strictEqual(secret, SECRET);
+  assert.strictEqual(body.userId, A);
+  const at = new Date(body.at).getTime();
+  assert.ok(at >= before && at <= after, `at (${body.at}) is the disconnect moment, not the end of the grace window`);
+});
+
+test('a reconnect inside the grace window stores nothing', async () => {
+  const { url, offline } = await startRecording();
+  let a = await connect(url, A);
+  await sleep(50);
+  a.s.disconnect();
+  await sleep(GRACE / 4);
+  a = await connect(url, A);
+  await sleep(GRACE + 100);
+  assert.strictEqual(offline().length, 0);
+  a.s.disconnect();
+});
+
+test('closing one of two tabs stores nothing', async () => {
+  const { url, offline } = await startRecording();
+  const a1 = await connect(url, A);
+  const a2 = await connect(url, A);
+  await sleep(50);
+  a1.s.disconnect();
+  await sleep(GRACE + 100);
+  assert.strictEqual(offline().length, 0);
+  a2.s.disconnect();
+});
+
+test('hidden presence: the time is still stored (the API masks it), nothing is broadcast', async () => {
+  const { url, offline } = await startRecording();
+  const b = await connect(url, B);
+  const a = await connect(url, A, { hp: true });
+  await sleep(50);
+  a.s.disconnect();
+  await sleep(GRACE + 100);
+  assert.strictEqual(offline().filter((p) => p.body.userId === A).length, 1);
+  assert.deepStrictEqual(updatesFor(b.events, A), []);
+  b.s.disconnect();
+});

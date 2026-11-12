@@ -69,16 +69,28 @@ export function formatRelativeTime(dateStr) {
 // faqat qisqa nisbiy vaqt ("19 daqiqa oldin") qaytarardi — ConversationView'da
 // username ostida bitta o'zi turgach, ma'nosi tushunarsiz edi ("nima 19 daqiqa
 // oldin?"). Endi Telegram uslubidagi to'liq jumla: "oxirgi marta ko'rilgan …".
-export function formatLastSeen(lastActiveAt, liveOnline) {
+//
+// `wentOfflineAt` — suhbatdoshning socket'i uzilgani ma'lum bo'lgan lahza (RealtimeContext
+// `liveLastSeen`). Ulangan socket hech qanday chat so'rovi yubormaydi, demak `lastActiveAt` u
+// ilovada o'tirgan butun vaqt davomida eskiradi: odam hozirgina chiqib ketgan bo'lsa ham "3 soat
+// oldin" chiqardi. Ikkalasining yangirog'i — haqiqiy "oxirgi marta ko'rilgan". Onlayn-yoki-yo'qligiga
+// ta'sir qilmaydi (u faqat `lastActiveAt` + socket holatidan).
+//
+// Birliklar pastga yaxlitlanadi (Telegram kabi): 59,6 daqiqa "60 daqiqa oldin" emas, 90 daqiqa
+// "2 soat oldin" emas.
+export function formatLastSeen(lastActiveAt, liveOnline, wentOfflineAt) {
   if (isOnline(lastActiveAt, liveOnline)) return 'Onlayn';
-  if (!lastActiveAt) return null;
+  const activeMs = lastActiveAt ? new Date(lastActiveAt).getTime() : NaN;
+  const offlineMs = wentOfflineAt ? new Date(wentOfflineAt).getTime() : NaN;
+  const seenMs = Math.max(Number.isFinite(activeMs) ? activeMs : -Infinity, Number.isFinite(offlineMs) ? offlineMs : -Infinity);
+  if (!Number.isFinite(seenMs)) return null;
 
-  const diff = Date.now() - new Date(lastActiveAt).getTime();
-  if (diff < HOUR_MS) return `oxirgi marta ko'rilgan ${Math.max(1, Math.round(diff / MINUTE_MS))} daqiqa oldin`;
-  if (diff < DAY_MS) return `oxirgi marta ko'rilgan ${Math.round(diff / HOUR_MS)} soat oldin`;
-  const days = Math.round(diff / DAY_MS);
+  const diff = Date.now() - seenMs;
+  if (diff < HOUR_MS) return `oxirgi marta ko'rilgan ${Math.max(1, Math.floor(diff / MINUTE_MS))} daqiqa oldin`;
+  if (diff < DAY_MS) return `oxirgi marta ko'rilgan ${Math.floor(diff / HOUR_MS)} soat oldin`;
+  const days = Math.floor(diff / DAY_MS);
   if (days < 7) return `oxirgi marta ko'rilgan ${days} kun oldin`;
-  return `oxirgi marta ko'rilgan ${new Date(lastActiveAt).toLocaleDateString('uz-UZ')}`;
+  return `oxirgi marta ko'rilgan ${new Date(seenMs).toLocaleDateString('uz-UZ')}`;
 }
 
 // H-1 — "Oxirgi marta ko'rilgan"ni kim ko'rishi (`shouldShowLastSeen`) src/lib/chatConstants.js'ga

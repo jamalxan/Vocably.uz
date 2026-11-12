@@ -108,6 +108,7 @@ export default function ConversationView({ onBack }) {
     toggleTgMessageNotify,
     unpinMessage,
     livePresence,
+    liveLastSeen,
     typingByConversation,
     stageExternalFiles,
     deleteMessage,
@@ -238,12 +239,13 @@ export default function ConversationView({ onBack }) {
   const listEntry = conversations.find((c) => String(c.id) === String(activeConversation.id));
   const showPresence = (listEntry?.otherUser?.showPresence ?? activeConversation.otherUser?.showPresence) !== false;
   const otherLastActiveAt = newerIso(activeConversation.otherUser?.lastActiveAt, listEntry?.otherUser?.lastActiveAt);
-  const online = showPresence && isOnline(otherLastActiveAt, livePresence[String(activeConversation.otherUser?.id)]);
+  const otherId = String(activeConversation.otherUser?.id);
+  const online = showPresence && isOnline(otherLastActiveAt, livePresence[otherId]);
   const typingKind = typingByConversation[activeConversation.id];
   // Suhbatdosh "Oxirgi marta ko'rilgan"ni yashirgan bo'lsa (sozlamalarda "Hech kim") — Telegram kabi
   // aniq vaqt ham, "onlayn" ham emas, faqat "yaqinda onlayn edi".
   const lastSeenText = showPresence
-    ? ts(formatLastSeen(otherLastActiveAt, livePresence[String(activeConversation.otherUser?.id)]))
+    ? ts(formatLastSeen(otherLastActiveAt, livePresence[otherId], liveLastSeen[otherId]))
     : t('ch.lastSeenRecently');
   const muteUntilText = activeConversation.muted ? ts(formatMuteUntil(activeConversation.mutedUntil)) : null;
 

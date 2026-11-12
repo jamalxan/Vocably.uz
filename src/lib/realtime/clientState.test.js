@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_UNREAD,
   applyUnreadOnMessage,
+  mergePresence,
   badgeLabel,
   nextBackoffMs,
   sameUnread,
@@ -122,5 +123,29 @@ describe('shouldToast', () => {
     ['no conversation id', { conversationId: null }, false],
   ])('%s', (_label, over, expected) => {
     expect(shouldToast(ctx(over))).toBe(expected);
+  });
+});
+
+describe('mergePresence', () => {
+  it('reports users who were online and are now offline', () => {
+    const r = mergePresence({ a: true, b: true, c: false }, { a: false, b: true, c: false, d: false });
+    expect(r.next).toEqual({ a: false, b: true, c: false, d: false });
+    expect(r.wentOffline).toEqual(['a']);
+  });
+
+  it('a broadcast "offline" counts even for a user never seen online here', () => {
+    expect(mergePresence({}, { a: false }, { broadcast: true }).wentOffline).toEqual(['a']);
+    expect(mergePresence({}, { a: false }).wentOffline).toEqual([]);
+  });
+
+  it('returns the same object when nothing changes', () => {
+    const prev = { a: true, b: null };
+    const r = mergePresence(prev, { a: true, b: null });
+    expect(r.next).toBe(prev);
+    expect(r.wentOffline).toEqual([]);
+  });
+
+  it('hidden presence (null) is never a "went offline"', () => {
+    expect(mergePresence({ a: true }, { a: null }).wentOffline).toEqual([]);
   });
 });

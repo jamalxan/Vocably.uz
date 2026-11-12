@@ -5,6 +5,7 @@ import { connectChatSocket } from '@/lib/socketClient';
 import {
   EMPTY_UNREAD,
   applyUnreadOnMessage,
+  mergePresence,
   nextBackoffMs,
   sameUnread,
   shouldToast,
@@ -27,12 +28,14 @@ import { installAudioUnlock, isAudioUnlocked, playMessageBlip } from '@/lib/call
 const RealtimeContext = createContext(null);
 
 const NOOP_OFF = () => {};
+const EMPTY_PRESENCE = Object.freeze({ online: {}, lastSeen: {} });
 // Provider tashqarisida (masalan testlar yoki (main)dan tashqaridagi sahifa) — xavfsiz "realtime yo'q".
 const FALLBACK = Object.freeze({
   configured: false,
   socket: null,
   connected: false,
   livePresence: {},
+  liveLastSeen: {},
   queryPresence: () => Promise.resolve({}),
   emit: () => false,
   on: () => NOOP_OFF,
@@ -57,7 +60,13 @@ export function RealtimeProvider({ children }) {
 
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
-  const [livePresence, setLivePresence] = useState({});
+  // `online`: userId -> true | false | null (socket'dan). `lastSeen`: userId -> ISO — socket shu
+  // foydalanuvchini oflayn deb bildirgan lahza. Server'dagi `lastActiveAt` faqat chat so'rovlarida
+  // yoziladi, ulangan socket esa so'rov yubormaydi — odam chiqib ketgan paytda u soatlab eski
+  // bo'lishi mumkin. "Oxirgi marta ko'rilgan" shu ikkisining yangirog'i (src/lib/presence.js).
+  const [presence, setPresence] = useState(EMPTY_PRESENCE);
+  const livePresence = presence.online;
+  const liveLastSeen = presence.lastSeen;
   const [unread, setUnread] = useState(EMPTY_UNREAD);
   const [activeConversationId, setActiveConversationIdState] = useState(null);
   const [toast, setToast] = useState(null);
@@ -204,6 +213,17 @@ export function RealtimeProvider({ children }) {
     return true;
   }, []);
 
+  // Barcha onlayn-holat yangilanishlari shu yerdan o'tadi: kim hozir oflaynga o'tganini ushlaydi.
+  const applyPresence = useCallback((patch, opts) => {
+    const at = new Date().toISOString();
+    setPresence((prev) => {
+      const { next, wentOffline } = mergePresence(prev.online, patch, opts);
+      if (next === prev.online && !wentOffline.length) return prev;
+      const lastSeen = wentOffline.length ? { ...prev.lastSeen, ...Object.fromEntries(wentOffline.map((id) => [id, at])) } : prev.lastSeen;
+      return { online: next, lastSeen };
+    });
+  }, []);
+
   const queryPresence = useCallback((ids) => {
     const s = socketRef.current;
     const list = [...new Set((ids || []).filter(Boolean).map(String))];
@@ -211,11 +231,11 @@ export function RealtimeProvider({ children }) {
     return new Promise((resolve) => {
       s.timeout(PRESENCE_TIMEOUT_MS).emit('presence:query', list, (err, result) => {
         if (err || !result || typeof result !== 'object') return resolve({});
-        setLivePresence((prev) => ({ ...prev, ...result }));
+        applyPresence(result);
         resolve(result);
       });
     });
-  }, []);
+  }, [applyPresence]);
 
   const dismissToast = useCallback(() => setToast(null), []);
 
@@ -271,13 +291,13 @@ export function RealtimeProvider({ children }) {
     });
     s.on('presence:update', ({ userId, online } = {}) => {
       if (!userId) return;
-      setLivePresence((prev) => (prev[String(userId)] === online ? prev : { ...prev, [String(userId)]: online }));
+      applyPresence({ [String(userId)]: online }, { broadcast: true });
     });
     // "Yozmoqda" faqat ulangan socket'dan keladi — demak yozayotgan odam hozir onlayn. Server
     // presence:update'ni kechiktirib yuborishi mumkin (offline grace) — bu yerda darhol ko'rsatamiz.
     s.on('typing', ({ userId } = {}) => {
       if (!userId || String(userId) === String(myIdRef.current)) return;
-      setLivePresence((prev) => (prev[String(userId)] === true ? prev : { ...prev, [String(userId)]: true }));
+      applyPresence({ [String(userId)]: true });
     });
     // Boshqa qurilmamda suhbat o'qildi (WP3 self-event) — umumiy sonni server'dan qayta olamiz.
     s.on('conversation:read', () => refreshUnread());
@@ -349,7 +369,7 @@ export function RealtimeProvider({ children }) {
       setSocket(null);
       setConnected(false);
     };
-  }, [configured, chatAccess, chatUserId, attach, queryPresence, refreshUnread, ensureMeta]);
+  }, [configured, chatAccess, chatUserId, attach, applyPresence, queryPresence, refreshUnread, ensureMeta]);
 
   // Birinchi yuklanish: socket bo'lmasa ham (realtime sozlanmagan) nav belgisi to'g'ri bo'lsin.
   useEffect(() => {
@@ -374,7 +394,7 @@ export function RealtimeProvider({ children }) {
     setPrevUser(currentUser);
     setUnread(EMPTY_UNREAD);
     setToast(null);
-    setLivePresence({});
+    setPresence(EMPTY_PRESENCE);
   }
 
   // Toast 5 s'dan keyin yopiladi (NewMessageToast ham o'z taymerini tutadi — bu zaxira).
@@ -417,6 +437,7 @@ export function RealtimeProvider({ children }) {
       socket,
       connected,
       livePresence,
+      liveLastSeen,
       queryPresence,
       emit,
       on,
@@ -429,7 +450,7 @@ export function RealtimeProvider({ children }) {
       dismissToast,
       myId: chatUserId,
     }),
-    [configured, socket, connected, livePresence, queryPresence, emit, on, unread, refreshUnread, setUnreadFromConversations, activeConversationId, setActiveConversationId, toast, dismissToast, chatUserId]
+    [configured, socket, connected, livePresence, liveLastSeen, queryPresence, emit, on, unread, refreshUnread, setUnreadFromConversations, activeConversationId, setActiveConversationId, toast, dismissToast, chatUserId]
   );
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
