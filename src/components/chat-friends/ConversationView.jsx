@@ -31,6 +31,11 @@ const NEAR_BOTTOM_PX = 120;
 const UZ_MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr'];
 const idOf = (m) => String(m.id || m._id);
 
+// Chatdagi vaqtlar (xabar soati, "Bugun"/"Kecha", kunlarga bo'lish) qurilmaning mahalliy vaqtida —
+// sana yorlig'i ham shu zonada bo'lishi shart (formatDateLocale standart bo'yicha Toshkent vaqtini
+// oladi: boshqa zonadagi odamda yarim tunga yaqin xabar qo'shni kunning sanasi bilan chiqardi).
+const deviceTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 function formatDaySeparator(dateStr, t, locale) {
   const d = new Date(dateStr);
   const now = new Date();
@@ -38,7 +43,7 @@ function formatDaySeparator(dateStr, t, locale) {
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return t('cv.yesterday');
-  if (locale !== 'uz') return formatDateLocale(locale, d, { year: d.getFullYear() !== now.getFullYear() });
+  if (locale !== 'uz') return formatDateLocale(locale, d, { year: d.getFullYear() !== now.getFullYear(), timeZone: deviceTimeZone() });
   const label = `${d.getDate()}-${UZ_MONTHS[d.getMonth()]}`;
   return d.getFullYear() === now.getFullYear() ? label : `${label} ${d.getFullYear()}`;
 }
@@ -587,7 +592,7 @@ export default function ConversationView({ onBack }) {
           items={mediaItems}
           index={Math.min(viewer.index, mediaItems.length - 1)}
           onClose={() => setViewer(null)}
-          formatDate={(d) => `${formatDateLocale(locale, new Date(d), { year: true })} · ${String(new Date(d).getHours()).padStart(2, '0')}:${String(new Date(d).getMinutes()).padStart(2, '0')}`}
+          formatDate={(d) => `${formatDateLocale(locale, new Date(d), { year: true, timeZone: deviceTimeZone() })} · ${String(new Date(d).getHours()).padStart(2, '0')}:${String(new Date(d).getMinutes()).padStart(2, '0')}`}
         />
       )}
     </div>

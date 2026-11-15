@@ -13,7 +13,7 @@ import { notifyRecipientViaTelegram } from '@/lib/chatNotify';
 import { loadConversationForUser } from '@/lib/chat/conversationAccess';
 import { serializeReactions } from '@/lib/chat/reactions';
 import { isConversationMuted, previewForMessage } from '@/lib/chatConstants';
-import { isObjectIdString, materializeCopies, partitionSources, planForwardCopies, publicForwardedFrom } from '@/lib/chat/forward';
+import { canSeeHiddenForwardAuthor, isObjectIdString, materializeCopies, partitionSources, planForwardCopies, publicForwardedFrom } from '@/lib/chat/forward';
 import { isTombstone, rawDraftOf, serializeDraft } from '@/lib/chat/draftServer';
 import { after, NextResponse } from 'next/server';
 
@@ -94,10 +94,11 @@ export async function GET(req, props) {
     // `call` — faqat `type: 'call'` qatorlarda (realtime-server/call-event yaratadi);
     // boshqa turlarda har doim null, o'chirilgan qo'ng'iroq yozuvida ham tafsilot ko'rsatilmaydi.
     // `reactions` (PARITY_PLAN WP7) — har doim massiv, `userId` satr; o'chirilgan xabarda bo'sh.
+    const reveal = canSeeHiddenForwardAuthor(user); // admin yashirilgan forward muallifini ham ko'radi
     const sanitized = messages.map((m) =>
       m.deletedForEveryone
-        ? { ...m, text: '', media: null, stickerId: null, call: null, reactions: [], forwardedFrom: publicForwardedFrom(m.forwardedFrom), originalText: undefined }
-        : { ...m, call: m.type === 'call' ? m.call || null : null, reactions: serializeReactions(m.reactions), forwardedFrom: publicForwardedFrom(m.forwardedFrom), originalText: undefined }
+        ? { ...m, text: '', media: null, stickerId: null, call: null, reactions: [], forwardedFrom: publicForwardedFrom(m.forwardedFrom, { reveal }), originalText: undefined }
+        : { ...m, call: m.type === 'call' ? m.call || null : null, reactions: serializeReactions(m.reactions), forwardedFrom: publicForwardedFrom(m.forwardedFrom, { reveal }), originalText: undefined }
     );
 
     return NextResponse.json({ messages: sanitized, nextCursor });
@@ -277,6 +278,8 @@ export async function POST(req, props) {
       sender: { id: String(user._id), username: user.username || null, label: recipientNick || senderLabel },
       silent: recipientMuted,
     };
+    // Yashirilgan forward (forward'ning forward'i): asl muallif faqat admin qabul qiluvchiga beriladi.
+    const revealToRecipient = message.forwardedFrom?.hidden ? canSeeHiddenForwardAuthor(await User.findById(otherId).select('role').lean()) : false;
     const realtimePayload = {
       id: message._id,
       conversationId: convo._id,
@@ -287,7 +290,7 @@ export async function POST(req, props) {
       stickerId: message.stickerId,
       replyTo: message.replyTo,
       albumId: message.albumId,
-      forwardedFrom: publicForwardedFrom(message.forwardedFrom),
+      forwardedFrom: publicForwardedFrom(message.forwardedFrom, { reveal: revealToRecipient }),
       clientMessageId: message.clientMessageId,
       reactions: [],
       createdAt: message.createdAt,

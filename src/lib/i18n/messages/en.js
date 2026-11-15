@@ -1061,6 +1061,7 @@ const en = {
   'ch.uploading': 'Uploading',
   'ch.cancelUpload': 'Cancel upload',
   'ch.forwardedFrom': 'Forwarded from {name}',
+  'ch.forwardedFromHidden': 'Forwarded from {name} (name hidden)',
   'ch.archived': 'Archived chats',
   'ch.archive': 'Archive',
   'ch.unarchive': 'Unarchive',

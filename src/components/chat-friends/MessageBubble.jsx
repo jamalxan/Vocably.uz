@@ -641,6 +641,23 @@ const FRESH_MS = 8000;
  * Selection mode: a tap toggles the checkbox instead of opening anything.
  * `groupFirst` / `groupLast` (PARITY_PLAN WP8.2) — ketma-ket guruhdagi o'rni: "dum" faqat oxirgisida.
  */
+// Stiker rasmi. Fayl saqlash joyida yo'q bo'lsa (masalan server almashganda yo'qolgan) brauzer siniq rasm
+// belgisi yoniga `alt` matnini — stiker nomini ("IMG 20260327 …") chiqaradi. Buning o'rniga hamma
+// stikerlar uchun bir xil betaraf yorliq ko'rsatiladi.
+function StickerImage({ sticker }) {
+  const { t } = useT();
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <p className="text-sm text-muted" data-testid="sticker-missing">
+        {t('mb.sticker')}
+      </p>
+    );
+  }
+  /* eslint-disable-next-line @next/next/no-img-element */
+  return <img src={sticker.file} alt={sticker.label} draggable={false} onError={() => setBroken(true)} className="w-36 h-36 md:w-40 md:h-40" />;
+}
+
 export default function MessageBubble({ message, album = null, isMine, myId, onJumpToReply, onOpenMedia, selectionMode = false, selected = false, onToggleSelect, onEnterSelection, groupFirst = true, groupLast = true }) {
   const { t, ts } = useT();
   const { reportTarget, activeConversation, startEditMessage, startReply, deleteMessage, reactToMessage, retryMessage, livePresence, pinMessage, unpinMessage, stickerById, showChatNotice } = useChat();
@@ -871,12 +888,14 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
   ) : null;
 
   const openMedia = (m) => onOpenMedia?.(idOf(m || message));
+  const showForwarded = !!message.forwardedFrom && (!message.forwardedFrom.hidden || message.forwardedFrom.revealed === true);
   const header = (
     <>
       {/* "Yuboruvchi nomini yashirish" bilan yuborilgan nusxada yorliq yo'q (PARITY_PLAN WP5). */}
-      {message.forwardedFrom && !message.forwardedFrom.hidden && (
+      {/* Admin: yashirilgan muallif ham ko'rinadi (server faqat adminga `revealed` beradi), "nomi yashirilgan" belgisi bilan. */}
+      {showForwarded && (
         <p className={`text-xs font-semibold mb-1 flex items-center gap-1 ${isMine ? 'text-on-accent/85' : 'text-accent'}`} data-testid="forwarded-label">
-          <Forward size={12} /> {t('ch.forwardedFrom', { name: message.forwardedFrom.name || t('ch.user') })}
+          <Forward size={12} /> {t(message.forwardedFrom.hidden ? 'ch.forwardedFromHidden' : 'ch.forwardedFrom', { name: message.forwardedFrom.name || t('ch.user') })}
         </p>
       )}
       {message.replyTo && (
@@ -884,7 +903,7 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
       )}
     </>
   );
-  const hasHeader = !deleted && ((message.forwardedFrom && !message.forwardedFrom.hidden) || !!message.replyTo);
+  const hasHeader = !deleted && (showForwarded || !!message.replyTo);
 
   const body = deleted ? (
     <p className="flex flex-wrap items-center gap-x-1.5">
@@ -906,8 +925,7 @@ export default function MessageBubble({ message, album = null, isMine, myId, onJ
           )}
           {message.type === 'sticker' &&
             (sticker ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={sticker.file} alt={sticker.label} draggable={false} className="w-36 h-36 md:w-40 md:h-40" />
+              <StickerImage key={sticker.file} sticker={sticker} />
             ) : (
               <p className="text-sm text-muted">{t('mb.sticker')}</p>
             ))}
