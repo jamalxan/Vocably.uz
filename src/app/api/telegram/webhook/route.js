@@ -3,7 +3,7 @@ import { safeEqual } from '@/lib/safeEqual';
 import { OtpSession, User, Conversation, Message, AdminAuditLog } from '@/lib/models';
 import { phonesMatch, normalizePhone, formatPhoneDisplay } from '@/lib/phone';
 import { generateCode } from '@/lib/otp';
-import { sendMessage, requestContactKeyboard, removeKeyboard, answerCallbackQuery, editMessageReplyMarkup } from '@/lib/telegram';
+import { sendMessage, requestContactKeyboard, removeKeyboard, answerCallbackQuery, editMessageReplyMarkup, healWebhook } from '@/lib/telegram';
 import { handleQuizCallback, sendDailyPractice } from '@/lib/telegramQuiz';
 import { handleAdminBroadcastMessage, handleBroadcastCallback, handleTrialCommand, isAdminChat } from '@/lib/telegramBroadcast';
 import { formatWinback, winbackMarkup } from '@/lib/vocab/winback';
@@ -244,6 +244,10 @@ export async function POST(req) {
     if (!process.env.TELEGRAM_WEBHOOK_SECRET || !safeEqual(secret, process.env.TELEGRAM_WEBHOOK_SECRET)) {
       return NextResponse.json({ ok: false }, { status: 401 });
     }
+
+    // This request passed the secret check, so the secret in env is the one Telegram holds: safe to re-register
+    // with it. Repairs a webhook that does not deliver inline-button presses (hourly check, never throws).
+    await healWebhook();
 
     await connectToDatabase();
     const update = await req.json();

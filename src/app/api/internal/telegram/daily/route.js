@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db';
 import { bearerMatches } from '@/lib/safeEqual';
 import { User } from '@/lib/models';
 import { sendDailyPractice, tashkentDate } from '@/lib/telegramQuiz';
+import { healWebhook } from '@/lib/telegram';
 import { claimTelegramSlot, releaseTelegramSlot } from '@/lib/telegramCap';
 import { localDateWithCutoff } from '@/lib/srs';
 import { NextResponse } from 'next/server';
@@ -21,6 +22,8 @@ export async function GET(req) {
     return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 });
   }
   await connectToDatabase();
+  // The quiz is answered with inline buttons: make sure Telegram delivers their presses before sending any.
+  const webhook = await healWebhook({ force: true });
   const today = tashkentDate();
   const users = await User.find({
     telegramChatId: { $ne: null },
@@ -54,5 +57,5 @@ export async function GET(req) {
     }
     await new Promise((r) => setTimeout(r, 40)); // stay far below Telegram's 30 msg/s
   }
-  return NextResponse.json({ ok: true, candidates: users.length, ...stats });
+  return NextResponse.json({ ok: true, webhook, candidates: users.length, ...stats });
 }
