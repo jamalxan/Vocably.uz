@@ -162,6 +162,41 @@ test.describe('desktop', () => {
       await expect(copy).toBeVisible({ timeout: 30_000 });
       await expect(copy.getByTestId('forwarded-label')).toBeVisible();
     });
+
+    // A copy of my OWN message carries "Forwarded from <me>" too, so "hide sender name" must be offered for it
+    // as well (Telegram offers it for every message). It used to appear only for other people's messages.
+    test('my own message forwarded with "hide sender name" arrives without the forwarded label', async ({ browser }) => {
+      const user = track(await openUser(browser, E2E_PHONE, `/app/friends/${E2E_FRIEND_USERNAME}`));
+      const marker = `hidden-forward ${Date.now()}`;
+      const srcId = await sendViaComposer(user.page, marker);
+
+      await bubbleById(user.page, srcId).getByRole('button', { name: /Xabar amallari|Message actions/ }).click();
+      await user.page.getByRole('button', { name: /^Yuborish$|^Forward$/ }).first().click();
+      const modal = user.page.getByTestId('forward-modal');
+      await expect(modal).toBeVisible();
+      await modal.getByTestId('forward-target').filter({ hasText: E2E_THIRD_USERNAME }).first().click();
+      const hide = modal.getByTestId('forward-hide-author');
+      await expect(hide).not.toBeChecked();
+      await modal.getByText(/Yuboruvchi nomini yashirish|Hide sender name/).click();
+      await expect(hide).toBeChecked();
+      await modal.getByTestId('forward-send').click();
+      await expect(modal).toHaveCount(0, { timeout: 15_000 });
+
+      // One target: the sender lands in that chat and sees the copy as a plain message of their own.
+      await expect(user.page).toHaveURL(new RegExp(`/app/friends/${E2E_THIRD_USERNAME}$`), { timeout: 15_000 });
+      const mine = user.page.locator('[data-msg-id]').filter({ hasText: marker }).first();
+      await expect(mine).toBeVisible({ timeout: 15_000 });
+      await expect(mine.getByTestId('forwarded-label')).toHaveCount(0);
+
+      const stored = await withDb(async (db) => db.collection('messages').findOne({ conversationId: oid(E2E_USER_THIRD_CONVERSATION_ID), text: marker }));
+      expect(stored?.forwardedFrom?.hidden).toBe(true);
+
+      // The recipient gets no "Forwarded from" line and no author in the payload.
+      const third = track(await openUser(browser, E2E_THIRD_PHONE, `/app/friends/${E2E_USERNAME}`));
+      const copy = third.page.locator('[data-msg-id]').filter({ hasText: marker }).first();
+      await expect(copy).toBeVisible({ timeout: 30_000 });
+      await expect(copy.getByTestId('forwarded-label')).toHaveCount(0);
+    });
   });
 
   test.describe('WP6 server drafts', () => {
