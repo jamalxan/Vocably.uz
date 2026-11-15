@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useBackClose } from '@/lib/useBackClose';
 import { Check, Loader2, Search, X } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
-import { useApp } from '@/context/AppContext';
 import Avatar from '@/components/avatar/Avatar';
 import Switch from '@/components/ui/Switch';
 import { useT } from '@/context/LocaleContext';
@@ -18,7 +17,6 @@ const chatLabel = (c, t) => c?.otherUser?.nickname || `@${c?.otherUser?.username
 // bir nechta bo'lsa joriy chatda qolinadi. Qisman xato bo'lsa oyna ochiq qoladi, xato qatorlar belgilanadi.
 export default function ForwardMessageModal({ open, message, messages, onClose, onSent }) {
   const { conversations, forwardMessages, activeConversation, showChatNotice } = useChat();
-  const { chatUserId: myId } = useApp();
   const { t, ts } = useT();
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -71,9 +69,6 @@ export default function ForwardMessageModal({ open, message, messages, onClose, 
     if (!q) return conversations.filter((c) => !c.archived);
     return conversations.filter((c) => `${c.otherUser?.nickname || ''} ${c.otherUser?.username || ''} ${c.otherUser?.name || ''}`.toLowerCase().includes(q));
   }, [conversations, query]);
-  // "Nomini yashirish" faqat boshqa muallif bo'lsa ma'noli (o'z xabarimda forward'siz yorliq baribir yo'q).
-  const canHideAuthor = list.some((m) => m.forwardedFrom || String(m.senderId) !== String(myId));
-
   useBackClose(open, onClose);
   if (!open) return null;
 
@@ -94,7 +89,7 @@ export default function ForwardMessageModal({ open, message, messages, onClose, 
     setNotice('');
     // Bitta oyna sessiyasi = bitta batch id: tarmoq xatosidan keyin qayta bosilsa server nusxalarni takrorlamaydi.
     if (!batchIdRef.current) batchIdRef.current = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const res = await forwardMessages(list, selected, { hideAuthor: canHideAuthor && hideAuthor, comment, clientBatchId: batchIdRef.current });
+    const res = await forwardMessages(list, selected, { hideAuthor, comment, clientBatchId: batchIdRef.current });
     setSending(false);
     if (res.error) {
       setNotice(ts(res.error));
@@ -112,11 +107,21 @@ export default function ForwardMessageModal({ open, message, messages, onClose, 
     batchIdRef.current = null;
     const done = t('ch.forwardDone', { n: res.okCount });
     showChatNotice?.(skippedCalls ? `${done}. ${t('ch.forwardSkippedCalls')}` : done);
+    const goTo = selected.length === 1 && String(selected[0]) !== String(activeConversation?.id) ? byId.get(String(selected[0]))?.otherUser?.username : null;
     onSent?.(res);
     onClose?.();
-    if (selected.length === 1 && String(selected[0]) !== String(activeConversation?.id)) {
-      const username = byId.get(String(selected[0]))?.otherUser?.username;
-      if (username) router.push(`/app/friends/${username}`);
+    if (goTo) {
+      // Closing makes useBackClose pop the history entry it added (history.back(), asynchronous). A push made
+      // before that pop lands is undone by it and the chat never opens, so navigate after the pop.
+      let gone = false;
+      const go = () => {
+        if (gone) return;
+        gone = true;
+        window.removeEventListener('popstate', go);
+        router.push(`/app/friends/${goTo}`);
+      };
+      window.addEventListener('popstate', go);
+      setTimeout(go, 400); // nothing was pushed (closed within the same tick it opened) — go anyway
     }
   };
 
@@ -202,7 +207,8 @@ export default function ForwardMessageModal({ open, message, messages, onClose, 
               className="w-full px-3 py-2 bg-bg rounded-xl text-base md:text-sm text-ink placeholder:text-muted outline-none focus-visible:ring-2 focus-visible:ring-accent"
             />
           )}
-          {canHideAuthor && <Switch checked={hideAuthor} onChange={setHideAuthor} label={t('ch.forwardHideAuthor')} data-testid="forward-hide-author" disabled={sending} />}
+          {/* Har qanday xabar uchun (Telegram): o'z xabarimning nusxasi ham "…dan yuborilgan" yorlig'ini oladi. */}
+          <Switch checked={hideAuthor} onChange={setHideAuthor} label={t('ch.forwardHideAuthor')} data-testid="forward-hide-author" disabled={sending} />
           {notice && (
             <p className="text-xs text-danger" role="alert" data-testid="forward-error">
               {notice}
