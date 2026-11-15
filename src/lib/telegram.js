@@ -88,13 +88,58 @@ export async function answerCallbackQuery(callbackQueryId, text) {
   return callTelegramApi('answerCallbackQuery', { callback_query_id: callbackQueryId, ...(text ? { text } : {}) });
 }
 
+// Update types the bot needs. callback_query = every inline-button press (daily mini-test answers,
+// "turn reminders off", reklama confirmation).
+export const WEBHOOK_UPDATES = ['message', 'callback_query'];
+
 export async function setWebhook(url, secretToken) {
   return callTelegramApi('setWebhook', {
     url,
     secret_token: secretToken,
-    // callback_query — inline-button answers of the daily mini-test.
-    allowed_updates: ['message', 'callback_query'],
+    allowed_updates: WEBHOOK_UPDATES,
   });
+}
+
+/**
+ * Telegram delivers only the update types the webhook was registered with, and keeps that list until the next
+ * setWebhook. A webhook registered with an older list (prod, Nov 2026: ['message']) still receives messages,
+ * so the bot looks alive, while every inline button it sends is dead. This re-registers the SAME url with the
+ * full list when a type is missing.
+ * Returns 'ok' | 'repaired' | 'unset' (no webhook, e.g. local dev) | 'no-secret'.
+ */
+export async function ensureWebhookUpdates() {
+  const info = await callTelegramApi('getWebhookInfo', {}, { timeoutMs: 4000 });
+  if (!info?.url) return 'unset';
+  // No list = Telegram's default set, which includes both types.
+  const allowed = info.allowed_updates;
+  if (!Array.isArray(allowed) || WEBHOOK_UPDATES.every((u) => allowed.includes(u))) return 'ok';
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  // Re-registering without the secret would make Telegram stop sending it, and the webhook rejects such requests.
+  if (!secret) return 'no-secret';
+  await setWebhook(info.url, secret);
+  return 'repaired';
+}
+
+const WEBHOOK_CHECK_EVERY_MS = 60 * 60 * 1000;
+let webhookCheckedAt = 0;
+
+/**
+ * `ensureWebhookUpdates` at most once an hour per server instance (`force` skips the throttle). Never throws:
+ * the callers are the webhook itself and the daily cron, and neither may fail because of this check.
+ */
+export async function healWebhook({ force = false, now = Date.now() } = {}) {
+  if (!force && now - webhookCheckedAt < WEBHOOK_CHECK_EVERY_MS) return 'skipped';
+  webhookCheckedAt = now;
+  try {
+    const state = await ensureWebhookUpdates();
+    if (state === 'repaired') console.warn('[telegram] webhook re-registered: button presses (callback_query) were not being delivered');
+    if (state === 'no-secret') console.error('[telegram] webhook does not deliver button presses and TELEGRAM_WEBHOOK_SECRET is not set, so it was not re-registered');
+    return state;
+  } catch (err) {
+    webhookCheckedAt = 0; // check again on the next update
+    console.error('[telegram] webhook check failed:', err?.message);
+    return 'error';
+  }
 }
 
 export async function deleteWebhook() {
