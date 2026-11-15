@@ -160,3 +160,26 @@ describe('materializeCopies', () => {
     err.mockRestore();
   });
 });
+
+describe('publicForwardedFrom', () => {
+  const visible = { userId: 'u1', name: 'Alice', messageId: 'm1', hidden: false };
+  const hidden = { ...visible, hidden: true };
+  it('a visible author goes out as is, for everyone', async () => {
+    const { publicForwardedFrom } = await import('./forward');
+    expect(publicForwardedFrom(visible)).toEqual({ userId: 'u1', name: 'Alice', messageId: 'm1', hidden: false });
+    expect(publicForwardedFrom(visible, { reveal: true })).toEqual({ userId: 'u1', name: 'Alice', messageId: 'm1', hidden: false });
+    expect(publicForwardedFrom(null, { reveal: true })).toBeNull();
+  });
+  it('a hidden author is stripped for an ordinary reader', async () => {
+    const { publicForwardedFrom } = await import('./forward');
+    expect(publicForwardedFrom(hidden)).toEqual({ hidden: true });
+    expect(publicForwardedFrom(hidden, { reveal: false })).toEqual({ hidden: true });
+  });
+  it('an admin reader still gets the hidden author, marked as revealed', async () => {
+    const { publicForwardedFrom, canSeeHiddenForwardAuthor } = await import('./forward');
+    expect(publicForwardedFrom(hidden, { reveal: true })).toEqual({ userId: 'u1', name: 'Alice', messageId: 'm1', hidden: true, revealed: true });
+    expect(canSeeHiddenForwardAuthor({ role: 'admin' })).toBe(true);
+    expect(canSeeHiddenForwardAuthor({ role: 'user' })).toBe(false);
+    expect(canSeeHiddenForwardAuthor(null)).toBe(false);
+  });
+});

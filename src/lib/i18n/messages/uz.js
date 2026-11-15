@@ -1061,6 +1061,7 @@ const uz = {
   'ch.uploading': "Yuklanmoqda",
   'ch.cancelUpload': "Yuklashni bekor qilish",
   'ch.forwardedFrom': "{name}dan yuborilgan",
+  'ch.forwardedFromHidden': "{name}dan yuborilgan (nomi yashirilgan)",
   'ch.archived': "Arxivlangan chatlar",
   'ch.archive': "Arxivlash",
   'ch.unarchive': "Arxivdan chiqarish",

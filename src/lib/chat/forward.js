@@ -81,13 +81,21 @@ export function partitionSources(requestedIds, found, userId) {
  * "… dan yuborilgan" yorlig'i: forward'ning forward'i birinchi muallifni saqlaydi.
  * `authorsById` — Map(userId -> { _id, name, username }); `hidden` — "yuboruvchi nomini yashirish".
  */
-/** Tashqariga (API/socket) beriladigan forwardedFrom: muallif yashirilgan bo'lsa faqat `{ hidden: true }`. */
-export function publicForwardedFrom(ff) {
+/**
+ * Tashqariga (API/socket) beriladigan forwardedFrom: muallif yashirilgan bo'lsa faqat `{ hidden: true }`.
+ * `reveal` — o'quvchi admin: "yuboruvchi nomini yashirish" bilan yuborilgan nusxada ham asl muallif
+ * beriladi (`revealed: true` — klient uni "nomi yashirilgan" belgisi bilan ko'rsatadi). Oddiy
+ * foydalanuvchiga hech qachon `revealed` kelmaydi.
+ */
+export function publicForwardedFrom(ff, { reveal = false } = {}) {
   if (!ff) return null;
-  if (ff.hidden) return { hidden: true };
+  if (ff.hidden && !reveal) return { hidden: true };
   const { userId, name, messageId } = ff;
-  return { userId: userId ?? null, name: name ?? null, ...(messageId ? { messageId } : {}), hidden: false };
+  return { userId: userId ?? null, name: name ?? null, ...(messageId ? { messageId } : {}), hidden: ff.hidden === true, ...(ff.hidden ? { revealed: true } : {}) };
 }
+
+/** Yashirilgan forward muallifini ko'ra oladimi (faqat admin). */
+export const canSeeHiddenForwardAuthor = (user) => user?.role === 'admin';
 
 export function forwardedFromFor(original, authorsById, hideAuthor = false) {
   const prev = original.forwardedFrom || null;

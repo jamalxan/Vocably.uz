@@ -192,6 +192,30 @@ describeDb('multi-forward route (integration)', () => {
     expect(copies[1].forwardedFrom.hidden).toBe(true);
   });
 
+  it('hideAuthor: an ordinary recipient gets no author; an admin recipient and an admin sender still see it', async () => {
+    const { text } = await seedSource();
+    const admin = await mkUser({ username: 'boss', name: 'Boss', role: 'admin' });
+    const toAdmin = await mkConvo(me, admin);
+    const body = { sourceConversationId: String(source._id), messageIds: [String(text._id)], targetConversationIds: [String(toThird._id), String(toAdmin._id)], hideAuthor: true };
+    const { data } = await post(me, body);
+    // The sender is not an admin: their own copy carries no author either.
+    expect(data.results.map((r) => r.messages[0].forwardedFrom)).toEqual([{ hidden: true }, { hidden: true }]);
+    await flushAfter();
+    const pushed = (userId) => realtime.pushNewMessage.mock.calls.filter((c) => String(c[0]) === String(userId)).map((c) => c[2].forwardedFrom);
+    expect(pushed(third._id)).toEqual([{ hidden: true }]);
+    expect(pushed(admin._id)).toEqual([expect.objectContaining({ name: 'Friend', hidden: true, revealed: true })]);
+    expect(String(pushed(admin._id)[0].userId)).toBe(String(friend._id));
+
+    // An admin who forwards with the name hidden sees the author on their own copy; the recipient does not.
+    const fromAdmin = await mkConvo(admin, friend);
+    const src = await M.Message.create({ conversationId: toAdmin._id, senderId: me._id, type: 'text', text: 'secret', createdAt: at(9) });
+    vi.clearAllMocks();
+    const second = await post(admin, { sourceConversationId: String(toAdmin._id), messageIds: [String(src._id)], targetConversationIds: [String(fromAdmin._id)], hideAuthor: true });
+    expect(second.data.results[0].messages[0].forwardedFrom).toMatchObject({ name: 'Sender', hidden: true, revealed: true });
+    await flushAfter();
+    expect(pushed(friend._id)).toEqual([{ hidden: true }]);
+  });
+
   it('validation: too many copies, foreign source, empty arrays', async () => {
     const many = Array.from({ length: 30 }, () => new mongoose.Types.ObjectId().toString());
     const targets = Array.from({ length: 4 }, () => new mongoose.Types.ObjectId().toString());

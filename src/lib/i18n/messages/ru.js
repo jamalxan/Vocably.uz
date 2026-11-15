@@ -1063,6 +1063,7 @@ const ru = {
   'ch.uploading': 'Загрузка',
   'ch.cancelUpload': 'Отменить загрузку',
   'ch.forwardedFrom': 'Переслано от {name}',
+  'ch.forwardedFromHidden': 'Переслано от {name} (имя скрыто)',
   'ch.archived': 'Архив чатов',
   'ch.archive': 'В архив',
   'ch.unarchive': 'Вернуть из архива',

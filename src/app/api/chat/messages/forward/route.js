@@ -8,7 +8,7 @@ import { sendPushToUser } from '@/lib/webPush';
 import { notifyRecipientViaTelegram } from '@/lib/chatNotify';
 import { loadConversationForUser } from '@/lib/chat/conversationAccess';
 import { isConversationMuted, previewForMessage } from '@/lib/chatConstants';
-import { albumIdMapper, cleanBatchId, materializeCopies, partitionSources, planForwardCopies, publicForwardedFrom, validateForwardBody } from '@/lib/chat/forward';
+import { albumIdMapper, canSeeHiddenForwardAuthor, cleanBatchId, materializeCopies, partitionSources, planForwardCopies, publicForwardedFrom, validateForwardBody } from '@/lib/chat/forward';
 import { after, NextResponse } from 'next/server';
 
 // POST /api/chat/messages/forward — PARITY_PLAN WP5: tanlangan xabar(lar)ni bitta so'rovda 10 tagacha
@@ -18,7 +18,8 @@ import { after, NextResponse } from 'next/server';
 // `${batch}:${manba}:${nishon}` — avval saqlanganlari topilib qaytariladi.
 const RATE_LIMIT = 10;
 
-const serialize = (m) => ({
+// `reveal` — o'quvchi admin: yashirilgan forward muallifi ham beriladi (src/lib/chat/forward.js).
+const serialize = (m, reveal = false) => ({
   id: m._id,
   _id: m._id,
   conversationId: m.conversationId,
@@ -29,7 +30,7 @@ const serialize = (m) => ({
   stickerId: m.stickerId || null,
   replyTo: null,
   albumId: m.albumId || null,
-  forwardedFrom: publicForwardedFrom(m.forwardedFrom),
+  forwardedFrom: publicForwardedFrom(m.forwardedFrom, { reveal }),
   clientMessageId: m.clientMessageId,
   readAt: m.readAt || null,
   createdAt: m.createdAt,
@@ -79,7 +80,7 @@ export async function POST(req) {
       const otherId = convo.participantIds.find((id) => String(id) !== String(user._id));
       const [blocked, other] = await Promise.all([
         Block.findOne({ $or: [{ blockerId: user._id, blockedId: otherId }, { blockerId: otherId, blockedId: user._id }] }).lean(),
-        User.findById(otherId).select('chatAccess chatBanned').lean(),
+        User.findById(otherId).select('chatAccess chatBanned role').lean(),
       ]);
       if (blocked) {
         fail('blocked', "Bu chatga yuborib bo'lmaydi");
@@ -145,7 +146,8 @@ export async function POST(req) {
           await convo.save();
         }
 
-        const payloads = all.map(serialize);
+        // Har bir o'quvchiga o'z nusxasi: yashirilgan muallifni faqat admin ko'radi.
+        const payloads = all.map((m) => serialize(m, canSeeHiddenForwardAuthor(user)));
         results.push({ conversationId: targetId, ok: true, messages: payloads });
         if (inserted.length) {
           const recipientNick = convo.nicknames?.get ? convo.nicknames.get(String(otherId)) : convo.nicknames?.[String(otherId)];
@@ -155,6 +157,7 @@ export async function POST(req) {
             convo,
             otherId,
             payloads: payloads.filter((p) => newIds.has(String(p.id))),
+            recipientPayloads: all.filter((m) => newIds.has(String(m._id))).map((m) => serialize(m, canSeeHiddenForwardAuthor(other))),
             preview,
             muted,
             liveMeta: { sender: { id: String(user._id), username: user.username || null, label: recipientNick || senderLabel }, silent: muted },
@@ -176,7 +179,7 @@ export async function POST(req) {
           const convId = String(d.convo._id);
           // Nusxalar tartibi saqlansin: bitta nishon ichida ketma-ket, nishonlar orasida parallel.
           jobs.push(async () => {
-            for (const p of d.payloads) await pushNewMessage(d.otherId, convId, p, d.liveMeta);
+            for (const p of d.recipientPayloads) await pushNewMessage(d.otherId, convId, p, d.liveMeta);
           });
           jobs.push(async () => {
             for (const p of d.payloads) await emitEvent([user._id], 'message:new', { conversationId: convId, message: p, self: true });

@@ -3,13 +3,16 @@
 // this wherever a date shows a month name.
 const MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
 
-/** Til bo'yicha: uz — formatUzDate ("29-sentabr"), boshqasi (en) — Intl "September 29". */
+// Intl tili: ru — "29 сентября", qolgan hammasi (en va noma'lum til) — "September 29".
+const INTL_LOCALE = { ru: 'ru-RU' };
+
+/** Til bo'yicha: uz — formatUzDate ("29-sentabr"), ru — "29 сентября", en — "September 29". */
 export function formatDateLocale(locale, date, opts = {}) {
   if (locale === 'uz') return formatUzDate(date, opts);
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '';
   const { year = false, timeZone = 'Asia/Tashkent' } = opts;
-  return new Intl.DateTimeFormat('en-US', { timeZone, day: 'numeric', month: 'long', ...(year ? { year: 'numeric' } : {}) }).format(d);
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale] || 'en-US', { timeZone, day: 'numeric', month: 'long', ...(year ? { year: 'numeric' } : {}) }).format(d);
 }
 
 /** "29-sentabr" / "29-sentabr, 2026" in Asia/Tashkent by default. */
