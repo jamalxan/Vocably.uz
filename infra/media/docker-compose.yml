@@ -14,6 +14,30 @@ services:
     networks: [edge]
     mem_limit: 1g
     logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
+  # Continuous backup of the bucket into a private Telegram channel (backup/README.md). Behind a profile, so a
+  # plain `docker compose up -d` keeps working on a server where backup.env does not exist yet:
+  #   sudo docker compose --profile backup up -d backup
+  backup:
+    profiles: ["backup"]
+    image: node:22-alpine
+    container_name: vocably-media-backup
+    restart: always
+    working_dir: /app
+    command: ["node", "backup.mjs"]
+    env_file:
+      - path: ./backup.env
+        required: false
+    environment:
+      S3_ENDPOINT: http://vocably-garage:3900
+      S3_BUCKET: vocably-chat
+      STATE_DIR: /state
+    volumes:
+      - ./backup:/app:ro
+      - ./backup-state:/state
+    networks: [edge]
+    depends_on: [garage]
+    mem_limit: 768m
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
 networks:
   edge:
     external: true
