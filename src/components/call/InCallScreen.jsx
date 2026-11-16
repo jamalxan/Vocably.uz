@@ -165,7 +165,8 @@ export default function InCallScreen() {
         </div>
       </div>
 
-      {camera && localStream && status !== 'ended' && (
+      {/* Kamera fonda ochiladi — trek kelmaguncha bo'sh (qora) oyna ko'rsatilmaydi. */}
+      {camera && localStream && localStream.getVideoTracks().length > 0 && status !== 'ended' && (
         <div
           {...drag.handlers}
           style={drag.style}

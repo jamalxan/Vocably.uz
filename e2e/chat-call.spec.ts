@@ -454,3 +454,76 @@ test('13. socket re-auth: after the 60 s ticket expires a dropped transport reco
     .toBe(true);
   await waitCallReady(user.page, 15_000);
 });
+
+/** Kamera so'rovini `window.__releaseCamera()` chaqirilguncha ushlab turadi (sekin ochiladigan kamera yoki javobsiz ruxsat oynasi). */
+async function holdCamera(page: Page) {
+  await page.evaluate(() => {
+    const md = navigator.mediaDevices;
+    const orig = md.getUserMedia.bind(md);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    (window as any).__releaseCamera = () => release();
+    md.getUserMedia = (c?: MediaStreamConstraints) => (c && c.video ? gate.then(() => orig(c)) : orig(c));
+  });
+}
+
+const remoteVideoWidth = (p: Page) => p.getByTestId('remote-video').evaluate((v: HTMLVideoElement) => v.videoWidth).catch(() => 0);
+
+test('14. video call does not wait for the callee camera: accepting connects at once, the camera turns itself on when it opens', async ({ browser }) => {
+  const since = new Date();
+  const { user, friend } = await openPair(browser);
+  track(user);
+  track(friend);
+  await waitCallReady(user.page);
+  await waitCallReady(friend.page);
+  await holdCamera(friend.page);
+
+  await user.page.getByTestId('call-video-button').click();
+  await expect(friend.page.getByTestId('incoming-call')).toBeVisible({ timeout: 10_000 });
+  await friend.page.getByTestId('call-accept').click();
+  // Kamera hali ochilmagan — qo'ng'iroq baribir ulanadi (ilgari "Ulanmoqda…"da qotib, call:accept ketmasdi).
+  await expectActive(user.page, friend.page);
+  await expect(user.page.getByTestId('call-peer-camera-off')).toBeVisible({ timeout: 10_000 });
+  await expect(friend.page.getByTestId('local-video')).toHaveCount(0);
+  await expect.poll(() => remoteVideoWidth(friend.page), { timeout: 20_000 }).toBeGreaterThan(0);
+
+  await friend.page.evaluate(() => (window as any).__releaseCamera());
+  await expect(friend.page.getByTestId('local-video')).toBeVisible({ timeout: 10_000 });
+  await expect(user.page.getByTestId('call-peer-camera-off')).toHaveCount(0, { timeout: 10_000 });
+  await expect.poll(() => remoteVideoWidth(user.page), { timeout: 20_000 }).toBeGreaterThan(0);
+
+  await user.page.getByTestId('call-end').click();
+  await expectNoOverlay(friend.page);
+  const row = await waitCallRow(E2E_CONVERSATION_ID, since, 'ended');
+  expect(row.call.kind).toBe('video');
+});
+
+test('15. video call does not wait for the caller camera: it rings and connects, the camera joins later', async ({ browser }) => {
+  const since = new Date();
+  const { user, friend } = await openPair(browser);
+  track(user);
+  track(friend);
+  await waitCallReady(user.page);
+  await waitCallReady(friend.page);
+  await holdCamera(user.page);
+
+  await user.page.getByTestId('call-video-button').click();
+  // Kamerasiz ham taklif ketadi (ilgari "So'ralmoqda…"da qolib, hech kim jiringlamasdi).
+  await expect(friend.page.getByTestId('incoming-call')).toBeVisible({ timeout: 10_000 });
+  await friend.page.getByTestId('call-accept').click();
+  await expectActive(user.page, friend.page);
+  await expect(friend.page.getByTestId('call-peer-camera-off')).toBeVisible({ timeout: 10_000 });
+  await expect.poll(() => remoteVideoWidth(user.page), { timeout: 20_000 }).toBeGreaterThan(0);
+
+  await user.page.evaluate(() => (window as any).__releaseCamera());
+  await expect(user.page.getByTestId('local-video')).toBeVisible({ timeout: 10_000 });
+  await expect(friend.page.getByTestId('call-peer-camera-off')).toHaveCount(0, { timeout: 10_000 });
+  await expect.poll(() => remoteVideoWidth(friend.page), { timeout: 20_000 }).toBeGreaterThan(0);
+  await expect.poll(() => pcState(user.page), { timeout: 10_000 }).toBe('connected');
+
+  await friend.page.getByTestId('call-end').click();
+  await expectNoOverlay(user.page);
+  await waitCallRow(E2E_CONVERSATION_ID, since, 'ended');
+});
