@@ -7,7 +7,7 @@ import { initialCallState, isLiveStatus, reduceCall } from '@/lib/call/callMachi
 import { createPeer } from '@/lib/call/peer';
 import {
   clearMediaSession,
-  getLocalStream,
+  getMicStream,
   getVideoTrack,
   mediaSupported,
   releaseWakeLock,
@@ -118,6 +118,9 @@ export function CallProvider({ children }) {
   const serverSinceRef = useRef(null);
   const connectedOnceRef = useRef(false);
   const endFallbackRef = useRef(null);
+  // Kamera so'rovi avlodi: qo'ng'iroq tugasa yoki kamera qo'lda o'chirilsa oshadi — kech kelgan
+  // (eskirgan) getUserMedia natijasi tashlab yuboriladi.
+  const cameraReqRef = useRef(0);
   const tRef = useRef(t);
   useEffect(() => { tRef.current = t; });
 
@@ -137,6 +140,7 @@ export function CallProvider({ children }) {
   }, []);
 
   const teardown = useCallback(() => {
+    cameraReqRef.current += 1;
     stopAll();
     vibrateLoop(false);
     peerRef.current?.close();
@@ -175,8 +179,42 @@ export function CallProvider({ children }) {
   const emitMedia = useCallback(() => {
     const s = stateRef.current;
     if (!s.callId || !isLiveStatus(s.status)) return;
-    emit('call:media', { callId: s.callId, audio: !!s.mic, video: !!s.camera });
+    // `camera` — niyat (kamera ochilayotgan bo'lishi mumkin); suhbatdoshga faqat trek haqiqatan bor bo'lsa "yoqilgan".
+    emit('call:media', { callId: s.callId, audio: !!s.mic, video: !!s.camera && !!localRef.current?.getVideoTracks().length });
   }, [emit]);
+
+  // Kamera qo'ng'iroqni TO'SMAYDI: mikrofon bilan qo'ng'iroq darhol boshlanadi/qabul qilinadi,
+  // kamera esa shu yerda fonda ochiladi va tayyor bo'lgach o'zi ulanadi (video qo'ng'iroqda ikkala
+  // tomonda ham avtomatik). Ochilmasa — qo'ng'iroq ovozli bo'lib davom etadi, kamera tugmasi o'chiq.
+  const startCamera = useCallback(() => {
+    const req = ++cameraReqRef.current;
+    const current = () => cameraReqRef.current === req && !!localRef.current && stateRef.current.camera;
+    getVideoTrack(stateRef.current.facing)
+      .then(async (track) => {
+        const stream = localRef.current;
+        if (!current() || !stream) {
+          track.stop();
+          return;
+        }
+        stream.addTrack(track);
+        // Peer hali yaratilmagan bo'lsa (grant kutilmoqda) trek oqimda turadi — addLocalStream o'zi oladi.
+        try {
+          if (peerRef.current) await peerRef.current.setVideoSending(track, stream);
+        } catch (err) {
+          stream.removeTrack(track);
+          track.stop();
+          throw err;
+        }
+        if (!current()) return;
+        setLocalStream(new window.MediaStream(stream.getTracks()));
+        emitMedia();
+      })
+      .catch(() => {
+        if (cameraReqRef.current !== req) return;
+        act({ type: 'TOGGLE_CAMERA', value: false });
+        emitMedia();
+      });
+  }, [act, emitMedia]);
 
   // ---------------------------------------------------------------- peer
   const onPeerConnection = useCallback(
@@ -276,21 +314,21 @@ export function CallProvider({ children }) {
       act({ type: 'START', conversationId, kind, peer });
       unlockAudio();
       requestPauseAllMedia();
-      let media;
+      let stream;
       try {
-        media = await getLocalStream(kind, { facing: 'user' });
+        stream = await getMicStream();
       } catch (err) {
         // Ruxsat berilmadi — hech kim jiringlamaydi, yozuv ham yo'q (CALLS_SPEC §12).
         act({ type: 'MEDIA_FAILED', error: errorOf(err, retry) });
         return;
       }
       if (stateRef.current.status !== 'starting') {
-        media.stream.getTracks().forEach((tr) => tr.stop());
+        stream.getTracks().forEach((tr) => tr.stop());
         return;
       }
-      localRef.current = media.stream;
-      setLocalStream(media.stream);
-      if (media.videoFailed) act({ type: 'TOGGLE_CAMERA', value: false });
+      localRef.current = stream;
+      setLocalStream(stream);
+      if (kind === 'video') startCamera();
 
       let res;
       let data = {};
@@ -315,7 +353,10 @@ export function CallProvider({ children }) {
       act({ type: 'GRANT_OK', callId: data.callId, peer: data.peer || null });
       // Taklif va ICE yig'ish jiringlash paytida boshlanadi; signal'lar call:accept'gacha navbatda.
       const p = makePeer({ polite: false, startOpen: false, iceServers: data.iceServers || [] });
-      p.addLocalStream(media.stream);
+      p.addLocalStream(stream);
+      // Video qo'ng'iroq: kamera hali ochilmagan bo'lsa ham video m-line birinchi taklifga kiradi —
+      // kamera keyin replaceTrack bilan ulanadi (jiringlash paytida ikkinchi taklif chiqmaydi).
+      if (kind === 'video') p.prepareVideo(stream);
       const s = socketRef.current;
       const callId = data.callId;
       if (!s || !s.connected) {
@@ -333,7 +374,7 @@ export function CallProvider({ children }) {
         }
       );
     },
-    [act, makePeer]
+    [act, makePeer, startCamera]
   );
 
   const acceptCall = useCallback(
@@ -346,28 +387,31 @@ export function CallProvider({ children }) {
       requestPauseAllMedia();
       const { callId, kind } = s0;
       act({ type: 'ACCEPT', videoOff });
-      let media;
+      let stream;
       try {
-        media = await getLocalStream(kind, { facing: 'user', videoOff });
+        stream = await getMicStream();
       } catch (err) {
         emit('call:end', { callId, reason: 'media_error' });
         act({ type: 'ACCEPT_MEDIA_FAILED', error: errorOf(err) });
         return;
       }
       if (stateRef.current.callId !== callId || stateRef.current.status !== 'accepting') {
-        media.stream.getTracks().forEach((tr) => tr.stop());
+        stream.getTracks().forEach((tr) => tr.stop());
         return;
       }
-      localRef.current = media.stream;
-      setLocalStream(media.stream);
+      localRef.current = stream;
+      setLocalStream(stream);
+      // Video qo'ng'iroq qabul qilinsa kamera o'zi yoqiladi ("Kamerasiz javob berish" bundan mustasno) —
+      // lekin `call:accept` uni kutmaydi.
+      if (kind === 'video' && !videoOff) startCamera();
       const iceServers = await fetchIceServers();
       if (stateRef.current.callId !== callId || stateRef.current.status !== 'accepting') return;
       const p = makePeer({ polite: true, startOpen: true, iceServers });
-      p.addLocalStream(media.stream);
+      p.addLocalStream(stream);
       emit('call:accept', { callId });
-      act({ type: 'ACCEPT_MEDIA_READY', videoFailed: media.videoFailed });
+      act({ type: 'ACCEPT_MEDIA_READY' });
     },
-    [act, emit, fetchIceServers, makePeer]
+    [act, emit, fetchIceServers, makePeer, startCamera]
   );
 
   const rejectCall = useCallback(() => {
@@ -415,6 +459,7 @@ export function CallProvider({ children }) {
     const s = stateRef.current;
     const stream = localRef.current;
     if (!stream) return;
+    cameraReqRef.current += 1; // fonda ochilayotgan kamera bo'lsa — bekor (natijasi tashlab yuboriladi)
     if (s.camera) {
       const old = stream.getVideoTracks();
       old.forEach((tr) => stream.removeTrack(tr));
@@ -444,7 +489,7 @@ export function CallProvider({ children }) {
   const flipCamera = useCallback(async () => {
     const s = stateRef.current;
     const stream = localRef.current;
-    if (!stream || !s.camera || flipping) return;
+    if (!stream || !s.camera || flipping || !stream.getVideoTracks().length) return;
     const nextFacing = s.facing === 'user' ? 'environment' : 'user';
     setFlipping(true);
     try {

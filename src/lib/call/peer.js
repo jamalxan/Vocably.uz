@@ -100,14 +100,15 @@ export function createPeer({
     pc.getSenders().forEach((sender) => {
       const track = sender.track;
       if (!track || track.kind !== 'video' || bitrateApplied.has(track.id) || typeof sender.getParameters !== 'function') return;
-      bitrateApplied.add(track.id);
       try {
         const params = sender.getParameters() || {};
         if (!params.encodings || !params.encodings.length) params.encodings = [{}];
         params.encodings[0].maxBitrate = VIDEO_MAX_BITRATE;
-        Promise.resolve(sender.setParameters(params)).catch(() => {});
+        // Faqat muvaffaqiyatdan keyin belgilanadi: kelishuvdan oldin (jiringlash paytida kamera
+        // ulansa) brauzer rad etishi mumkin — keyingi 'stable'da qayta uriniladi.
+        Promise.resolve(sender.setParameters(params)).then(() => bitrateApplied.add(track.id), () => {});
       } catch {
-        // ba'zi brauzerlar kelishuvdan oldin parametrlarni bermaydi — keyingi 'stable'da emas, o'tkazamiz
+        // ba'zi brauzerlar kelishuvdan oldin parametrlarni bermaydi — keyingi 'stable'da qayta uriniladi
       }
     });
   }
@@ -226,6 +227,18 @@ export function createPeer({
     return fromSenders || transceiverFor(kind)?.sender || null;
   }
 
+  /**
+   * Video qo'ng'iroq, kamera hali ochilmagan (qo'ng'iroq kamerani kutmaydi): video m-line birinchi
+   * taklifga treksiz `sendrecv` transceiver bo'lib kiradi. Kamera tayyor bo'lganda
+   * `setVideoSending` uni shu sender'ga replaceTrack qiladi — qayta kelishuvsiz (jiringlash paytida
+   * ikkinchi taklif chiqmaydi). Faqat taklif beruvchi tomonda: javob beruvchida transceiver
+   * masofadagi taklifdan o'zi paydo bo'ladi.
+   */
+  function prepareVideo(stream) {
+    if (closed || senderFor('video') || typeof pc.addTransceiver !== 'function') return;
+    senders.video = pc.addTransceiver('video', { direction: 'sendrecv', streams: stream ? [stream] : [] }).sender;
+  }
+
   /** Mavjud sender'dagi trekni almashtiradi (kamera almashtirish) — qayta kelishuvsiz. */
   async function replaceTrack(kind, track) {
     const sender = senderFor(kind);
@@ -259,6 +272,8 @@ export function createPeer({
       const tr = transceiverFor('video');
       if (tr && (tr.direction === 'recvonly' || tr.direction === 'inactive')) tr.direction = 'sendrecv';
       senders.video = sender;
+      // replaceTrack qayta kelishuv qilmaydi ('stable' hodisasi bo'lmaydi) — bitreyt chegarasini o'zimiz qo'yamiz.
+      applyVideoBitrate();
       return;
     }
     senders.video = pc.addTrack(track, stream);
@@ -304,6 +319,7 @@ export function createPeer({
     open,
     handleSignal,
     addLocalStream,
+    prepareVideo,
     replaceTrack,
     setVideoSending,
     setMicEnabled,

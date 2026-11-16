@@ -13,20 +13,14 @@ export function mediaSupported() {
 }
 
 /**
- * Qo'ng'iroq uchun oqim. Faqat video so'rovi muvaffaqiyatsiz bo'lsa — faqat audio bilan qayta
- * urinadi (`videoFailed:true`); audio xatosi yuqoriga otiladi (mediaErrorMessage uchun).
+ * Qo'ng'iroq uchun mikrofon oqimi. Video qo'ng'iroqda ham AVVAL faqat shu so'raladi: kamera
+ * alohida (`getVideoTrack`) va qo'ng'iroqni to'smasdan ochiladi. Ilgari audio+video bitta
+ * so'rovda olinardi — kamera sekin ochilsa yoki ruxsat oynasi javobsiz qolsa, qabul qilish
+ * "Ulanmoqda…"da qotib, serverga `call:accept` umuman yetib bormasdi.
+ * Xato yuqoriga otiladi (mediaErrorMessage uchun).
  */
-export async function getLocalStream(kind, { facing = 'user', videoOff = false } = {}) {
-  const md = navigator.mediaDevices;
-  const wantVideo = kind === 'video' && !videoOff;
-  if (!wantVideo) return { stream: await md.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: false }), videoFailed: false };
-  try {
-    return { stream: await md.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: videoConstraints(facing) }), videoFailed: false };
-  } catch (err) {
-    // Mikrofonning o'zi ham ishlamasa — shu (audio) xato foydalanuvchiga ko'rsatiladi.
-    const stream = await md.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: false });
-    return { stream, videoFailed: true, videoError: err };
-  }
+export function getMicStream() {
+  return navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS, video: false });
 }
 
 /** Bitta video trek (kamera yoqish / almashtirish). */

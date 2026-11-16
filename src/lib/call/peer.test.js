@@ -54,6 +54,12 @@ class FakePC {
   getSenders() {
     return this.sendersList;
   }
+  addTransceiver(kind, init = {}) {
+    const sender = { track: null, replaceTrack: vi.fn(async (t) => { sender.track = t; }), getParameters: () => ({ encodings: [{}] }), setParameters: vi.fn(async () => {}) };
+    this.calls.push(['addTransceiver', kind, init.direction]);
+    this.sendersList.push(sender);
+    return { sender, receiver: { track: { kind } }, direction: init.direction };
+  }
   getTransceivers() {
     return this.sendersList.map((sender) => ({ sender, receiver: { track: null }, direction: 'sendrecv' }));
   }
@@ -182,6 +188,29 @@ describe('peer.js perfect negotiation', () => {
     peer.addLocalStream({ getTracks: () => [track('audio')] });
     await peer.setVideoSending(track('video', 'v'), {});
     expect(pc.added.map((t) => t.kind)).toEqual(['audio', 'video']);
+  });
+
+  it('video call before the camera is ready: the video m-line is prepared up front, the camera later goes in through replaceTrack (no renegotiation)', async () => {
+    const { peer, pc } = mk({ startOpen: false });
+    peer.addLocalStream({ getTracks: () => [track('audio')] });
+    peer.prepareVideo({});
+    expect(pc.calls).toContainEqual(['addTransceiver', 'video', 'sendrecv']);
+    peer.prepareVideo({}); // ikkinchi marta — yangi transceiver yo'q
+    expect(pc.calls.filter((c) => c[0] === 'addTransceiver')).toHaveLength(1);
+    const cam = track('video', 'late');
+    await peer.setVideoSending(cam, {});
+    const videoSender = pc.sendersList[1];
+    expect(videoSender.replaceTrack).toHaveBeenCalledWith(cam);
+    expect(pc.added.map((t) => t.kind)).toEqual(['audio']); // addTrack yo'q -> qayta kelishuv yo'q
+    await Promise.resolve();
+    expect(videoSender.setParameters).toHaveBeenCalledWith({ encodings: [{ maxBitrate: 1_000_000 }] });
+  });
+
+  it('prepareVideo does nothing when the camera track is already being sent', () => {
+    const { peer, pc } = mk({ startOpen: false });
+    peer.addLocalStream({ getTracks: () => [track('audio'), track('video')] });
+    peer.prepareVideo({});
+    expect(pc.calls.filter((c) => c[0] === 'addTransceiver')).toHaveLength(0);
   });
 
   it('replaceTrack (camera flip) and mic toggle', async () => {

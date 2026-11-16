@@ -78,7 +78,7 @@ sequenceDiagram
     participant B1 as Callee tab B1
     participant B2 as Callee tab B2
     participant DB as MongoDB
-    A1->>A1: tap Phone or Video, unlockAudio, getUserMedia(kind)
+    A1->>A1: tap Phone or Video, unlockAudio, getUserMedia(audio); camera opens in the background
     A1->>N: POST /api/chat/conversations/:id/calls {kind}
     N->>N: requireChatUser, membership, Block both ways, callee chatAccess, rate call-invite
     N-->>A1: 200 {callId, grant, iceServers, peer}
@@ -93,7 +93,7 @@ sequenceDiagram
     B2->>R: call:ringing {callId}
     R->>A1: call:ringing {callId} (relayed once)
     A1->>A1: status Jiringlamoqda, ringback
-    B1->>B1: tap Accept, unlockAudio, getUserMedia(kind or audio-only)
+    B1->>B1: tap Accept, unlockAudio, getUserMedia(audio); camera opens in the background
     B1->>R: call:accept {callId}
     R->>R: state connecting, bind calleeSocketId=B1, clear ringTimer, start connectTimer 30s
     R->>A1: call:accept {callId}
@@ -828,7 +828,8 @@ async function handleSignal({ description, candidate }) {
 
 Rules:
 - Caller: `polite:false`, `startOpen:false`; created right after `GRANT_OK` with the local stream added, so the offer and ICE gathering start during ringing (pre-warm). `open()` on `call:accept` flushes the buffered `{description}` then the `{candidate}`s in order.
-- Callee: `polite:true`, `startOpen:true`; created after its own `getUserMedia` succeeded, right before emitting `call:accept`.
+- Callee: `polite:true`, `startOpen:true`; created after its own microphone `getUserMedia` succeeded, right before emitting `call:accept`.
+- The camera never gates signaling: only the microphone is awaited before the invite / `call:accept`. In a video call the camera is requested in parallel (`startCamera` in `CallContext`) and attached when it opens: the caller pre-creates a track-less `sendrecv` video transceiver (`prepareVideo`) so the first offer already has the video m-line and the camera goes in with `replaceTrack`; the callee attaches through `setVideoSending` (renegotiation if the offer was already answered). If the camera fails the call continues as audio with the camera button off. Before 2026-11-17 audio+video were requested in one `getUserMedia`; a slow camera or an unanswered permission prompt left the callee on "Connecting…" with `call:accept` never sent.
 - `send` maps `{description}` -> `emit('call:sdp', {callId, description})` and `{candidate}` -> `emit('call:ice', {callId, candidate})`.
 - Mic mute: `setMicEnabled(false)` sets `audioTrack.enabled = false` (no renegotiation) + `call:media`.
 - Camera off: `setVideoSending(null)` -> `videoSender.replaceTrack(null)` and stop the old track (camera light off); camera on: `getVideoTrack(facing)` then `replaceTrack(track)` when a video sender exists, else `pc.addTrack(track, stream)` (negotiationneeded -> renegotiation through the same path: an audio call upgrades to video). Always followed by `call:media`.
